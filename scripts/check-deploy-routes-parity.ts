@@ -864,7 +864,7 @@ try {
 } finally {
   await harness.shutdown();
   await Promise.all(stubs.map((stub) => stub.close().catch(() => {})));
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 const total = [

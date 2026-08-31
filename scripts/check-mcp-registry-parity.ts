@@ -23,12 +23,15 @@ import type { AddressInfo } from "node:net";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { callMcpTool } from "../test/support/mcp-contract.js";
+import { referenceSpec } from "../test/support/runtime-parity.js";
 import {
   type FixtureTree,
   type Runtime,
   mcpCommand,
   normalize,
   prepareRuntime,
+  recordable,
+  recorder,
   repositoryRoot,
   substitute,
 } from "./support/mcp-parity-fixture.js";
@@ -100,7 +103,7 @@ if (fixture.fixtureVersion !== 1) {
 }
 
 const specs = [
-  { label: "reference", command: process.execPath, args: ["--import", "tsx", "src/index.ts"] },
+  referenceSpec(),
   ...(probe ? [] : [{ label: "candidate", command: candidateArgv[0], args: candidateArgv.slice(1) }]),
 ];
 
@@ -177,6 +180,7 @@ try {
       : `MCP profile-registry parity passed (${fixture.plan.length} steps).`,
   );
 } finally {
+  await recorder.finish();
   await Promise.all(stubs.map((stub) => stub.close().catch(() => {})));
   await Promise.all(
     roots.map((directory) =>
@@ -191,19 +195,21 @@ async function call(runtime: Runtime, stub: Stub, step: Step): Promise<unknown> 
   );
   const command = mcpCommand(runtime);
   stub.take();
-  const answered = await callMcpTool(
-    step.env ? { ...command, env: { ...command.env, ...step.env } } : command,
-    step.tool,
-    args,
-  );
-  const asked = stub.take().map((request) => ({
-    ...request,
-    path: request.path.split(stub.base).join("<api>"),
-  }));
-  return {
-    answered: normalize(answered, runtime),
-    asked: JSON.parse(JSON.stringify(asked).split(stub.base).join("<api>")),
-  };
+  return recorder.recorded(recordable(runtime), step.id, async () => {
+    const answered = await callMcpTool(
+      step.env ? { ...command, env: { ...command.env, ...step.env } } : command,
+      step.tool,
+      args,
+    );
+    const asked = stub.take().map((request) => ({
+      ...request,
+      path: request.path.split(stub.base).join("<api>"),
+    }));
+    return {
+      answered: normalize(answered, runtime),
+      asked: JSON.parse(JSON.stringify(asked).split(stub.base).join("<api>")),
+    };
+  });
 }
 
 /**

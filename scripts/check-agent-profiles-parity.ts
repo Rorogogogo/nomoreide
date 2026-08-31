@@ -566,7 +566,7 @@ try {
   }
 } finally {
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
   // Whatever the default-path exports dropped into the checkout.
   for (const path of written) await rm(path, { force: true });
 }

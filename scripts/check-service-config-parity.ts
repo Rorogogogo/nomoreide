@@ -388,7 +388,7 @@ try {
 } finally {
   if (held) await new Promise<void>((resolve) => held!.close(() => resolve()));
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 const total = steps.length + 1;

@@ -417,12 +417,17 @@ try {
   // One runtime exports the archive both installs download, so the bytes are
   // identical on both sides and an install can only differ in what it does
   // with them.
+  //
+  // It lands inside the reference's *own* home rather than the shared harness
+  // root: a recording rewrites a runtime's home and workspace to tokens and
+  // puts the replaying run's paths back, and a path belonging to neither would
+  // be replayed as the directory the recording was made in — which is gone.
   await signIn(reference);
   const exported = (await send(reference, {
     name: "setup/export",
     method: "POST",
     path: `${PROFILES}/base/export`,
-    body: JSON.stringify({ outputPath: join(root, "seed.tar.gz") }),
+    body: JSON.stringify({ outputPath: join(reference.home, "seed.tar.gz") }),
   })) as { body: { archivePath?: string } };
   if (typeof exported.body.archivePath !== "string") {
     throw new Error(`the seed export did not write an archive: ${inspect(exported)}`);
@@ -440,7 +445,7 @@ try {
 } finally {
   server.close();
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 if (failures > 0) {

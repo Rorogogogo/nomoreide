@@ -52,6 +52,7 @@ import {
   RuntimeHarness,
   type Runtime,
 } from "../test/support/runtime-parity.js";
+import { volatile } from "../test/support/parity-recording.js";
 
 const run = promisify(execFile);
 
@@ -351,6 +352,11 @@ let failures = 0;
 
 try {
   source = join(root, "source");
+  // The source tree is shared by both runtimes, so it sits outside either
+  // one's home — which also puts it outside everything a recording rewrites
+  // on its own. Registered here, before anything can clone from it and put
+  // its path into an answer.
+  volatile(source);
   await seedRepository(join(source, "demo-app"), DEMO_FILES);
   await seedRepository(join(source, "plain-repo"), { "notes.txt": "nothing to see\n" });
   // A directory that is not a repository, for the clone that fails.
@@ -403,7 +409,7 @@ try {
 } finally {
   held?.close();
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 if (failures > 0) {

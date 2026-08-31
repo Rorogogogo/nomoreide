@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "gate": "terminal-streams",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/events",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers/pending/stream",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": [
+    {
+      "key": "stream:/api/terminal/events",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream; charset=utf-8",
+          "date": "Mon, 31 Aug 2026 06:13:21 GMT",
+          "transfer-encoding": "chunked",
+          "x-accel-buffering": "no"
+        },
+        "body": ": connected\n\nevent: session\ndata: {\"id\":\"term_1\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}\n\n"
+      }
+    },
+    {
+      "key": "stream:/api/terminal/events",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream; charset=utf-8",
+          "date": "Mon, 31 Aug 2026 06:13:22 GMT",
+          "transfer-encoding": "chunked",
+          "x-accel-buffering": "no"
+        },
+        "body": ": connected\n\nevent: session\ndata: {\"id\":\"term_1\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}\n\nevent: session\ndata: {\"id\":\"term_2\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}\n\n"
+      }
+    },
+    {
+      "key": "stream:/api/terminal/events",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream; charset=utf-8",
+          "date": "Mon, 31 Aug 2026 06:13:25 GMT",
+          "transfer-encoding": "chunked",
+          "x-accel-buffering": "no"
+        },
+        "body": ": connected\n\nevent: session\ndata: {\"id\":\"term_1\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}\n\nevent: session\ndata: {\"id\":\"term_2\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}\n\n"
+      }
+    },
+    {
+      "key": "stream:/api/terminal/events",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream; charset=utf-8",
+          "date": "Mon, 31 Aug 2026 06:13:28 GMT",
+          "transfer-encoding": "chunked",
+          "x-accel-buffering": "no"
+        },
+        "body": ": connected\n\nevent: session\ndata: {\"id\":\"term_2\",\"cols\":80,\"cwd\":\"/private%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}\n\n: keepalive\n\n"
+      }
+    },
+    {
+      "key": "stream:/api/workflow-triggers/pending/stream",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream",
+          "date": "Mon, 31 Aug 2026 06:13:47 GMT",
+          "transfer-encoding": "chunked"
+        },
+        "body": "retry: 2000\n\n"
+      }
+    },
+    {
+      "key": "stream:/api/workflow-triggers/pending/stream",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream",
+          "date": "Mon, 31 Aug 2026 06:13:47 GMT",
+          "transfer-encoding": "chunked"
+        },
+        "body": "retry: 2000\n\n: ping\n\n"
+      }
+    }
+  ]
+}

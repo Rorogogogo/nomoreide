@@ -1,0 +1,1109 @@
+{
+  "version": 1,
+  "gate": "provider-oauth",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"idle\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/start",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"idle\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/nowhere/oauth/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/nowhere/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"error\",\"error\":\"Unknown provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/oauth/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cloudflare has no browser sign-in.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/oauth/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cloudflare has no browser sign-in.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"error\",\"error\":\"Cloudflare has no browser sign-in.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:65486/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=_WtDo4HCPS4eWHKhoofVnis8aYosKbCD6Xs4T5C6j64&code_challenge_method=S256&state=ltkAIdgE3Kd8OqaVGhsnBw&scope=offline_access\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"pending\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/callback?code=c&state=not-a-real-state",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>This sign-in link has expired. Start the sign-in again from NoMoreIDE.</p></div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"error\",\"error\":\"This sign-in link has expired. Start the sign-in again from NoMoreIDE.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/callback?state=ltkAIdgE3Kd8OqaVGhsnBw",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>This sign-in link has expired. Start the sign-in again from NoMoreIDE.</p></div></body></html>"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:65499/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=y9xEid3ss-JsCemvrLa-RMt7Ln4QPWpHhoPY8_LZ048&code_challenge_method=S256&state=9RSK5Mfx1If2AztI0z6O6w&scope=offline_access\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/callback?code=auth-code&state=9RSK5Mfx1If2AztI0z6O6w",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Connected to Vercel</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Connected to Vercel</h2><p>You can close this tab and return to NoMoreIDE.</p></div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"connected\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/callback?code=auth-code&state=9RSK5Mfx1If2AztI0z6O6w",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>This sign-in link has expired. Start the sign-in again from NoMoreIDE.</p></div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"error\",\"error\":\"This sign-in link has expired. Start the sign-in again from NoMoreIDE.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/providers/vercel/connect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"idle\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:65513/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=SETDQ4SliSuT3syNKV1gvajudBV8k-tNyyv41IUbDD8&code_challenge_method=S256&state=035RtQTDYjt-vOIjhCwt1Q&scope=offline_access\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/oauth/callback?code=auth-code&state=035RtQTDYjt-vOIjhCwt1Q",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Connected to Vercel</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Connected to Vercel</h2><p>You can close this tab and return to NoMoreIDE.</p></div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"connected\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"idle\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/callback?error=access_denied&error_description=The+user+refused",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>The user refused</p></div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"error\",\"error\":\"The user refused\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/callback?error=server_error",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>server_error</p></div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/callback?error_description=%3Cscript%3Ealert(1)%3C%2Fscript%3E",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>&lt;script&gt;alert(1)&lt;/script&gt;</p></div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"error\",\"error\":\"<script>alert(1)</script>\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:49153/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=QWRi0hSrAhDwo5J3hFR--LvA91tGmcK4ZTMBXjrvR1k&code_challenge_method=S256&state=A7msZfzhO1bf1jLNSWVNeA&scope=offline_access\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/callback?code=stale&state=A7msZfzhO1bf1jLNSWVNeA",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>The code has expired (invalid_grant)</p></div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"error\",\"error\":\"The code has expired (invalid_grant)\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/oauth/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vercel does not advertise a client registration endpoint.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/oauth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"phase\":\"error\",\"error\":\"Vercel does not advertise a client registration endpoint.\"}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "status/before-anything",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "idle"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "start/a-get-is-not-a-start",
+      "value": {
+        "answer": {
+          "status": 405,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/a-405-did-not-record-a-failure",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "idle"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "start/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 500,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Unknown provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "error",
+            "error": "Unknown provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "start/a-provider-with-no-browser-sign-in",
+      "value": {
+        "answer": {
+          "status": 500,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Cloudflare has no browser sign-in."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "start/a-get-to-a-provider-with-no-browser-sign-in",
+      "value": {
+        "answer": {
+          "status": 500,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Cloudflare has no browser sign-in."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/cloudflare-recorded-the-refusal",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "error",
+            "error": "Cloudflare has no browser sign-in."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "start/mints-a-sign-in",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "url": {
+              "origin": "{{issuer}}",
+              "pathname": "/oauth/authorize",
+              "parameters": {
+                "client_id": "cl_parity",
+                "redirect_uri": "http://{{daemon}}/api/providers/vercel/oauth/callback",
+                "response_type": "code",
+                "code_challenge": "<s256>",
+                "code_challenge_method": "S256",
+                "state": "<state>",
+                "scope": "offline_access"
+              }
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/.well-known/openid-configuration",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/oauth/register",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_name": "NoMoreIDE",
+              "redirect_uris": [
+                "http://{{daemon}}/api/providers/vercel/oauth/callback"
+              ],
+              "grant_types": [
+                "authorization_code",
+                "refresh_token"
+              ],
+              "response_types": [
+                "code"
+              ],
+              "token_endpoint_auth_method": "none",
+              "application_type": "native"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/pending",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "pending"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "callback/an-unknown-state",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "text/html; charset=utf-8",
+          "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>This sign-in link has expired. Start the sign-in again from NoMoreIDE.</p></div></body></html>"
+        },
+        "requests": [],
+        "config": {
+          "version": 1,
+          "connections": {},
+          "gitRepositories": [],
+          "services": [],
+          "bundles": [],
+          "databases": [],
+          "sshServers": []
+        }
+      }
+    },
+    {
+      "key": "status/an-unknown-state-recorded-an-error",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "error",
+            "error": "This sign-in link has expired. Start the sign-in again from NoMoreIDE."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "callback/no-code-at-all",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "text/html; charset=utf-8",
+          "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>This sign-in link has expired. Start the sign-in again from NoMoreIDE.</p></div></body></html>"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "redeem/start",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "url": {
+              "origin": "{{issuer}}",
+              "pathname": "/oauth/authorize",
+              "parameters": {
+                "client_id": "cl_parity",
+                "redirect_uri": "http://{{daemon}}/api/providers/vercel/oauth/callback",
+                "response_type": "code",
+                "code_challenge": "<s256>",
+                "code_challenge_method": "S256",
+                "state": "<state>",
+                "scope": "offline_access"
+              }
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/.well-known/openid-configuration",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/oauth/register",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_name": "NoMoreIDE",
+              "redirect_uris": [
+                "http://{{daemon}}/api/providers/vercel/oauth/callback"
+              ],
+              "grant_types": [
+                "authorization_code",
+                "refresh_token"
+              ],
+              "response_types": [
+                "code"
+              ],
+              "token_endpoint_auth_method": "none",
+              "application_type": "native"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "redeem/callback-succeeds",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Connected to Vercel</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Connected to Vercel</h2><p>You can close this tab and return to NoMoreIDE.</p></div></body></html>"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/oauth/token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/x-www-form-urlencoded",
+            "apiVersion": null,
+            "body": "grant_type=authorization_code&code=auth-code&redirect_uri=http%3A%2F%2F{{daemon}}%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&client_id=cl_parity&code_verifier=<verifier>",
+            "matched": true
+          }
+        ],
+        "config": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [],
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {
+            "vercel": {
+              "source": "oauth",
+              "token": "oauth-access-token",
+              "refreshToken": "oauth-refresh-token",
+              "expiresAt": "<now+60m>",
+              "clientId": "cl_parity"
+            }
+          },
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "redeem/status-is-connected",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "connected"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "redeem/callback-replayed",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "text/html; charset=utf-8",
+          "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>This sign-in link has expired. Start the sign-in again from NoMoreIDE.</p></div></body></html>"
+        },
+        "requests": [],
+        "config": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [],
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {
+            "vercel": {
+              "source": "oauth",
+              "token": "oauth-access-token",
+              "refreshToken": "oauth-refresh-token",
+              "expiresAt": "<now+60m>",
+              "clientId": "cl_parity"
+            }
+          },
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "redeem/status-after-the-replay",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "error",
+            "error": "This sign-in link has expired. Start the sign-in again from NoMoreIDE."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "redeem/disconnect",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [],
+        "config": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [],
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "redeem/status-after-disconnect",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "idle"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "crossed/start-under-vercel",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "url": {
+              "origin": "{{issuer}}",
+              "pathname": "/oauth/authorize",
+              "parameters": {
+                "client_id": "cl_parity",
+                "redirect_uri": "http://{{daemon}}/api/providers/vercel/oauth/callback",
+                "response_type": "code",
+                "code_challenge": "<s256>",
+                "code_challenge_method": "S256",
+                "state": "<state>",
+                "scope": "offline_access"
+              }
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/.well-known/openid-configuration",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/oauth/register",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_name": "NoMoreIDE",
+              "redirect_uris": [
+                "http://{{daemon}}/api/providers/vercel/oauth/callback"
+              ],
+              "grant_types": [
+                "authorization_code",
+                "refresh_token"
+              ],
+              "response_types": [
+                "code"
+              ],
+              "token_endpoint_auth_method": "none",
+              "application_type": "native"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "crossed/callback-arrives-on-cloudflares-path",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Connected to Vercel</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Connected to Vercel</h2><p>You can close this tab and return to NoMoreIDE.</p></div></body></html>"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/oauth/token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/x-www-form-urlencoded",
+            "apiVersion": null,
+            "body": "grant_type=authorization_code&code=auth-code&redirect_uri=http%3A%2F%2F{{daemon}}%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&client_id=cl_parity&code_verifier=<verifier>",
+            "matched": true
+          }
+        ],
+        "config": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [],
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {
+            "vercel": {
+              "source": "oauth",
+              "token": "oauth-access-token",
+              "refreshToken": "oauth-refresh-token",
+              "expiresAt": "<now+60m>",
+              "clientId": "cl_parity"
+            }
+          },
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "crossed/vercel-is-connected",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "connected"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "crossed/cloudflare-was-not-touched",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "idle"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "denied/the-user-said-no",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "text/html; charset=utf-8",
+          "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>The user refused</p></div></body></html>"
+        },
+        "requests": [],
+        "config": {
+          "version": 1,
+          "connections": {},
+          "gitRepositories": [],
+          "services": [],
+          "bundles": [],
+          "databases": [],
+          "sshServers": []
+        }
+      }
+    },
+    {
+      "key": "denied/status",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "error",
+            "error": "The user refused"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "denied/only-a-code",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "text/html; charset=utf-8",
+          "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>server_error</p></div></body></html>"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "denied/markup-in-the-error",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "text/html; charset=utf-8",
+          "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>&lt;script&gt;alert(1)&lt;/script&gt;</p></div></body></html>"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "denied/status-holds-the-raw-text",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "error",
+            "error": "<script>alert(1)</script>"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "rejected/start",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "url": {
+              "origin": "{{issuer}}",
+              "pathname": "/oauth/authorize",
+              "parameters": {
+                "client_id": "cl_parity",
+                "redirect_uri": "http://{{daemon}}/api/providers/vercel/oauth/callback",
+                "response_type": "code",
+                "code_challenge": "<s256>",
+                "code_challenge_method": "S256",
+                "state": "<state>",
+                "scope": "offline_access"
+              }
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/.well-known/openid-configuration",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/oauth/register",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_name": "NoMoreIDE",
+              "redirect_uris": [
+                "http://{{daemon}}/api/providers/vercel/oauth/callback"
+              ],
+              "grant_types": [
+                "authorization_code",
+                "refresh_token"
+              ],
+              "response_types": [
+                "code"
+              ],
+              "token_endpoint_auth_method": "none",
+              "application_type": "native"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "rejected/the-code-was-refused",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "text/html; charset=utf-8",
+          "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed</title>\n<style>body{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}\n@media(prefers-color-scheme:dark){body{background:#0a0a0a;color:#fafafa}}\ndiv{text-align:center;max-width:32rem;padding:2rem}p{opacity:.7}</style></head>\n<body><div><h2>Sign-in failed</h2><p>The code has expired (invalid_grant)</p></div></body></html>"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/oauth/token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/x-www-form-urlencoded",
+            "apiVersion": null,
+            "body": "grant_type=authorization_code&code=stale&redirect_uri=http%3A%2F%2F{{daemon}}%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&client_id=cl_parity&code_verifier=<verifier>",
+            "matched": true
+          }
+        ],
+        "config": {
+          "version": 1,
+          "connections": {},
+          "gitRepositories": [],
+          "services": [],
+          "bundles": [],
+          "databases": [],
+          "sshServers": []
+        }
+      }
+    },
+    {
+      "key": "rejected/status",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "error",
+            "error": "The code has expired (invalid_grant)"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "unregistrable/start",
+      "value": {
+        "answer": {
+          "status": 500,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Vercel does not advertise a client registration endpoint."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/.well-known/openid-configuration",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "unregistrable/status",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "phase": "error",
+            "error": "Vercel does not advertise a client registration endpoint."
+          }
+        },
+        "requests": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,305 @@
+{
+  "version": 1,
+  "gate": "mcp-docs-ui",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"app\":\"nomoreide\",\"version\":\"0.1.103\",\"pid\":105}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"index\",\n  \"title\": \"NoMoreIDE documentation index\",\n  \"body\": \"NoMoreIDE is an AI-native local development workbench. Pass a topic to `nomoreide_docs` for focused docs, or fetch the canonical docs links included in this response.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"overview\",\n  \"title\": \"Overview\",\n  \"body\": \"NoMoreIDE v0.1.103 is an AI-native local development workbench for services, activity, Docker, Git and worktrees, GitHub, Vercel, databases, workflows, terminals, and agent environments. It gives humans and AI coding agents one shared local control surface through MCP, CLI, TUI, web, and macOS desktop interfaces.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"setup\",\n  \"title\": \"Setup\",\n  \"body\": \"Recommended NoMoreIDE agent setup is `npx -y nomoreide setup codex`, `npx -y nomoreide setup claude`, or `npx -y nomoreide setup gemini`; this installs both the local MCP connection and the bundled nomoreide-debug skill. Start a new agent session and verify with `/mcp`. You can also run with `npx -y nomoreide`, install globally with `npm install -g nomoreide`, download the macOS desktop app from GitHub Releases, or build from source.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"mcp\",\n  \"title\": \"MCP setup\",\n  \"body\": \"NoMoreIDE MCP setup uses a local stdio server. Claude Code: `claude mcp add --transport stdio nomoreide -- npx -y nomoreide`. Codex CLI: `codex mcp add nomoreide -- npx -y nomoreide`. Gemini: add an MCP server named `nomoreide` with command `npx` and args `[\\\"-y\\\", \\\"nomoreide\\\"]`. Verify inside the agent with `/mcp`.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"cli\",\n  \"title\": \"CLI reference\",\n  \"body\": \"NoMoreIDE CLI commands include `setup`, `web`, `tui`, `daemon`, `list`, `add service`, `add bundle`, `start`, `stop`, `restart`, `logs`, `git`, `db`, `agents`, and `profile`. Use `nomoreide add service` for local, Docker Compose, or SSH services; `nomoreide agents` to inspect coding-agent configuration; and `nomoreide profile` to snapshot, preview, apply, export, import, publish, or install portable agent setups.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"dashboard\",\n  \"title\": \"Dashboard\",\n  \"body\": \"The NoMoreIDE web and macOS dashboards include all-project Overview, Services, Activity, Docker, Error Inbox, Terminal, Git Review, GitHub, Vercel, Workflows, Database, Agent Console, Agent Environments, and searchable Settings surfaces. They keep runtime state, logs, diffs, deployments, data, workflows, and agent context visible.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"tools\",\n  \"title\": \"MCP tool reference\",\n  \"body\": \"NoMoreIDE exposes domain tools for services, repo onboarding, Git and worktrees, snapshots, GitHub, Vercel, errors, database catalog inspection, documentation, UI lifecycle, agent environments, portable profiles, and the hosted profile registry. Fetch `https://www.nomoreide.com/llms-full.txt` for the complete tool-name reference.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"vercel\",\n  \"title\": \"Vercel\",\n  \"body\": \"Use NoMoreIDE's `nomoreide_deploy_list_projects`, `nomoreide_deploy_list_deployments`, `nomoreide_deploy_get_deployment`, and `nomoreide_deploy_logs` tools to inspect linked deploy-provider projects and diagnose builds. Each takes a `provider` id (default `vercel`). MCP access is read-only; redeploy, cancel, promote, and rollback remain explicit human actions in the dashboard.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"agent-environments\",\n  \"title\": \"Agent environments and profiles\",\n  \"body\": \"NoMoreIDE can inspect Claude Code, Codex, and Antigravity MCP servers, skills, and plugins; run configuration diagnostics; safely move items between agents and scopes; and package setups as profiles. Preview profile applications before writing. Agent configuration writes create backups, and exported or published profiles redact credentials.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"safety\",\n  \"title\": \"Safety model\",\n  \"body\": \"NoMoreIDE avoids broad filesystem scans, does not kill external processes it did not start, reports port conflicts instead of terminating processes, omits destructive Git operations like hard reset, clean, force push, and branch deletion, and keeps database MCP tools read-only. Vercel MCP tools are read-only too: agents can inspect deployments and build logs, but redeploy, cancel, promote, and rollback are reachable only from the dashboard. Agent environment writes create backups, and exported or published profiles redact credential values.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"troubleshooting\",\n  \"title\": \"Troubleshooting\",\n  \"body\": \"For NoMoreIDE troubleshooting, if MCP tools do not appear, re-run setup, restart the agent, verify with `/mcp`, and check that `npx -y nomoreide` works. For service failures, check `nomoreide_service_health`, `nomoreide_read_logs`, and `nomoreide_timeline`. For dashboard port conflicts, use a custom port.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"architecture\",\n  \"title\": \"Architecture\",\n  \"body\": \"NoMoreIDE has a shared core and daemon for config, processes, logs, activity, Git/worktrees/snapshots, GitHub, Vercel, databases, workflows, agent environments, profiles, and diagnostics. FastMCP exposes narrow domain tools; the local server exposes a React dashboard and REST API; Tauri provides the standalone macOS shell.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"ai-agent\",\n  \"title\": \"AI agent guide\",\n  \"body\": \"Agents should start with `nomoreide_list_services` and `nomoreide_status`, inspect health and logs before restarting services, inspect Git status and diffs before staging or committing, use read-only database and Vercel MCP tools, preview agent profile changes before applying, and prefer the narrowest matching NoMoreIDE tool over ad hoc shell access.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_docs' parameter validation failed: topic: Invalid enum value. Expected 'overview' | 'setup' | 'mcp' | 'cli' | 'dashboard' | 'tools' | 'vercel' | 'agent-environments' | 'safety' | 'troubleshooting' | 'architecture' | 'ai-agent', received 'nope'. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_docs' parameter validation failed: topic: Invalid enum value. Expected 'overview' | 'setup' | 'mcp' | 'cli' | 'dashboard' | 'tools' | 'vercel' | 'agent-environments' | 'safety' | 'troubleshooting' | 'architecture' | 'ai-agent', received ''. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_docs' parameter validation failed: topic: Expected 'overview' | 'setup' | 'mcp' | 'cli' | 'dashboard' | 'tools' | 'vercel' | 'agent-environments' | 'safety' | 'troubleshooting' | 'architecture' | 'ai-agent', received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_docs",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"topic\": \"index\",\n  \"title\": \"NoMoreIDE documentation index\",\n  \"body\": \"NoMoreIDE is an AI-native local development workbench. Pass a topic to `nomoreide_docs` for focused docs, or fetch the canonical docs links included in this response.\",\n  \"topics\": [\n    {\n      \"id\": \"overview\",\n      \"title\": \"Overview\"\n    },\n    {\n      \"id\": \"setup\",\n      \"title\": \"Setup\"\n    },\n    {\n      \"id\": \"mcp\",\n      \"title\": \"MCP setup\"\n    },\n    {\n      \"id\": \"cli\",\n      \"title\": \"CLI reference\"\n    },\n    {\n      \"id\": \"dashboard\",\n      \"title\": \"Dashboard\"\n    },\n    {\n      \"id\": \"tools\",\n      \"title\": \"MCP tool reference\"\n    },\n    {\n      \"id\": \"vercel\",\n      \"title\": \"Vercel\"\n    },\n    {\n      \"id\": \"agent-environments\",\n      \"title\": \"Agent environments and profiles\"\n    },\n    {\n      \"id\": \"safety\",\n      \"title\": \"Safety model\"\n    },\n    {\n      \"id\": \"troubleshooting\",\n      \"title\": \"Troubleshooting\"\n    },\n    {\n      \"id\": \"architecture\",\n      \"title\": \"Architecture\"\n    },\n    {\n      \"id\": \"ai-agent\",\n      \"title\": \"AI agent guide\"\n    }\n  ],\n  \"links\": {\n    \"humanDocs\": \"https://www.nomoreide.com/docs\",\n    \"llmsIndex\": \"https://www.nomoreide.com/llms.txt\",\n    \"fullAiDocs\": \"https://www.nomoreide.com/llms-full.txt\",\n    \"aiAgentGuide\": \"https://www.nomoreide.com/docs/ai-guide.md\",\n    \"github\": \"https://github.com/Rorogogogo/nomoreide\",\n    \"npm\": \"https://www.npmjs.com/package/nomoreide\"\n  }\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_ui",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"status\": \"already_running\",\n  \"url\": \"http://127.0.0.1:64548\",\n  \"port\": 64548,\n  \"pid\": 105\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_ui",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"status\": \"adopted\",\n  \"url\": \"http://127.0.0.1:%%PORT%%\",\n  \"port\": %%PORT%%,\n  \"pid\": 105\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_ui",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Tool 'nomoreide_open_ui' execution failed: Port 64557 is held by a process that is not a NoMoreIDE daemon. Stop it or set NOMOREIDE_DAEMON_PORT to use a different port."
+            }
+          ],
+          "isError": true
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_close_ui",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"status\": \"not_running\"\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_close_ui",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"status\": \"stopping\",\n  \"note\": \"Daemon is stopping all managed services and exiting.\"\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_close_ui",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"status\": \"not_running\"\n}"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

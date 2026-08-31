@@ -50,9 +50,12 @@ import {
   mcpCommand,
   normalize,
   prepareRuntime,
+  recordable,
+  recorder,
   repositoryRoot,
   substitute,
 } from "./support/mcp-parity-fixture.js";
+import { referenceSpec } from "../test/support/runtime-parity.js";
 
 const argv = process.argv.slice(2);
 const dump = argv.includes("--dump");
@@ -81,11 +84,9 @@ if (fixture.fixtureVersion !== 1) {
 }
 
 const specs = [
-  {
-    label: "reference",
-    command: process.execPath,
-    args: ["--import", import.meta.resolve("tsx"), join(repositoryRoot, "src/index.ts")],
-  },
+  // Absolute either way, and in replay a path that cannot exist — which is
+  // what makes "the reference is never started" enforced rather than asserted.
+  referenceSpec(),
   { label: "candidate", command: resolve(candidateArgv[0]), args: candidateArgv.slice(1) },
 ];
 
@@ -125,6 +126,7 @@ try {
 
   console.log(`MCP database parity passed (${compared} steps).`);
 } finally {
+  await recorder.finish();
   await Promise.all(
     roots.map((directory) =>
       rm(directory, { recursive: true, force: true, maxRetries: 5 }).catch(() => {}),
@@ -132,9 +134,18 @@ try {
   );
 }
 
+/**
+ * One step's answer, from a process or from the recording.
+ *
+ * The normalized payload is the recorded unit rather than the raw response:
+ * it has already had this runtime's own throwaway paths rewritten to fixture
+ * tokens, so it is the same value in whatever directory the gate next runs in.
+ */
 async function call(runtime: Runtime, step: Fixture["plan"][number]): Promise<unknown> {
-  const args = Object.fromEntries(
-    Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
-  );
-  return normalize(await callMcpTool(mcpCommand(runtime), step.tool, args), runtime);
+  return recorder.recorded(recordable(runtime), step.id, async () => {
+    const args = Object.fromEntries(
+      Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
+    );
+    return normalize(await callMcpTool(mcpCommand(runtime), step.tool, args), runtime);
+  });
 }

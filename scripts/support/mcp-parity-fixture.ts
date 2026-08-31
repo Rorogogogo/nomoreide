@@ -9,12 +9,14 @@
  * Nothing here reads either implementation.
  */
 import { execFile } from "node:child_process";
-import { chmod, mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { promisify } from "node:util";
 import type { McpCommand } from "../../test/support/mcp-contract.js";
+import { Recorder } from "../../test/support/parity-recording.js";
+import type { Runtime as HarnessRuntime } from "../../test/support/runtime-parity.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -326,6 +328,71 @@ async function write(root: string, file: string, contents: string): Promise<void
   const target = join(root, file);
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, contents);
+}
+
+/**
+ * The record/replay bookkeeping these gates share.
+ *
+ * The gates built on this fixture drive the reference as an MCP *process*
+ * rather than over HTTP, so the harness's replay server has nothing to stand
+ * in for — what the reference said is a tool result, and it is replayed
+ * through {@link Recorder.recorded} instead. One per process is enough: the
+ * recording is named after the script being run, and a gate is a script.
+ */
+export const recorder = new Recorder();
+
+/**
+ * A fixture runtime, in the shape the recorder tokenises against.
+ *
+ * The recorder rewrites a runtime's home, workspace, and daemon port out of
+ * whatever it stores, so a recording made in one temporary directory replays
+ * in another. A fixture runtime keeps its whole tree — repositories,
+ * databases, clones — under the directory its home sits in, and has no daemon
+ * of its own, which is what `port: 0` says.
+ */
+export function recordable(runtime: Runtime): HarnessRuntime {
+  return {
+    label: runtime.label,
+    command: runtime.command,
+    args: runtime.args,
+    home: runtime.home,
+    workspace: dirname(runtime.home),
+    port: 0,
+  };
+}
+
+/**
+ * Keep only the newest backup of each file, everywhere under a runtime's home.
+ *
+ * A backup is named for the *second* it was taken in, with a counter when that
+ * second already holds one — and both runtimes give up after ten, writing
+ * without a copy rather than searching forever. Fifty-odd steps of this plan
+ * back a file up, so whether the eleventh finds every spelling taken is a
+ * question about how fast the machine got here, not about what either runtime
+ * does. Pruning between steps keeps the second from filling: each step still
+ * reports the backup it just made, and the newest survives to the tree
+ * comparison, where its bytes are read.
+ */
+export async function pruneBackups(root: string): Promise<void> {
+  const entries = await readdir(root, { withFileTypes: true }).catch(() => []);
+  const groups = new Map<string, string[]>();
+  for (const entry of entries) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) {
+      await pruneBackups(path);
+      continue;
+    }
+    const base = entry.name.split(".bak.")[0];
+    if (base === entry.name) continue;
+    groups.set(base, [...(groups.get(base) ?? []), entry.name]);
+  }
+  for (const names of groups.values()) {
+    // A stamp sorts by time, and the counter a collision appends sorts after
+    // the bare stamp it collided with — so the last name is the newest.
+    for (const name of names.sort().slice(0, -1)) {
+      await rm(join(root, name), { force: true });
+    }
+  }
 }
 
 export function mcpCommand(runtime: Runtime): McpCommand {

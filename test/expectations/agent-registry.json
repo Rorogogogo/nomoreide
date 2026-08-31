@@ -1,0 +1,358 @@
+{
+  "version": 1,
+  "gate": "agent-registry",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/export",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"archivePath\":\"%%HOME%%/seed.tar.gz\",\"credentials\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/registry/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"id\":\"p-full\",\"slug\":\"full\",\"title\":\"Everything filled in\",\"summary\":\"q= sort=\",\"version\":\"2.3.4\",\"sourceKind\":\"upload\",\"githubRepoUrl\":\"https://github.com/example/profile\",\"starsCount\":12,\"downloadsCount\":340,\"author\":{\"id\":\"u-1\",\"displayName\":\"Someone\",\"avatarUrl\":\"https://img.test/a.png\"},\"publishedAt\":\"2026-01-02T03:04:05.000Z\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0},{\"id\":\"p-bare\",\"slug\":\"bare\",\"title\":\"Nothing filled in\",\"summary\":null,\"version\":\"0.1.0\",\"sourceKind\":\"github\",\"starsCount\":0,\"downloadsCount\":0,\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/registry/profiles?q=agents&sort=stars",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"id\":\"p-full\",\"slug\":\"full\",\"title\":\"Everything filled in\",\"summary\":\"q=agents sort=stars\",\"version\":\"2.3.4\",\"sourceKind\":\"upload\",\"githubRepoUrl\":\"https://github.com/example/profile\",\"starsCount\":12,\"downloadsCount\":340,\"author\":{\"id\":\"u-1\",\"displayName\":\"Someone\",\"avatarUrl\":\"https://img.test/a.png\"},\"publishedAt\":\"2026-01-02T03:04:05.000Z\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0},{\"id\":\"p-bare\",\"slug\":\"bare\",\"title\":\"Nothing filled in\",\"summary\":null,\"version\":\"0.1.0\",\"sourceKind\":\"github\",\"starsCount\":0,\"downloadsCount\":0,\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/registry/profiles?q=%20%20",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"id\":\"p-full\",\"slug\":\"full\",\"title\":\"Everything filled in\",\"summary\":\"q= sort=\",\"version\":\"2.3.4\",\"sourceKind\":\"upload\",\"githubRepoUrl\":\"https://github.com/example/profile\",\"starsCount\":12,\"downloadsCount\":340,\"author\":{\"id\":\"u-1\",\"displayName\":\"Someone\",\"avatarUrl\":\"https://img.test/a.png\"},\"publishedAt\":\"2026-01-02T03:04:05.000Z\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0},{\"id\":\"p-bare\",\"slug\":\"bare\",\"title\":\"Nothing filled in\",\"summary\":null,\"version\":\"0.1.0\",\"sourceKind\":\"github\",\"starsCount\":0,\"downloadsCount\":0,\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/registry/profiles?sort=nope",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid registry profile query.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/registry/profiles?q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid registry profile query.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/registry/profiles?q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"id\":\"p-full\",\"slug\":\"full\",\"title\":\"Everything filled in\",\"summary\":\"q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx sort=\",\"version\":\"2.3.4\",\"sourceKind\":\"upload\",\"githubRepoUrl\":\"https://github.com/example/profile\",\"starsCount\":12,\"downloadsCount\":340,\"author\":{\"id\":\"u-1\",\"displayName\":\"Someone\",\"avatarUrl\":\"https://img.test/a.png\"},\"publishedAt\":\"2026-01-02T03:04:05.000Z\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0},{\"id\":\"p-bare\",\"slug\":\"bare\",\"title\":\"Nothing filled in\",\"summary\":null,\"version\":\"0.1.0\",\"sourceKind\":\"github\",\"starsCount\":0,\"downloadsCount\":0,\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/registry/profiles?q=boom",
+      "status": 502,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"List profiles failed: HTTP 500 — upstream is down\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/registry/profiles?q=gone",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"List profiles failed: HTTP 404 — no such listing\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/registry/profiles",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"slug is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"slug is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"slug is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Read install descriptor failed: HTTP 404 — {\\\"error\\\":\\\"no such profile\\\"}\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"base\\\" already exists. Re-import with force to overwrite.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"base\\\" already exists. Re-import with force to overwrite.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"name\":\"base\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"missingCredentials\":[],\"version\":\"2.3.4\",\"sourceKind\":\"upload\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"name\":\"copied\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"missingCredentials\":[],\"version\":\"2.3.4\",\"sourceKind\":\"upload\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 502,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Registry profile \\\"no-package\\\" has no downloadable package.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Could not extract the archive — is it a .tar.gz profile export?\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Download failed: HTTP 404 — no such package\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/install-from-registry",
+      "status": 502,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"..\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"copied\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:27.614Z\",\"registry\":{\"origin\":\"installed\",\"slug\":\"installable\",\"version\":\"2.3.4\",\"linkedAt\":\"2026-08-31T06:02:27.615Z\",\"hasLocalChanges\":false}},{\"name\":\"base\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:27.597Z\",\"registry\":{\"origin\":\"installed\",\"slug\":\"installable\",\"version\":\"2.3.4\",\"linkedAt\":\"2026-08-31T06:02:27.598Z\",\"hasLocalChanges\":false}}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/register-github",
+      "status": 401,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Sign in to the registry first.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/publish",
+      "status": 401,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Sign in to the registry first.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/register-github",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"repoUrl, slug, and title are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/publish",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"slug and title are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/register-github",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"repoUrl, slug, and title are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/register-github",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"repoUrl, slug, and title are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/register-github",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"result\":{\"id\":\"p-from-gh\",\"slug\":\"from-gh\",\"ref_name\":\"main\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/register-github",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"result\":{\"id\":\"p-from-gh\",\"slug\":\"from-gh\",\"ref_name\":\"trunk\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/publish",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"slug and title are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/publish",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"slug and title are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/nothing-here/publish",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"nothing-here\\\" not found.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/publish",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"slug\":\"brand-new\",\"profileId\":\"p-brand-new\",\"versionId\":\"v-p-brand-new\",\"version\":\"1.2.3\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/publish",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"slug\":\"known-one\",\"profileId\":\"p-known-one\",\"versionId\":\"v-p-known-one\",\"version\":\"1.0.0\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/base/publish",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"copied\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:27.614Z\",\"registry\":{\"origin\":\"installed\",\"slug\":\"installable\",\"version\":\"2.3.4\",\"linkedAt\":\"2026-08-31T06:02:27.615Z\",\"hasLocalChanges\":false}},{\"name\":\"base\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:27.597Z\",\"registry\":{\"origin\":\"published\",\"slug\":\"known-one\",\"version\":\"1.0.0\",\"linkedAt\":\"2026-08-31T06:02:27.698Z\",\"hasLocalChanges\":false}}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/register-github",
+      "status": 401,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Sign in to the registry first.\"}"
+    }
+  ],
+  "entries": []
+}

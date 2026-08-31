@@ -39,6 +39,7 @@ import {
   RuntimeHarness,
   type Runtime,
 } from "../test/support/runtime-parity.js";
+import { volatile } from "../test/support/parity-recording.js";
 
 const argv = process.argv.slice(2).filter((a) => a !== "--dump");
 const dump = process.argv.slice(2).includes("--dump");
@@ -76,6 +77,11 @@ function startRegistry(): Promise<{ server: Server; base: string }> {
     server.listen(0, "127.0.0.1", () => {
       const address = server.address();
       const port = typeof address === "object" && address ? address.port : 0;
+      // This stub's port is the gate's, not a runtime's, so a recording would
+      // otherwise keep the port it happened to get the day it was made — and
+      // the normalization below, which erases *this* run's base, would leave
+      // it standing.
+      volatile(String(port));
       resolve({ server, base: `http://127.0.0.1:${port}` });
     });
   });
@@ -241,7 +247,7 @@ try {
 } finally {
   server.close();
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 if (failures > 0) {

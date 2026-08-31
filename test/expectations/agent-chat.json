@@ -1,0 +1,337 @@
+{
+  "version": 1,
+  "gate": "agent-chat",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/agent/chat/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"approvals\":true,\"provider\":{\"id\":\"claude\",\"label\":\"Claude Code\",\"commandName\":\"claude\",\"installHint\":\"Install Claude Code (and run `claude login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Claude Code, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\"},\"providers\":[{\"id\":\"claude\",\"label\":\"Claude Code\",\"commandName\":\"claude\",\"installHint\":\"Install Claude Code (and run `claude login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Claude Code, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\",\"configured\":true},{\"id\":\"codex\",\"label\":\"Codex\",\"commandName\":\"codex\",\"installHint\":\"Install Codex CLI (and run `codex login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Codex CLI, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\",\"configured\":false}],\"models\":{}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/provider",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown chat provider.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/provider",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Expected property name or '}' in JSON at position 1 (line 1 column 2)\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/provider",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown chat provider.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/provider",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown chat provider.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/provider",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"codex\",\"label\":\"Codex\",\"commandName\":\"codex\",\"installHint\":\"Install Codex CLI (and run `codex login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Codex CLI, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/chat/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":false,\"approvals\":false,\"provider\":{\"id\":\"codex\",\"label\":\"Codex\",\"commandName\":\"codex\",\"installHint\":\"Install Codex CLI (and run `codex login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Codex CLI, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\"},\"providers\":[{\"id\":\"claude\",\"label\":\"Claude Code\",\"commandName\":\"claude\",\"installHint\":\"Install Claude Code (and run `claude login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Claude Code, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\",\"configured\":true},{\"id\":\"codex\",\"label\":\"Codex\",\"commandName\":\"codex\",\"installHint\":\"Install Codex CLI (and run `codex login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Codex CLI, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\",\"configured\":false}],\"models\":{}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/provider",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"claude\",\"label\":\"Claude Code\",\"commandName\":\"claude\",\"installHint\":\"Install Claude Code (and run `claude login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Claude Code, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown chat provider.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown chat provider.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Model must be a string.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Model name is too long.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"models\":{\"claude\":\"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"models\":{\"claude\":\"opus\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"models\":{\"claude\":\"opus\",\"codex\":\"gpt-5\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/chat/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"approvals\":true,\"provider\":{\"id\":\"claude\",\"label\":\"Claude Code\",\"commandName\":\"claude\",\"installHint\":\"Install Claude Code (and run `claude login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Claude Code, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\"},\"providers\":[{\"id\":\"claude\",\"label\":\"Claude Code\",\"commandName\":\"claude\",\"installHint\":\"Install Claude Code (and run `claude login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Claude Code, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\",\"configured\":true},{\"id\":\"codex\",\"label\":\"Codex\",\"commandName\":\"codex\",\"installHint\":\"Install Codex CLI (and run `codex login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Codex CLI, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\",\"configured\":false}],\"models\":{\"claude\":\"opus\",\"codex\":\"gpt-5\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"models\":{\"claude\":\"opus\",\"codex\":\"gpt-5\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"models\":{\"codex\":\"gpt-5\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"models\":{}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"models\":{}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/chat/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"approvals\":true,\"provider\":{\"id\":\"claude\",\"label\":\"Claude Code\",\"commandName\":\"claude\",\"installHint\":\"Install Claude Code (and run `claude login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Claude Code, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\"},\"providers\":[{\"id\":\"claude\",\"label\":\"Claude Code\",\"commandName\":\"claude\",\"installHint\":\"Install Claude Code (and run `claude login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Claude Code, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\",\"configured\":true},{\"id\":\"codex\",\"label\":\"Codex\",\"commandName\":\"codex\",\"installHint\":\"Install Codex CLI (and run `codex login`) so it is on NoMoreIDE's PATH, then reload.\",\"intro\":\"This is real Codex CLI, running in your workspace with full tools - e.g. \\\"restart the api and tail its logs\\\", \\\"what changed in git and why?\\\", \\\"fix the failing test\\\".\",\"configured\":false}],\"models\":{}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Request must include a non-empty `message` string.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Request must include a non-empty `message` string.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Request must include a non-empty `message` string.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Expected property name or '}' in JSON at position 1 (line 1 column 2)\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 503,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Codex (`codex`) is not installed or not on PATH.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\ndata: {\"type\":\"session\",\"sessionId\":\"sess-fixed\"}\n\ndata: {\"type\":\"text\",\"text\":\"Hel\"}\n\ndata: {\"type\":\"text\",\"text\":\"lo.\"}\n\ndata: {\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"Bash\",\"input\":{\"command\":\"ls\"}}\n\ndata: {\"type\":\"tool_result\",\"id\":\"t1\",\"name\":\"Bash\",\"preview\":\"a.txt\",\"isError\":false}\n\ndata: {\"type\":\"done\",\"stopReason\":\"end_turn\"}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\ndata: {\"type\":\"session\",\"sessionId\":\"sess-fixed\"}\n\ndata: {\"type\":\"text\",\"text\":\"Hel\"}\n\ndata: {\"type\":\"text\",\"text\":\"lo.\"}\n\ndata: {\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"Bash\",\"input\":{\"command\":\"ls\"}}\n\ndata: {\"type\":\"tool_result\",\"id\":\"t1\",\"name\":\"Bash\",\"preview\":\"a.txt\",\"isError\":false}\n\ndata: {\"type\":\"done\",\"stopReason\":\"end_turn\"}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\ndata: {\"type\":\"session\",\"sessionId\":\"sess-fixed\"}\n\ndata: {\"type\":\"text\",\"text\":\"Hel\"}\n\ndata: {\"type\":\"text\",\"text\":\"lo.\"}\n\ndata: {\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"Bash\",\"input\":{\"command\":\"ls\"}}\n\ndata: {\"type\":\"tool_result\",\"id\":\"t1\",\"name\":\"Bash\",\"preview\":\"a.txt\",\"isError\":false}\n\ndata: {\"type\":\"done\",\"stopReason\":\"end_turn\"}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\ndata: {\"type\":\"error\",\"message\":\"the fake CLI was asked to fail\"}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\ndata: {\"type\":\"session\",\"sessionId\":\"sess-fixed\"}\n\ndata: {\"type\":\"done\",\"stopReason\":\"end_turn\"}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\ndata: {\"type\":\"session\",\"sessionId\":\"sess-fixed\"}\n\ndata: {\"type\":\"text\",\"text\":\"Hel\"}\n\ndata: {\"type\":\"text\",\"text\":\"lo.\"}\n\ndata: {\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"Bash\",\"input\":{\"command\":\"ls\"}}\n\ndata: {\"type\":\"tool_result\",\"id\":\"t1\",\"name\":\"Bash\",\"preview\":\"a.txt\",\"isError\":false}\n\ndata: {\"type\":\"done\",\"stopReason\":\"end_turn\"}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/status",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/chat/model",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/chat/provider",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/chat",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

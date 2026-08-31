@@ -1,0 +1,2705 @@
+{
+  "version": 1,
+  "gate": "host-routes",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/hosts",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"providers\":[{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}},\"connection\":{\"source\":\"stored\"},\"cliAvailable\":false,\"cliError\":\"No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.\",\"status\":\"connected\",\"user\":{\"username\":\"ops@acme.test\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}},\"connection\":{\"source\":\"stored\"},\"cliAvailable\":false,\"cliError\":\"No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.\",\"status\":\"connected\",\"user\":{\"username\":\"ops@acme.test\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/nowhere/status",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown host provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vercel/status",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown host provider \\\"vercel\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"instances\":[{\"id\":\"inst_running\",\"label\":\"label-inst_running\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_running.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_stopped\",\"label\":\"label-inst_stopped\",\"state\":\"stopped\",\"rawState\":\"stopped\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_stopped.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_installing\",\"label\":\"label-inst_installing\",\"state\":\"provisioning\",\"rawState\":\"installing\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_installing.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_locked\",\"label\":\"label-inst_locked\",\"state\":\"provisioning\",\"rawState\":\"locked\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_locked.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_pending\",\"label\":\"label-inst_pending\",\"state\":\"provisioning\",\"rawState\":\"pending\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_pending.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_suspended\",\"label\":\"label-inst_suspended\",\"state\":\"error\",\"rawState\":\"suspended\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_suspended.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_resizing\",\"label\":\"label-inst_resizing\",\"state\":\"provisioning\",\"rawState\":\"resizing\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_resizing.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_status_new\",\"label\":\"label-inst_status_new\",\"state\":\"unknown\",\"rawState\":\"something_new\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_status_new.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_power_new\",\"label\":\"label-inst_power_new\",\"state\":\"unknown\",\"rawState\":\"something_new\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_power_new.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_no_hostname\",\"label\":\"label-inst_no_hostname\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_bare\",\"label\":\"inst_bare\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_dual_stack\",\"label\":\"label-inst_dual_stack\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"ipv6\":\"2001:db8::10\",\"hostname\":\"inst_dual_stack.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_v6_only\",\"label\":\"label-inst_v6_only\",\"state\":\"running\",\"rawState\":\"running\",\"ipv6\":\"2001:db8::20\",\"hostname\":\"inst_v6_only.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_limited_user\",\"label\":\"label-inst_limited_user\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_limited_user.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"linuxuser\"},{\"id\":\"inst_unspecified\",\"label\":\"label-inst_unspecified\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_unspecified.example.test\",\"specs\":{},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_v6_unassigned\",\"label\":\"label-inst_v6_unassigned\",\"state\":\"running\",\"rawState\":\"running\",\"hostname\":\"inst_v6_unassigned.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst space\",\"label\":\"inst space.example.test\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst space.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_no_ip\",\"label\":\"label-inst_no_ip\",\"state\":\"running\",\"rawState\":\"running\",\"hostname\":\"inst_no_ip.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_tagless\",\"label\":\"label-inst_tagless\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_tagless.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_server_none\",\"label\":\"label-inst_server_none\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_server_none.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_server_new\",\"label\":\"label-inst_server_new\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_server_new.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"},{\"id\":\"inst_server_ok_stopped\",\"label\":\"label-inst_server_ok_stopped\",\"state\":\"stopped\",\"rawState\":\"stopped\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_server_ok_stopped.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/nowhere/instances",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown host provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances/inst_running",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"instance\":{\"id\":\"inst_running\",\"label\":\"label-inst_running\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst_running.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances/inst%20space",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"instance\":{\"id\":\"inst space\",\"label\":\"inst space.example.test\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"inst space.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances/inst%231",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"instance\":{\"id\":\"inst#1\",\"label\":\"label-inst#1\",\"state\":\"running\",\"rawState\":\"running\",\"ipv4\":\"203.0.113.10\",\"hostname\":\"odd.example.test\",\"region\":\"ewr\",\"plan\":\"vc2-1c-2gb\",\"os\":\"Ubuntu 24.04 LTS\",\"specs\":{\"vcpus\":1,\"memoryMb\":2048,\"diskGb\":55},\"tags\":[\"web\"],\"createdAt\":1767225600000,\"defaultUser\":\"root\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances/inst%zz",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"URI malformed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances/inst_missing",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Instance not found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances/inst_unhelpful",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vultr returned 500 for /instances/inst_unhelpful\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/hosts/vultr/instances/inst_running",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/nowhere/instances/inst_running",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown host provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst_running/reboot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst_running/halt",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst_running/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst%20space/reboot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst%zz/reboot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"URI malformed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst_missing/halt",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Instance not found\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst_running/destroy",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vultr has no action \\\"destroy\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst_running/reinstall",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vultr has no action \\\"reinstall\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst_running/reb%6fot",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vultr has no action \\\"reb%6fot\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances/inst_running/reboot",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/nowhere/instances/inst_running/reboot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown host provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/nowhere/instances/inst_running/reboot",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}},\"connection\":{\"source\":\"cli\"},\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"username\":\"ops@acme.test\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/connect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}},\"connection\":{\"source\":\"stored\"},\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"username\":\"ops@acme.test\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/connect",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"token is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/connect",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"token is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/connect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}},\"connection\":{\"source\":\"cli\"},\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"username\":\"ops@acme.test\"}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/hosts/vultr/connect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}},\"connection\":{\"source\":\"cli\"},\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"username\":\"ops@acme.test\"}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/hosts/vultr/connect",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/nowhere/connect",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown host provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/nowhere/connect",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown host provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/servers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"servers\":[{\"host\":\"linuxuser@203.0.113.10\",\"name\":\"label-inst_limited_user\",\"instance\":{\"providerId\":\"vultr\",\"providerName\":\"Vultr\",\"instanceId\":\"inst_limited_user\",\"state\":\"running\",\"rawState\":\"running\",\"region\":\"ewr\"},\"discovered\":false,\"saved\":false},{\"host\":\"root@2001:db8::20\",\"name\":\"label-inst_v6_only\",\"instance\":{\"providerId\":\"vultr\",\"providerName\":\"Vultr\",\"instanceId\":\"inst_v6_only\",\"state\":\"running\",\"rawState\":\"running\",\"region\":\"ewr\"},\"discovered\":false,\"saved\":false},{\"host\":\"root@203.0.113.10\",\"name\":\"label-inst_server_ok_stopped\",\"instance\":{\"providerId\":\"vultr\",\"providerName\":\"Vultr\",\"instanceId\":\"inst_server_ok_stopped\",\"state\":\"stopped\",\"rawState\":\"stopped\",\"region\":\"ewr\"},\"discovered\":false,\"saved\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/servers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"servers\":[{\"host\":\"linuxuser@203.0.113.10\",\"name\":\"label-inst_limited_user\",\"instance\":{\"providerId\":\"vultr\",\"providerName\":\"Vultr\",\"instanceId\":\"inst_limited_user\",\"state\":\"running\",\"rawState\":\"running\",\"region\":\"ewr\"},\"discovered\":false,\"saved\":false},{\"host\":\"root@2001:db8::20\",\"name\":\"label-inst_v6_only\",\"instance\":{\"providerId\":\"vultr\",\"providerName\":\"Vultr\",\"instanceId\":\"inst_v6_only\",\"state\":\"running\",\"rawState\":\"running\",\"region\":\"ewr\"},\"discovered\":false,\"saved\":false},{\"host\":\"root@203.0.113.10\",\"name\":\"label-inst_server_ok_stopped\",\"instance\":{\"providerId\":\"vultr\",\"providerName\":\"Vultr\",\"instanceId\":\"inst_server_ok_stopped\",\"state\":\"stopped\",\"rawState\":\"stopped\",\"region\":\"ewr\"},\"discovered\":false,\"saved\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst_running/reboot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/servers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"servers\":[{\"host\":\"linuxuser@203.0.113.10\",\"name\":\"label-inst_limited_user\",\"instance\":{\"providerId\":\"vultr\",\"providerName\":\"Vultr\",\"instanceId\":\"inst_limited_user\",\"state\":\"running\",\"rawState\":\"running\",\"region\":\"ewr\"},\"discovered\":false,\"saved\":false},{\"host\":\"root@2001:db8::20\",\"name\":\"label-inst_v6_only\",\"instance\":{\"providerId\":\"vultr\",\"providerName\":\"Vultr\",\"instanceId\":\"inst_v6_only\",\"state\":\"running\",\"rawState\":\"running\",\"region\":\"ewr\"},\"discovered\":false,\"saved\":false},{\"host\":\"root@203.0.113.10\",\"name\":\"label-inst_server_ok_stopped\",\"instance\":{\"providerId\":\"vultr\",\"providerName\":\"Vultr\",\"instanceId\":\"inst_server_ok_stopped\",\"state\":\"stopped\",\"rawState\":\"stopped\",\"region\":\"ewr\"},\"discovered\":false,\"saved\":false}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/hosts/vultr/connect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/servers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"servers\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}},\"cliAvailable\":false,\"cliError\":\"No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.\",\"status\":\"not_configured\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vultr is not connected. Add a Vultr API key, or export VULTR_API_KEY.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances/inst_running",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vultr is not connected. Add a Vultr API key, or export VULTR_API_KEY.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hosts/vultr/instances/inst_running/reboot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vultr is not connected. Add a Vultr API key, or export VULTR_API_KEY.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}},\"connection\":{\"source\":\"stored\"},\"cliAvailable\":false,\"cliError\":\"No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.\",\"status\":\"auth_error\",\"error\":\"Invalid API key\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/instances",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid API key\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hosts/vultr/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"provider\":{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"strings\":{\"en\":{\"action.start\":\"Start\",\"action.start.done\":\"Instance starting.\",\"action.halt\":\"Stop\",\"action.halt.done\":\"Instance stopping.\",\"action.halt.confirmTitle\":\"Stop this instance?\",\"action.halt.confirm\":\"The machine powers off immediately. Anything running on it stops.\",\"action.reboot\":\"Reboot\",\"action.reboot.done\":\"Instance rebooting.\",\"action.reboot.confirmTitle\":\"Reboot this instance?\",\"action.reboot.confirm\":\"The machine restarts immediately. Anything running on it stops.\"},\"zh\":{\"action.start\":\"启动\",\"action.start.done\":\"实例正在启动。\",\"action.halt\":\"停止\",\"action.halt.done\":\"实例正在停止。\",\"action.halt.confirmTitle\":\"停止该实例？\",\"action.halt.confirm\":\"机器将立即关机，其上运行的一切都会停止。\",\"action.reboot\":\"重启\",\"action.reboot.done\":\"实例正在重启。\",\"action.reboot.confirmTitle\":\"重启该实例？\",\"action.reboot.confirm\":\"机器将立即重启，其上运行的一切都会停止。\"}},\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"api\":{\"hosts\":[\"127.0.0.1\"]}},\"connection\":{\"source\":\"stored\"},\"cliAvailable\":false,\"cliError\":\"No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.\",\"status\":\"connection_error\",\"error\":\"Vultr is unavailable\"}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "registry/list",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "providers": [
+              {
+                "id": "vultr",
+                "name": "Vultr",
+                "kind": "host",
+                "strings": {
+                  "en": {
+                    "action.start": "Start",
+                    "action.start.done": "Instance starting.",
+                    "action.halt": "Stop",
+                    "action.halt.done": "Instance stopping.",
+                    "action.halt.confirmTitle": "Stop this instance?",
+                    "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                    "action.reboot": "Reboot",
+                    "action.reboot.done": "Instance rebooting.",
+                    "action.reboot.confirmTitle": "Reboot this instance?",
+                    "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                  },
+                  "zh": {
+                    "action.start": "启动",
+                    "action.start.done": "实例正在启动。",
+                    "action.halt": "停止",
+                    "action.halt.done": "实例正在停止。",
+                    "action.halt.confirmTitle": "停止该实例？",
+                    "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                    "action.reboot": "重启",
+                    "action.reboot.done": "实例正在重启。",
+                    "action.reboot.confirmTitle": "重启该实例？",
+                    "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                  }
+                },
+                "actions": [
+                  "start",
+                  "halt",
+                  "reboot"
+                ],
+                "productionAffecting": [
+                  "halt",
+                  "reboot"
+                ],
+                "api": {
+                  "hosts": [
+                    "127.0.0.1"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "registry/a-post-is-still-a-read",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/connected",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "connection": {
+              "source": "stored"
+            },
+            "cliAvailable": false,
+            "cliError": "No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.",
+            "status": "connected",
+            "user": {
+              "username": "ops@acme.test"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/account",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/a-post-is-still-a-read",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "connection": {
+              "source": "stored"
+            },
+            "cliAvailable": false,
+            "cliError": "No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.",
+            "status": "connected",
+            "user": {
+              "username": "ops@acme.test"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/account",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": {
+            "ok": false,
+            "error": "Unknown host provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/a-deploy-provider-is-not-a-host",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": {
+            "ok": false,
+            "error": "Unknown host provider \"vercel\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "instances/all",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "instances": [
+              {
+                "id": "inst_running",
+                "label": "label-inst_running",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_running.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_stopped",
+                "label": "label-inst_stopped",
+                "state": "stopped",
+                "rawState": "stopped",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_stopped.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_installing",
+                "label": "label-inst_installing",
+                "state": "provisioning",
+                "rawState": "installing",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_installing.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_locked",
+                "label": "label-inst_locked",
+                "state": "provisioning",
+                "rawState": "locked",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_locked.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_pending",
+                "label": "label-inst_pending",
+                "state": "provisioning",
+                "rawState": "pending",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_pending.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_suspended",
+                "label": "label-inst_suspended",
+                "state": "error",
+                "rawState": "suspended",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_suspended.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_resizing",
+                "label": "label-inst_resizing",
+                "state": "provisioning",
+                "rawState": "resizing",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_resizing.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_status_new",
+                "label": "label-inst_status_new",
+                "state": "unknown",
+                "rawState": "something_new",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_status_new.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_power_new",
+                "label": "label-inst_power_new",
+                "state": "unknown",
+                "rawState": "something_new",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_power_new.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_no_hostname",
+                "label": "label-inst_no_hostname",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_bare",
+                "label": "inst_bare",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_dual_stack",
+                "label": "label-inst_dual_stack",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "ipv6": "2001:db8::10",
+                "hostname": "inst_dual_stack.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_v6_only",
+                "label": "label-inst_v6_only",
+                "state": "running",
+                "rawState": "running",
+                "ipv6": "2001:db8::20",
+                "hostname": "inst_v6_only.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_limited_user",
+                "label": "label-inst_limited_user",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_limited_user.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "linuxuser"
+              },
+              {
+                "id": "inst_unspecified",
+                "label": "label-inst_unspecified",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_unspecified.example.test",
+                "specs": {},
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_v6_unassigned",
+                "label": "label-inst_v6_unassigned",
+                "state": "running",
+                "rawState": "running",
+                "hostname": "inst_v6_unassigned.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst space",
+                "label": "inst space.example.test",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst space.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_no_ip",
+                "label": "label-inst_no_ip",
+                "state": "running",
+                "rawState": "running",
+                "hostname": "inst_no_ip.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_tagless",
+                "label": "label-inst_tagless",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_tagless.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_server_none",
+                "label": "label-inst_server_none",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_server_none.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_server_new",
+                "label": "label-inst_server_new",
+                "state": "running",
+                "rawState": "running",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_server_new.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              },
+              {
+                "id": "inst_server_ok_stopped",
+                "label": "label-inst_server_ok_stopped",
+                "state": "stopped",
+                "rawState": "stopped",
+                "ipv4": "203.0.113.10",
+                "hostname": "inst_server_ok_stopped.example.test",
+                "region": "ewr",
+                "plan": "vc2-1c-2gb",
+                "os": "Ubuntu 24.04 LTS",
+                "specs": {
+                  "vcpus": 1,
+                  "memoryMb": 2048,
+                  "diskGb": 55
+                },
+                "tags": [
+                  "web"
+                ],
+                "createdAt": 1767225600000,
+                "defaultUser": "root"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances?per_page=500",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/instances?per_page=500&cursor=CURSOR2",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "instances/a-post-is-not-a-read",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "instances/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Unknown host provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "instance/one",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "instance": {
+              "id": "inst_running",
+              "label": "label-inst_running",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_running.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst_running",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "instance/an-encoded-id",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "instance": {
+              "id": "inst space",
+              "label": "inst space.example.test",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst space.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst%20space",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "instance/an-id-that-changes-the-url",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "instance": {
+              "id": "inst#1",
+              "label": "label-inst#1",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "odd.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst%231",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "instance/a-broken-escape",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "URI malformed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "instance/missing",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Instance not found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst_missing",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "instance/no-message-in-the-body",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Vultr returned 500 for /instances/inst_unhelpful"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst_unhelpful",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "instance/a-delete-is-not-a-read",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "instance/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Unknown host provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "action/reboot",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/instances/inst_running/reboot",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "action/halt",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/instances/inst_running/halt",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "action/start",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/instances/inst_running/start",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "action/an-encoded-instance-id",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/instances/inst%20space/reboot",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "action/a-broken-escape",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "URI malformed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "action/the-vendor-refused",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Instance not found"
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/instances/inst_missing/halt",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "action/destroy-is-not-an-action",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": {
+            "ok": false,
+            "error": "Vultr has no action \"destroy\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "action/reinstall-is-not-an-action",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": {
+            "ok": false,
+            "error": "Vultr has no action \"reinstall\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "action/an-escaped-action-name",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": {
+            "ok": false,
+            "error": "Vultr has no action \"reb%6fot\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "action/a-get-is-not-a-write",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "action/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Unknown host provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "action/a-get-on-an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "connect/nothing-stored-yet",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "connection": {
+              "source": "cli"
+            },
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "username": "ops@acme.test"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/account",
+            "accept": "application/json",
+            "authorization": "Bearer ambient-key",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connect/a-pasted-key",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [],
+        "config": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [],
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {
+            "vultr": {
+              "source": "stored",
+              "token": "pasted-key"
+            }
+          },
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "connect/status-after-pasting",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "connection": {
+              "source": "stored"
+            },
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "username": "ops@acme.test"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/account",
+            "accept": "application/json",
+            "authorization": "Bearer pasted-key",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connect/a-key-of-spaces",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "token is required"
+          }
+        },
+        "requests": [],
+        "config": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [],
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {
+            "vultr": {
+              "source": "stored",
+              "token": "pasted-key"
+            }
+          },
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "connect/no-token-at-all",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "token is required"
+          }
+        },
+        "requests": [],
+        "config": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [],
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {
+            "vultr": {
+              "source": "stored",
+              "token": "pasted-key"
+            }
+          },
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "connect/the-ambient-key",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [],
+        "config": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [],
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {
+            "vultr": {
+              "source": "cli"
+            }
+          },
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "connect/status-on-the-ambient-key",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "connection": {
+              "source": "cli"
+            },
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "username": "ops@acme.test"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/account",
+            "accept": "application/json",
+            "authorization": "Bearer ambient-key",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connect/disconnect",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [],
+        "config": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [],
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "connect/status-after-disconnect",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "connection": {
+              "source": "cli"
+            },
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "username": "ops@acme.test"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/account",
+            "accept": "application/json",
+            "authorization": "Bearer ambient-key",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connect/a-put-is-neither-verb",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "connect/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Unknown host provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "connect/a-get-on-an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Unknown host provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cache/servers-warms-it",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "servers": [
+              {
+                "host": "linuxuser@203.0.113.10",
+                "name": "label-inst_limited_user",
+                "instance": {
+                  "providerId": "vultr",
+                  "providerName": "Vultr",
+                  "instanceId": "inst_limited_user",
+                  "state": "running",
+                  "rawState": "running",
+                  "region": "ewr"
+                },
+                "discovered": false,
+                "saved": false
+              },
+              {
+                "host": "root@2001:db8::20",
+                "name": "label-inst_v6_only",
+                "instance": {
+                  "providerId": "vultr",
+                  "providerName": "Vultr",
+                  "instanceId": "inst_v6_only",
+                  "state": "running",
+                  "rawState": "running",
+                  "region": "ewr"
+                },
+                "discovered": false,
+                "saved": false
+              },
+              {
+                "host": "root@203.0.113.10",
+                "name": "label-inst_server_ok_stopped",
+                "instance": {
+                  "providerId": "vultr",
+                  "providerName": "Vultr",
+                  "instanceId": "inst_server_ok_stopped",
+                  "state": "stopped",
+                  "rawState": "stopped",
+                  "region": "ewr"
+                },
+                "discovered": false,
+                "saved": false
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances?per_page=500",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/instances?per_page=500&cursor=CURSOR2",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cache/servers-again-is-cached",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "servers": [
+              {
+                "host": "linuxuser@203.0.113.10",
+                "name": "label-inst_limited_user",
+                "instance": {
+                  "providerId": "vultr",
+                  "providerName": "Vultr",
+                  "instanceId": "inst_limited_user",
+                  "state": "running",
+                  "rawState": "running",
+                  "region": "ewr"
+                },
+                "discovered": false,
+                "saved": false
+              },
+              {
+                "host": "root@2001:db8::20",
+                "name": "label-inst_v6_only",
+                "instance": {
+                  "providerId": "vultr",
+                  "providerName": "Vultr",
+                  "instanceId": "inst_v6_only",
+                  "state": "running",
+                  "rawState": "running",
+                  "region": "ewr"
+                },
+                "discovered": false,
+                "saved": false
+              },
+              {
+                "host": "root@203.0.113.10",
+                "name": "label-inst_server_ok_stopped",
+                "instance": {
+                  "providerId": "vultr",
+                  "providerName": "Vultr",
+                  "instanceId": "inst_server_ok_stopped",
+                  "state": "stopped",
+                  "rawState": "stopped",
+                  "region": "ewr"
+                },
+                "discovered": false,
+                "saved": false
+              }
+            ]
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cache/a-reboot-drops-it",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/instances/inst_running/reboot",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cache/servers-refetches-after-a-reboot",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "servers": [
+              {
+                "host": "linuxuser@203.0.113.10",
+                "name": "label-inst_limited_user",
+                "instance": {
+                  "providerId": "vultr",
+                  "providerName": "Vultr",
+                  "instanceId": "inst_limited_user",
+                  "state": "running",
+                  "rawState": "running",
+                  "region": "ewr"
+                },
+                "discovered": false,
+                "saved": false
+              },
+              {
+                "host": "root@2001:db8::20",
+                "name": "label-inst_v6_only",
+                "instance": {
+                  "providerId": "vultr",
+                  "providerName": "Vultr",
+                  "instanceId": "inst_v6_only",
+                  "state": "running",
+                  "rawState": "running",
+                  "region": "ewr"
+                },
+                "discovered": false,
+                "saved": false
+              },
+              {
+                "host": "root@203.0.113.10",
+                "name": "label-inst_server_ok_stopped",
+                "instance": {
+                  "providerId": "vultr",
+                  "providerName": "Vultr",
+                  "instanceId": "inst_server_ok_stopped",
+                  "state": "stopped",
+                  "rawState": "stopped",
+                  "region": "ewr"
+                },
+                "discovered": false,
+                "saved": false
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances?per_page=500",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/instances?per_page=500&cursor=CURSOR2",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cache/a-disconnect-drops-it-too",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cache/servers-refetches-after-a-disconnect",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "servers": []
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "disconnected/status",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "cliAvailable": false,
+            "cliError": "No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.",
+            "status": "not_configured"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "disconnected/instances",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Vultr is not connected. Add a Vultr API key, or export VULTR_API_KEY."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "disconnected/instance",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Vultr is not connected. Add a Vultr API key, or export VULTR_API_KEY."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "disconnected/action",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Vultr is not connected. Add a Vultr API key, or export VULTR_API_KEY."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "refused/status-is-an-auth-error",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "connection": {
+              "source": "stored"
+            },
+            "cliAvailable": false,
+            "cliError": "No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.",
+            "status": "auth_error",
+            "error": "Invalid API key"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/account",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "refused/instances",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Invalid API key"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances?per_page=500",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "outage/status-is-a-connection-error",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "connection": {
+              "source": "stored"
+            },
+            "cliAvailable": false,
+            "cliError": "No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.",
+            "status": "connection_error",
+            "error": "Vultr is unavailable"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/account",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    }
+  ]
+}

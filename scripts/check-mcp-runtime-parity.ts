@@ -269,7 +269,7 @@ try {
   );
 } finally {
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 /** An accepted divergence still has to look exactly the way it was accepted. */

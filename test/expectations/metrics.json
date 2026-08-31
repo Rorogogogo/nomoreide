@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "gate": "metrics",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/metrics",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"sampleIntervalMs\":3000,\"host\":{\"current\":{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}},\"samples\":[{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}}]},\"services\":{}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/metrics?includeProcesses=1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"sampleIntervalMs\":3000,\"host\":{\"current\":{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}},\"samples\":[{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}}]},\"services\":{},\"systemProcesses\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/metrics?includeProcesses=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"sampleIntervalMs\":3000,\"host\":{\"current\":{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}},\"samples\":[{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}}]},\"services\":{}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/metrics?includeProcesses=true",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"sampleIntervalMs\":3000,\"host\":{\"current\":{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}},\"samples\":[{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}}]},\"services\":{}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/metrics?includeProcesses=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"sampleIntervalMs\":3000,\"host\":{\"current\":{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}},\"samples\":[{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}}]},\"services\":{}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/metrics?includeProcesses=1&includeProcesses=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"sampleIntervalMs\":3000,\"host\":{\"current\":{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}},\"samples\":[{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}}]},\"services\":{},\"systemProcesses\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/metrics?other=1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"sampleIntervalMs\":3000,\"host\":{\"current\":{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}},\"samples\":[{\"t\":1788156722628,\"cpuPercent\":null,\"memoryUsedBytes\":49891508224,\"memoryTotalBytes\":51539607552,\"memoryUsedPercent\":96.8,\"loadAverage\":[2.93359375,2.78857421875,3.1005859375],\"uptimeSeconds\":671915,\"logicalCpuCount\":12,\"disk\":{\"path\":\"%%REPO%%\",\"totalBytes\":994662584320,\"usedBytes\":617882185728,\"availableBytes\":376780398592,\"usedPercent\":62.1}}]},\"services\":{}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/metrics",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"service\":\"api\",\"sampleIntervalMs\":3000,\"samples\":[],\"logVolume\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/nope/metrics",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"service\":\"nope\",\"sampleIntervalMs\":3000,\"samples\":[],\"logVolume\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/a%2Fb/metrics",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"metrics\":{\"service\":\"a/b\",\"sampleIntervalMs\":3000,\"samples\":[],\"logVolume\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/api/metrics",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"pid and expectedCommand are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"pid and expectedCommand are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"pid and expectedCommand are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"pid and expectedCommand are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"pid and expectedCommand are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"pid and expectedCommand are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"pid and expectedCommand are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"pid and expectedCommand are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid process id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid process id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid process id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Process 4194303 is no longer running.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/processes/terminate",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/processes/terminate",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Process %%PID%% changed before it could be terminated.\"}"
+    }
+  ],
+  "entries": []
+}

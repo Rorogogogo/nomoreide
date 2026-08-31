@@ -25,6 +25,8 @@
  *     --jobs <n>           run n gates at once (default 1)
  *     --timeout <seconds>  per-gate limit (default 600)
  *     --allow-skips        a gate whose probe binary is missing is not a failure
+ *     --record             refresh recorded reference answers
+ *     --replay             use recorded reference answers; never start TypeScript
  *     --list               print what would run, and run nothing
  */
 import { spawn } from "node:child_process";
@@ -155,11 +157,19 @@ function complaint(lines: string[], fallback: string): string {
  * daemons it started along with it — killing only the gate leaves those
  * running, and they are long-lived enough to still be there days later.
  */
-function run(gate: Gate, timeoutMs: number): Promise<Result> {
+function run(gate: Gate, timeoutMs: number, mode: "live" | "record" | "replay"): Promise<Result> {
   return new Promise((settle) => {
     const started = Date.now();
     const child = spawn("node", ["--import", "tsx", join("scripts", gate.file), ...gate.args], {
       cwd: repositoryRoot,
+      env:
+        mode === "live"
+          ? process.env
+          : {
+              ...process.env,
+              NOMOREIDE_PARITY_MODE: mode,
+              NOMOREIDE_PARITY_SHADOW_COMMAND: resolve(candidate),
+            },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -230,13 +240,18 @@ const positional = process.argv.slice(2).filter((a, index, all) => {
 });
 const candidate = positional[0];
 if (!candidate && !flags.has("--list")) {
-  console.error("Usage: node --import tsx scripts/run-parity-gates.ts <candidate> [--only x] [--jobs n] [--timeout s] [--list]");
+  console.error("Usage: node --import tsx scripts/run-parity-gates.ts <candidate> [--only x] [--jobs n] [--timeout s] [--record|--replay] [--list]");
   process.exit(2);
 }
 
 const only = value("--only", "");
 const jobs = Math.max(1, Number(value("--jobs", "1")));
 const timeoutMs = Number(value("--timeout", "600")) * 1000;
+if (flags.has("--record") && flags.has("--replay")) {
+  console.error("Choose either --record or --replay, not both");
+  process.exit(2);
+}
+const mode = flags.has("--record") ? "record" : flags.has("--replay") ? "replay" : "live";
 
 const all = await discover(candidate ? resolve(candidate) : "<candidate>");
 const gates = only ? all.filter((g) => g.file.includes(only)) : all;
@@ -252,14 +267,16 @@ if (gates.length === 0) {
 }
 
 const missed = await unreachable(all);
-console.log(`Running ${gates.length} parity gate(s) against ${resolve(candidate)}, ${jobs} at a time.\n`);
+console.log(
+  `Running ${gates.length} parity gate(s) against ${resolve(candidate)}, ${jobs} at a time${mode === "live" ? "" : `, ${mode}ing the reference`}.\n`,
+);
 
 const results: Result[] = [];
 const queue = [...gates];
 async function worker(): Promise<void> {
   for (let gate = queue.shift(); gate; gate = queue.shift()) {
     const skip = await missingExample(gate);
-    const result = skip ?? (await run(gate, timeoutMs));
+    const result = skip ?? (await run(gate, timeoutMs, mode));
     results.push(result);
     const mark =
       result.verdict === "passed" ? "ok  " : result.verdict === "skipped" ? "skip" : "FAIL";

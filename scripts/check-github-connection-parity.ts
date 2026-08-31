@@ -549,11 +549,25 @@ try {
     // One unit per runtime: the answer and the requests it caused are the
     // comparison, and in replay the reference's side comes from the recording
     // rather than from a process that no longer exists.
-    const observe = (runtime: Runtime, side: 0 | 1) =>
-      harness.recorded(runtime, step.name, async () => ({
+    //
+    // A replayed reference is still *sent* the request first. Half of what
+    // this gate checks is the config file the daemon leaves behind, and the
+    // final reads below open it on disk — so the request has to reach the
+    // replay server, which drives a native shadow over the reference's own
+    // fixture and makes those writes happen. Only the answer and the vendor
+    // calls come from the recording: what the shadow asks the stub is the
+    // candidate's behaviour, so it is drained and thrown away rather than
+    // compared against itself.
+    const observe = async (runtime: Runtime, side: 0 | 1) => {
+      if (harness.replayed(runtime)) {
+        await send(runtime, step);
+        for (const stub of outbound(side)) stub.take();
+      }
+      return harness.recorded(runtime, step.name, async () => ({
         answer: await send(runtime, step),
         requests: outbound(side).flatMap((stub) => stub.take()),
       }));
+    };
     const reference_ = await observe(reference, 0);
     const candidate_ = await observe(candidate, 1);
     const answers = { reference: reference_.answer, candidate: candidate_.answer };
@@ -576,7 +590,7 @@ try {
 } finally {
   await harness.shutdown();
   await Promise.all(stubs.map((stub) => stub.close()));
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 const total = steps.length + finalReads().length;

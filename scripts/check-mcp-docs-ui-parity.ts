@@ -143,7 +143,14 @@ try {
   await compare(runtimes, "ui-close-stops-the-daemon", (runtime) =>
     harness.call(runtime, "nomoreide_close_ui"),
   );
-  await Promise.all(runtimes.map((runtime) => waitForPortToClose(runtime)));
+  // In record/replay the reference's public port belongs to the harness proxy,
+  // not the daemon the tool just stopped. The proxy intentionally survives
+  // until harness shutdown, so only the real candidate port can close here.
+  await Promise.all(
+    runtimes
+      .filter((runtime) => harness.mode === "live" || runtime.label === "candidate")
+      .map((runtime) => waitForPortToClose(runtime)),
+  );
   await compare(runtimes, "ui-close-on-nothing-running", (runtime) =>
     harness.call(runtime, "nomoreide_close_ui"),
   );

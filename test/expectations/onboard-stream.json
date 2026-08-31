@@ -1,0 +1,225 @@
+{
+  "version": 1,
+  "gate": "onboard-stream",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"clonePath must be an onboarded repo\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"clonePath must be an onboarded repo\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"clonePath must be an onboarded repo\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"clonePath must be an onboarded repo\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"clonePath must be an onboarded repo\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"clonePath must be an onboarded repo\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"clonePath must be an onboarded repo\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"clonePath must be an onboarded repo\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: output\ndata: {\"stream\":\"stdout\",\"text\":\"hello\"}\n\nevent: done\ndata: {\"exitCode\":0}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: output\ndata: {\"stream\":\"stdout\",\"text\":\"out\"}\n\nevent: output\ndata: {\"stream\":\"stderr\",\"text\":\"err\"}\n\nevent: done\ndata: {\"exitCode\":0}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: output\ndata: {\"stream\":\"stdout\",\"text\":\"a\"}\n\nevent: output\ndata: {\"stream\":\"stdout\",\"text\":\"b\"}\n\nevent: output\ndata: {\"stream\":\"stdout\",\"text\":\"c\"}\n\nevent: done\ndata: {\"exitCode\":0}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: output\ndata: {\"stream\":\"stdout\",\"text\":\"no-newline\"}\n\nevent: done\ndata: {\"exitCode\":0}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: done\ndata: {\"exitCode\":0}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: done\ndata: {\"exitCode\":0}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: output\ndata: {\"stream\":\"stdout\",\"text\":\"before\"}\n\nevent: done\ndata: {\"exitCode\":7}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: output\ndata: {\"stream\":\"stderr\",\"text\":\"/bin/sh: definitely-not-a-command: command not found\"}\n\nevent: done\ndata: {\"exitCode\":127}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: output\ndata: {\"stream\":\"stdout\",\"text\":\"in the clone\"}\n\nevent: done\ndata: {\"exitCode\":0}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: output\ndata: {\"stream\":\"stdout\",\"text\":\"padded\"}\n\nevent: done\ndata: {\"exitCode\":0}\n\n"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/install/stream",
+      "status": 200,
+      "headers": {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform"
+      },
+      "body": "retry: 2000\n\nevent: output\ndata: {\"stream\":\"stderr\",\"text\":\"spawn /bin/sh ENOENT\"}\n\nevent: done\ndata: {\"exitCode\":null}\n\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboard/install/stream",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

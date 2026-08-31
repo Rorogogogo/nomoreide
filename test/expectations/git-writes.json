@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "gate": "git-writes",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/git/stage",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"at least one file path is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/stage",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"at least one file path is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/stage",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"at least one file path is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/stage",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"at least one file path is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/stage",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown repository: nope\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"ahead\":0,\"behind\":0,\"files\":[{\"index\":\"?\",\"workingTree\":\"?\",\"path\":\"untracked.txt\"}]}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"path is required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"path is required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"content is required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"content is required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"file is not tracked by git\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"file path must stay inside the repository\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"cannot write binary file\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/file",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/file?path=src/main.rs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"content\":\"fn main() { saved(); }\\n\",\"truncated\":false,\"binary\":false,\"size\":23}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/stage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"ahead\":0,\"behind\":0,\"files\":[{\"index\":\"M\",\"workingTree\":\" \",\"path\":\"src/main.rs\"},{\"index\":\"?\",\"workingTree\":\"?\",\"path\":\"untracked.txt\"}]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/unstage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"ahead\":0,\"behind\":0,\"files\":[{\"index\":\" \",\"workingTree\":\"M\",\"path\":\"src/main.rs\"},{\"index\":\"?\",\"workingTree\":\"?\",\"path\":\"untracked.txt\"}]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/commit",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"message is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/commit",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"message is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/commit",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown repository: nope\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/commit",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"On branch master\\nChanges not staged for commit:\\n  (use \\\"git add <file>...\\\" to update what will be committed)\\n  (use \\\"git restore <file>...\\\" to discard changes in working directory)\\n\\tmodified:   src/main.rs\\n\\nUntracked files:\\n  (use \\\"git add <file>...\\\" to include in what will be committed)\\n\\tuntracked.txt\\n\\nno changes added to commit (use \\\"git add\\\" and/or \\\"git commit -a\\\")\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/stage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/commit",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"[master c38802a] fix a+b parsing\\n 1 file changed, 1 insertion(+), 1 deletion(-)\\n\",\"author\":{\"host\":\"github.com\",\"login\":\"gate-bot\",\"name\":\"Gate Bot\",\"email\":\"gate-bot@users.noreply.github.com\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/graph?limit=2",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"commits\":[{\"hash\":\"c38802ae71ab89bb9c949902001e2abb9051835e\",\"parents\":[\"5a345f83152363e9bac5b15a0af04cdeeb2833c4\"],\"author\":\"Gate Bot\",\"email\":\"gate-bot@users.noreply.github.com\",\"timestamp\":1788156262,\"subject\":\"fix a+b parsing\",\"refs\":[{\"name\":\"HEAD\",\"kind\":\"head\"},{\"name\":\"master\",\"kind\":\"branch\"}],\"lane\":0,\"laneCount\":1,\"edges\":[{\"fromLane\":0,\"toLane\":0,\"parentHash\":\"5a345f83152363e9bac5b15a0af04cdeeb2833c4\",\"kind\":\"straight\"}],\"throughLanes\":[]},{\"hash\":\"5a345f83152363e9bac5b15a0af04cdeeb2833c4\",\"parents\":[],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1788156262,\"subject\":\"first\",\"refs\":[],\"lane\":0,\"laneCount\":1,\"edges\":[],\"throughLanes\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"ahead\":0,\"behind\":0,\"files\":[{\"index\":\"?\",\"workingTree\":\"?\",\"path\":\"untracked.txt\"}]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/fetch",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/fetch",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"fatal: '/nonexistent/nomoreide-gate.git' does not appear to be a git repository\\nfatal: Could not read from remote repository.\\n\\nPlease make sure you have the correct access rights\\nand the repository exists.\"}"
+    }
+  ],
+  "entries": []
+}

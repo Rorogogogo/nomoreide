@@ -721,7 +721,9 @@ try {
   for (const step of steps) {
     // Sequential per runtime: the plan is a walk, and two `add` commands
     // racing on one config file would interleave differently on each side.
-    const referenceRun = await invoke(reference, step, harness);
+    const referenceRun = await harness.recorded(reference, step.name, () =>
+      invoke(reference, step, harness),
+    );
     const candidateRun = await invoke(candidateRuntime, step, harness);
     const pair = {
       reference: compare(step, referenceRun, runtimes),
@@ -762,7 +764,7 @@ try {
   }
 } finally {
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 if (failures > 0) {

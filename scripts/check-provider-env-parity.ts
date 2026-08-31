@@ -624,17 +624,19 @@ async function walk({ label, providers, pinned, plan, api = API }: WalkOptions):
   candidateStub.take();
 
   for (const step of plan) {
-    const requests = (stub: ApiStub) => {
+    const observe = async (runtime: Runtime, stub: ApiStub) => harness.recorded(runtime, step.name, async () => {
+      const answer = await send(runtime, step);
       const observed = stub.take();
-      return step.concurrentRequests
+      const requests = step.concurrentRequests
         ? observed.toSorted((left, right) =>
             `${left.method} ${left.path}`.localeCompare(`${right.method} ${right.path}`),
           )
         : observed;
-    };
+      return { answer, requests };
+    });
     const answers = {
-      reference: { answer: await send(reference, step), requests: requests(referenceStub) },
-      candidate: { answer: await send(candidate, step), requests: requests(candidateStub) },
+      reference: await observe(reference, referenceStub),
+      candidate: await observe(candidate, candidateStub),
     };
     if (dump) {
       console.log(`--- ${step.name} ---`);
@@ -673,7 +675,7 @@ try {
 } finally {
   await harness.shutdown();
   await Promise.all(stubs.map((stub) => stub.close().catch(() => {})));
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 const total = [VERCEL_STEPS, CLOUDFLARE_STEPS, UNPINNED_STEPS, DEGRADED_STEPS].reduce(

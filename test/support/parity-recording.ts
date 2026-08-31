@@ -34,6 +34,7 @@
  */
 import { createServer, request as httpRequest, type Server } from "node:http";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Runtime } from "./runtime-parity.js";
@@ -84,6 +85,109 @@ const WORKSPACE = "%%WORKSPACE%%";
 const HOME = "%%HOME%%";
 const PORT = "%%PORT%%";
 const NODE = "%%NODE%%";
+const REPO = "%%REPO%%";
+const USER_HOME = "%%USER-HOME%%";
+const PID = "%%PID%%";
+const PGID = "%%PGID%%";
+
+/**
+ * The gate's own process group, which is not always its pid.
+ *
+ * A gate started by `run-parity-gates.ts` is detached and so leads its own
+ * group, and the two numbers are the same; one started straight from a shell
+ * is not, and they differ. Endpoints that report who holds a port report both.
+ */
+function processGroup(): number {
+  return typeof process.getpgid === "function" ? process.getpgid(0) : process.pid;
+}
+
+/**
+ * Rewrite the gate's own pid and process group, *where a pid is being reported*.
+ *
+ * Two endpoints name the process holding a port or owning a process tree, and
+ * the gate is that process, so its numbers are in the answer and are different
+ * every run. They are matched by the place they appear rather than by their
+ * value: a bare number is not distinctive, and replacing every one of them
+ * corrupts anything that happens to say it — a gate that writes five thousand
+ * log lines rewrote `line 4941` the day the pid was 4941.
+ */
+function tokeniseProcessIds(text: string): string {
+  const pid = process.pid;
+  const group = processGroup();
+  return (
+    text
+      // A JSON field. `ppid` is the gate too: the daemon reports the parent of
+      // a process the gate started.
+      .replace(new RegExp(`("(?:pid|ppid)":\\s*)${pid}\\b`, "g"), `$1${PID}`)
+      .replace(
+        new RegExp(`("pgid":\\s*)${group}\\b`, "g"),
+        `$1${group === pid ? PID : PGID}`,
+      )
+      // And prose: "held by pid 53642 — …", "Process 64080 changed …".
+      .replace(new RegExp(`\\b(pid|Process) ${pid}\\b`, "g"), `$1 ${PID}`)
+  );
+}
+const WORKSPACE_SLUG = "%%WORKSPACE-SLUG%%";
+const HOME_SLUG = "%%HOME-SLUG%%";
+
+/**
+ * A directory as Claude Code names it when it flattens one into a single path
+ * segment: separators and whitespace become dashes.
+ *
+ * A path can therefore reach a recording in a spelling no substitution of the
+ * path itself would find — `~/.claude/projects/-var-folders-…-workspace` names
+ * the workspace without containing it. Left alone it is the one string in an
+ * answer that still says which directory the *recording* was made in.
+ */
+function slug(path: string): string {
+  return path.replace(/[/\\]/g, "-").replace(/\s+/g, "-");
+}
+
+/** What {@link volatile} has been told about, in the order it was told. */
+const volatiles: string[] = [];
+
+/**
+ * Register a string this run minted that a recording must not keep.
+ *
+ * Most of what varies between two runs is a runtime's own home, workspace, or
+ * port, and those are known here. The rest belongs to the *gate*: an OAuth
+ * stub listening on an ephemeral port, a fixture repository cloned from a
+ * directory outside either runtime's tree. Those are tokenised by position —
+ * the same gate registers the same things in the same order every run, so
+ * index `n` at replay is the thing index `n` was at record time.
+ *
+ * Registration must happen before the value can reach an answer, which in
+ * practice means as soon as the gate knows it.
+ */
+export function volatile(value: string): void {
+  volatiles.push(value);
+}
+
+function volatileToken(index: number): string {
+  return `%%VOLATILE-${index}%%`;
+}
+
+function tokeniseVolatiles(text: string): string {
+  // Longest first, so one registered value that contains another is replaced
+  // whole rather than partly.
+  return [...volatiles.entries()]
+    .sort(([, left], [, right]) => right.length - left.length)
+    .reduce((current, [index, value]) => {
+      if (value.length === 0) return current;
+      // A bare number — a port — is matched on a boundary, so it is not found
+      // inside a longer one.
+      return /^\d+$/.test(value)
+        ? current.replace(new RegExp(`\\b${value}\\b`, "g"), volatileToken(index))
+        : current.split(value).join(volatileToken(index));
+    }, text);
+}
+
+function detokeniseVolatiles(text: string): string {
+  return volatiles.reduce(
+    (current, value, index) => current.split(volatileToken(index)).join(value),
+    text,
+  );
+}
 
 export function parityMode(): ParityMode {
   const raw = process.env.NOMOREIDE_PARITY_MODE;
@@ -134,20 +238,59 @@ export async function writeRecording(recording: Recording, root: string): Promis
 
 /** Replace this run's volatile strings with tokens, on the way into a file. */
 export function tokenise(text: string, runtime: Runtime): string {
-  return text
+  const withoutPaths = tokeniseVolatiles(text)
+    // The checkout itself. Gates run the reference from it and several answers
+    // name it, so a recording made here would otherwise only replay in a
+    // directory of the same name — and would carry whoever's home directory it
+    // sits under into the repository.
+    .split(encodeURIComponent(defaultRoot()))
+    .join(REPO)
+    .split(defaultRoot())
+    .join(REPO)
+    // The home of whoever is running the suite. A runtime's *fixture* home is
+    // already tokenised above, but an answer can name the real one — the
+    // directory the checkout sits in, an agent binary found on PATH — and that
+    // is both unportable and nobody else's business.
+    .split(homedir())
+    .join(USER_HOME)
+    .split(encodeURIComponent(runtime.workspace))
+    .join(WORKSPACE)
+    .split(encodeURIComponent(runtime.home))
+    .join(HOME)
+    // Slugs first: a slugged path shares no substring with the plain one, but
+    // replacing the plain one first would leave a token *inside* a slug.
+    .split(slug(runtime.workspace))
+    .join(WORKSPACE_SLUG)
+    .split(slug(runtime.home))
+    .join(HOME_SLUG)
     .split(runtime.workspace)
     .join(WORKSPACE)
     .split(runtime.home)
     .join(HOME)
-    .split(String(runtime.port))
-    .join(PORT)
     .split(process.execPath)
     .join(NODE);
+  const stable = tokeniseProcessIds(withoutPaths);
+  // In-process gates have no daemon port and use 0 as the sentinel. Replacing
+  // every zero would corrupt arbitrary JSON numbers before it can be parsed.
+  if (runtime.port <= 0) return stable;
+  return stable
+    .split(encodeURIComponent(String(runtime.port)))
+    .join(PORT)
+    .split(String(runtime.port))
+    .join(PORT);
 }
 
 /** Put this run's values back, on the way out of a file. */
 export function detokenise(text: string, runtime: Runtime): string {
-  return text
+  return detokeniseVolatiles(text)
+    .split(REPO)
+    .join(defaultRoot())
+    .split(USER_HOME)
+    .join(homedir())
+    .split(WORKSPACE_SLUG)
+    .join(slug(runtime.workspace))
+    .split(HOME_SLUG)
+    .join(slug(runtime.home))
     .split(WORKSPACE)
     .join(runtime.workspace)
     .split(HOME)
@@ -155,7 +298,11 @@ export function detokenise(text: string, runtime: Runtime): string {
     .split(PORT)
     .join(String(runtime.port))
     .split(NODE)
-    .join(process.execPath);
+    .join(process.execPath)
+    .split(PGID)
+    .join(String(processGroup()))
+    .split(PID)
+    .join(String(process.pid));
 }
 
 /** The same, for a parsed value — used for MCP results, which are JSON. */
@@ -209,6 +356,7 @@ export async function startRecordingProxy(
   runtime: Runtime,
   upstreamPort: number,
   sink: RecordedExchange[],
+  redact: (exchange: RecordedExchange) => string = (exchange) => exchange.body,
 ): Promise<Server> {
   const server = createServer((incoming, outgoing) => {
     const chunks: Buffer[] = [];
@@ -221,7 +369,10 @@ export async function startRecordingProxy(
           port: upstreamPort,
           method: incoming.method,
           path: incoming.url,
-          headers: { ...incoming.headers, host: `127.0.0.1:${upstreamPort}` },
+          // Preserve the public Host header. Some routes build loopback URLs
+          // from it, and the recording proxy must be transparent rather than
+          // leaking the reference daemon's private upstream port.
+          headers: incoming.headers,
         },
         (answer) => {
           const answerChunks: Buffer[] = [];
@@ -238,14 +389,30 @@ export async function startRecordingProxy(
             // is kept as base64 rather than corrupted into replacement
             // characters.
             const binary = Buffer.from(text, "utf8").length !== payload.length;
-            sink.push({
+            const exchange: RecordedExchange = {
               method: incoming.method ?? "GET",
               path: tokenise(incoming.url ?? "/", runtime),
               status: answer.statusCode ?? 502,
               headers: keepHeaders(answer.headers),
-              body: binary ? payload.toString("base64") : tokenise(text, runtime),
+              // A redactor is handed the body as the daemon wrote it and is
+              // tokenised afterwards. Tokenising first would hand it text that
+              // is no longer JSON — a pid token stands where a number was —
+              // and every redactor would have to cope with that to do its job.
+              body: binary
+                ? payload.toString("base64")
+                : tokenise(
+                    redact({
+                      method: incoming.method ?? "GET",
+                      path: tokenise(incoming.url ?? "/", runtime),
+                      status: answer.statusCode ?? 502,
+                      headers: keepHeaders(answer.headers),
+                      body: text,
+                    }),
+                    runtime,
+                  ),
               ...(binary ? { base64: true } : {}),
-            });
+            };
+            sink.push(exchange);
           });
         },
       );
@@ -279,11 +446,14 @@ export async function startRecordingProxy(
 export async function startReplayServer(
   runtime: Runtime,
   recording: readonly RecordedExchange[],
+  shadowPort?: number,
 ): Promise<Server> {
   const used = new Set<number>();
   const server = createServer((incoming, outgoing) => {
-    incoming.resume();
+    const chunks: Buffer[] = [];
+    incoming.on("data", (chunk: Buffer) => chunks.push(chunk));
     incoming.on("end", () => {
+      void (async () => {
       const method = incoming.method ?? "GET";
       const path = tokenise(incoming.url ?? "/", runtime);
       const index = recording.findIndex(
@@ -295,6 +465,13 @@ export async function startReplayServer(
           .end(`No recorded answer for ${method} ${path}`);
         return;
       }
+      // Replay freezes what the reference answered, but stateful gates also
+      // inspect what its request changed on disk or in a process. Apply the
+      // same request to a native shadow using the reference fixture, discard
+      // that answer, then serve the recorded bytes. No TypeScript is involved.
+      if (shadowPort !== undefined) {
+        await forwardToShadow(incoming, Buffer.concat(chunks), shadowPort);
+      }
       used.add(index);
       const entry = recording[index];
       const body = entry.base64
@@ -302,6 +479,10 @@ export async function startReplayServer(
         : Buffer.from(detokenise(entry.body, runtime), "utf8");
       outgoing.writeHead(entry.status, { ...entry.headers, "content-length": String(body.length) });
       outgoing.end(body);
+      })().catch((error) => {
+        outgoing.writeHead(502, { "content-type": "text/plain" });
+        outgoing.end(`Replay shadow failed: ${error instanceof Error ? error.message : String(error)}`);
+      });
     });
   });
   await new Promise<void>((resolve, reject) => {
@@ -309,6 +490,30 @@ export async function startReplayServer(
     server.listen(runtime.port, "127.0.0.1", resolve);
   });
   return server;
+}
+
+function forwardToShadow(
+  incoming: import("node:http").IncomingMessage,
+  body: Buffer,
+  port: number,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const forwarded = httpRequest(
+      {
+        host: "127.0.0.1",
+        port,
+        method: incoming.method,
+        path: incoming.url,
+        headers: incoming.headers,
+      },
+      (answer) => {
+        answer.resume();
+        answer.on("end", resolve);
+      },
+    );
+    forwarded.on("error", reject);
+    forwarded.end(body);
+  });
 }
 
 /**
@@ -356,6 +561,7 @@ export class Recorder {
   readonly gate: string;
   readonly #root: string;
   readonly http: RecordedExchange[] = [];
+  readonly #redactors: Array<(exchange: RecordedExchange) => string | undefined> = [];
   readonly #entries: RecordedEntry[] = [];
   #playback: Recording | undefined;
   #cursor = 0;
@@ -365,9 +571,39 @@ export class Recorder {
     this.#root = root;
   }
 
+  /**
+   * Rewrite a body on its way into the recording.
+   *
+   * A recording is a file in the repository, and some answers are a picture of
+   * the machine that made them — `/api/metrics?includeProcesses=1` returns
+   * every process on the box, with its user and its full command line. That
+   * gate compares the answer's *shape*, and a shape collapses an array to
+   * `<array>`, so the rows are never compared by anything: storing them would
+   * publish a stranger's process table to buy nothing.
+   *
+   * A redactor returns the body to store, or `undefined` to leave it alone.
+   * It runs only while recording; replay serves whatever was stored.
+   */
+  redact(redactor: (exchange: RecordedExchange) => string | undefined): void {
+    this.#redactors.push(redactor);
+  }
+
+  /** Apply the installed redactors, longest-standing first. */
+  redactBody(exchange: RecordedExchange): string {
+    return this.#redactors.reduce(
+      (body, redact) => redact({ ...exchange, body }) ?? body,
+      exchange.body,
+    );
+  }
+
   /** Whether this side's answers come from the recording rather than a process. */
   isReplayed(label: string): boolean {
-    return this.mode === "replay" && label === "reference";
+    return this.mode === "replay" && this.isReference(label);
+  }
+
+  /** Multi-pass gates suffix the role with a scenario name for diagnostics. */
+  isReference(label: string): boolean {
+    return label === "reference" || label.startsWith("reference-");
   }
 
   async playback(): Promise<Recording> {
@@ -402,7 +638,7 @@ export class Recorder {
       return detokeniseValue(entry.value, runtime) as T;
     }
     const value = await produce();
-    if (this.mode === "record" && runtime.label === "reference") {
+    if (this.mode === "record" && this.isReference(runtime.label)) {
       this.#entries.push({ key, value: tokeniseValue(value, runtime) });
     }
     return value;

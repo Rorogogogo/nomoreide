@@ -1,0 +1,1132 @@
+{
+  "version": 1,
+  "gate": "database-catalog",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/objects?schema=main",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"objects\":[{\"schema\":\"main\",\"name\":\"authors\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImF1dGhvcnMiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"authors\"},{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},{\"schema\":\"main\",\"name\":\"cells\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"cells\"},{\"schema\":\"main\",\"name\":\"patterns\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InBhdHRlcm5zIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"patterns\"},{\"schema\":\"main\",\"name\":\"users\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InVzZXJzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"users\"},{\"schema\":\"main\",\"name\":\"weird name\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"weird name\"},{\"schema\":\"main\",\"name\":\"v_books\",\"kind\":\"view\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9\",\"qualifiedName\":\"v_books\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/capabilities",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"capabilities\":{\"objectKinds\":[\"table\",\"view\"],\"tableDetails\":[\"columns\",\"indexes\",\"constraints\",\"triggers\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/pg/catalog/capabilities",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"capabilities\":{\"objectKinds\":[\"table\",\"view\",\"materializedView\",\"function\",\"procedure\",\"sequence\"],\"tableDetails\":[\"columns\",\"indexes\",\"constraints\",\"triggers\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/nope/catalog/capabilities",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/capabilities",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/odd%20name/catalog/capabilities",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"capabilities\":{\"objectKinds\":[\"table\",\"view\"],\"tableDetails\":[\"columns\",\"indexes\",\"constraints\",\"triggers\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/schemas",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"schemas\":[{\"name\":\"main\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/blank/catalog/schemas",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"schemas\":[{\"name\":\"main\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/nope/catalog/schemas",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/databases/demo/catalog/schemas",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/objects?schema=main",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"objects\":[{\"schema\":\"main\",\"name\":\"authors\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImF1dGhvcnMiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"authors\"},{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},{\"schema\":\"main\",\"name\":\"cells\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"cells\"},{\"schema\":\"main\",\"name\":\"patterns\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InBhdHRlcm5zIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"patterns\"},{\"schema\":\"main\",\"name\":\"users\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InVzZXJzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"users\"},{\"schema\":\"main\",\"name\":\"weird name\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"weird name\"},{\"schema\":\"main\",\"name\":\"v_books\",\"kind\":\"view\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9\",\"qualifiedName\":\"v_books\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/objects",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"schema query param is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/objects?schema=",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"schema query param is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/objects?schema=elsewhere",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"objects\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/objects?schema=main&schema=other",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"objects\":[{\"schema\":\"main\",\"name\":\"authors\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImF1dGhvcnMiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"authors\"},{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},{\"schema\":\"main\",\"name\":\"cells\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"cells\"},{\"schema\":\"main\",\"name\":\"patterns\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InBhdHRlcm5zIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"patterns\"},{\"schema\":\"main\",\"name\":\"users\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InVzZXJzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"users\"},{\"schema\":\"main\",\"name\":\"weird name\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"weird name\"},{\"schema\":\"main\",\"name\":\"v_books\",\"kind\":\"view\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9\",\"qualifiedName\":\"v_books\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/nope/catalog/objects?schema=main",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/objects?schema=main",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"details\":{\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"indexes\":[{\"name\":\"books_author_idx\",\"unique\":false,\"definition\":\"CREATE INDEX books_author_idx ON books(author_id, pages DESC)\"},{\"name\":\"books_isbn_idx\",\"unique\":true,\"definition\":\"CREATE UNIQUE INDEX books_isbn_idx ON books(isbn) WHERE isbn IS NOT NULL\"},{\"name\":\"sqlite_autoindex_books_1\",\"unique\":true,\"definition\":\"\"}],\"constraints\":[{\"name\":\"pk_books\",\"type\":\"PRIMARY KEY\",\"definition\":\"PRIMARY KEY (id)\"},{\"name\":\"fk_books_0\",\"type\":\"FOREIGN KEY\",\"definition\":\"FOREIGN KEY (author_id) REFERENCES authors (id)\"}],\"triggers\":[{\"name\":\"books_touch\",\"definition\":\"CREATE TRIGGER books_touch AFTER UPDATE ON books BEGIN SELECT 1; END\"}],\"definition\":\"CREATE TABLE books (id INTEGER PRIMARY KEY AUTOINCREMENT, author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE, isbn TEXT UNIQUE, pages INTEGER CHECK (pages > 0), title TEXT NOT NULL DEFAULT 'untitled')\",\"createScript\":\"CREATE TABLE books (id INTEGER PRIMARY KEY AUTOINCREMENT, author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE, isbn TEXT UNIQUE, pages INTEGER CHECK (pages > 0), title TEXT NOT NULL DEFAULT 'untitled');\\n\\nCREATE INDEX books_author_idx ON books(author_id, pages DESC);\\n\\nCREATE UNIQUE INDEX books_isbn_idx ON books(isbn) WHERE isbn IS NOT NULL;\\n\\nCREATE TRIGGER books_touch AFTER UPDATE ON books BEGIN SELECT 1; END;\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImF1dGhvcnMiLCJraW5kIjoidGFibGUifQ",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"details\":{\"object\":{\"schema\":\"main\",\"name\":\"authors\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImF1dGhvcnMiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"authors\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":true},{\"name\":\"tenant\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":true},{\"name\":\"name\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false}],\"indexes\":[{\"name\":\"sqlite_autoindex_authors_2\",\"unique\":true,\"definition\":\"\"},{\"name\":\"sqlite_autoindex_authors_1\",\"unique\":true,\"definition\":\"\"}],\"constraints\":[{\"name\":\"pk_authors\",\"type\":\"PRIMARY KEY\",\"definition\":\"PRIMARY KEY (id, tenant)\"}],\"triggers\":[],\"definition\":\"CREATE TABLE authors (id INTEGER NOT NULL, tenant TEXT NOT NULL, name TEXT, PRIMARY KEY (id, tenant), UNIQUE (id))\",\"createScript\":\"CREATE TABLE authors (id INTEGER NOT NULL, tenant TEXT NOT NULL, name TEXT, PRIMARY KEY (id, tenant), UNIQUE (id));\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"details\":{\"object\":{\"schema\":\"main\",\"name\":\"v_books\",\"kind\":\"view\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9\",\"qualifiedName\":\"v_books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false}],\"indexes\":[],\"constraints\":[],\"triggers\":[],\"definition\":\"CREATE VIEW v_books AS SELECT id, title FROM books\",\"createScript\":\"CREATE VIEW v_books AS SELECT id, title FROM books;\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"details\":{\"object\":{\"schema\":\"main\",\"name\":\"weird name\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"weird name\"},\"columns\":[{\"name\":\"a\",\"dataType\":\"INT\",\"nullable\":true,\"primaryKey\":false}],\"indexes\":[],\"constraints\":[],\"triggers\":[],\"definition\":\"CREATE TABLE \\\"weird name\\\" (a INT)\",\"createScript\":\"CREATE TABLE \\\"weird name\\\" (a INT);\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"details\":{\"object\":{\"schema\":\"main\",\"name\":\"cells\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"cells\"},\"columns\":[{\"name\":\"i\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"r\",\"dataType\":\"REAL\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"t\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"b\",\"dataType\":\"BLOB\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"n\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false}],\"indexes\":[],\"constraints\":[],\"triggers\":[],\"definition\":\"CREATE TABLE cells (i INTEGER, r REAL, t TEXT, b BLOB, n INTEGER)\",\"createScript\":\"CREATE TABLE cells (i INTEGER, r REAL, t TEXT, b BLOB, n INTEGER);\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"key query param is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details?key=",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"key query param is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details?key=not-a-key",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database object was not found in the live catalog.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6Imdob3N0Iiwia2luZCI6InRhYmxlIn0",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database object was not found in the live catalog.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/details?key=eyJzY2hlbWEiOiJlbHNld2hlcmUiLCJuYW1lIjoiYm9va3MiLCJraW5kIjoidGFibGUifQ",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database object was not found in the live catalog.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJlbHNld2hlcmUiLCJuYW1lIjoiYm9va3MiLCJraW5kIjoidGFibGUifQ",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database object was not found in the live catalog.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/details?key=x",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&limit=2",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"}],\"rowCount\":2,\"limit\":2,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&limit=2&offset=2",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":2,\"limit\":2,\"offset\":2}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&offset=99",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[],\"rowCount\":0,\"limit\":100,\"offset\":99}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&limit=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&limit=-5",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"}],\"rowCount\":1,\"limit\":1,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&limit=many",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&limit=99999",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":5000,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&offset=-3",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&offset=later",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InVzZXJzIiwia2luZCI6InRhYmxlIn0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"users\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InVzZXJzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"users\"},\"table\":{\"schema\":\"main\",\"name\":\"users\",\"qualifiedName\":\"users\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"email\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"password_hash\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"api_token\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"secret\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"age\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"email\":\"a@b.c\",\"password_hash\":\"••••\",\"api_token\":\"••••\",\"secret\":\"••••\",\"age\":30},{\"id\":2,\"email\":\"d@e.f\",\"password_hash\":null,\"api_token\":null,\"secret\":null,\"age\":17},{\"id\":3,\"email\":\"g@h.i\",\"password_hash\":\"••••\",\"api_token\":\"••••\",\"secret\":\"••••\",\"age\":40}],\"rowCount\":3,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"v_books\",\"kind\":\"view\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9\",\"qualifiedName\":\"v_books\"},\"table\":{\"schema\":\"main\",\"name\":\"v_books\",\"qualifiedName\":\"v_books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"title\":\"First\"},{\"id\":2,\"title\":\"Second\"},{\"id\":3,\"title\":\"Third\"},{\"id\":4,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"weird name\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"weird name\"},\"table\":{\"schema\":\"main\",\"name\":\"weird name\",\"qualifiedName\":\"weird name\"},\"columns\":[{\"name\":\"a\",\"dataType\":\"INT\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[],\"rowCount\":0,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"cells\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"cells\"},\"table\":{\"schema\":\"main\",\"name\":\"cells\",\"qualifiedName\":\"cells\"},\"columns\":[{\"name\":\"i\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"r\",\"dataType\":\"REAL\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"t\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"b\",\"dataType\":\"BLOB\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"n\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"i\":42,\"r\":1.5,\"t\":\"hi\",\"b\":{\"0\":0,\"1\":255,\"2\":16},\"n\":null},{\"i\":43,\"r\":2,\"t\":\"ho\",\"b\":null,\"n\":1},{\"i\":44,\"r\":0,\"t\":\"hu\",\"b\":null,\"n\":2},{\"i\":45,\"r\":1e+21,\"t\":\"hz\",\"b\":null,\"n\":3}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"key query param is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=not-a-key",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database object was not found in the live catalog.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22author_id%22%2C%22operator%22%3A%22eq%22%2C%22value%22%3A%221%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"}],\"rowCount\":2,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22author_id%22%2C%22operator%22%3A%22neq%22%2C%22value%22%3A%221%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":2,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%2210%22%7D%2C%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22lte%22%2C%22value%22%3A%2230%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"}],\"rowCount\":2,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22isbn%22%2C%22operator%22%3A%22isNull%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"}],\"rowCount\":1,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22isbn%22%2C%22operator%22%3A%22isNotNull%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":3,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22title%22%2C%22operator%22%3A%22contains%22%2C%22value%22%3A%22ir%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"}],\"rowCount\":2,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22title%22%2C%22operator%22%3A%22startsWith%22%2C%22value%22%3A%22F%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":2,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22title%22%2C%22operator%22%3A%22endsWith%22%2C%22value%22%3A%22d%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"}],\"rowCount\":2,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InBhdHRlcm5zIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22label%22%2C%22operator%22%3A%22contains%22%2C%22value%22%3A%22%25%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"patterns\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InBhdHRlcm5zIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"patterns\"},\"table\":{\"schema\":\"main\",\"name\":\"patterns\",\"qualifiedName\":\"patterns\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"label\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"label\":\"100%\"}],\"rowCount\":1,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InBhdHRlcm5zIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22label%22%2C%22operator%22%3A%22contains%22%2C%22value%22%3A%22_%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"patterns\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InBhdHRlcm5zIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"patterns\"},\"table\":{\"schema\":\"main\",\"name\":\"patterns\",\"qualifiedName\":\"patterns\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"label\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":2,\"label\":\"a_b\"}],\"rowCount\":1,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InBhdHRlcm5zIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22label%22%2C%22operator%22%3A%22contains%22%2C%22value%22%3A%22!%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"patterns\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InBhdHRlcm5zIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"patterns\"},\"table\":{\"schema\":\"main\",\"name\":\"patterns\",\"qualifiedName\":\"patterns\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"label\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":4,\"label\":\"with!bang\"}],\"rowCount\":1,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22title%22%2C%22operator%22%3A%22eq%22%2C%22value%22%3A%22O%27Reilly%22%7D%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[],\"rowCount\":0,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22nope%22%2C%22operator%22%3A%22eq%22%2C%22value%22%3A%221%22%7D%5D",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown filter column: nope\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22between%22%2C%22value%22%3A%221%22%7D%5D",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unsupported row filter operator: between\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22eq%22%7D%5D",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"This row filter requires a value.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%220%22%7D%2C%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%220%22%7D%2C%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%220%22%7D%2C%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%220%22%7D%2C%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%220%22%7D%2C%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%220%22%7D%2C%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%220%22%7D%2C%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%220%22%7D%2C%7B%22column%22%3A%22pages%22%2C%22operator%22%3A%22gt%22%2C%22value%22%3A%220%22%7D%5D",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A maximum of 8 row filters is supported.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=oops",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unexpected token 'o', \\\"oops\\\" is not valid JSON\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B1%2C",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unexpected end of JSON input\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B1%5D%20x",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unexpected non-whitespace character after JSON at position 4 (line 1 column 5)\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%22a",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unterminated string in JSON at position 3 (line 1 column 4)\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B1%2C%22a%22o%5D",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Expected ',' or ']' after array element in JSON at position 6 (line 1 column 7)\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%7Ba%3A1%7D",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Expected property name or '}' in JSON at position 1 (line 1 column 2)\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unexpected token 'x', \\\"xxxxxxxxxx\\\"... is not valid JSON\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C1%2C%40%5D",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unexpected token '@', ...\\\"1,1,1,1,1,@]\\\" is not valid JSON\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%7B%22column%22%3A%22pages%22%7D",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"filters must be a JSON array\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&filters=%5B%5D",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&sortColumn=title&sortDirection=asc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&sortColumn=title&sortDirection=desc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"},{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&sortColumn=title",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&sortDirection=desc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&sortColumn=title&sortDirection=sideways",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sortDirection must be asc or desc\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&sortColumn=nope&sortDirection=asc",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown sort column: nope\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0&sortColumn=id&sortDirection=desc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"books\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"books\"},\"table\":{\"schema\":\"main\",\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0&sortColumn=i&sortDirection=desc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"cells\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"cells\"},\"table\":{\"schema\":\"main\",\"name\":\"cells\",\"qualifiedName\":\"cells\"},\"columns\":[{\"name\":\"i\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"r\",\"dataType\":\"REAL\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"t\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"b\",\"dataType\":\"BLOB\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"n\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"i\":45,\"r\":1e+21,\"t\":\"hz\",\"b\":null,\"n\":3},{\"i\":44,\"r\":0,\"t\":\"hu\",\"b\":null,\"n\":2},{\"i\":43,\"r\":2,\"t\":\"ho\",\"b\":null,\"n\":1},{\"i\":42,\"r\":1.5,\"t\":\"hi\",\"b\":{\"0\":0,\"1\":255,\"2\":16},\"n\":null}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/tables",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"tables\":[{\"name\":\"authors\",\"qualifiedName\":\"authors\"},{\"name\":\"books\",\"qualifiedName\":\"books\"},{\"name\":\"cells\",\"qualifiedName\":\"cells\"},{\"name\":\"patterns\",\"qualifiedName\":\"patterns\"},{\"name\":\"users\",\"qualifiedName\":\"users\"},{\"name\":\"v_books\",\"qualifiedName\":\"v_books\"},{\"name\":\"weird name\",\"qualifiedName\":\"weird name\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/blank/tables",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"tables\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/nope/tables",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/tables",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=books",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=books&limit=2&offset=1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"}],\"rowCount\":2,\"limit\":2,\"offset\":1}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=books&limit=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=books&limit=-1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=books&limit=lots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=books&offset=-1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=users",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"users\",\"qualifiedName\":\"users\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"email\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"password_hash\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"api_token\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"secret\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"age\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"email\":\"a@b.c\",\"password_hash\":\"hunter2\",\"api_token\":\"tok\",\"secret\":\"shh\",\"age\":30},{\"id\":2,\"email\":\"d@e.f\",\"password_hash\":null,\"api_token\":null,\"secret\":null,\"age\":17},{\"id\":3,\"email\":\"g@h.i\",\"password_hash\":\"x\",\"api_token\":\"y\",\"secret\":\"z\",\"age\":40}],\"rowCount\":3,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=books&limit=99999",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":5000,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=cells",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"cells\",\"qualifiedName\":\"cells\"},\"columns\":[{\"name\":\"i\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"r\",\"dataType\":\"REAL\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"t\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"b\",\"dataType\":\"BLOB\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"n\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"i\":42,\"r\":1.5,\"t\":\"hi\",\"b\":{\"0\":0,\"1\":255,\"2\":16},\"n\":null},{\"i\":43,\"r\":2,\"t\":\"ho\",\"b\":null,\"n\":1},{\"i\":44,\"r\":0,\"t\":\"hu\",\"b\":null,\"n\":2},{\"i\":45,\"r\":1e+21,\"t\":\"hz\",\"b\":null,\"n\":3}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=v_books",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"v_books\",\"qualifiedName\":\"v_books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"title\":\"First\"},{\"id\":2,\"title\":\"Second\"},{\"id\":3,\"title\":\"Third\"},{\"id\":4,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=weird%20name",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"weird name\",\"qualifiedName\":\"weird name\"},\"columns\":[{\"name\":\"a\",\"dataType\":\"INT\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[],\"rowCount\":0,\"limit\":100,\"offset\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"table query param is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"table query param is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=ghost",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Table \\\"ghost\\\" not found.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/nope/rows?table=books",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/rows?table=books",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"id\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"title\":\"First\"},{\"id\":2,\"title\":\"Second\"},{\"id\":3,\"title\":\"Third\"},{\"id\":4,\"title\":\"Fourth\"}],\"rowCount\":4,\"truncated\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"id\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":1},{\"id\":2}],\"rowCount\":2,\"truncated\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"id\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":3},{\"id\":1},{\"id\":4},{\"id\":2}],\"rowCount\":4,\"truncated\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"id\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":3},{\"id\":1},{\"id\":4},{\"id\":2}],\"rowCount\":4,\"truncated\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"id\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":3},{\"id\":1},{\"id\":4},{\"id\":2}],\"rowCount\":4,\"truncated\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"id\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":3},{\"id\":1},{\"id\":4},{\"id\":2}],\"rowCount\":4,\"truncated\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[],\"rows\":[],\"rowCount\":0,\"truncated\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"1 + 1\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"labelled\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"NULL\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"1 + 1\":2,\"labelled\":\"x\",\"NULL\":null}],\"rowCount\":1,\"truncated\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sql is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sql is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sql is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"near \\\"1\\\": syntax error\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"no such table: ghost\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"near \\\"INSERT\\\": syntax error\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"near \\\"UPDATE\\\": syntax error\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"near \\\"DROP\\\": syntax error\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"no such table: PRAGMA\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"1\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"1\":1}],\"rowCount\":1,\"truncated\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"1\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"1\":1}],\"rowCount\":1,\"truncated\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"near \\\";\\\": syntax error\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Query is empty.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/nope/query",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/query",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/query",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"columns\":[{\"name\":\"password_hash\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"password_hash\":\"hunter2\"},{\"password_hash\":null},{\"password_hash\":\"x\"}],\"rowCount\":3,\"truncated\":false}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/rows?table=books",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"table\":{\"name\":\"books\",\"qualifiedName\":\"books\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"author_id\",\"dataType\":\"INTEGER\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"isbn\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"pages\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":false},{\"name\":\"title\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"author_id\":1,\"isbn\":\"x\",\"pages\":10,\"title\":\"First\"},{\"id\":2,\"author_id\":2,\"isbn\":\"y\",\"pages\":20,\"title\":\"Second\"},{\"id\":3,\"author_id\":1,\"isbn\":null,\"pages\":30,\"title\":\"Third\"},{\"id\":4,\"author_id\":2,\"isbn\":\"z\",\"pages\":40,\"title\":\"Fourth\"}],\"rowCount\":4,\"limit\":100,\"offset\":0}"
+    }
+  ],
+  "entries": []
+}

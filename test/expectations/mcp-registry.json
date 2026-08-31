@@ -1,0 +1,1203 @@
+{
+  "version": 1,
+  "gate": "mcp-registry",
+  "http": [],
+  "entries": [
+    {
+      "key": "registry/publish-signed-out",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_publish' execution failed: Not signed in to the profile registry. Sign in from the web UI (Agent Environments → Registry) or set NOMOREIDE_API_TOKEN."
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/register-signed-out",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_register_github' execution failed: Not signed in to the profile registry. Sign in from the web UI (Agent Environments → Registry) or set NOMOREIDE_API_TOKEN."
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/install-anonymously-missing",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_install_from_registry' execution failed: Read install descriptor failed: HTTP 404 — {\"message\":\"Not Found\"}"
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/not-published/install",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/build-a-profile",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "name": "kit",
+            "sourceAgent": "claude",
+            "mcps": {
+              "live-local": {
+                "kind": "local",
+                "command": "node",
+                "args": [
+                  "s.js"
+                ],
+                "env": {
+                  "T": "1"
+                }
+              },
+              "live-remote": {
+                "kind": "remote",
+                "transport": "sse",
+                "url": "https://live.example.test/mcp"
+              }
+            },
+            "skills": [
+              {
+                "name": "review"
+              },
+              {
+                "name": "summarise"
+              }
+            ],
+            "plugins": []
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/publish-a-new-slug",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "slug": "fresh",
+            "profileId": "prof-new",
+            "versionId": "ver-new",
+            "version": "1.0.0"
+          }
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/fresh",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "slug": "fresh",
+              "title": "Kit",
+              "summary": "",
+              "visibility": "public"
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-new/versions",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "version": "1.0.0",
+              "changelog": "",
+              "manifest_json": {
+                "name": "fresh",
+                "version": "1.0.0",
+                "mcps": [
+                  {
+                    "name": "live-local",
+                    "kind": "local"
+                  },
+                  {
+                    "name": "live-remote",
+                    "kind": "remote"
+                  }
+                ],
+                "skills": [
+                  {
+                    "name": "review"
+                  },
+                  {
+                    "name": "summarise"
+                  }
+                ],
+                "plugins": []
+              }
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-new/versions/ver-new/package",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/gzip",
+            "body": {
+              "gzipArchive": true
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-new/versions/ver-new/publish",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/publish-with-every-option",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "slug": "fresh",
+            "profileId": "prof-new",
+            "versionId": "ver-new",
+            "version": "2.1.0"
+          }
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/fresh",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "slug": "fresh",
+              "title": "Kit",
+              "summary": "A summary.",
+              "visibility": "private"
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-new/versions",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "version": "2.1.0",
+              "changelog": "Changed things.",
+              "manifest_json": {
+                "name": "fresh",
+                "version": "2.1.0",
+                "mcps": [
+                  {
+                    "name": "live-local",
+                    "kind": "local"
+                  },
+                  {
+                    "name": "live-remote",
+                    "kind": "remote"
+                  }
+                ],
+                "skills": [
+                  {
+                    "name": "review"
+                  },
+                  {
+                    "name": "summarise"
+                  }
+                ],
+                "plugins": []
+              }
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-new/versions/ver-new/package",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/gzip",
+            "body": {
+              "gzipArchive": true
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-new/versions/ver-new/publish",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/publish-an-existing-slug",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "slug": "taken",
+            "profileId": "prof-old",
+            "versionId": "ver-old",
+            "version": "1.0.0"
+          }
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/taken",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-old/versions",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "version": "1.0.0",
+              "changelog": "",
+              "manifest_json": {
+                "name": "taken",
+                "version": "1.0.0",
+                "mcps": [
+                  {
+                    "name": "live-local",
+                    "kind": "local"
+                  },
+                  {
+                    "name": "live-remote",
+                    "kind": "remote"
+                  }
+                ],
+                "skills": [
+                  {
+                    "name": "review"
+                  },
+                  {
+                    "name": "summarise"
+                  }
+                ],
+                "plugins": []
+              }
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-old/versions/ver-old/package",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/gzip",
+            "body": {
+              "gzipArchive": true
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-old/versions/ver-old/publish",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/publish-a-missing-profile",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_publish' execution failed: Profile \"nope\" not found."
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/name-a-skill-it-lacks",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "name": "kit",
+            "sourceAgent": "claude",
+            "mcps": {
+              "live-local": {
+                "kind": "local",
+                "command": "node",
+                "args": [
+                  "s.js"
+                ],
+                "env": {
+                  "T": "1"
+                }
+              },
+              "live-remote": {
+                "kind": "remote",
+                "transport": "sse",
+                "url": "https://live.example.test/mcp"
+              }
+            },
+            "skills": [
+              {
+                "name": "ghost"
+              }
+            ],
+            "plugins": []
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/publish-an-unexportable-profile",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_publish' execution failed: Profile \"kit\" is missing bundled skill \"ghost\"."
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/drop-the-skill",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "name": "kit",
+            "sourceAgent": "claude",
+            "mcps": {
+              "live-local": {
+                "kind": "local",
+                "command": "node",
+                "args": [
+                  "s.js"
+                ],
+                "env": {
+                  "T": "1"
+                }
+              },
+              "live-remote": {
+                "kind": "remote",
+                "transport": "sse",
+                "url": "https://live.example.test/mcp"
+              }
+            },
+            "skills": [],
+            "plugins": []
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/publish-lookup-fails",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_publish' execution failed: Lookup profile failed: HTTP 500 — {\"message\":\"kaboom\"}"
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/lookup-boom",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/publish-create-fails",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "slug": "create-boom",
+            "profileId": "prof-new",
+            "versionId": "ver-new",
+            "version": "1.0.0"
+          }
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/create-boom",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "slug": "create-boom",
+              "title": "Kit",
+              "summary": "",
+              "visibility": "public"
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-new/versions",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "version": "1.0.0",
+              "changelog": "",
+              "manifest_json": {
+                "name": "create-boom",
+                "version": "1.0.0",
+                "mcps": [
+                  {
+                    "name": "live-local",
+                    "kind": "local"
+                  },
+                  {
+                    "name": "live-remote",
+                    "kind": "remote"
+                  }
+                ],
+                "skills": [],
+                "plugins": []
+              }
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-new/versions/ver-new/package",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/gzip",
+            "body": {
+              "gzipArchive": true
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/prof-new/versions/ver-new/publish",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/publish-version-fails",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_publish' execution failed: Create profile version failed: HTTP 422 — {\"message\":\"bad version\"}"
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/version-boom",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/pv/versions",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "version": "1.0.0",
+              "changelog": "",
+              "manifest_json": {
+                "name": "version-boom",
+                "version": "1.0.0",
+                "mcps": [
+                  {
+                    "name": "live-local",
+                    "kind": "local"
+                  },
+                  {
+                    "name": "live-remote",
+                    "kind": "remote"
+                  }
+                ],
+                "skills": [],
+                "plugins": []
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/publish-upload-fails",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_publish' execution failed: Upload package failed: HTTP 413 — {\"message\":\"too big\"}"
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/upload-boom",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/pu/versions",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "version": "1.0.0",
+              "changelog": "",
+              "manifest_json": {
+                "name": "upload-boom",
+                "version": "1.0.0",
+                "mcps": [
+                  {
+                    "name": "live-local",
+                    "kind": "local"
+                  },
+                  {
+                    "name": "live-remote",
+                    "kind": "remote"
+                  }
+                ],
+                "skills": [],
+                "plugins": []
+              }
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/pu/versions/vu/package",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/gzip",
+            "body": {
+              "gzipArchive": true
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/publish-release-fails",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_publish' execution failed: Publish profile version failed: HTTP 409 — {\"message\":\"already released\"}"
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/release-boom",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/pr/versions",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "version": "1.0.0",
+              "changelog": "",
+              "manifest_json": {
+                "name": "release-boom",
+                "version": "1.0.0",
+                "mcps": [
+                  {
+                    "name": "live-local",
+                    "kind": "local"
+                  },
+                  {
+                    "name": "live-remote",
+                    "kind": "remote"
+                  }
+                ],
+                "skills": [],
+                "plugins": []
+              }
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/pr/versions/vr/package",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/gzip",
+            "body": {
+              "gzipArchive": true
+            },
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/profiles/pr/versions/vr/publish",
+            "authorization": "Bearer registry-token",
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/export-a-package",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "archivePath": "<home>/out/pkg.tar.gz",
+            "credentials": []
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/clear-the-local-profile",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "ok": true,
+            "deleted": "kit"
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/install",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "name": "kit",
+            "mcpCount": 2,
+            "skillCount": 0,
+            "pluginCount": 0,
+            "missingCredentials": [],
+            "version": "1.4.2"
+          }
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/shared/install",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/packages/shared.tar.gz",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/install-collides",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_install_from_registry' execution failed: Profile \"kit\" already exists. Re-import with force to overwrite."
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/shared/install",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/packages/shared.tar.gz",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/install-with-force",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "name": "kit",
+            "mcpCount": 2,
+            "skillCount": 0,
+            "pluginCount": 0,
+            "missingCredentials": [],
+            "version": "1.4.2"
+          }
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/shared/install",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/packages/shared.tar.gz",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/install-under-another-name",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "name": "renamed",
+            "mcpCount": 2,
+            "skillCount": 0,
+            "pluginCount": 0,
+            "missingCredentials": [],
+            "version": "1.4.2"
+          }
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/shared/install",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/packages/shared.tar.gz",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/read-the-install",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "name": "renamed",
+            "sourceAgent": "claude",
+            "mcps": {
+              "live-local": {
+                "kind": "local",
+                "command": "node",
+                "args": [
+                  "s.js"
+                ],
+                "env": {
+                  "T": "1"
+                }
+              },
+              "live-remote": {
+                "kind": "remote",
+                "transport": "sse",
+                "url": "https://live.example.test/mcp"
+              }
+            },
+            "skills": [],
+            "plugins": []
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/install-from-an-absolute-url",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "name": "by-absolute",
+            "mcpCount": 2,
+            "skillCount": 0,
+            "pluginCount": 0,
+            "missingCredentials": [],
+            "version": "2.0.0"
+          }
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/absolute/install",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/packages/shared.tar.gz",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/install-without-a-package",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_install_from_registry' execution failed: Registry profile \"no-package\" has no downloadable package."
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/no-package/install",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/install-with-an-empty-download-url",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_install_from_registry' execution failed: Registry profile \"blank-url\" has no downloadable package."
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/blank-url/install",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/install-a-missing-package",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_install_from_registry' execution failed: Download failed: HTTP 404 — {\"message\":\"Not Found\"}"
+        },
+        "asked": [
+          {
+            "method": "GET",
+            "path": "/profiles/gone/install",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/packages/gone.tar.gz",
+            "authorization": null,
+            "contentType": null,
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/register-a-repository",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "id": "gh-1",
+            "slug": "from-repo",
+            "source": "github"
+          }
+        },
+        "asked": [
+          {
+            "method": "POST",
+            "path": "/profiles/github/register",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "repo_url": "https://github.com/owner/repo",
+              "slug": "from-repo",
+              "title": "From Repo",
+              "summary": "",
+              "ref_name": "main",
+              "profile_path": "profile.yaml",
+              "manifest_json": {
+                "name": "from-repo"
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/register-with-every-option",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "id": "gh-1",
+            "slug": "from-repo",
+            "source": "github"
+          }
+        },
+        "asked": [
+          {
+            "method": "POST",
+            "path": "/profiles/github/register",
+            "authorization": "Bearer registry-token",
+            "contentType": "application/json",
+            "body": {
+              "repo_url": "https://github.com/owner/repo",
+              "slug": "from-repo",
+              "title": "From Repo",
+              "summary": "A summary.",
+              "ref_name": "release",
+              "profile_path": "kits/main.yaml",
+              "manifest_json": {
+                "name": "from-repo"
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/reject-a-publish-without-a-slug",
+      "value": {
+        "answered": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_profiles_publish' parameter validation failed: slug: Required. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/reject-an-unknown-visibility",
+      "value": {
+        "answered": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_profiles_publish' parameter validation failed: visibility: Invalid enum value. Expected 'public' | 'private', received 'secret'. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/reject-an-install-without-a-slug",
+      "value": {
+        "answered": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_profiles_install_from_registry' parameter validation failed: slug: Required. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/reject-a-registration-without-a-repo",
+      "value": {
+        "answered": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_profiles_register_github' parameter validation failed: repoUrl: Required. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/sign-in-through-a-config-file",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "id": "gh-1",
+            "slug": "from-repo",
+            "source": "github"
+          }
+        },
+        "asked": [
+          {
+            "method": "POST",
+            "path": "/profiles/github/register",
+            "authorization": "Bearer token-from-the-config-file",
+            "contentType": "application/json",
+            "body": {
+              "repo_url": "https://github.com/owner/repo",
+              "slug": "from-repo",
+              "title": "From Repo",
+              "summary": "",
+              "ref_name": "main",
+              "profile_path": "profile.yaml",
+              "manifest_json": {
+                "name": "from-repo"
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/the-environment-outranks-the-config-file",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "id": "gh-1",
+            "slug": "from-repo",
+            "source": "github"
+          }
+        },
+        "asked": [
+          {
+            "method": "POST",
+            "path": "/profiles/github/register",
+            "authorization": "Bearer token-from-the-environment",
+            "contentType": "application/json",
+            "body": {
+              "repo_url": "https://github.com/owner/repo",
+              "slug": "from-repo",
+              "title": "From Repo",
+              "summary": "",
+              "ref_name": "main",
+              "profile_path": "profile.yaml",
+              "manifest_json": {
+                "name": "from-repo"
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "registry/an-empty-config-is-still-a-config",
+      "value": {
+        "answered": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_profiles_register_github' execution failed: Not signed in to the profile registry. Sign in from the web UI (Agent Environments → Registry) or set NOMOREIDE_API_TOKEN."
+        },
+        "asked": []
+      }
+    },
+    {
+      "key": "registry/fall-back-to-the-pre-rename-file",
+      "value": {
+        "answered": {
+          "isError": false,
+          "payload": {
+            "id": "gh-1",
+            "slug": "from-repo",
+            "source": "github"
+          }
+        },
+        "asked": [
+          {
+            "method": "POST",
+            "path": "/profiles/github/register",
+            "authorization": "Bearer token-from-the-brainctl-file",
+            "contentType": "application/json",
+            "body": {
+              "repo_url": "https://github.com/owner/repo",
+              "slug": "from-repo",
+              "title": "From Repo",
+              "summary": "",
+              "ref_name": "main",
+              "profile_path": "profile.yaml",
+              "manifest_json": {
+                "name": "from-repo"
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -348,6 +348,9 @@ function normalize(answer: Answer, runtime: Runtime): Answer {
   return { ...answer, body: scrub(JSON.parse(erased)) };
 }
 
+/** The instant every seeded commit is stamped with. See `seedRepository`. */
+const SEED_COMMIT_TIME = "2026-01-02T03:04:05+00:00";
+
 /** The repository each runtime snapshots: a commit, plus an ignore rule. */
 async function seedRepository(runtime: Runtime): Promise<void> {
   const cwd = runtime.workspace;
@@ -366,6 +369,12 @@ async function seedRepository(runtime: Runtime): Promise<void> {
         GIT_AUTHOR_EMAIL: "gate@example.com",
         GIT_COMMITTER_NAME: "Gate",
         GIT_COMMITTER_EMAIL: "gate@example.com",
+        // Pinned, so the fixture's head is the same sha on every run. A step
+        // asks for a commit *by sha in the request path*, and a recording of
+        // that answer is only replayable if the next run asks for the same
+        // commit.
+        GIT_AUTHOR_DATE: SEED_COMMIT_TIME,
+        GIT_COMMITTER_DATE: SEED_COMMIT_TIME,
       },
     });
   await git(["init", "--initial-branch=main", "--quiet"]);
@@ -429,7 +438,7 @@ try {
   }
 } finally {
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 if (failures > 0) {

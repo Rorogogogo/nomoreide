@@ -31,6 +31,9 @@ import {
 
 const run = promisify(execFile);
 
+/** The instant every seeded commit is stamped with. See `seedRepository`. */
+const SEED_COMMIT_TIME = "2026-01-02T03:04:05+00:00";
+
 interface Step {
   readonly name: string;
   readonly path: string;
@@ -108,9 +111,9 @@ if (argv.length === 0) {
 const root = await mkdtemp(join(tmpdir(), "nmi-git-reads-parity-"));
 const harness = new RuntimeHarness(root);
 let failures = 0;
-// Each runtime's own commit hash: git embeds a commit timestamp, so two
-// independently-seeded repos with byte-identical content still diverge in
-// hash — this is not a case where "the same input" means "the same output".
+// Each runtime's own commit hash. The seed pins the commit timestamps, so the
+// hash is a function of content alone and every run of this gate — including a
+// replayed one, whose recorded request paths name it — produces the same one.
 const commitHashByPort = new Map<number, string>();
 
 try {
@@ -242,7 +245,7 @@ try {
   await compare(pinned, pinned);
 } finally {
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 console.log(
@@ -389,7 +392,15 @@ async function seedOverviewRepositories(home: string): Promise<void> {
 /** Plant an identical repo (files, commits, a branch) in one runtime's
  * workspace and report the hashes later steps need. */
 async function seedRepository(cwd: string): Promise<{ commitHash: string }> {
-  const git = (...args: string[]) => run("git", args, { cwd });
+  // Pinned commit times. A commit hash covers its timestamps, and three steps
+  // below ask for a commit *by hash* in the request path — so a wall-clock
+  // seed would mint a different path on every run, and a recording of those
+  // answers would name a commit the next run does not have.
+  const git = (...args: string[]) =>
+    run("git", args, {
+      cwd,
+      env: { ...process.env, GIT_AUTHOR_DATE: SEED_COMMIT_TIME, GIT_COMMITTER_DATE: SEED_COMMIT_TIME },
+    });
   await run("mkdir", ["-p", join(cwd, "src/nested")]);
   const write = (path: string, contents: string | Buffer) =>
     import("node:fs/promises").then((fs) => fs.writeFile(join(cwd, path), contents));

@@ -26,6 +26,7 @@ import assert from "node:assert/strict";
 import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { callMcpTool } from "../test/support/mcp-contract.js";
+import { referenceSpec } from "../test/support/runtime-parity.js";
 import { type ApiStub, type StubRoute, startApiStub } from "./support/http-api-stub.js";
 import {
   type FixtureTree,
@@ -33,6 +34,8 @@ import {
   mcpCommand,
   normalize,
   prepareRuntime,
+  recordable,
+  recorder,
   repositoryRoot,
   substitute,
 } from "./support/mcp-parity-fixture.js";
@@ -85,7 +88,7 @@ if (fixture.fixtureVersion !== 1) {
 }
 
 const specs = [
-  { label: "reference", command: process.execPath, args: ["--import", "tsx", "src/index.ts"] },
+  referenceSpec(),
   { label: "candidate", command: candidateArgv[0], args: candidateArgv.slice(1) },
 ];
 
@@ -97,6 +100,7 @@ try {
   compared += await pass("disconnected", fixture.disconnected.config, fixture.disconnected.plan);
   console.log(`MCP deploy-provider parity passed (${compared} steps).`);
 } finally {
+  await recorder.finish();
   await Promise.all(stubs.map((stub) => stub.close().catch(() => {})));
   await Promise.all(
     roots.map((directory) =>
@@ -164,10 +168,12 @@ async function call(runtime: Runtime, stub: ApiStub, step: Step): Promise<unknow
     Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
   );
   stub.take();
-  const response = await callMcpTool(mcpCommand(runtime), step.tool, args);
-  const requests = stub.take();
-  return {
-    reported: normalize(response, runtime),
-    requests: step.concurrentRequests ? [...requests].sort(byRequest) : requests,
-  };
+  return recorder.recorded(recordable(runtime), step.id, async () => {
+    const response = await callMcpTool(mcpCommand(runtime), step.tool, args);
+    const requests = stub.take();
+    return {
+      reported: normalize(response, runtime),
+      requests: step.concurrentRequests ? [...requests].sort(byRequest) : requests,
+    };
+  });
 }

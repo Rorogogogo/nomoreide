@@ -407,7 +407,7 @@ try {
 } finally {
   await harness.shutdown();
   await Promise.all(stubs.map((stub) => stub.close()));
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 console.log(

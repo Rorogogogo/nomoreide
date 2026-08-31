@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "gate": "agent-auth",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"signedIn\":false,\"apiBaseUrl\":\"http://127.0.0.1:%%VOLATILE-0%%\",\"apiMode\":\"local\",\"apiSource\":\"env\",\"apiFrontendUrl\":\"http://127.0.0.1:%%VOLATILE-0%%/app\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/auth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=6a5af0082259a0e9fcd2d8d4f037fc5a&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3D6a5af0082259a0e9fcd2d8d4f037fc5a\",\"state\":\"6a5af0082259a0e9fcd2d8d4f037fc5a\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome?state=nope",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"unknown\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"unknown\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/finish?state=nope&token=x",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed — NoMoreIDE</title></head>\n<body style=\"font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0\">\n<div style=\"text-align:center;max-width:28rem;padding:1rem\">\n<h1 style=\"color:#dc2626;font-size:1.25rem\">Sign-in failed</h1>\n<p style=\"color:#555\">Invalid or expired sign-in request.</p>\n</div></body></html>"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/auth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=d600e50af9cfcc1699d6cdfa4a5d0916&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3Dd600e50af9cfcc1699d6cdfa4a5d0916\",\"state\":\"d600e50af9cfcc1699d6cdfa4a5d0916\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/finish?state=d600e50af9cfcc1699d6cdfa4a5d0916",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed — NoMoreIDE</title></head>\n<body style=\"font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0\">\n<div style=\"text-align:center;max-width:28rem;padding:1rem\">\n<h1 style=\"color:#dc2626;font-size:1.25rem\">Sign-in failed</h1>\n<p style=\"color:#555\">No token returned by the registry.</p>\n</div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome?state=d600e50af9cfcc1699d6cdfa4a5d0916",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"error\",\"message\":\"No token returned by the registry.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome?state=d600e50af9cfcc1699d6cdfa4a5d0916",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"unknown\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/auth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=b3a0cac3be60446df3bf80da5a05ac45&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3Db3a0cac3be60446df3bf80da5a05ac45\",\"state\":\"b3a0cac3be60446df3bf80da5a05ac45\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/finish?state=b3a0cac3be60446df3bf80da5a05ac45&error=access_denied",
+      "status": 400,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed — NoMoreIDE</title></head>\n<body style=\"font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0\">\n<div style=\"text-align:center;max-width:28rem;padding:1rem\">\n<h1 style=\"color:#dc2626;font-size:1.25rem\">Sign-in failed</h1>\n<p style=\"color:#555\">access_denied</p>\n</div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome?state=b3a0cac3be60446df3bf80da5a05ac45",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"error\",\"message\":\"access_denied\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome?state=b3a0cac3be60446df3bf80da5a05ac45",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"unknown\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/auth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=d72a56f0b71a1f6a2d2166520f39f925&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3Dd72a56f0b71a1f6a2d2166520f39f925\",\"state\":\"d72a56f0b71a1f6a2d2166520f39f925\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/finish?state=d72a56f0b71a1f6a2d2166520f39f925&token=nope",
+      "status": 401,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sign-in failed — NoMoreIDE</title></head>\n<body style=\"font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0\">\n<div style=\"text-align:center;max-width:28rem;padding:1rem\">\n<h1 style=\"color:#dc2626;font-size:1.25rem\">Sign-in failed</h1>\n<p style=\"color:#555\">Token was rejected by the registry API at http://127.0.0.1:%%VOLATILE-0%%. The site you signed in through likely targets a different backend.</p>\n</div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome?state=d72a56f0b71a1f6a2d2166520f39f925",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"error\",\"message\":\"Token was rejected by the registry API at http://127.0.0.1:%%VOLATILE-0%%. The site you signed in through likely targets a different backend.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome?state=d72a56f0b71a1f6a2d2166520f39f925",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"unknown\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/auth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=12ff0eedb66c903564c84663538f3c4a&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3D12ff0eedb66c903564c84663538f3c4a\",\"state\":\"12ff0eedb66c903564c84663538f3c4a\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/finish?state=12ff0eedb66c903564c84663538f3c4a&token=token-that-works",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Signed in — NoMoreIDE</title></head>\n<body style=\"font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0\">\n<div style=\"text-align:center;max-width:28rem;padding:1rem\">\n<h1 style=\"color:#16a34a;font-size:1.25rem\">Signed in</h1>\n<p style=\"color:#555\">You are signed in. You can close this tab.</p>\n</div></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome?state=12ff0eedb66c903564c84663538f3c4a",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"success\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/outcome?state=12ff0eedb66c903564c84663538f3c4a",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":\"unknown\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"signedIn\":true,\"source\":\"config\",\"user\":{\"email\":\"someone@example.com\",\"displayName\":\"Someone\"},\"apiBaseUrl\":\"http://127.0.0.1:%%VOLATILE-0%%\",\"apiMode\":\"local\",\"apiSource\":\"env\",\"apiFrontendUrl\":\"http://127.0.0.1:%%VOLATILE-0%%/app\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/auth/logout",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/auth/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"signedIn\":false,\"apiBaseUrl\":\"http://127.0.0.1:%%VOLATILE-0%%\",\"apiMode\":\"local\",\"apiSource\":\"env\",\"apiFrontendUrl\":\"http://127.0.0.1:%%VOLATILE-0%%/app\"}"
+    }
+  ],
+  "entries": []
+}

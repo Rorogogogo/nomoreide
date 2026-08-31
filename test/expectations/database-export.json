@@ -1,0 +1,265 @@
+{
+  "version": 1,
+  "gate": "database-export",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/objects?schema=main",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"objects\":[{\"schema\":\"main\",\"name\":\"catalogue\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"catalogue\"},{\"schema\":\"main\",\"name\":\"composite\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNvbXBvc2l0ZSIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"composite\"},{\"schema\":\"main\",\"name\":\"del_commit\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9jb21taXQiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"del_commit\"},{\"schema\":\"main\",\"name\":\"del_expected\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9leHBlY3RlZCIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"del_expected\"},{\"schema\":\"main\",\"name\":\"del_gone\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9nb25lIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"del_gone\"},{\"schema\":\"main\",\"name\":\"del_locked\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9sb2NrZWQiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"del_locked\"},{\"schema\":\"main\",\"name\":\"del_mismatch\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9taXNtYXRjaCIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"del_mismatch\"},{\"schema\":\"main\",\"name\":\"del_preview\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9wcmV2aWV3Iiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"del_preview\"},{\"schema\":\"main\",\"name\":\"empty_export\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImVtcHR5X2V4cG9ydCIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"empty_export\"},{\"schema\":\"main\",\"name\":\"exec_commit\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfY29tbWl0Iiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"exec_commit\"},{\"schema\":\"main\",\"name\":\"exec_first\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfZmlyc3QiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"exec_first\"},{\"schema\":\"main\",\"name\":\"exec_locked\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfbG9ja2VkIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"exec_locked\"},{\"schema\":\"main\",\"name\":\"exec_preview\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfcHJldmlldyIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"exec_preview\"},{\"schema\":\"main\",\"name\":\"exec_second\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfc2Vjb25kIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"exec_second\"},{\"schema\":\"main\",\"name\":\"no_primary_key\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6Im5vX3ByaW1hcnlfa2V5Iiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"no_primary_key\"},{\"schema\":\"main\",\"name\":\"numbers\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6Im51bWJlcnMiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"numbers\"},{\"schema\":\"main\",\"name\":\"v_catalogue\",\"kind\":\"view\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfY2F0YWxvZ3VlIiwia2luZCI6InZpZXcifQ\",\"qualifiedName\":\"v_catalogue\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-catalogue-2026-08-31.csv\"; filename*=UTF-8''demo-catalogue-2026-08-31.csv",
+        "content-type": "text/csv; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "id,title,price,blobby,missing,api_token,signed,typed\r\n1,plain,1.5,\"{\"\"0\"\":0,\"\"1\"\":1,\"\"2\"\":2,\"\"3\"\":3,\"\"4\"\":4,\"\"5\"\":5,\"\"6\"\":6,\"\"7\"\":7,\"\"8\"\":8,\"\"9\"\":9,\"\"10\"\":10,\"\"11\"\":11}\",,••••,-5,'-5\r\n2,\"has,comma\",2,,x,••••,0,'+1\r\n3,\"has\"\"\"\"quote\",3,,y,,1,'@home\r\n4,'=formula,4,,z,••••,2,'  =late\r\n5,\"multi\nline\",5,,,••••,3,'\ttabbed\r\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=json&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-catalogue-2026-08-31.json\"; filename*=UTF-8''demo-catalogue-2026-08-31.json",
+        "content-type": "application/json; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "[{\"id\":1,\"title\":\"plain\",\"price\":1.5,\"blobby\":{\"0\":0,\"1\":1,\"2\":2,\"3\":3,\"4\":4,\"5\":5,\"6\":6,\"7\":7,\"8\":8,\"9\":9,\"10\":10,\"11\":11},\"missing\":null,\"api_token\":\"••••\",\"signed\":-5,\"typed\":\"-5\"},{\"id\":2,\"title\":\"has,comma\",\"price\":2,\"blobby\":null,\"missing\":\"x\",\"api_token\":\"••••\",\"signed\":0,\"typed\":\"+1\"},{\"id\":3,\"title\":\"has\\\"\\\"quote\",\"price\":3,\"blobby\":null,\"missing\":\"y\",\"api_token\":null,\"signed\":1,\"typed\":\"@home\"},{\"id\":4,\"title\":\"=formula\",\"price\":4,\"blobby\":null,\"missing\":\"z\",\"api_token\":\"••••\",\"signed\":2,\"typed\":\"  =late\"},{\"id\":5,\"title\":\"multi\\nline\",\"price\":5,\"blobby\":null,\"missing\":null,\"api_token\":\"••••\",\"signed\":3,\"typed\":\"\\ttabbed\"}]\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImVtcHR5X2V4cG9ydCIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-empty_export-2026-08-31.csv\"; filename*=UTF-8''demo-empty_export-2026-08-31.csv",
+        "content-type": "text/csv; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "id,only\r\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=json&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImVtcHR5X2V4cG9ydCIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-empty_export-2026-08-31.json\"; filename*=UTF-8''demo-empty_export-2026-08-31.json",
+        "content-type": "application/json; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "[]\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfY2F0YWxvZ3VlIiwia2luZCI6InZpZXcifQ",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-v_catalogue-2026-08-31.csv\"; filename*=UTF-8''demo-v_catalogue-2026-08-31.csv",
+        "content-type": "text/csv; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "id,title\r\n1,plain\r\n2,\"has,comma\"\r\n3,\"has\"\"\"\"quote\"\r\n4,'=formula\r\n5,\"multi\nline\"\r\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/odd%20name%2Fslash/catalog/export?format=csv&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"odd-name-slash-catalogue-2026-08-31.csv\"; filename*=UTF-8''odd-name-slash-catalogue-2026-08-31.csv",
+        "content-type": "text/csv; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "id,title,price,blobby,missing,api_token,signed,typed\r\n1,plain,1.5,\"{\"\"0\"\":0,\"\"1\"\":1,\"\"2\"\":2,\"\"3\"\":3,\"\"4\"\":4,\"\"5\"\":5,\"\"6\"\":6,\"\"7\"\":7,\"\"8\"\":8,\"\"9\"\":9,\"\"10\"\":10,\"\"11\"\":11}\",,••••,-5,'-5\r\n2,\"has,comma\",2,,x,••••,0,'+1\r\n3,\"has\"\"\"\"quote\",3,,y,,1,'@home\r\n4,'=formula,4,,z,••••,2,'  =late\r\n5,\"multi\nline\",5,,,••••,3,'\ttabbed\r\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"key query param is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"key query param is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"format must be csv or json\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=xlsx&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"format must be csv or json\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=CSV&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"format must be csv or json\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=not-a-key",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database object was not found in the live catalog.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/nope/catalog/export?format=csv&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=x",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6Im51bWJlcnMiLCJraW5kIjoidGFibGUifQ",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-numbers-2026-08-31.csv\"; filename*=UTF-8''demo-numbers-2026-08-31.csv",
+        "content-type": "text/csv; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "id,value\r\n1,2\r\n2,0\r\n3,1e+21\r\n4,1e-7\r\n5,0.1\r\n6,-3\r\n7,100000000000000000000\r\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=json&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6Im51bWJlcnMiLCJraW5kIjoidGFibGUifQ",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-numbers-2026-08-31.json\"; filename*=UTF-8''demo-numbers-2026-08-31.json",
+        "content-type": "application/json; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "[{\"id\":1,\"value\":2},{\"id\":2,\"value\":0},{\"id\":3,\"value\":1e+21},{\"id\":4,\"value\":1e-7},{\"id\":5,\"value\":0.1},{\"id\":6,\"value\":-3},{\"id\":7,\"value\":100000000000000000000}]\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNvbXBvc2l0ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-composite-2026-08-31.csv\"; filename*=UTF-8''demo-composite-2026-08-31.csv",
+        "content-type": "text/csv; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "a,b,payload\r\n1,x,first\r\n1,y,second\r\n2,x,third\r\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6Im5vX3ByaW1hcnlfa2V5Iiwia2luZCI6InRhYmxlIn0",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-no_primary_key-2026-08-31.csv\"; filename*=UTF-8''demo-no_primary_key-2026-08-31.csv",
+        "content-type": "text/csv; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "a,b\r\n1,x\r\n2,y\r\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=json&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6Im5vX3ByaW1hcnlfa2V5Iiwia2luZCI6InRhYmxlIn0",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-no_primary_key-2026-08-31.json\"; filename*=UTF-8''demo-no_primary_key-2026-08-31.json",
+        "content-type": "application/json; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "[{\"a\":1,\"b\":\"x\"},{\"a\":2,\"b\":\"y\"}]\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=json&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfY2F0YWxvZ3VlIiwia2luZCI6InZpZXcifQ",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-v_catalogue-2026-08-31.json\"; filename*=UTF-8''demo-v_catalogue-2026-08-31.json",
+        "content-type": "application/json; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "[{\"id\":1,\"title\":\"plain\"},{\"id\":2,\"title\":\"has,comma\"},{\"id\":3,\"title\":\"has\\\"\\\"quote\"},{\"id\":4,\"title\":\"=formula\"},{\"id\":5,\"title\":\"multi\\nline\"}]\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&key=eyJzY2hlbWEiOiJlbHNld2hlcmUiLCJuYW1lIjoiY2F0YWxvZ3VlIiwia2luZCI6InRhYmxlIn0",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database object was not found in the live catalog.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/export?format=csv&format=json&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"demo-catalogue-2026-08-31.csv\"; filename*=UTF-8''demo-catalogue-2026-08-31.csv",
+        "content-type": "text/csv; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "id,title,price,blobby,missing,api_token,signed,typed\r\n1,plain,1.5,\"{\"\"0\"\":0,\"\"1\"\":1,\"\"2\"\":2,\"\"3\"\":3,\"\"4\"\":4,\"\"5\"\":5,\"\"6\"\":6,\"\"7\"\":7,\"\"8\"\":8,\"\"9\"\":9,\"\"10\"\":10,\"\"11\"\":11}\",,••••,-5,'-5\r\n2,\"has,comma\",2,,x,••••,0,'+1\r\n3,\"has\"\"\"\"quote\",3,,y,,1,'@home\r\n4,'=formula,4,,z,••••,2,'  =late\r\n5,\"multi\nline\",5,,,••••,3,'\ttabbed\r\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/locked/catalog/export?format=csv&key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-disposition": "attachment; filename=\"locked-catalogue-2026-08-31.csv\"; filename*=UTF-8''locked-catalogue-2026-08-31.csv",
+        "content-type": "text/csv; charset=utf-8",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "id,title,price,blobby,missing,api_token,signed,typed\r\n1,plain,1.5,\"{\"\"0\"\":0,\"\"1\"\":1,\"\"2\"\":2,\"\"3\"\":3,\"\"4\"\":4,\"\"5\"\":5,\"\"6\"\":6,\"\"7\"\":7,\"\"8\"\":8,\"\"9\"\":9,\"\"10\"\":10,\"\"11\"\":11}\",,••••,-5,'-5\r\n2,\"has,comma\",2,,x,••••,0,'+1\r\n3,\"has\"\"\"\"quote\",3,,y,,1,'@home\r\n4,'=formula,4,,z,••••,2,'  =late\r\n5,\"multi\nline\",5,,,••••,3,'\ttabbed\r\n"
+    }
+  ],
+  "entries": []
+}

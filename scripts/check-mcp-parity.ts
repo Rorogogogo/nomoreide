@@ -7,6 +7,8 @@ import {
   type McpCommand,
   normalizeMcpContract,
 } from "../test/support/mcp-contract.js";
+import { Recorder } from "../test/support/parity-recording.js";
+import { referenceSpec } from "../test/support/runtime-parity.js";
 
 const separator = process.argv.indexOf("--");
 const rawCandidateArgs =
@@ -20,6 +22,8 @@ if (candidateArgs.length === 0) {
 }
 
 const root = resolve(import.meta.dirname, "..");
+const recorder = new Recorder();
+const reference = referenceSpec();
 const referenceHome = await mkdtemp(join(tmpdir(), "nomoreide-mcp-reference-"));
 const candidateHome = await mkdtemp(join(tmpdir(), "nomoreide-mcp-candidate-"));
 const inheritedEnv = Object.fromEntries(
@@ -41,8 +45,18 @@ function command(commandName: string, args: string[], home: string): McpCommand 
 }
 
 try {
-  const reference = await captureMcpContract(
-    command(process.execPath, ["--import", "tsx", "src/index.ts", "mcp"], referenceHome),
+  // The whole contract is the recorded unit. In replay the reference is a path
+  // that cannot exist, so a run that still tried to capture it would die
+  // naming itself rather than quietly passing because `src/` is still here.
+  const referenceContractRaw = await recorder.recorded(
+    {
+      ...reference,
+      home: referenceHome,
+      workspace: referenceHome,
+      port: 0,
+    },
+    "contract",
+    () => captureMcpContract(command(reference.command, [...reference.args, "mcp"], referenceHome)),
   );
   const candidate = await captureMcpContract(
     command(candidateArgs[0], candidateArgs.slice(1), candidateHome),
@@ -50,14 +64,14 @@ try {
   const candidateContract = normalizeMcpContract(candidate, {
     temporaryPaths: [candidateHome],
   });
-  const referenceContract = normalizeMcpContract(reference, {
+  const referenceContract = normalizeMcpContract(referenceContractRaw, {
     temporaryPaths: [referenceHome],
   });
   if (surfaceOnly) {
     const surface = ({ initialize, tools }: typeof candidate) => ({ initialize, tools });
     assert.deepStrictEqual(
       surface(candidateContract as typeof candidate),
-      surface(referenceContract as typeof reference),
+      surface(referenceContract as typeof candidate),
     );
   } else {
     assert.deepStrictEqual(candidateContract, referenceContract);
@@ -66,6 +80,7 @@ try {
     `MCP ${surfaceOnly ? "Phase 1 surface " : ""}parity passed for ${candidateArgs.join(" ")}\n`,
   );
 } finally {
+  await recorder.finish();
   await Promise.all([
     rm(referenceHome, { recursive: true, force: true }),
     rm(candidateHome, { recursive: true, force: true }),

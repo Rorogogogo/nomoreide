@@ -39,9 +39,12 @@ import {
   mcpCommand,
   normalize,
   prepareRuntime,
+  recordable,
+  recorder,
   repositoryRoot,
   substitute,
 } from "./support/mcp-parity-fixture.js";
+import { referenceSpec } from "../test/support/runtime-parity.js";
 
 /**
  * A snapshot ref is named for the instant it was taken, so the two runtimes can
@@ -87,13 +90,9 @@ if (fixture.fixtureVersion !== 1) {
 // fixture directory rather than from the checkout, and a relative path would
 // then resolve against the wrong place.
 const specs = [
-  {
-    label: "reference",
-    command: process.execPath,
-    // `tsx` too is resolved against the child's directory, so it is spelled as
-    // the URL this gate already resolved it to rather than as a bare name.
-    args: ["--import", import.meta.resolve("tsx"), join(repositoryRoot, "src/index.ts")],
-  },
+  // Absolute either way, and in replay a path that cannot exist — which is
+  // what makes "the reference is never started" enforced rather than asserted.
+  referenceSpec(),
   { label: "candidate", command: resolve(candidateArgv[0]), args: candidateArgv.slice(1) },
 ];
 
@@ -129,6 +128,7 @@ try {
 
   console.log(`MCP snapshot/onboard parity passed (${compared} steps).`);
 } finally {
+  await recorder.finish();
   await Promise.all(
     roots.map((directory) =>
       rm(directory, { recursive: true, force: true, maxRetries: 5 }).catch(() => {}),
@@ -136,15 +136,26 @@ try {
   );
 }
 
+/**
+ * One step's answer, from a process or from the recording.
+ *
+ * The normalized payload is the recorded unit rather than the raw response:
+ * it has already had this runtime's own throwaway paths rewritten to fixture
+ * tokens, so it is the same value in whatever directory the gate next runs in.
+ */
 async function call(runtime: Runtime, step: Fixture["plan"][number]): Promise<unknown> {
-  const args = Object.fromEntries(
-    Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
-  );
-  const where: Runtime =
-    step.processCwd === undefined
-      ? runtime
-      : { ...runtime, cwd: substitute(step.processCwd, runtime) as string };
-  return maskSnapshotRefs(normalize(await callMcpTool(mcpCommand(where), step.tool, args), runtime));
+  return recorder.recorded(recordable(runtime), step.id, async () => {
+    const args = Object.fromEntries(
+      Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
+    );
+    const where: Runtime =
+      step.processCwd === undefined
+        ? runtime
+        : { ...runtime, cwd: substitute(step.processCwd, runtime) as string };
+    return maskSnapshotRefs(
+      normalize(await callMcpTool(mcpCommand(where), step.tool, args), runtime),
+    );
+  });
 }
 
 function maskSnapshotRefs(value: unknown): unknown {

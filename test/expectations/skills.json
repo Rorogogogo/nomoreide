@@ -1,0 +1,349 @@
+{
+  "version": 1,
+  "gate": "skills",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/skills/search",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Skill search must be 2–100 characters.\",\"code\":\"invalid_query\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/search?q=",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Skill search must be 2–100 characters.\",\"code\":\"invalid_query\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/search?q=a",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Skill search must be 2–100 characters.\",\"code\":\"invalid_query\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/search?q=%20%20a%20%20",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Skill search must be 2–100 characters.\",\"code\":\"invalid_query\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/search?q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Skill search must be 2–100 characters.\",\"code\":\"invalid_query\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/search?q=a&q=abcdef",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Skill search must be 2–100 characters.\",\"code\":\"invalid_query\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/search?q=%E4%B8%AD",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Skill search must be 2–100 characters.\",\"code\":\"invalid_query\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/search?q=%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD%E4%B8%AD",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Skill search must be 2–100 characters.\",\"code\":\"invalid_query\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/search?limit=1",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Skill search must be 2–100 characters.\",\"code\":\"invalid_query\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid temporary skill request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/use",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected skill source is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/search",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/use",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/search/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

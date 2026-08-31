@@ -461,7 +461,7 @@ async function walk({ label, plan, api }: WalkOptions): Promise<void> {
   candidateStub.take();
 
   for (const step of plan) {
-    const observe = async (runtime: Runtime, stub: ApiStub) => {
+    const observe = async (runtime: Runtime, stub: ApiStub) => harness.recorded(runtime, step.name, async () => {
       const answer = await send(runtime, step);
       const recorded = stub.take();
       assertPkce(recorded, runtime, step);
@@ -476,7 +476,7 @@ async function walk({ label, plan, api }: WalkOptions): Promise<void> {
         requests,
         ...(step.config ? { config: await persistedConfig(runtime) } : {}),
       };
-    };
+    });
     const answers = {
       reference: await observe(reference, referenceStub),
       candidate: await observe(candidate, candidateStub),
@@ -585,7 +585,7 @@ try {
 } finally {
   await harness.shutdown();
   await Promise.all(stubs.map((stub) => stub.close().catch(() => {})));
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 const total = [

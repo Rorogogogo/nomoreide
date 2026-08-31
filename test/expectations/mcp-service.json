@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "gate": "mcp-service",
+  "http": [],
+  "entries": [
+    {
+      "key": "list-services",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"services\": [\n    {\n      \"name\": \"api\",\n      \"port\": 3000,\n      \"description\": \"HTTP API\",\n      \"test\": \"npm test\",\n      \"dependsOn\": [\n        \"database\"\n      ],\n      \"projectPath\": \"/workspace\",\n      \"command\": \"node\",\n      \"args\": [\n        \"server.js\",\n        \"literal value; not-a-shell\"\n      ],\n      \"cwd\": \"/workspace/api\",\n      \"envKeys\": [\n        \"A_MODE\",\n        \"Z_TOKEN\"\n      ]\n    },\n    {\n      \"name\": \"worker\",\n      \"kind\": \"local\",\n      \"command\": \"npm run worker\",\n      \"cwd\": \"/workspace/worker\"\n    },\n    {\n      \"name\": \"compose\",\n      \"kind\": \"docker-compose\",\n      \"cwd\": \"/workspace\",\n      \"composeFile\": \"compose.yml\",\n      \"composeService\": \"web\"\n    },\n    {\n      \"name\": \"remote\",\n      \"kind\": \"ssh\",\n      \"host\": \"dev-box\",\n      \"cwd\": \"/srv/app\",\n      \"command\": \"npm start\",\n      \"envKeys\": []\n    }\n  ],\n  \"bundles\": [\n    {\n      \"name\": \"app\",\n      \"services\": [\n        \"api\",\n        \"worker\",\n        \"compose\",\n        \"remote\"\n      ]\n    }\n  ]\n}"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

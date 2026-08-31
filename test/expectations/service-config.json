@@ -1,0 +1,397 @@
+{
+  "version": 1,
+  "gate": "service-config",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/services/graph",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"graph\":{\"nodes\":[{\"name\":\"db\",\"dependsOn\":[],\"missing\":[]},{\"name\":\"api\",\"dependsOn\":[\"db\"],\"missing\":[\"nowhere\"]},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"missing\":[]},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"missing\":[]},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"missing\":[]},{\"name\":\"web ui\",\"dependsOn\":[],\"missing\":[]},{\"name\":\"full\",\"dependsOn\":[\"db\"],\"missing\":[]}],\"edges\":[{\"from\":\"api\",\"to\":\"db\"},{\"from\":\"worker\",\"to\":\"api\"},{\"from\":\"left\",\"to\":\"right\"},{\"from\":\"right\",\"to\":\"left\"},{\"from\":\"full\",\"to\":\"db\"}],\"order\":[],\"cycles\":[[\"left\",\"right\"]]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/graph",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/services/graph",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"graph\\\" is not registered.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/definition",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"service\":{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/full/definition",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"service\":{\"name\":\"full\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"kind\":\"local\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\",\"env\":{\"TOKEN\":\"hunter2\",\"PLAIN\":\"value\"}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/ghost/definition",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"ghost\\\" is not registered.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/web%20ui/definition",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"service\":{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/%20%20%20/definition",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"   \\\" is not registered.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/%20%20api%20%20/definition",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"  api  \\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/api/definition",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/api/project",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"projectPath\":\"/tmp/proj\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/api/project",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"projectPath\":\"/tmp/other\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/api/project",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/worker/project",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/ghost/project",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"ghost\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/%20%20%20/project",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"service name is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/project",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]},{\"name\":\"fresh\",\"services\":[\"api\",\"worker\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]},{\"name\":\"fresh\",\"services\":[\"api\",\"worker\"]},{\"name\":\"hollow\",\"services\":[]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]},{\"name\":\"fresh\",\"services\":[\"api\",\"worker\"]},{\"name\":\"hollow\",\"services\":[]},{\"name\":\"trimmed\",\"services\":[\"api\",\"worker\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]},{\"name\":\"hollow\",\"services\":[]},{\"name\":\"trimmed\",\"services\":[\"api\",\"worker\"]},{\"name\":\"renamed\",\"services\":[\"api\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]},{\"name\":\"hollow\",\"services\":[]},{\"name\":\"trimmed\",\"services\":[\"api\",\"worker\"]},{\"name\":\"renamed\",\"services\":[\"api\"]},{\"name\":\"late\",\"services\":[\"api\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"worker\",\"dependsOn\":[\"api\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\",\"worker\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[\"worker\"]},{\"name\":\"hollow\",\"services\":[]},{\"name\":\"trimmed\",\"services\":[\"api\",\"worker\"]},{\"name\":\"renamed\",\"services\":[\"api\"]},{\"name\":\"late\",\"services\":[\"api\"]},{\"name\":\"dangling\",\"services\":[\"ghost\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bundles",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles/ghost/restart",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Bundle \\\"ghost\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles/hollow/restart",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bundles/hollow/restart",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles/solo/restart",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Port 4001 is already in use for api (held by pid %%PID%% — node --import tsx scripts/check-service-config-parity.ts %%REPO%%/target/debug/nomoreide).\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles/leaf/restart",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"db\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57803,\"startedAt\":\"2026-08-31T06:12:16.428Z\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"services\":{\"worker\":{\"name\":\"worker\",\"state\":\"stopped\"},\"db\":{\"name\":\"db\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57803,\"startedAt\":\"2026-08-31T06:12:16.428Z\"}}}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles/ghost/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Bundle \\\"ghost\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bundles/ghost/stop",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Bundle \\\"ghost\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/ghost/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"ghost\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/api/start",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Port 4001 is already in use for api (held by pid %%PID%% — node --import tsx scripts/check-service-config-parity.ts %%REPO%%/target/debug/nomoreide).\",\"conflict\":{\"code\":\"PORT_IN_USE\",\"port\":4001,\"holder\":{\"pid\":%%PID%%,\"pgid\":%%PID%%,\"command\":\"node --import tsx scripts/check-service-config-parity.ts %%REPO%%/target/debug/nomoreide\"}}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/ghost/stop",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"ghost\",\"state\":\"stopped\"}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/services/ghost",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"ghost\\\" is not registered.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/services/%20%20%20",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"service name is required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/worker",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/services/worker",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web ui\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[]},{\"name\":\"hollow\",\"services\":[]},{\"name\":\"trimmed\",\"services\":[\"api\"]},{\"name\":\"renamed\",\"services\":[\"api\"]},{\"name\":\"late\",\"services\":[\"api\"]},{\"name\":\"dangling\",\"services\":[\"ghost\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/services/worker",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"worker\\\" is not registered.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/services/web%20ui",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"db\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"api\",\"port\":4001,\"dependsOn\":[\"db\",\"db\",\"api\",\"nowhere\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"left\",\"dependsOn\":[\"right\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"right\",\"dependsOn\":[\"left\"],\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"kind\":\"local\",\"port\":4002,\"description\":\"everything set\",\"dependsOn\":[\"db\"],\"projectPath\":\"/tmp/assigned\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[{\"name\":\"stack\",\"services\":[\"api\"]},{\"name\":\"leaf\",\"services\":[\"db\"]},{\"name\":\"solo\",\"services\":[]},{\"name\":\"hollow\",\"services\":[]},{\"name\":\"trimmed\",\"services\":[\"api\"]},{\"name\":\"renamed\",\"services\":[\"api\"]},{\"name\":\"late\",\"services\":[\"api\"]},{\"name\":\"dangling\",\"services\":[\"ghost\"]}],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    }
+  ],
+  "entries": []
+}

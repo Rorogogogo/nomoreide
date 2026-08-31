@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "gate": "approval",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"No active agent session to approve.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"No active agent session to approve.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"No active agent session to approve.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"Missing request id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"Missing request id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"Missing request id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"Malformed approval request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"Missing request id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"Missing request id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"Missing request id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"Missing request id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cannot read properties of null (reading 'requestId')\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"No active agent session to approve.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approval",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"decision\":\"deny\",\"reason\":\"No active agent session to approve.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/chat/approval",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sessionId and requestId are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sessionId and requestId are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sessionId and requestId are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sessionId and requestId are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Expected property name or '}' in JSON at position 1 (line 1 column 2)\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sessionId and requestId are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sessionId and requestId are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat/approve",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cannot read properties of null (reading 'sessionId')\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/chat/approve",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

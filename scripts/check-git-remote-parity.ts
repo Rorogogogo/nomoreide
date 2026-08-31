@@ -263,7 +263,7 @@ try {
   }
 } finally {
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 const total = sequence.filter((step) => !isFixture(step)).length + finalReads().length;

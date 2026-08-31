@@ -1,0 +1,277 @@
+{
+  "version": 1,
+  "gate": "git-remote",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/git/merge",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"branch is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/merge",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"branch is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/rebase",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"branch is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/merge",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown repository: nope\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/push",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown repository: nope\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/pull",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown repository: nope\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/merge",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Merge failed and was aborted.\\nmerge: nowhere - not something we can merge\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/merge",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Commit or stash local changes before merge.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/rebase",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Commit or stash local changes before rebase.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"ahead\":0,\"behind\":0,\"files\":[{\"index\":\" \",\"workingTree\":\"M\",\"path\":\"src/main.rs\"}]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/push",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"branch 'master' set up to track 'origin/master'.\\n\",\"branch\":\"master\",\"setUpstream\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"upstream\":\"origin/master\",\"ahead\":0,\"behind\":0,\"files\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/push",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"To %%HOME%%/remote.git\\n   8cf6374..287a87f  master -> master\\n\",\"branch\":\"master\",\"setUpstream\":false}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"upstream\":\"origin/master\",\"ahead\":0,\"behind\":0,\"files\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/push",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"branch 'mirrored' set up to track 'mirror/mirrored'.\\n\",\"branch\":\"mirrored\",\"setUpstream\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/pull",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Updating 287a87f..21d613e\\nFast-forward\\n remote-only.txt | 1 +\\n 1 file changed, 1 insertion(+)\\n create mode 100644 remote-only.txt\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"upstream\":\"origin/master\",\"ahead\":0,\"behind\":0,\"files\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/default-branch/pull",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"branch\":\"master\",\"output\":\"Switched to master.\\nYour branch is up to date with 'origin/master'.\\n\\nAlready up to date.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"upstream\":\"origin/master\",\"ahead\":0,\"behind\":0,\"files\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/default-branch/pull",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"branch\":\"master\",\"output\":\"Switched to master.\\nYour branch is up to date with 'origin/master'.\\n\\nAlready up to date.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/merge",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Merge made by the 'ort' strategy.\\n feature.txt | 1 +\\n 1 file changed, 1 insertion(+)\\n create mode 100644 feature.txt\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"upstream\":\"origin/master\",\"ahead\":2,\"behind\":0,\"files\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/rebase",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Rebasing (1/2)\\rRebasing (2/2)\\r\\r\\u001b[KSuccessfully rebased and updated refs/heads/master.\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"upstream\":\"origin/master\",\"ahead\":3,\"behind\":2,\"files\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/default-branch/pull",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"From %%HOME%%/remote\\n   21d613e..dfd1761  master     -> origin/master\\nhint: Diverging branches can't be fast-forwarded, you need to either:\\nhint: \\nhint: \\tgit merge --no-ff\\nhint: \\nhint: or:\\nhint: \\nhint: \\tgit rebase\\nhint: \\nhint: Disable this message with \\\"git config advice.diverging false\\\"\\nfatal: Not possible to fast-forward, aborting.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/pull",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"hint: Diverging branches can't be fast-forwarded, you need to either:\\nhint: \\nhint: \\tgit merge --no-ff\\nhint: \\nhint: or:\\nhint: \\nhint: \\tgit rebase\\nhint: \\nhint: Disable this message with \\\"git config advice.diverging false\\\"\\nfatal: Not possible to fast-forward, aborting.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/merge",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Merge failed and was aborted.\\nAuto-merging src/main.rs\\nCONFLICT (content): Merge conflict in src/main.rs\\nAutomatic merge failed; fix conflicts and then commit the result.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"upstream\":\"origin/master\",\"ahead\":3,\"behind\":3,\"files\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/rebase",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Rebase failed and was aborted.\\nRebasing (1/3)\\rRebasing (2/3)\\rerror: could not apply 6571d9c... second\\nhint: Resolve all conflicts manually, mark them as resolved with\\nhint: \\\"git add/rm <conflicted_files>\\\", then run \\\"git rebase --continue\\\".\\nhint: You can instead skip this commit: run \\\"git rebase --skip\\\".\\nhint: To abort and get back to the state before \\\"git rebase\\\", run \\\"git rebase --abort\\\".\\nCould not apply 6571d9c... second\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"master\",\"upstream\":\"origin/master\",\"ahead\":3,\"behind\":3,\"files\":[]}}"
+    }
+  ],
+  "entries": []
+}

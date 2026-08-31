@@ -21,7 +21,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
-import { GitActions } from "../src/core/git-actions.js";
+import { Recorder } from "../test/support/parity-recording.js";
+import type { Runtime } from "../test/support/runtime-parity.js";
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = resolve(import.meta.dirname, "..");
@@ -260,12 +261,23 @@ const cases: Case[] = [
 ];
 
 const roots: string[] = [];
+const recorder = new Recorder();
 try {
   let compared = 0;
   for (const scenario of cases) {
+    const referenceFixture = await build(scenario);
+    const candidateFixture = await build(scenario);
+    const recordingRuntime: Runtime = {
+      label: "reference",
+      command: "/nonexistent/in-process-reference",
+      args: [],
+      home: referenceFixture.base,
+      workspace: referenceFixture.repo,
+      port: 0,
+    };
     const observed = await Promise.all([
-      reference(await build(scenario), scenario),
-      candidate(await build(scenario), scenario),
+      recorder.recorded(recordingRuntime, scenario.id, () => reference(referenceFixture, scenario)),
+      candidate(candidateFixture, scenario),
     ]);
     if (dump) {
       console.log(`\n--- ${scenario.id}\nreference: ${JSON.stringify(observed[0], null, 2)}`);
@@ -283,6 +295,7 @@ try {
   }
   console.log(`GitActions parity passed (${compared} cases).`);
 } finally {
+  await recorder.finish();
   await Promise.all(
     roots.map((directory) => rm(directory, { recursive: true, force: true }).catch(() => {})),
   );
@@ -380,6 +393,7 @@ async function reference(
   fixture: { repo: string; base: string },
   scenario: Case,
 ): Promise<unknown> {
+  const { GitActions } = await import("../src/core/git-actions.js");
   const actions = new GitActions(fixture.repo);
   try {
     const value =

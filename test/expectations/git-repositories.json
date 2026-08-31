@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "gate": "git-repositories",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/git/repositories",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/repositories",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"path is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/repositories",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Please add an absolute path. Paths beginning with ~ are not expanded here.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/repositories",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not a Git repository. Choose a folder inside a Git worktree.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/repositories",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[],\"bundles\":[],\"gitRepositories\":[{\"name\":\"repo\",\"path\":\"%%WORKSPACE%%\"},{\"name\":\"second\",\"path\":\"%%HOME%%/second-repo\"}],\"selectedGitRepository\":\"second\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/repositories",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[],\"bundles\":[],\"gitRepositories\":[{\"name\":\"repo\",\"path\":\"%%WORKSPACE%%\"},{\"name\":\"second\",\"path\":\"%%HOME%%/third-repo\"}],\"selectedGitRepository\":\"second\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/select",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/select",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Git repository \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/select",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[],\"bundles\":[],\"gitRepositories\":[{\"name\":\"repo\",\"path\":\"%%WORKSPACE%%\"},{\"name\":\"second\",\"path\":\"%%HOME%%/third-repo\"}],\"selectedGitRepository\":\"second\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/board",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"names array is required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/board",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"names array is required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/board",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"board\":[\"repo\",\"second\"]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/board",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"board\":[]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/board",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"board\":[\"repo\",\"second\"]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/board",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"board\":[\"repo\",\"second\"]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/board",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"board\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/adopt",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"path is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/adopt",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not inside a Git repository: %%HOME%%/plain-dir\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/adopt",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"name\":\"second-repo\",\"path\":\"/private%%HOME%%/second-repo\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/create",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/create",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Project name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/create",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"name\":\"My-New-App\",\"path\":\"%%HOME%%/projects/My-New-App\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/create",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Destination already exists and is not empty: %%HOME%%/projects/My-New-App.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/clone",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"url is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/clone",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unrecognized repository URL: not-a-url\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/clone",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unrecognized repository URL: %%HOME%%/origin-fixture.git\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/clone",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unrecognized repository URL: %%HOME%%/origin-fixture.git\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/repositories/never-registered",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Git repository \\\"never-registered\\\" is not registered.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/repositories/second",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[],\"bundles\":[],\"gitRepositories\":[{\"name\":\"repo\",\"path\":\"%%WORKSPACE%%\"},{\"name\":\"second-repo\",\"path\":\"/private%%HOME%%/second-repo\"},{\"name\":\"My-New-App\",\"path\":\"%%HOME%%/projects/My-New-App\"}],\"selectedGitRepository\":\"My-New-App\",\"gitBoardRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/select",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[],\"bundles\":[],\"gitRepositories\":[{\"name\":\"repo\",\"path\":\"%%WORKSPACE%%\"},{\"name\":\"second-repo\",\"path\":\"/private%%HOME%%/second-repo\"},{\"name\":\"My-New-App\",\"path\":\"%%HOME%%/projects/My-New-App\"}],\"selectedGitRepository\":\"repo\",\"gitBoardRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/repositories/repo",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[],\"bundles\":[],\"gitRepositories\":[{\"name\":\"second-repo\",\"path\":\"/private%%HOME%%/second-repo\"},{\"name\":\"My-New-App\",\"path\":\"%%HOME%%/projects/My-New-App\"}],\"gitBoardRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/repositories/My%20New%20App",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Git repository \\\"My New App\\\" is not registered.\"}"
+    }
+  ],
+  "entries": []
+}

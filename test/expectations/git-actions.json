@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "gate": "git-actions",
+  "http": [],
+  "entries": [
+    {
+      "key": "origin-head-set",
+      "value": {
+        "status": "ok",
+        "value": {
+          "branch": "main",
+          "output": "Switched to main.\nYour branch is up to date with 'origin/main'.\n\nAlready up to date."
+        }
+      }
+    },
+    {
+      "key": "origin-head-unset-local-main",
+      "value": {
+        "status": "ok",
+        "value": {
+          "branch": "main",
+          "output": "Switched to main.\nYour branch is up to date with 'origin/main'.\n\nAlready up to date."
+        }
+      }
+    },
+    {
+      "key": "local-master-stands-in",
+      "value": {
+        "status": "error",
+        "message": "There is no tracking information for the current branch.\nPlease specify which branch you want to merge with.\nSee git-pull(1) for details.\n\n    git pull <remote> <branch>\n\nIf you wish to set tracking information for this branch you can do so with:\n\n    git branch --set-upstream-to=<remote>/<branch> master"
+      }
+    },
+    {
+      "key": "local-main-preferred-over-master",
+      "value": {
+        "status": "error",
+        "message": "There is no tracking information for the current branch.\nPlease specify which branch you want to merge with.\nSee git-pull(1) for details.\n\n    git pull <remote> <branch>\n\nIf you wish to set tracking information for this branch you can do so with:\n\n    git branch --set-upstream-to=<remote>/<branch> main"
+      }
+    },
+    {
+      "key": "no-default-anywhere",
+      "value": {
+        "status": "error",
+        "message": "Could not determine default branch for origin."
+      }
+    },
+    {
+      "key": "no-default-named-remote",
+      "value": {
+        "status": "error",
+        "message": "Could not determine default branch for upstream."
+      }
+    },
+    {
+      "key": "named-remote",
+      "value": {
+        "status": "ok",
+        "value": {
+          "branch": "main",
+          "output": "Switched to main.\nYour branch is up to date with 'upstream/main'.\n\nAlready up to date."
+        }
+      }
+    },
+    {
+      "key": "already-on-the-default-branch",
+      "value": {
+        "status": "ok",
+        "value": {
+          "branch": "main",
+          "output": "Switched to main.\nYour branch is up to date with 'origin/main'.\n\nAlready up to date."
+        }
+      }
+    },
+    {
+      "key": "dirty-working-tree",
+      "value": {
+        "status": "ok",
+        "value": {
+          "branch": "main",
+          "output": "Switched to main.\nM\tf.txt\nYour branch is up to date with 'origin/main'.\n\nAlready up to date."
+        }
+      }
+    },
+    {
+      "key": "fast-forwards-behind-the-remote",
+      "value": {
+        "status": "ok",
+        "value": {
+          "branch": "main",
+          "output": "Switched to main.\nYour branch is up to date with 'origin/main'.\n\nUpdating 82848a2..882fe4a\nFast-forward\n g.txt | 1 +\n 1 file changed, 1 insertion(+)\n create mode 100644 g.txt"
+        }
+      }
+    },
+    {
+      "key": "switch-refused",
+      "value": {
+        "status": "error",
+        "message": "error: The following untracked working tree files would be overwritten by checkout:\n\tx.txt\nPlease move or remove them before you switch branches.\nAborting"
+      }
+    },
+    {
+      "key": "default-branch-missing",
+      "value": {
+        "status": "error",
+        "message": "fatal: invalid reference: ghost"
+      }
+    },
+    {
+      "key": "no-remote-at-all",
+      "value": {
+        "status": "error",
+        "message": "There is no tracking information for the current branch.\nPlease specify which branch you want to merge with.\nSee git-pull(1) for details.\n\n    git pull <remote> <branch>\n\nIf you wish to set tracking information for this branch you can do so with:\n\n    git branch --set-upstream-to=<remote>/<branch> main"
+      }
+    },
+    {
+      "key": "remote-that-does-not-exist",
+      "value": {
+        "status": "error",
+        "message": "fatal: '<base>/absent.git' does not appear to be a git repository\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists."
+      }
+    },
+    {
+      "key": "diverged-cannot-fast-forward",
+      "value": {
+        "status": "error",
+        "message": "From <base>/origin\n   82848a2..f61cff7  main       -> origin/main\nhint: Diverging branches can't be fast-forwarded, you need to either:\nhint: \nhint: \tgit merge --no-ff\nhint: \nhint: or:\nhint: \nhint: \tgit rebase\nhint: \nhint: Disable this message with \"git config advice.diverging false\"\nfatal: Not possible to fast-forward, aborting."
+      }
+    },
+    {
+      "key": "plain-pull-with-an-upstream",
+      "value": {
+        "status": "ok",
+        "value": {
+          "output": "Already up to date.\n"
+        }
+      }
+    },
+    {
+      "key": "plain-pull-diverged",
+      "value": {
+        "status": "error",
+        "message": "From <base>/origin\n   82848a2..f61cff7  main       -> origin/main\nhint: Diverging branches can't be fast-forwarded, you need to either:\nhint: \nhint: \tgit merge --no-ff\nhint: \nhint: or:\nhint: \nhint: \tgit rebase\nhint: \nhint: Disable this message with \"git config advice.diverging false\"\nfatal: Not possible to fast-forward, aborting."
+      }
+    },
+    {
+      "key": "plain-pull-without-one",
+      "value": {
+        "status": "error",
+        "message": "There is no tracking information for the current branch.\nPlease specify which branch you want to merge with.\nSee git-pull(1) for details.\n\n    git pull <remote> <branch>\n\nIf you wish to set tracking information for this branch you can do so with:\n\n    git branch --set-upstream-to=<remote>/<branch> main"
+      }
+    }
+  ]
+}

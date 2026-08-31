@@ -1,0 +1,439 @@
+{
+  "version": 1,
+  "gate": "settings",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/settings",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":13,\"cursorStyle\":\"block\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}},\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":true},\"database\":{\"confirmWrites\":true,\"resultLimit\":100}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings?projectPath=%%HOME%%%2Frepo",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":13,\"cursorStyle\":\"block\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}},\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":true},\"database\":{\"confirmWrites\":true,\"resultLimit\":100}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings?projectPath=%20%20",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"projectPath must not be empty.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings?projectPath=%2Ftmp",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"projectPath must exactly match a registered repository.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings?projectPath=%2Fnope%2Fnowhere",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"projectPath must be an existing registered repository.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings?projectPath=%%HOME%%%2Flink",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":13,\"cursorStyle\":\"block\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}},\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":true},\"database\":{\"confirmWrites\":true,\"resultLimit\":100}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings?projectPath=%%HOME%%%2Frepo%2Fnested",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"projectPath must exactly match a registered repository.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":18,\"cursorStyle\":\"block\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":18,\"cursorStyle\":\"block\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}},\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":true},\"database\":{\"confirmWrites\":true,\"resultLimit\":100}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":18,\"cursorStyle\":\"bar\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":18,\"cursorStyle\":\"bar\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":18,\"cursorStyle\":\"bar\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":14,\"cursorStyle\":\"underline\",\"scrollback\":1000,\"copyOnSelect\":true,\"confirmTerminate\":false,\"smoothScroll\":false,\"externalTerminal\":\"ghostty\"}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 10,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be greater than or equal to 10\\\",\\n    \\\"path\\\": [\\n      \\\"terminal\\\",\\n      \\\"fontSize\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_big\\\",\\n    \\\"maximum\\\": 24,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be less than or equal to 24\\\",\\n    \\\"path\\\": [\\n      \\\"terminal\\\",\\n      \\\"fontSize\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"integer\\\",\\n    \\\"received\\\": \\\"float\\\",\\n    \\\"message\\\": \\\"Expected integer, received float\\\",\\n    \\\"path\\\": [\\n      \\\"terminal\\\",\\n      \\\"fontSize\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"number\\\",\\n    \\\"received\\\": \\\"string\\\",\\n    \\\"path\\\": [\\n      \\\"terminal\\\",\\n      \\\"fontSize\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected number, received string\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"received\\\": \\\"beam\\\",\\n    \\\"code\\\": \\\"invalid_enum_value\\\",\\n    \\\"options\\\": [\\n      \\\"block\\\",\\n      \\\"underline\\\",\\n      \\\"bar\\\"\\n    ],\\n    \\\"path\\\": [\\n      \\\"terminal\\\",\\n      \\\"cursorStyle\\\"\\n    ],\\n    \\\"message\\\": \\\"Invalid enum value. Expected 'block' | 'underline' | 'bar', received 'beam'\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 500,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be greater than or equal to 500\\\",\\n    \\\"path\\\": [\\n      \\\"terminal\\\",\\n      \\\"scrollback\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"unrecognized_keys\\\",\\n    \\\"keys\\\": [\\n      \\\"unknown\\\"\\n    ],\\n    \\\"path\\\": [\\n      \\\"terminal\\\"\\n    ],\\n    \\\"message\\\": \\\"Unrecognized key(s) in object: 'unknown'\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"unrecognized_keys\\\",\\n    \\\"keys\\\": [\\n      \\\"unknown\\\"\\n    ],\\n    \\\"path\\\": [],\\n    \\\"message\\\": \\\"Unrecognized key(s) in object: 'unknown'\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Request body must be valid JSON.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":14,\"cursorStyle\":\"underline\",\"scrollback\":1000,\"copyOnSelect\":true,\"confirmTerminate\":false,\"smoothScroll\":false,\"externalTerminal\":\"ghostty\"}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":14,\"cursorStyle\":\"underline\",\"scrollback\":1000,\"copyOnSelect\":true,\"confirmTerminate\":false,\"smoothScroll\":false,\"externalTerminal\":\"ghostty\"}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Request body must be a JSON object.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/global",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"projectPath is required.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Frepo",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":false},\"database\":{\"confirmWrites\":true,\"resultLimit\":100}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings?projectPath=%%HOME%%%2Frepo",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":14,\"cursorStyle\":\"underline\",\"scrollback\":1000,\"copyOnSelect\":true,\"confirmTerminate\":false,\"smoothScroll\":false,\"externalTerminal\":\"ghostty\"}},\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":false},\"database\":{\"confirmWrites\":true,\"resultLimit\":100}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Frepo",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":false},\"database\":{\"confirmWrites\":true,\"resultLimit\":250}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Frepo",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 10,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be greater than or equal to 10\\\",\\n    \\\"path\\\": [\\n      \\\"database\\\",\\n      \\\"resultLimit\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Frepo",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_big\\\",\\n    \\\"maximum\\\": 5000,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be less than or equal to 5000\\\",\\n    \\\"path\\\": [\\n      \\\"database\\\",\\n      \\\"resultLimit\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Frepo",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"unrecognized_keys\\\",\\n    \\\"keys\\\": [\\n      \\\"unknown\\\"\\n    ],\\n    \\\"path\\\": [\\n      \\\"logs\\\"\\n    ],\\n    \\\"message\\\": \\\"Unrecognized key(s) in object: 'unknown'\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Frepo",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"unrecognized_keys\\\",\\n    \\\"keys\\\": [\\n      \\\"unknown\\\"\\n    ],\\n    \\\"path\\\": [],\\n    \\\"message\\\": \\\"Unrecognized key(s) in object: 'unknown'\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Frepo",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"object\\\",\\n    \\\"received\\\": \\\"string\\\",\\n    \\\"path\\\": [\\n      \\\"logs\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected object, received string\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Frepo",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"boolean\\\",\\n    \\\"received\\\": \\\"string\\\",\\n    \\\"path\\\": [\\n      \\\"logs\\\",\\n      \\\"wrapLines\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected boolean, received string\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Frepo",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"integer\\\",\\n    \\\"received\\\": \\\"float\\\",\\n    \\\"message\\\": \\\"Expected integer, received float\\\",\\n    \\\"path\\\": [\\n      \\\"database\\\",\\n      \\\"resultLimit\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%2Ftmp",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"projectPath must exactly match a registered repository.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/project?projectPath=%%HOME%%%2Flink",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Project writes require an unchanged registered directory.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/project",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/project/reset?projectPath=%%HOME%%%2Frepo",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":true},\"database\":{\"confirmWrites\":true,\"resultLimit\":100}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings?projectPath=%%HOME%%%2Frepo",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":14,\"cursorStyle\":\"underline\",\"scrollback\":1000,\"copyOnSelect\":true,\"confirmTerminate\":false,\"smoothScroll\":false,\"externalTerminal\":\"ghostty\"}},\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":true},\"database\":{\"confirmWrites\":true,\"resultLimit\":100}}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/project/reset",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"projectPath is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/project/reset?projectPath=%%HOME%%%2Flink",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Project writes require an unchanged registered directory.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/global/reset",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":13,\"cursorStyle\":\"block\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"global\":{\"version\":1,\"terminal\":{\"fontSize\":13,\"cursorStyle\":\"block\",\"scrollback\":5000,\"copyOnSelect\":false,\"confirmTerminate\":true,\"smoothScroll\":true,\"externalTerminal\":\"automatic\"}},\"project\":{\"logs\":{\"showTimestamps\":true,\"wrapLines\":true},\"database\":{\"confirmWrites\":true,\"resultLimit\":100}}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/global/reset",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

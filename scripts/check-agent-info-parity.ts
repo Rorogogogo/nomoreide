@@ -43,6 +43,7 @@ import {
   RuntimeHarness,
   type Runtime,
 } from "../test/support/runtime-parity.js";
+import { gateName } from "../test/support/parity-recording.js";
 
 const argv = process.argv.slice(2).filter((a) => a !== "--dump");
 const dump = process.argv.slice(2).includes("--dump");
@@ -746,7 +747,12 @@ let failures = 0;
 let compared = 0;
 
 for (const phase of phases) {
-  const harness = new RuntimeHarness(join(root, phase.name));
+  // A recording per phase, not per gate. Every phase asks the same daemon the
+  // same paths under a different environment, so one recording for all four
+  // would let a phase be answered with another phase's replies — the replay
+  // server matches on method and path, and cannot tell them apart. Separate
+  // files keep each phase's answers, and its own ordering, to itself.
+  const harness = new RuntimeHarness(join(root, phase.name), `${gateName()}-${phase.name}`);
   try {
     const runtimes: Runtime[] = [];
     for (const spec of [referenceSpec(), candidateSpec(argv)]) {
@@ -834,7 +840,7 @@ for (const phase of phases) {
   }
 }
 
-await rm(root, { recursive: true, force: true });
+await rm(root, { recursive: true, force: true, maxRetries: 5 });
 
 if (failures > 0) {
   console.log(`\nagent-info parity: ${failures} case(s) diverged`);

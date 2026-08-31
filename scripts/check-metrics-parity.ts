@@ -160,6 +160,27 @@ function shape(value: unknown): unknown {
 
 const root = await mkdtemp(join(tmpdir(), "nmi-metrics-parity-"));
 const harness = new RuntimeHarness(root);
+// The process listing is every process on the machine, with its user and its
+// whole command line. `shape()` below collapses an array to `<array>`, so not
+// one of those rows is ever compared — and a recording is a file in this
+// repository, so storing them would publish whichever machine made the
+// recording and buy nothing. The array is kept, because its *shape* is what
+// the two runtimes are being asked to agree on.
+harness.redact(({ path, body }) => {
+  if (!path.startsWith("/api/metrics")) return undefined;
+  try {
+    const parsed = JSON.parse(body) as {
+      metrics?: { systemProcesses?: unknown[] };
+    };
+    if (!Array.isArray(parsed.metrics?.systemProcesses)) return undefined;
+    return JSON.stringify({
+      ...parsed,
+      metrics: { ...parsed.metrics, systemProcesses: [] },
+    });
+  } catch {
+    return undefined;
+  }
+});
 let failures = 0;
 
 try {
@@ -225,7 +246,7 @@ try {
   }
 } finally {
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 if (failures > 0) {

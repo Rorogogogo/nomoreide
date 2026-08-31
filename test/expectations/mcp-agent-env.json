@@ -1,0 +1,4294 @@
+{
+  "version": 1,
+  "gate": "mcp-agent-env",
+  "http": [],
+  "entries": [
+    {
+      "key": "status/all",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "command": "claude",
+            "available": true,
+            "resolvedPath": "<home>/bin/claude"
+          },
+          {
+            "agent": "codex",
+            "command": "codex",
+            "available": true,
+            "resolvedPath": "<home>/bin/codex"
+          },
+          {
+            "agent": "antigravity",
+            "command": "antigravity",
+            "available": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "configs/all",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "local-tool": {
+                "command": "node",
+                "args": [
+                  "server.js"
+                ],
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "zz-ordered-last": {
+                "command": "echo"
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "extra-fields": {
+                "command": "node",
+                "args": [
+                  "x.js"
+                ]
+              },
+              "both-shapes": {
+                "command": "node"
+              },
+              "no-shape": {
+                "command": ""
+              },
+              "empty-command": {
+                "command": ""
+              },
+              "empty-url": {
+                "command": ""
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "linear": {
+                "transport": "http",
+                "url": "https://mcp.linear.app/mcp"
+              },
+              "sse-one": {
+                "transport": "sse",
+                "url": "https://sse.example.test/x"
+              },
+              "url-without-a-type": {
+                "transport": "http",
+                "url": "https://bare.example.test/mcp"
+              },
+              "zz-remote-ordered-last": {
+                "transport": "http",
+                "url": "https://zz.example.test/mcp"
+              },
+              "aa-remote-ordered-first": {
+                "transport": "sse",
+                "url": "https://aa.example.test/mcp"
+              },
+              "extra-remote-fields": {
+                "transport": "http",
+                "url": "https://hdr.example.test/mcp",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "verify",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.claude/skills/verify"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "linear": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "linear-mcp"
+                ]
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "docs": {
+                "transport": "http",
+                "url": "https://docs.example.test/mcp"
+              },
+              "sse-remote": {
+                "transport": "http",
+                "url": "https://sse.example.test/codex"
+              },
+              "type-sse-remote": {
+                "transport": "http",
+                "url": "https://type-sse.example.test/codex"
+              },
+              "headed-remote": {
+                "transport": "http",
+                "url": "https://hdr.example.test/codex"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "nomoreide-ui-polish",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.agents/skills/nomoreide-ui-polish"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "ag-local": {
+                "command": "ag-server"
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "A": "b"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              }
+            },
+            "remoteMcpServers": {
+              "ag-remote": {
+                "transport": "sse",
+                "url": "https://ag.example.test/mcp"
+              },
+              "http-typed": {
+                "transport": "sse",
+                "url": "https://ht.example.test/mcp"
+              },
+              "headed-remote": {
+                "transport": "sse",
+                "url": "https://hdr.example.test/ag",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              },
+              "http-url-remote": {
+                "transport": "http",
+                "url": "https://hu.example.test/ag"
+              },
+              "both-urls": {
+                "transport": "http",
+                "url": "https://hu2.example.test/ag"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "configs/in-a-repo",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "local-tool": {
+                "command": "node",
+                "args": [
+                  "server.js"
+                ],
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "zz-ordered-last": {
+                "command": "echo"
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "extra-fields": {
+                "command": "node",
+                "args": [
+                  "x.js"
+                ]
+              },
+              "both-shapes": {
+                "command": "node"
+              },
+              "no-shape": {
+                "command": ""
+              },
+              "empty-command": {
+                "command": ""
+              },
+              "empty-url": {
+                "command": ""
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "linear": {
+                "transport": "http",
+                "url": "https://mcp.linear.app/mcp"
+              },
+              "sse-one": {
+                "transport": "sse",
+                "url": "https://sse.example.test/x"
+              },
+              "url-without-a-type": {
+                "transport": "http",
+                "url": "https://bare.example.test/mcp"
+              },
+              "zz-remote-ordered-last": {
+                "transport": "http",
+                "url": "https://zz.example.test/mcp"
+              },
+              "aa-remote-ordered-first": {
+                "transport": "sse",
+                "url": "https://aa.example.test/mcp"
+              },
+              "extra-remote-fields": {
+                "transport": "http",
+                "url": "https://hdr.example.test/mcp",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              }
+            },
+            "projectMcpServers": {
+              "scoped": {
+                "command": "python3",
+                "args": [
+                  "-m",
+                  "srv"
+                ]
+              }
+            },
+            "projectRemoteMcpServers": {
+              "scoped-remote": {
+                "transport": "http",
+                "url": "https://scoped.example.test/mcp"
+              }
+            },
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "review",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.claude/skills/review"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "linear": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "linear-mcp"
+                ]
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "docs": {
+                "transport": "http",
+                "url": "https://docs.example.test/mcp"
+              },
+              "sse-remote": {
+                "transport": "http",
+                "url": "https://sse.example.test/codex"
+              },
+              "type-sse-remote": {
+                "transport": "http",
+                "url": "https://type-sse.example.test/codex"
+              },
+              "headed-remote": {
+                "transport": "http",
+                "url": "https://hdr.example.test/codex"
+              }
+            },
+            "projectMcpServers": {
+              "store-codex": {
+                "command": "true"
+              }
+            },
+            "projectRemoteMcpServers": {
+              "store-codex-remote": {
+                "transport": "sse",
+                "url": "https://sc.example.test/mcp"
+              },
+              "store-codex-plain": {
+                "transport": "http",
+                "url": "https://sp.example.test/mcp"
+              }
+            },
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "project-codex-skill",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.agents/skills/project-codex-skill"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "ag-local": {
+                "command": "ag-server"
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "A": "b"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              }
+            },
+            "remoteMcpServers": {
+              "ag-remote": {
+                "transport": "sse",
+                "url": "https://ag.example.test/mcp"
+              },
+              "http-typed": {
+                "transport": "sse",
+                "url": "https://ht.example.test/mcp"
+              },
+              "headed-remote": {
+                "transport": "sse",
+                "url": "https://hdr.example.test/ag",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              },
+              "http-url-remote": {
+                "transport": "http",
+                "url": "https://hu.example.test/ag"
+              },
+              "both-urls": {
+                "transport": "http",
+                "url": "https://hu2.example.test/ag"
+              }
+            },
+            "projectMcpServers": {
+              "store-ag": {
+                "command": "true"
+              }
+            },
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "doctor/all",
+      "value": {
+        "isError": false,
+        "payload": {
+          "checks": [
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "claude is available (<home>/bin/claude)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "codex is available (<home>/bin/codex)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "warn",
+              "message": "antigravity is not available on PATH"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "claude config found at <home>/.claude.json"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "codex config found at <home>/.codex/config.toml"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "antigravity config found at <home>/.gemini/antigravity-cli/mcp_config.json"
+            }
+          ],
+          "hasIssues": true
+        }
+      }
+    },
+    {
+      "key": "doctor/in-a-repo",
+      "value": {
+        "isError": false,
+        "payload": {
+          "checks": [
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "claude is available (<home>/bin/claude)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "codex is available (<home>/bin/codex)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "warn",
+              "message": "antigravity is not available on PATH"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "claude config found at <home>/.claude.json"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "codex config found at <home>/.codex/config.toml"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "antigravity config found at <home>/.gemini/antigravity-cli/mcp_config.json"
+            }
+          ],
+          "hasIssues": true
+        }
+      }
+    },
+    {
+      "key": "configs/in-a-plain-directory",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "local-tool": {
+                "command": "node",
+                "args": [
+                  "server.js"
+                ],
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "zz-ordered-last": {
+                "command": "echo"
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "extra-fields": {
+                "command": "node",
+                "args": [
+                  "x.js"
+                ]
+              },
+              "both-shapes": {
+                "command": "node"
+              },
+              "no-shape": {
+                "command": ""
+              },
+              "empty-command": {
+                "command": ""
+              },
+              "empty-url": {
+                "command": ""
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "linear": {
+                "transport": "http",
+                "url": "https://mcp.linear.app/mcp"
+              },
+              "sse-one": {
+                "transport": "sse",
+                "url": "https://sse.example.test/x"
+              },
+              "url-without-a-type": {
+                "transport": "http",
+                "url": "https://bare.example.test/mcp"
+              },
+              "zz-remote-ordered-last": {
+                "transport": "http",
+                "url": "https://zz.example.test/mcp"
+              },
+              "aa-remote-ordered-first": {
+                "transport": "sse",
+                "url": "https://aa.example.test/mcp"
+              },
+              "extra-remote-fields": {
+                "transport": "http",
+                "url": "https://hdr.example.test/mcp",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "linear": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "linear-mcp"
+                ]
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "docs": {
+                "transport": "http",
+                "url": "https://docs.example.test/mcp"
+              },
+              "sse-remote": {
+                "transport": "http",
+                "url": "https://sse.example.test/codex"
+              },
+              "type-sse-remote": {
+                "transport": "http",
+                "url": "https://type-sse.example.test/codex"
+              },
+              "headed-remote": {
+                "transport": "http",
+                "url": "https://hdr.example.test/codex"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "ag-local": {
+                "command": "ag-server"
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "A": "b"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              }
+            },
+            "remoteMcpServers": {
+              "ag-remote": {
+                "transport": "sse",
+                "url": "https://ag.example.test/mcp"
+              },
+              "http-typed": {
+                "transport": "sse",
+                "url": "https://ht.example.test/mcp"
+              },
+              "headed-remote": {
+                "transport": "sse",
+                "url": "https://hdr.example.test/ag",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              },
+              "http-url-remote": {
+                "transport": "http",
+                "url": "https://hu.example.test/ag"
+              },
+              "both-urls": {
+                "transport": "http",
+                "url": "https://hu2.example.test/ag"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "configs/in-a-repo-subdirectory",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "local-tool": {
+                "command": "node",
+                "args": [
+                  "server.js"
+                ],
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "zz-ordered-last": {
+                "command": "echo"
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "extra-fields": {
+                "command": "node",
+                "args": [
+                  "x.js"
+                ]
+              },
+              "both-shapes": {
+                "command": "node"
+              },
+              "no-shape": {
+                "command": ""
+              },
+              "empty-command": {
+                "command": ""
+              },
+              "empty-url": {
+                "command": ""
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "linear": {
+                "transport": "http",
+                "url": "https://mcp.linear.app/mcp"
+              },
+              "sse-one": {
+                "transport": "sse",
+                "url": "https://sse.example.test/x"
+              },
+              "url-without-a-type": {
+                "transport": "http",
+                "url": "https://bare.example.test/mcp"
+              },
+              "zz-remote-ordered-last": {
+                "transport": "http",
+                "url": "https://zz.example.test/mcp"
+              },
+              "aa-remote-ordered-first": {
+                "transport": "sse",
+                "url": "https://aa.example.test/mcp"
+              },
+              "extra-remote-fields": {
+                "transport": "http",
+                "url": "https://hdr.example.test/mcp",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "review",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.claude/skills/review"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "linear": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "linear-mcp"
+                ]
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "docs": {
+                "transport": "http",
+                "url": "https://docs.example.test/mcp"
+              },
+              "sse-remote": {
+                "transport": "http",
+                "url": "https://sse.example.test/codex"
+              },
+              "type-sse-remote": {
+                "transport": "http",
+                "url": "https://type-sse.example.test/codex"
+              },
+              "headed-remote": {
+                "transport": "http",
+                "url": "https://hdr.example.test/codex"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "project-codex-skill",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.agents/skills/project-codex-skill"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "ag-local": {
+                "command": "ag-server"
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "A": "b"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              }
+            },
+            "remoteMcpServers": {
+              "ag-remote": {
+                "transport": "sse",
+                "url": "https://ag.example.test/mcp"
+              },
+              "http-typed": {
+                "transport": "sse",
+                "url": "https://ht.example.test/mcp"
+              },
+              "headed-remote": {
+                "transport": "sse",
+                "url": "https://hdr.example.test/ag",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              },
+              "http-url-remote": {
+                "transport": "http",
+                "url": "https://hu.example.test/ag"
+              },
+              "both-urls": {
+                "transport": "http",
+                "url": "https://hu2.example.test/ag"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "configs/below-a-skills-directory-with-no-repo",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "local-tool": {
+                "command": "node",
+                "args": [
+                  "server.js"
+                ],
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "zz-ordered-last": {
+                "command": "echo"
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "extra-fields": {
+                "command": "node",
+                "args": [
+                  "x.js"
+                ]
+              },
+              "both-shapes": {
+                "command": "node"
+              },
+              "no-shape": {
+                "command": ""
+              },
+              "empty-command": {
+                "command": ""
+              },
+              "empty-url": {
+                "command": ""
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "linear": {
+                "transport": "http",
+                "url": "https://mcp.linear.app/mcp"
+              },
+              "sse-one": {
+                "transport": "sse",
+                "url": "https://sse.example.test/x"
+              },
+              "url-without-a-type": {
+                "transport": "http",
+                "url": "https://bare.example.test/mcp"
+              },
+              "zz-remote-ordered-last": {
+                "transport": "http",
+                "url": "https://zz.example.test/mcp"
+              },
+              "aa-remote-ordered-first": {
+                "transport": "sse",
+                "url": "https://aa.example.test/mcp"
+              },
+              "extra-remote-fields": {
+                "transport": "http",
+                "url": "https://hdr.example.test/mcp",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<home>/.claude/skills/zulu"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "linear": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "linear-mcp"
+                ]
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "env": {
+                  "TOKEN": "shh"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              },
+              "http-url-remote": {
+                "command": ""
+              }
+            },
+            "remoteMcpServers": {
+              "docs": {
+                "transport": "http",
+                "url": "https://docs.example.test/mcp"
+              },
+              "sse-remote": {
+                "transport": "http",
+                "url": "https://sse.example.test/codex"
+              },
+              "type-sse-remote": {
+                "transport": "http",
+                "url": "https://type-sse.example.test/codex"
+              },
+              "headed-remote": {
+                "transport": "http",
+                "url": "https://hdr.example.test/codex"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<home>/.agents/skills/portable"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "ag-local": {
+                "command": "ag-server"
+              },
+              "zz-ordered-last": {
+                "command": "echo",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "A": "b"
+                }
+              },
+              "aa-ordered-first": {
+                "command": "echo"
+              }
+            },
+            "remoteMcpServers": {
+              "ag-remote": {
+                "transport": "sse",
+                "url": "https://ag.example.test/mcp"
+              },
+              "http-typed": {
+                "transport": "sse",
+                "url": "https://ht.example.test/mcp"
+              },
+              "headed-remote": {
+                "transport": "sse",
+                "url": "https://hdr.example.test/ag",
+                "headers": {
+                  "X-Token": "shh"
+                }
+              },
+              "http-url-remote": {
+                "transport": "http",
+                "url": "https://hu.example.test/ag"
+              },
+              "both-urls": {
+                "transport": "http",
+                "url": "https://hu2.example.test/ag"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "configs/reject-an-empty-cwd",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_read_configs' parameter validation failed: cwd: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "doctor/reject-a-cwd-of-the-wrong-type",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_doctor' parameter validation failed: cwd: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "status/ignore-an-unknown-argument",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "command": "claude",
+            "available": true,
+            "resolvedPath": "<home>/bin/claude"
+          },
+          {
+            "agent": "codex",
+            "command": "codex",
+            "available": true,
+            "resolvedPath": "<home>/bin/codex"
+          },
+          {
+            "agent": "antigravity",
+            "command": "antigravity",
+            "available": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "configs/with-configs-that-do-not-parse",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": false,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "verify",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.claude/skills/verify"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "nomoreide-ui-polish",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.agents/skills/nomoreide-ui-polish"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "doctor/with-configs-that-do-not-parse",
+      "value": {
+        "isError": false,
+        "payload": {
+          "checks": [
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "claude is available (<home>/bin/claude)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "codex is available (<home>/bin/codex)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "warn",
+              "message": "antigravity is not available on PATH"
+            },
+            {
+              "label": "Config file",
+              "status": "warn",
+              "message": "claude has no config at <home>/.claude.json"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "codex config found at <home>/.codex/config.toml"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "antigravity config found at <home>/.gemini/antigravity-cli/mcp_config.json"
+            }
+          ],
+          "hasIssues": true
+        }
+      }
+    },
+    {
+      "key": "configs/with-the-parse-failures-swapped",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "verify",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.claude/skills/verify"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "nomoreide-ui-polish",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.agents/skills/nomoreide-ui-polish"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "doctor/with-the-parse-failures-swapped",
+      "value": {
+        "isError": false,
+        "payload": {
+          "checks": [
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "claude is available (<home>/bin/claude)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "codex is available (<home>/bin/codex)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "warn",
+              "message": "antigravity is not available on PATH"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "claude config found at <home>/.claude.json"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "codex config found at <home>/.codex/config.toml"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "antigravity config found at <home>/.gemini/antigravity-cli/mcp_config.json"
+            }
+          ],
+          "hasIssues": true
+        }
+      }
+    },
+    {
+      "key": "configs/with-no-claude-config",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": false,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "verify",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.claude/skills/verify"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "nomoreide-ui-polish",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.agents/skills/nomoreide-ui-polish"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "doctor/with-no-claude-config",
+      "value": {
+        "isError": false,
+        "payload": {
+          "checks": [
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "claude is available (<home>/bin/claude)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "codex is available (<home>/bin/codex)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "warn",
+              "message": "antigravity is not available on PATH"
+            },
+            {
+              "label": "Config file",
+              "status": "warn",
+              "message": "claude has no config at <home>/.claude.json"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "codex config found at <home>/.codex/config.toml"
+            },
+            {
+              "label": "Config file",
+              "status": "ok",
+              "message": "antigravity config found at <home>/.gemini/antigravity-cli/mcp_config.json"
+            }
+          ],
+          "hasIssues": true
+        }
+      }
+    },
+    {
+      "key": "configs/with-no-config-at-all",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": false,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "verify",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.claude/skills/verify"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": false,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "nomoreide-ui-polish",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.agents/skills/nomoreide-ui-polish"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": false,
+            "mcpServers": {},
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "doctor/with-no-config-at-all",
+      "value": {
+        "isError": false,
+        "payload": {
+          "checks": [
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "claude is available (<home>/bin/claude)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "codex is available (<home>/bin/codex)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "warn",
+              "message": "antigravity is not available on PATH"
+            },
+            {
+              "label": "Config file",
+              "status": "warn",
+              "message": "claude has no config at <home>/.claude.json"
+            },
+            {
+              "label": "Config file",
+              "status": "warn",
+              "message": "codex has no config at <home>/.codex/config.toml"
+            },
+            {
+              "label": "Config file",
+              "status": "warn",
+              "message": "antigravity has no config at <home>/.gemini/antigravity-cli/mcp_config.json"
+            }
+          ],
+          "hasIssues": true
+        }
+      }
+    },
+    {
+      "key": "status/with-the-planted-stubs-removed",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "command": "claude",
+            "available": true,
+            "resolvedPath": "%%USER-HOME%%/.local/bin/claude"
+          },
+          {
+            "agent": "codex",
+            "command": "codex",
+            "available": true,
+            "resolvedPath": "/opt/homebrew/bin/codex"
+          },
+          {
+            "agent": "antigravity",
+            "command": "antigravity",
+            "available": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "doctor/with-the-planted-stubs-removed",
+      "value": {
+        "isError": false,
+        "payload": {
+          "checks": [
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "claude is available (%%USER-HOME%%/.local/bin/claude)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "ok",
+              "message": "codex is available (/opt/homebrew/bin/codex)"
+            },
+            {
+              "label": "Agent CLI",
+              "status": "warn",
+              "message": "antigravity is not available on PATH"
+            },
+            {
+              "label": "Config file",
+              "status": "warn",
+              "message": "claude has no config at <home>/.claude.json"
+            },
+            {
+              "label": "Config file",
+              "status": "warn",
+              "message": "codex has no config at <home>/.codex/config.toml"
+            },
+            {
+              "label": "Config file",
+              "status": "warn",
+              "message": "antigravity has no config at <home>/.gemini/antigravity-cli/mcp_config.json"
+            }
+          ],
+          "hasIssues": true
+        }
+      }
+    },
+    {
+      "key": "write/replant",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "kept": {
+                "command": "true"
+              },
+              "doomed": {
+                "command": "false"
+              }
+            },
+            "remoteMcpServers": {
+              "remote-kept": {
+                "transport": "http",
+                "url": "https://k.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "verify",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.claude/skills/verify"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "kept": {
+                "command": "true"
+              },
+              "doomed": {
+                "command": "false"
+              }
+            },
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "nomoreide-ui-polish",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.agents/skills/nomoreide-ui-polish"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "kept": {
+                "command": "true"
+              }
+            },
+            "remoteMcpServers": {},
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "write/add-stdio",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "claude",
+          "key": "added",
+          "backups": [
+            "<home>/.claude.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-remote",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "claude",
+          "key": "added-remote",
+          "backups": [
+            "<home>/.claude.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-project-scoped",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "claude",
+          "key": "added-project",
+          "backups": [
+            "<home>/.claude.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-to-codex",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "codex",
+          "key": "added",
+          "backups": [
+            "<home>/.codex/config.toml.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-to-antigravity",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "antigravity",
+          "key": "added",
+          "backups": [
+            "<home>/.gemini/antigravity-cli/mcp_config.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-remote-to-codex",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "codex",
+          "key": "added-remote",
+          "backups": [
+            "<home>/.codex/config.toml.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-codex-with-env",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "codex",
+          "key": "added-env",
+          "backups": [
+            "<home>/.codex/config.toml.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-antigravity-stdio",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "antigravity",
+          "key": "added-stdio",
+          "backups": [
+            "<home>/.gemini/antigravity-cli/mcp_config.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-antigravity-sse",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "antigravity",
+          "key": "added-sse",
+          "backups": [
+            "<home>/.gemini/antigravity-cli/mcp_config.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-overwrites",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "claude",
+          "key": "added",
+          "backups": [
+            "<home>/.claude.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-with-neither",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_agents_add_mcp' execution failed: Provide either command (stdio server) or url (remote server)."
+      }
+    },
+    {
+      "key": "write/add-to-a-missing-scope",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "codex",
+          "key": "nope",
+          "backups": [
+            "<repo:demo>/.brainctl/project-mcps.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-project-remote-to-codex",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "codex",
+          "key": "proj-remote",
+          "backups": [
+            "<repo:demo>/.brainctl/project-mcps.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-claude-remote-with-no-transport",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "claude",
+          "key": "added-default",
+          "backups": [
+            "<home>/.claude.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/add-antigravity-with-two-env-keys",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "antigravity",
+          "key": "added-two-env",
+          "backups": [
+            "<home>/.gemini/antigravity-cli/mcp_config.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/after-the-adds",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "kept": {
+                "command": "true"
+              },
+              "doomed": {
+                "command": "false"
+              },
+              "added": {
+                "command": "other",
+                "args": []
+              }
+            },
+            "remoteMcpServers": {
+              "remote-kept": {
+                "transport": "http",
+                "url": "https://k.example.test/mcp"
+              },
+              "added-remote": {
+                "transport": "sse",
+                "url": "https://a.example.test/mcp"
+              },
+              "added-default": {
+                "transport": "http",
+                "url": "https://d.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {
+              "scoped": {
+                "command": "python3"
+              },
+              "added-project": {
+                "command": "true",
+                "args": []
+              }
+            },
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "review",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.claude/skills/review"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "kept": {
+                "command": "true"
+              },
+              "doomed": {
+                "command": "false"
+              },
+              "added": {
+                "command": "node",
+                "args": [
+                  "a.js"
+                ]
+              },
+              "added-env": {
+                "command": "true",
+                "env": {
+                  "K": "v"
+                }
+              }
+            },
+            "remoteMcpServers": {
+              "added-remote": {
+                "transport": "http",
+                "url": "https://c.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {
+              "store-codex": {
+                "command": "true"
+              },
+              "nope": {
+                "command": "true"
+              }
+            },
+            "projectRemoteMcpServers": {
+              "store-codex-remote": {
+                "transport": "sse",
+                "url": "https://sc.example.test/mcp"
+              },
+              "store-codex-plain": {
+                "transport": "http",
+                "url": "https://sp.example.test/mcp"
+              },
+              "proj-remote": {
+                "transport": "sse",
+                "url": "https://p.example.test/mcp"
+              }
+            },
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.codex/skills/refactor"
+              },
+              {
+                "name": "project-codex-skill",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.agents/skills/project-codex-skill"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "kept": {
+                "command": "true"
+              },
+              "added-stdio": {
+                "command": "true",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "K": "v"
+                }
+              },
+              "added-two-env": {
+                "command": "true",
+                "args": [],
+                "env": {
+                  "AAA": "1",
+                  "BBB": "2"
+                }
+              }
+            },
+            "remoteMcpServers": {
+              "added": {
+                "transport": "http",
+                "url": "https://ag.example.test/mcp"
+              },
+              "added-sse": {
+                "transport": "sse",
+                "url": "https://s.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {
+              "store-ag": {
+                "command": "true"
+              }
+            },
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "write/remove",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "remove",
+                "name": "doomed",
+                "sourceAgent": "claude",
+                "sourceScope": "user"
+              },
+              "ok": true,
+              "summary": "Remove MCP \"doomed\" from Claude Code (user)",
+              "backups": [
+                "<home>/.claude.json.bak.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<home>/.claude.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/remove-missing",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": false,
+          "applied": 0,
+          "failed": 1,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "remove",
+                "name": "never-there",
+                "sourceAgent": "claude",
+                "sourceScope": "user"
+              },
+              "ok": false,
+              "summary": "Remove MCP \"never-there\" from Claude Code (user)",
+              "backups": [],
+              "error": "MCP \"never-there\" not found in Claude Code user scope."
+            }
+          ],
+          "backups": []
+        }
+      }
+    },
+    {
+      "key": "write/move-to-project",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "move",
+                "name": "kept",
+                "sourceAgent": "claude",
+                "sourceScope": "user",
+                "targetAgent": "claude",
+                "targetScope": "project"
+              },
+              "ok": true,
+              "summary": "Move MCP \"kept\" from Claude Code (user) to Claude Code (project)",
+              "backups": [
+                "<home>/.claude.json.bak.<stamp>",
+                "<home>/.claude.json.bak.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<home>/.claude.json.bak.<stamp>",
+            "<home>/.claude.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/move-back",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "move",
+                "name": "scoped",
+                "sourceAgent": "claude",
+                "sourceScope": "project",
+                "targetAgent": "claude",
+                "targetScope": "user"
+              },
+              "ok": true,
+              "summary": "Move MCP \"scoped\" from Claude Code (project) to Claude Code (user)",
+              "backups": [
+                "<home>/.claude.json.bak.<stamp>",
+                "<home>/.claude.json.bak.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<home>/.claude.json.bak.<stamp>",
+            "<home>/.claude.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/move-missing",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": false,
+          "applied": 0,
+          "failed": 1,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "move",
+                "name": "never-there",
+                "sourceAgent": "claude",
+                "sourceScope": "user",
+                "targetAgent": "claude",
+                "targetScope": "project"
+              },
+              "ok": false,
+              "summary": "Move MCP \"never-there\" from Claude Code (user) to Claude Code (project)",
+              "backups": [],
+              "error": "MCP \"never-there\" not found in Claude Code user scope."
+            }
+          ],
+          "backups": []
+        }
+      }
+    },
+    {
+      "key": "write/remove-from-codex",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "remove",
+                "name": "doomed",
+                "sourceAgent": "codex",
+                "sourceScope": "user"
+              },
+              "ok": true,
+              "summary": "Remove MCP \"doomed\" from Codex CLI (user)",
+              "backups": [
+                "<home>/.codex/config.toml.bak.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<home>/.codex/config.toml.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/remove-missing-from-codex",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": false,
+          "applied": 0,
+          "failed": 1,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "remove",
+                "name": "never-there",
+                "sourceAgent": "codex",
+                "sourceScope": "user"
+              },
+              "ok": false,
+              "summary": "Remove MCP \"never-there\" from Codex CLI (user)",
+              "backups": [],
+              "error": "MCP \"never-there\" not found in Codex CLI user scope."
+            }
+          ],
+          "backups": []
+        }
+      }
+    },
+    {
+      "key": "write/remove-missing-from-antigravity",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": false,
+          "applied": 0,
+          "failed": 1,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "remove",
+                "name": "never-there",
+                "sourceAgent": "antigravity",
+                "sourceScope": "user"
+              },
+              "ok": false,
+              "summary": "Remove MCP \"never-there\" from Antigravity (user)",
+              "backups": [],
+              "error": "MCP \"never-there\" not found in Antigravity user scope."
+            }
+          ],
+          "backups": []
+        }
+      }
+    },
+    {
+      "key": "write/move-codex-to-project",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "move",
+                "name": "kept",
+                "sourceAgent": "codex",
+                "sourceScope": "user",
+                "targetAgent": "codex",
+                "targetScope": "project"
+              },
+              "ok": true,
+              "summary": "Move MCP \"kept\" from Codex CLI (user) to Codex CLI (project)",
+              "backups": [
+                "<repo:demo>/.brainctl/project-mcps.json.bak.<stamp>",
+                "<home>/.codex/config.toml.bak.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<repo:demo>/.brainctl/project-mcps.json.bak.<stamp>",
+            "<home>/.codex/config.toml.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/move-antigravity-to-project",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "move",
+                "name": "kept",
+                "sourceAgent": "antigravity",
+                "sourceScope": "user",
+                "targetAgent": "antigravity",
+                "targetScope": "project"
+              },
+              "ok": true,
+              "summary": "Move MCP \"kept\" from Antigravity (user) to Antigravity (project)",
+              "backups": [
+                "<repo:demo>/.brainctl/project-mcps.json.bak.<stamp>",
+                "<home>/.gemini/antigravity-cli/mcp_config.json.bak.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<repo:demo>/.brainctl/project-mcps.json.bak.<stamp>",
+            "<home>/.gemini/antigravity-cli/mcp_config.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/move-to-the-same-scope",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": false,
+          "applied": 0,
+          "failed": 1,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "move",
+                "name": "added",
+                "sourceAgent": "claude",
+                "sourceScope": "user",
+                "targetAgent": "claude",
+                "targetScope": "user"
+              },
+              "ok": false,
+              "summary": "Move MCP \"added\" from Claude Code (user) to Claude Code (user)",
+              "backups": [],
+              "error": "Source and target are the same; nothing to move."
+            }
+          ],
+          "backups": []
+        }
+      }
+    },
+    {
+      "key": "write/move-codex-skill",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "skill",
+                "action": "move",
+                "name": "refactor",
+                "sourceAgent": "codex",
+                "sourceScope": "user",
+                "targetAgent": "codex",
+                "targetScope": "project"
+              },
+              "ok": true,
+              "summary": "Move skill \"refactor\" from Codex CLI (user) to Codex CLI (project)",
+              "backups": [
+                "<home>/.config/nomoreide/agent-env-backups/refactor.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<home>/.config/nomoreide/agent-env-backups/refactor.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/snapshot-antigravity",
+      "value": {
+        "isError": false,
+        "payload": {
+          "agent": "antigravity",
+          "backups": [
+            "<home>/.gemini/antigravity-cli/mcp_config.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/after-the-moves",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "added": {
+                "command": "other",
+                "args": []
+              },
+              "scoped": {
+                "command": "python3",
+                "args": []
+              }
+            },
+            "remoteMcpServers": {
+              "remote-kept": {
+                "transport": "http",
+                "url": "https://k.example.test/mcp"
+              },
+              "added-remote": {
+                "transport": "sse",
+                "url": "https://a.example.test/mcp"
+              },
+              "added-default": {
+                "transport": "http",
+                "url": "https://d.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {
+              "added-project": {
+                "command": "true",
+                "args": []
+              },
+              "kept": {
+                "command": "true",
+                "args": []
+              }
+            },
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "review",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.claude/skills/review"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "added": {
+                "command": "node",
+                "args": [
+                  "a.js"
+                ]
+              },
+              "added-env": {
+                "command": "true",
+                "env": {
+                  "K": "v"
+                }
+              }
+            },
+            "remoteMcpServers": {
+              "added-remote": {
+                "transport": "http",
+                "url": "https://c.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {
+              "store-codex": {
+                "command": "true"
+              },
+              "nope": {
+                "command": "true"
+              },
+              "kept": {
+                "command": "true"
+              }
+            },
+            "projectRemoteMcpServers": {
+              "store-codex-remote": {
+                "transport": "sse",
+                "url": "https://sc.example.test/mcp"
+              },
+              "store-codex-plain": {
+                "transport": "http",
+                "url": "https://sp.example.test/mcp"
+              },
+              "proj-remote": {
+                "transport": "sse",
+                "url": "https://p.example.test/mcp"
+              }
+            },
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "project-codex-skill",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.agents/skills/project-codex-skill"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.agents/skills/refactor"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "added-stdio": {
+                "command": "true",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "K": "v"
+                }
+              },
+              "added-two-env": {
+                "command": "true",
+                "args": [],
+                "env": {
+                  "AAA": "1",
+                  "BBB": "2"
+                }
+              }
+            },
+            "remoteMcpServers": {
+              "added": {
+                "transport": "http",
+                "url": "https://ag.example.test/mcp"
+              },
+              "added-sse": {
+                "transport": "sse",
+                "url": "https://s.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {
+              "store-ag": {
+                "command": "true"
+              },
+              "kept": {
+                "command": "true"
+              }
+            },
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "write/snapshot",
+      "value": {
+        "isError": false,
+        "payload": {
+          "agent": "claude",
+          "backups": [
+            "<home>/.claude.json.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/snapshot-codex",
+      "value": {
+        "isError": false,
+        "payload": {
+          "agent": "codex",
+          "backups": [
+            "<home>/.codex/config.toml.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/move-skill",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "skill",
+                "action": "move",
+                "name": "summarise",
+                "sourceAgent": "claude",
+                "sourceScope": "user",
+                "targetAgent": "claude",
+                "targetScope": "project"
+              },
+              "ok": true,
+              "summary": "Move skill \"summarise\" from Claude Code (user) to Claude Code (project)",
+              "backups": [
+                "<home>/.config/nomoreide/agent-env-backups/summarise.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<home>/.config/nomoreide/agent-env-backups/summarise.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/move-skill-back",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "skill",
+                "action": "move",
+                "name": "summarise",
+                "sourceAgent": "claude",
+                "sourceScope": "project",
+                "targetAgent": "claude",
+                "targetScope": "user"
+              },
+              "ok": true,
+              "summary": "Move skill \"summarise\" from Claude Code (project) to Claude Code (user)",
+              "backups": [
+                "<home>/.config/nomoreide/agent-env-backups/summarise.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<home>/.config/nomoreide/agent-env-backups/summarise.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "write/move-skill-missing",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": false,
+          "applied": 0,
+          "failed": 1,
+          "results": [
+            {
+              "change": {
+                "category": "skill",
+                "action": "move",
+                "name": "nope",
+                "sourceAgent": "claude",
+                "sourceScope": "user",
+                "targetAgent": "claude",
+                "targetScope": "project"
+              },
+              "ok": false,
+              "summary": "Move skill \"nope\" from Claude Code (user) to Claude Code (project)",
+              "backups": [],
+              "error": "Skill \"nope\" not found in Claude Code user scope."
+            }
+          ],
+          "backups": []
+        }
+      }
+    },
+    {
+      "key": "write/move-skill-antigravity",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": false,
+          "applied": 0,
+          "failed": 1,
+          "results": [
+            {
+              "change": {
+                "category": "skill",
+                "action": "move",
+                "name": "summarise",
+                "sourceAgent": "antigravity",
+                "sourceScope": "user",
+                "targetAgent": "antigravity",
+                "targetScope": "project"
+              },
+              "ok": false,
+              "summary": "Move skill \"summarise\" from Antigravity (user) to Antigravity (project)",
+              "backups": [],
+              "error": "Antigravity has no project-scoped skills; Claude reads .claude/skills/ and Codex reads .agents/skills/."
+            }
+          ],
+          "backups": []
+        }
+      }
+    },
+    {
+      "key": "write/finally",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "added": {
+                "command": "other",
+                "args": []
+              },
+              "scoped": {
+                "command": "python3",
+                "args": []
+              }
+            },
+            "remoteMcpServers": {
+              "remote-kept": {
+                "transport": "http",
+                "url": "https://k.example.test/mcp"
+              },
+              "added-remote": {
+                "transport": "sse",
+                "url": "https://a.example.test/mcp"
+              },
+              "added-default": {
+                "transport": "http",
+                "url": "https://d.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {
+              "added-project": {
+                "command": "true",
+                "args": []
+              },
+              "kept": {
+                "command": "true",
+                "args": []
+              }
+            },
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "review",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.claude/skills/review"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "added": {
+                "command": "node",
+                "args": [
+                  "a.js"
+                ]
+              },
+              "added-env": {
+                "command": "true",
+                "env": {
+                  "K": "v"
+                }
+              }
+            },
+            "remoteMcpServers": {
+              "added-remote": {
+                "transport": "http",
+                "url": "https://c.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {
+              "store-codex": {
+                "command": "true"
+              },
+              "nope": {
+                "command": "true"
+              },
+              "kept": {
+                "command": "true"
+              }
+            },
+            "projectRemoteMcpServers": {
+              "store-codex-remote": {
+                "transport": "sse",
+                "url": "https://sc.example.test/mcp"
+              },
+              "store-codex-plain": {
+                "transport": "http",
+                "url": "https://sp.example.test/mcp"
+              },
+              "proj-remote": {
+                "transport": "sse",
+                "url": "https://p.example.test/mcp"
+              }
+            },
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "project-codex-skill",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.agents/skills/project-codex-skill"
+              },
+              {
+                "name": "refactor",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "<repo:demo>/.agents/skills/refactor"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "added-stdio": {
+                "command": "true",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "K": "v"
+                }
+              },
+              "added-two-env": {
+                "command": "true",
+                "args": [],
+                "env": {
+                  "AAA": "1",
+                  "BBB": "2"
+                }
+              }
+            },
+            "remoteMcpServers": {
+              "added": {
+                "transport": "http",
+                "url": "https://ag.example.test/mcp"
+              },
+              "added-sse": {
+                "transport": "sse",
+                "url": "https://s.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {
+              "store-ag": {
+                "command": "true"
+              },
+              "kept": {
+                "command": "true"
+              }
+            },
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "write/rebuilds-the-codex-section",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "agent": "codex",
+          "key": "nnn-added",
+          "backups": [
+            "<home>/.codex/config.toml.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "read/the-rebuilt-codex-section",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "added": {
+                "command": "other",
+                "args": []
+              },
+              "scoped": {
+                "command": "python3",
+                "args": []
+              }
+            },
+            "remoteMcpServers": {
+              "remote-kept": {
+                "transport": "http",
+                "url": "https://k.example.test/mcp"
+              },
+              "added-remote": {
+                "transport": "sse",
+                "url": "https://a.example.test/mcp"
+              },
+              "added-default": {
+                "transport": "http",
+                "url": "https://d.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "verify",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.claude/skills/verify"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "zzz-stdio": {
+                "command": "true",
+                "args": [
+                  "1",
+                  "true"
+                ]
+              },
+              "mmm-neither": {
+                "command": ""
+              },
+              "nnn-added": {
+                "command": "true"
+              }
+            },
+            "remoteMcpServers": {
+              "aaa-remote": {
+                "transport": "http",
+                "url": "https://aaa.example.test/mcp"
+              },
+              "bbb-both": {
+                "transport": "http",
+                "url": "https://bbb.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "nomoreide-ui-polish",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.agents/skills/nomoreide-ui-polish"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "added-stdio": {
+                "command": "true",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "K": "v"
+                }
+              },
+              "added-two-env": {
+                "command": "true",
+                "args": [],
+                "env": {
+                  "AAA": "1",
+                  "BBB": "2"
+                }
+              }
+            },
+            "remoteMcpServers": {
+              "added": {
+                "transport": "http",
+                "url": "https://ag.example.test/mcp"
+              },
+              "added-sse": {
+                "transport": "sse",
+                "url": "https://s.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "write/rebuilds-again-on-removal",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "applied": 1,
+          "failed": 0,
+          "results": [
+            {
+              "change": {
+                "category": "mcp",
+                "action": "remove",
+                "name": "mmm-neither",
+                "sourceAgent": "codex",
+                "sourceScope": "user"
+              },
+              "ok": true,
+              "summary": "Remove MCP \"mmm-neither\" from Codex CLI (user)",
+              "backups": [
+                "<home>/.codex/config.toml.bak.<stamp>"
+              ]
+            }
+          ],
+          "backups": [
+            "<home>/.codex/config.toml.bak.<stamp>"
+          ]
+        }
+      }
+    },
+    {
+      "key": "read/after-the-removal",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "agent": "claude",
+            "configPath": "<home>/.claude.json",
+            "exists": true,
+            "mcpServers": {
+              "added": {
+                "command": "other",
+                "args": []
+              },
+              "scoped": {
+                "command": "python3",
+                "args": []
+              }
+            },
+            "remoteMcpServers": {
+              "remote-kept": {
+                "transport": "http",
+                "url": "https://k.example.test/mcp"
+              },
+              "added-remote": {
+                "transport": "sse",
+                "url": "https://a.example.test/mcp"
+              },
+              "added-default": {
+                "transport": "http",
+                "url": "https://d.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "alpha",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/alpha"
+              },
+              {
+                "name": "broken",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/broken"
+              },
+              {
+                "name": "dirname-x",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/dirname-x"
+              },
+              {
+                "name": "no-skill-file",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/no-skill-file"
+              },
+              {
+                "name": "summarise",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/summarise"
+              },
+              {
+                "name": "zulu",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.claude/skills/zulu"
+              },
+              {
+                "name": "verify",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.claude/skills/verify"
+              }
+            ]
+          },
+          {
+            "agent": "codex",
+            "configPath": "<home>/.codex/config.toml",
+            "exists": true,
+            "mcpServers": {
+              "zzz-stdio": {
+                "command": "true",
+                "args": [
+                  "1",
+                  "true"
+                ]
+              },
+              "nnn-added": {
+                "command": "true"
+              }
+            },
+            "remoteMcpServers": {
+              "aaa-remote": {
+                "transport": "http",
+                "url": "https://aaa.example.test/mcp"
+              },
+              "bbb-both": {
+                "transport": "http",
+                "url": "https://bbb.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": [
+              {
+                "name": "aaa-first",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/aaa-first"
+              },
+              {
+                "name": "portable",
+                "source": "local",
+                "kind": "skill",
+                "scope": "user",
+                "installPath": "<home>/.agents/skills/portable"
+              },
+              {
+                "name": "nomoreide-ui-polish",
+                "source": "local",
+                "kind": "skill",
+                "scope": "project",
+                "installPath": "%%REPO%%/.agents/skills/nomoreide-ui-polish"
+              }
+            ]
+          },
+          {
+            "agent": "antigravity",
+            "configPath": "<home>/.gemini/antigravity-cli/mcp_config.json",
+            "exists": true,
+            "mcpServers": {
+              "added-stdio": {
+                "command": "true",
+                "args": [
+                  "--x"
+                ],
+                "env": {
+                  "K": "v"
+                }
+              },
+              "added-two-env": {
+                "command": "true",
+                "args": [],
+                "env": {
+                  "AAA": "1",
+                  "BBB": "2"
+                }
+              }
+            },
+            "remoteMcpServers": {
+              "added": {
+                "transport": "http",
+                "url": "https://ag.example.test/mcp"
+              },
+              "added-sse": {
+                "transport": "sse",
+                "url": "https://s.example.test/mcp"
+              }
+            },
+            "projectMcpServers": {},
+            "projectRemoteMcpServers": {},
+            "skills": []
+          }
+        ]
+      }
+    },
+    {
+      "key": "write/reject-a-missing-agent",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_add_mcp' parameter validation failed: agent: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-an-unknown-agent",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_add_mcp' parameter validation failed: agent: Invalid enum value. Expected 'claude' | 'codex' | 'antigravity', received 'nano'. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-an-empty-key",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_add_mcp' parameter validation failed: key: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-a-bad-transport",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_add_mcp' parameter validation failed: transport: Invalid enum value. Expected 'http' | 'sse', received 'grpc'. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-a-bad-scope",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_add_mcp' parameter validation failed: scope: Invalid enum value. Expected 'user' | 'project', received 'global'. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-bad-args",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_add_mcp' parameter validation failed: args.0: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-bad-env",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_add_mcp' parameter validation failed: env.A: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-remove-without-a-key",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_remove_mcp' parameter validation failed: key: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-a-missing-scope-pair",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_move_mcp_scope' parameter validation failed: fromScope: Required, toScope: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-a-bad-scope-pair",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_move_mcp_scope' parameter validation failed: toScope: Invalid enum value. Expected 'user' | 'project', received 'nowhere'. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-a-skill-move-without-a-name",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_move_skill_scope' parameter validation failed: skillName: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "write/reject-a-snapshot-without-an-agent",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_agents_snapshot_agent' parameter validation failed: agent: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tree/home",
+      "value": {
+        ".agents/skills/aaa-first/SKILL.md": "---\nname: aaa-first\ndescription: A.\n---\n\nA.\n",
+        ".agents/skills/portable/SKILL.md": "---\nname: portable\ndescription: P.\n---\n\nP.\n",
+        ".claude/skills/alpha/SKILL.md": "---\nname: alpha\ndescription: A.\n---\n\nA.\n",
+        ".claude/skills/broken/SKILL.md": "no frontmatter here\n",
+        ".claude/skills/dirname-x/SKILL.md": "---\nname: frontmatter-y\ndescription: Named twice.\n---\n\nBody.\n",
+        ".claude/skills/no-skill-file/notes.txt": "not a skill\n",
+        ".claude/skills/summarise/SKILL.md": "---\nname: summarise\n---\n\nS.\n",
+        ".claude/skills/zulu/SKILL.md": "---\nname: zulu\ndescription: Z.\n---\n\nZ.\n",
+        ".claude.json": "{\n  \"numStartups\": 7,\n  \"mcpServers\": {\n    \"remote-kept\": {\n      \"type\": \"http\",\n      \"url\": \"https://k.example.test/mcp\"\n    },\n    \"added\": {\n      \"type\": \"stdio\",\n      \"command\": \"other\",\n      \"args\": []\n    },\n    \"added-remote\": {\n      \"type\": \"sse\",\n      \"url\": \"https://a.example.test/mcp\"\n    },\n    \"added-default\": {\n      \"type\": \"http\",\n      \"url\": \"https://d.example.test/mcp\"\n    },\n    \"scoped\": {\n      \"type\": \"stdio\",\n      \"command\": \"python3\",\n      \"args\": []\n    }\n  },\n  \"projects\": {\n    \"<repo:demo>\": {\n      \"allowedTools\": [\n        \"Bash\"\n      ],\n      \"history\": [\n        {\n          \"display\": \"x\"\n        }\n      ],\n      \"mcpServers\": {\n        \"added-project\": {\n          \"type\": \"stdio\",\n          \"command\": \"true\",\n          \"args\": []\n        },\n        \"kept\": {\n          \"type\": \"stdio\",\n          \"command\": \"true\",\n          \"args\": []\n        }\n      }\n    },\n    \"/somewhere/else\": {\n      \"mcpServers\": {\n        \"elsewhere\": {\n          \"command\": \"true\"\n        }\n      }\n    }\n  },\n  \"tipsHistory\": {\n    \"a\": 1\n  }\n}\n",
+        ".codex/config.toml": "model = \"gpt-5\"\n\n[tui]\ntheme = \"dark\"\n\n[mcp_servers.zzz-stdio]\ncommand = \"true\"\nargs = [\"1\", \"true\"]\n\n[mcp_servers.nnn-added]\ncommand = \"true\"\n\n[mcp_servers.aaa-remote]\nurl = \"https://aaa.example.test/mcp\"\n\n[mcp_servers.bbb-both]\nurl = \"https://bbb.example.test/mcp\"\n",
+        ".config/nomoreide/agent-env-backups/refactor.<stamp>/SKILL.md": "---\nname: refactor\ndescription: Refactor code.\n---\n\nRefactor.\n",
+        ".config/nomoreide/agent-env-backups/summarise.<stamp>/SKILL.md": "---\nname: summarise\n---\n\nS.\n",
+        ".gemini/antigravity-cli/mcp_config.json": "{\n  \"schemaVersion\": 2,\n  \"mcpServers\": {\n    \"added\": {\n      \"httpUrl\": \"https://ag.example.test/mcp\"\n    },\n    \"added-stdio\": {\n      \"command\": \"true\",\n      \"args\": [\n        \"--x\"\n      ],\n      \"env\": {\n        \"K\": \"v\"\n      }\n    },\n    \"added-sse\": {\n      \"url\": \"https://s.example.test/mcp\"\n    },\n    \"added-two-env\": {\n      \"command\": \"true\",\n      \"args\": [],\n      \"env\": {\n        \"AAA\": \"1\",\n        \"BBB\": \"2\"\n      }\n    }\n  }\n}\n",
+        "deep/keep.md": "# deep\n"
+      }
+    },
+    {
+      "key": "tree/repository",
+      "value": {
+        ".agents/skills/project-codex-skill/SKILL.md": "---\nname: project-codex-skill\ndescription: P.\n---\n\nP.\n",
+        ".agents/skills/refactor/SKILL.md": "---\nname: refactor\ndescription: Refactor code.\n---\n\nRefactor.\n",
+        ".brainctl/project-mcps.json": "{\n  \"claude\": {\n    \"mcpServers\": {\n      \"store-claude\": {\n        \"command\": \"true\"\n      }\n    }\n  },\n  \"codex\": {\n    \"mcpServers\": {\n      \"store-codex\": {\n        \"command\": \"true\"\n      },\n      \"store-codex-remote\": {\n        \"transport\": \"sse\",\n        \"url\": \"https://sc.example.test/mcp\"\n      },\n      \"store-codex-plain\": {\n        \"url\": \"https://sp.example.test/mcp\"\n      },\n      \"nope\": {\n        \"command\": \"true\"\n      },\n      \"proj-remote\": {\n        \"transport\": \"sse\",\n        \"url\": \"https://p.example.test/mcp\"\n      },\n      \"kept\": {\n        \"command\": \"true\"\n      }\n    }\n  },\n  \"antigravity\": {\n    \"mcpServers\": {\n      \"store-ag\": {\n        \"command\": \"true\"\n      },\n      \"kept\": {\n        \"command\": \"true\"\n      }\n    }\n  }\n}\n",
+        ".claude/skills/review/SKILL.md": "---\nname: review\ndescription: Review code.\n---\n\nDo the review.\n",
+        ".codex/config.toml": "[mcp_servers.project-codex]\ncommand = \"true\"\n",
+        ".mcp.json": "{\n  \"mcpServers\": {\n    \"dot-mcp\": {\n      \"command\": \"true\"\n    }\n  }\n}\n",
+        "README.md": "# demo\n",
+        "nested/keep.md": "# nested\n"
+      }
+    }
+  ]
+}

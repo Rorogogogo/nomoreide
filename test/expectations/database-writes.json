@@ -1,0 +1,475 @@
+{
+  "version": 1,
+  "gate": "database-writes",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/objects?schema=main",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"objects\":[{\"schema\":\"main\",\"name\":\"catalogue\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNhdGFsb2d1ZSIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"catalogue\"},{\"schema\":\"main\",\"name\":\"composite\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNvbXBvc2l0ZSIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"composite\"},{\"schema\":\"main\",\"name\":\"del_commit\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9jb21taXQiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"del_commit\"},{\"schema\":\"main\",\"name\":\"del_expected\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9leHBlY3RlZCIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"del_expected\"},{\"schema\":\"main\",\"name\":\"del_gone\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9nb25lIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"del_gone\"},{\"schema\":\"main\",\"name\":\"del_locked\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9sb2NrZWQiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"del_locked\"},{\"schema\":\"main\",\"name\":\"del_mismatch\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9taXNtYXRjaCIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"del_mismatch\"},{\"schema\":\"main\",\"name\":\"del_preview\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9wcmV2aWV3Iiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"del_preview\"},{\"schema\":\"main\",\"name\":\"empty_export\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImVtcHR5X2V4cG9ydCIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"empty_export\"},{\"schema\":\"main\",\"name\":\"exec_commit\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfY29tbWl0Iiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"exec_commit\"},{\"schema\":\"main\",\"name\":\"exec_first\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfZmlyc3QiLCJraW5kIjoidGFibGUifQ\",\"qualifiedName\":\"exec_first\"},{\"schema\":\"main\",\"name\":\"exec_locked\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfbG9ja2VkIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"exec_locked\"},{\"schema\":\"main\",\"name\":\"exec_preview\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfcHJldmlldyIsImtpbmQiOiJ0YWJsZSJ9\",\"qualifiedName\":\"exec_preview\"},{\"schema\":\"main\",\"name\":\"exec_second\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImV4ZWNfc2Vjb25kIiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"exec_second\"},{\"schema\":\"main\",\"name\":\"no_primary_key\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6Im5vX3ByaW1hcnlfa2V5Iiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"no_primary_key\"},{\"schema\":\"main\",\"name\":\"v_catalogue\",\"kind\":\"view\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfY2F0YWxvZ3VlIiwia2luZCI6InZpZXcifQ\",\"qualifiedName\":\"v_catalogue\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":3,\"rows\":[],\"columns\":[],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":3,\"rows\":[],\"columns\":[],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":1,\"rows\":[],\"columns\":[],\"committed\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/locked/execute",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Write access is locked for \\\"locked\\\". Unlock it before running writes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/locked/execute",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Write access is locked for \\\"locked\\\". Unlock it before running writes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/relocked/execute",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Write access is locked for \\\"relocked\\\". Unlock it before running writes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":1,\"rows\":[{\"1\":1}],\"columns\":[{\"name\":\"1\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":3,\"rows\":[{\"id\":1},{\"id\":2},{\"id\":3}],\"columns\":[{\"name\":\"id\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":0,\"rows\":[],\"columns\":[],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":1,\"rows\":[{\"user_version\":0}],\"columns\":[{\"name\":\"user_version\",\"dataType\":\"\",\"nullable\":true,\"primaryKey\":false}],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":3,\"rows\":[],\"columns\":[],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":1,\"rows\":[],\"columns\":[],\"committed\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":1,\"rows\":[],\"columns\":[],\"committed\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"affectedRows\":3,\"rows\":[],\"columns\":[],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"near \\\"UPDAT\\\": syntax error\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"no such table: ghost\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sql is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/execute",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sql is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/locked/execute",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Write access is locked for \\\"locked\\\". Unlock it before running writes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/locked/execute",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Write access is locked for \\\"locked\\\". Unlock it before running writes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/nope/execute",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/execute",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"primaryKeys\":[\"id\"],\"affectedRows\":1,\"rows\":[],\"columns\":[],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A confirmed preview count is required before deleting rows.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/locked/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Write access is locked for \\\"locked\\\". Unlock it before running writes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/relocked/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Write access is locked for \\\"relocked\\\". Unlock it before running writes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"primaryKeys\":[\"id\"],\"affectedRows\":1,\"rows\":[],\"columns\":[],\"committed\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Delete affected 1 rows; expected 2. The transaction was rolled back.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Only live catalog tables support row deletion.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Primary-key tuple 2 is a duplicate.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Primary-key value \\\"id\\\" in tuple 1 must be a non-null scalar.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Primary-key value \\\"id\\\" in tuple 1 is masked and cannot be used for deletion.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"primaryKeys\":[\"id\"],\"affectedRows\":0,\"rows\":[],\"columns\":[],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No more than 100 rows can be deleted at once.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The confirmed preview count must match the selected primary-key tuples.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"previewUnavailable\":false,\"primaryKeys\":[\"a\",\"b\"],\"affectedRows\":1,\"rows\":[],\"columns\":[],\"committed\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Primary-key tuple 1 must contain exactly: a, b.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Primary-key tuple 1 must contain exactly: a, b.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Table \\\"no_primary_key\\\" has no primary key; rows cannot be deleted safely.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"At least one primary-key tuple is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No more than 100 rows can be deleted at once.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"tuples must be a valid JSON array\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"At least one primary-key tuple is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"mode must be either \\\"preview\\\" or \\\"commit\\\"\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"mode is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"key is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database object was not found in the live catalog.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/locked/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"tuples must be a valid JSON array\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/nope/catalog/rows/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows/delete",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/demo/catalog/rows?key=eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9wcmV2aWV3Iiwia2luZCI6InRhYmxlIn0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"engine\":\"sqlite\",\"object\":{\"schema\":\"main\",\"name\":\"del_preview\",\"kind\":\"table\",\"key\":\"eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImRlbF9wcmV2aWV3Iiwia2luZCI6InRhYmxlIn0\",\"qualifiedName\":\"del_preview\"},\"table\":{\"schema\":\"main\",\"name\":\"del_preview\",\"qualifiedName\":\"del_preview\"},\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":true,\"primaryKey\":true},{\"name\":\"label\",\"dataType\":\"TEXT\",\"nullable\":false,\"primaryKey\":false},{\"name\":\"note\",\"dataType\":\"TEXT\",\"nullable\":true,\"primaryKey\":false}],\"rows\":[{\"id\":1,\"label\":\"one\",\"note\":\"a\"},{\"id\":2,\"label\":\"two\",\"note\":null},{\"id\":3,\"label\":\"three\",\"note\":\"c\"}],\"rowCount\":3,\"limit\":100,\"offset\":0}"
+    }
+  ],
+  "entries": []
+}

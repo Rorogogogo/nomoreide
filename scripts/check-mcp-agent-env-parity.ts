@@ -30,10 +30,14 @@ import {
   mcpCommand,
   normalize,
   prepareRuntime,
+  pruneBackups,
+  recordable,
+  recorder,
   repositoryRoot,
   rewritePaths,
   substitute,
 } from "./support/mcp-parity-fixture.js";
+import { referenceSpec } from "../test/support/runtime-parity.js";
 
 const argv = process.argv.slice(2);
 const dump = argv.includes("--dump");
@@ -80,7 +84,9 @@ if (fixture.fixtureVersion !== 1) {
 }
 
 const specs = [
-  { label: "reference", command: process.execPath, args: ["--import", "tsx", "src/index.ts"] },
+  // In replay this names a binary that cannot exist, which is what makes "the
+  // reference is never started" enforced rather than asserted.
+  referenceSpec(),
   ...(probe ? [] : [{ label: "candidate", command: candidateArgv[0], args: candidateArgv.slice(1) }]),
 ];
 
@@ -118,6 +124,7 @@ try {
       }
     }
     const observed = await Promise.all(runtimes.map((runtime) => call(runtime, step)));
+    for (const runtime of runtimes) await pruneBackups(runtime.home);
     if (dump || probe) {
       for (const [index, entry] of observed.entries()) {
         console.log(`\n--- ${step.id} [${runtimes[index].label}]`);
@@ -187,6 +194,7 @@ try {
       : `MCP agent-environment parity passed (${fixture.plan.length} steps).`,
   );
 } finally {
+  await recorder.finish();
   await Promise.all(
     roots.map((directory) =>
       rm(directory, { recursive: true, force: true, maxRetries: 5 }).catch(() => {}),
@@ -194,12 +202,21 @@ try {
   );
 }
 
+/**
+ * One step's answer, from a process or from the recording.
+ *
+ * The normalized payload is the recorded unit rather than the raw response:
+ * it has already had this runtime's own throwaway paths rewritten to fixture
+ * tokens, so it is the same value in whatever directory the gate next runs in.
+ */
 async function call(runtime: Runtime, step: Step): Promise<unknown> {
-  const args = Object.fromEntries(
-    Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
-  );
-  const response = await callMcpTool(mcpCommand(runtime), step.tool, args);
-  return maskBackupStamps(normalize(response, runtime));
+  return recorder.recorded(recordable(runtime), step.id, async () => {
+    const args = Object.fromEntries(
+      Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
+    );
+    const response = await callMcpTool(mcpCommand(runtime), step.tool, args);
+    return maskBackupStamps(normalize(response, runtime));
+  });
 }
 
 /**
@@ -241,7 +258,12 @@ async function assertTreesMatch(runtimes: Runtime[]): Promise<void> {
     ["home", (runtime: Runtime) => runtime.home],
     ["repository", (runtime: Runtime) => runtime.paths.get("repo:demo") ?? ""],
   ] as const) {
-    const left = await readTree(of(reference), reference);
+    // What the reference left on disk is an observation like any other: in
+    // replay it comes from the recording, because the tree it would have
+    // written was never written.
+    const left = await recorder.recorded(recordable(reference), `tree/${label}`, () =>
+      readTree(of(reference), reference),
+    );
     const right = await readTree(of(candidate), candidate);
     try {
       assert.deepStrictEqual(right, left);
@@ -270,14 +292,23 @@ async function readTree(root: string, runtime: Runtime): Promise<Record<string, 
       // between two runs. `.nomoreide` is the *server's* — session records it
       // writes whatever tool was called — and nothing here owns it.
       if (entry.name === ".git" || entry.name === ".nomoreide") continue;
+      // A backup is not compared here. Its name carries the second it was
+      // taken in, so every backup of one file collapses onto a single key and
+      // which one's bytes land there is decided by how many the run made and
+      // in what order they were read — a measurement of the machine, not of
+      // either runtime. Two runs of the *same* runtime disagree about it.
+      // What was backed up, and where, is asserted where it is stable: in the
+      // answer of the step that made it.
+      if (entry.name.includes(".bak.")) continue;
       const path = join(directory, entry.name);
       const key = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
         await walk(path, key);
       } else {
         const body = await readFile(path, "utf8").catch(() => "<unreadable>");
-        // The stamp in a backup's *name* is a race, so the name is
-        // normalised; the bytes inside it still have to match.
+        // A skill set aside as a *directory* is still compared: the stamp in
+        // its name is a race, so the name is normalised, and the bytes inside
+        // it have to match.
         files[key.replace(/\d{8}-\d{6}(-\d+)?/g, "<stamp>")] = rewrite(body);
       }
     }

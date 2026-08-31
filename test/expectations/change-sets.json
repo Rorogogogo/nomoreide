@@ -1,0 +1,322 @@
+{
+  "version": 1,
+  "gate": "change-sets",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"ref\":\"refs/nomoreide/snapshots/1788156150361-agent-session\",\"label\":\"agent session\",\"createdAt\":\"2026-08-31T06:02:30.364Z\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"with-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"snapshotRef\":\"refs/nomoreide/snapshots/1-agent\",\"startedAt\":\"2026-08-01T00:00:00.000Z\",\"lastToolAt\":\"2026-08-01T00:05:00.000Z\",\"toolCount\":3},{\"id\":\"no-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"startedAt\":\"2026-08-02T00:00:00.000Z\",\"lastToolAt\":\"2026-08-02T00:01:00.000Z\",\"toolCount\":1},{\"id\":\"stale-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"0000000000000000000000000000000000000000\",\"startedAt\":\"2026-08-03T00:00:00.000Z\",\"lastToolAt\":\"2026-08-03T00:01:00.000Z\",\"toolCount\":2},{\"id\":\"missing-repo\",\"repoPath\":\"%%HOME%%/deleted-repo\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"startedAt\":\"2026-08-04T00:00:00.000Z\",\"lastToolAt\":\"2026-08-04T00:01:00.000Z\",\"toolCount\":1},{\"id\":\"a%2Fb\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"startedAt\":\"2026-08-05T00:00:00.000Z\",\"lastToolAt\":\"2026-08-05T00:01:00.000Z\",\"toolCount\":1},{\"id\":\"spaced id\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"startedAt\":\"2026-08-06T00:00:00.000Z\",\"lastToolAt\":\"2026-08-06T00:01:00.000Z\",\"toolCount\":1}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/change-sets",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/with-snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"with-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"snapshotRef\":\"refs/nomoreide/snapshots/1-agent\",\"startedAt\":\"2026-08-01T00:00:00.000Z\",\"lastToolAt\":\"2026-08-01T00:05:00.000Z\",\"toolCount\":3},\"files\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/no-snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"no-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"startedAt\":\"2026-08-02T00:00:00.000Z\",\"lastToolAt\":\"2026-08-02T00:01:00.000Z\",\"toolCount\":1},\"files\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/stale-snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git diff --no-renames --name-status 0000000000000000000000000000000000000000 8c52238e7f8add7c929c660b55a7e0f1edf60563\\nfatal: bad object 0000000000000000000000000000000000000000\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/missing-repo",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"spawn git ENOENT\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/nothing-here",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown session\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/a%252Fb",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown session\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/a%2Fb",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"a%2Fb\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"startedAt\":\"2026-08-05T00:00:00.000Z\",\"lastToolAt\":\"2026-08-05T00:01:00.000Z\",\"toolCount\":1},\"files\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/spaced%20id",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown session\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/spaced%20id",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown session\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent/change-sets/with-snapshot",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/with-snapshot/diff",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/with-snapshot/diff?path=app.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/with-snapshot/diff?path=",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/with-snapshot/diff?path=%20app.txt%20",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/with-snapshot/diff?path=nope.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/no-snapshot/diff",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Session has no snapshot\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/nothing-here/diff",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Session has no snapshot\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/stale-snapshot/diff",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git diff --no-renames 0000000000000000000000000000000000000000 8c52238e7f8add7c929c660b55a7e0f1edf60563\\nfatal: bad object 0000000000000000000000000000000000000000\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/change-sets/with-snapshot/diff",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets//diff",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/change-sets/no-snapshot/restore",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Session has no snapshot\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/change-sets/nothing-here/restore",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Session has no snapshot\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/change-sets/stale-snapshot/restore",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not a nomoreide snapshot: 0000000000000000000000000000000000000000\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/with-snapshot/restore",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/change-sets/with-snapshot/restore",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preRestore\":{\"sha\":\"ac63f3055fb652b56f99ad9fb26dd492c628d791\",\"ref\":\"refs/nomoreide/snapshots/1788156150794-pre-restore-agent-session\",\"label\":\"pre-restore (agent session)\",\"createdAt\":\"2026-08-31T06:02:30.798Z\"},\"restoredFiles\":0,\"deletedPaths\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/change-sets/with-snapshot/diff",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/change-sets/with-snapshot/restore",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preRestore\":{\"sha\":\"ac63f3055fb652b56f99ad9fb26dd492c628d791\",\"ref\":\"refs/nomoreide/snapshots/1788156150897-pre-restore-agent-session\",\"label\":\"pre-restore (agent session)\",\"createdAt\":\"2026-08-31T06:02:30.900Z\"},\"restoredFiles\":0,\"deletedPaths\":[]}"
+    }
+  ],
+  "entries": []
+}

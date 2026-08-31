@@ -1,0 +1,385 @@
+{
+  "version": 1,
+  "gate": "workflow-triggers",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/workflow-triggers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"id\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"workflowId\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"expected\\\": \\\"'error-incident' | 'service-crash' | 'ci-failure'\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"id\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"workflowId\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"expected\\\": \\\"'error-incident' | 'service-crash' | 'ci-failure'\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"object\\\",\\n    \\\"received\\\": \\\"array\\\",\\n    \\\"path\\\": [],\\n    \\\"message\\\": \\\"Expected object, received array\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"id\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"workflowId\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"expected\\\": \\\"'error-incident' | 'service-crash' | 'ci-failure'\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"id\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"workflowId\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"expected\\\": \\\"'error-incident' | 'service-crash' | 'ci-failure'\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"id\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"workflowId\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"expected\\\": \\\"'error-incident' | 'service-crash' | 'ci-failure'\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"workflowId\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  },\\n  {\\n    \\\"expected\\\": \\\"'error-incident' | 'service-crash' | 'ci-failure'\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 1,\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"String must contain at least 1 character(s)\\\",\\n    \\\"path\\\": [\\n      \\\"id\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 1,\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"String must contain at least 1 character(s)\\\",\\n    \\\"path\\\": [\\n      \\\"workflowId\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"number\\\",\\n    \\\"path\\\": [\\n      \\\"id\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected string, received number\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"null\\\",\\n    \\\"path\\\": [\\n      \\\"id\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected string, received null\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"received\\\": \\\"deploy-failed\\\",\\n    \\\"code\\\": \\\"invalid_enum_value\\\",\\n    \\\"options\\\": [\\n      \\\"error-incident\\\",\\n      \\\"service-crash\\\",\\n      \\\"ci-failure\\\"\\n    ],\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Invalid enum value. Expected 'error-incident' | 'service-crash' | 'ci-failure', received 'deploy-failed'\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"expected\\\": \\\"'error-incident' | 'service-crash' | 'ci-failure'\\\",\\n    \\\"received\\\": \\\"number\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected 'error-incident' | 'service-crash' | 'ci-failure', received number\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"received\\\": \\\"\\\",\\n    \\\"code\\\": \\\"invalid_enum_value\\\",\\n    \\\"options\\\": [\\n      \\\"error-incident\\\",\\n      \\\"service-crash\\\",\\n      \\\"ci-failure\\\"\\n    ],\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Invalid enum value. Expected 'error-incident' | 'service-crash' | 'ci-failure', received ''\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"boolean\\\",\\n    \\\"received\\\": \\\"string\\\",\\n    \\\"path\\\": [\\n      \\\"enabled\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected boolean, received string\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"boolean\\\",\\n    \\\"received\\\": \\\"null\\\",\\n    \\\"path\\\": [\\n      \\\"enabled\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected boolean, received null\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"number\\\",\\n    \\\"path\\\": [\\n      \\\"filter\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected string, received number\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"null\\\",\\n    \\\"path\\\": [\\n      \\\"filter\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected string, received null\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"boolean\\\",\\n    \\\"received\\\": \\\"object\\\",\\n    \\\"path\\\": [\\n      \\\"autoRun\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected boolean, received object\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"number\\\",\\n    \\\"path\\\": [\\n      \\\"id\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected string, received number\\\"\\n  },\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"number\\\",\\n    \\\"path\\\": [\\n      \\\"workflowId\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected string, received number\\\"\\n  },\\n  {\\n    \\\"expected\\\": \\\"'error-incident' | 'service-crash' | 'ci-failure'\\\",\\n    \\\"received\\\": \\\"number\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"event\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected 'error-incident' | 'service-crash' | 'ci-failure', received number\\\"\\n  },\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"boolean\\\",\\n    \\\"received\\\": \\\"number\\\",\\n    \\\"path\\\": [\\n      \\\"enabled\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected boolean, received number\\\"\\n  },\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"number\\\",\\n    \\\"path\\\": [\\n      \\\"filter\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected string, received number\\\"\\n  },\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"boolean\\\",\\n    \\\"received\\\": \\\"number\\\",\\n    \\\"path\\\": [\\n      \\\"autoRun\\\"\\n    ],\\n    \\\"message\\\": \\\"Expected boolean, received number\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"one\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"one\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"two\",\"workflowId\":\"tidy\",\"event\":\"service-crash\",\"enabled\":false,\"filter\":\"api\",\"autoRun\":true}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"one\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"two\",\"workflowId\":\"tidy\",\"event\":\"service-crash\",\"enabled\":false,\"filter\":\"api\",\"autoRun\":true},{\"id\":\"three\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"one\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"two\",\"workflowId\":\"tidy\",\"event\":\"service-crash\",\"enabled\":false,\"filter\":\"api\",\"autoRun\":true},{\"id\":\"three\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"one\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"two\",\"workflowId\":\"tidy\",\"event\":\"service-crash\",\"enabled\":false,\"filter\":\"api\",\"autoRun\":true},{\"id\":\"three\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false},{\"id\":\"five\",\"workflowId\":\"deploy\",\"event\":\"error-incident\",\"enabled\":true,\"autoRun\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"two\",\"workflowId\":\"tidy\",\"event\":\"service-crash\",\"enabled\":false,\"filter\":\"api\",\"autoRun\":true},{\"id\":\"three\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false},{\"id\":\"five\",\"workflowId\":\"deploy\",\"event\":\"error-incident\",\"enabled\":true,\"autoRun\":false},{\"id\":\"one\",\"workflowId\":\"other\",\"event\":\"service-crash\",\"enabled\":false,\"autoRun\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"two\",\"workflowId\":\"tidy\",\"event\":\"service-crash\",\"enabled\":false,\"filter\":\"api\",\"autoRun\":true},{\"id\":\"three\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false},{\"id\":\"five\",\"workflowId\":\"deploy\",\"event\":\"error-incident\",\"enabled\":true,\"autoRun\":false},{\"id\":\"one\",\"workflowId\":\"other\",\"event\":\"service-crash\",\"enabled\":false,\"autoRun\":false},{\"id\":\" one \",\"workflowId\":\"spaced\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workflow-triggers/two",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"three\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false},{\"id\":\"five\",\"workflowId\":\"deploy\",\"event\":\"error-incident\",\"enabled\":true,\"autoRun\":false},{\"id\":\"one\",\"workflowId\":\"other\",\"event\":\"service-crash\",\"enabled\":false,\"autoRun\":false},{\"id\":\" one \",\"workflowId\":\"spaced\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workflow-triggers/nope",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"three\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false},{\"id\":\"five\",\"workflowId\":\"deploy\",\"event\":\"error-incident\",\"enabled\":true,\"autoRun\":false},{\"id\":\"one\",\"workflowId\":\"other\",\"event\":\"service-crash\",\"enabled\":false,\"autoRun\":false},{\"id\":\" one \",\"workflowId\":\"spaced\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workflow-triggers/%20one%20",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"three\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false},{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false},{\"id\":\"five\",\"workflowId\":\"deploy\",\"event\":\"error-incident\",\"enabled\":true,\"autoRun\":false},{\"id\":\" one \",\"workflowId\":\"spaced\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workflow-triggers/thr%65e",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false},{\"id\":\"five\",\"workflowId\":\"deploy\",\"event\":\"error-incident\",\"enabled\":true,\"autoRun\":false},{\"id\":\" one \",\"workflowId\":\"spaced\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflow-triggers/pending",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"pending\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers/pending/anything/ack",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers/pending/a%2Fb/ack",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflow-triggers/pending/anything/ack",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workflow-triggers/pending",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false},{\"id\":\"five\",\"workflowId\":\"deploy\",\"event\":\"error-incident\",\"enabled\":true,\"autoRun\":false},{\"id\":\" one \",\"workflowId\":\"spaced\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow-triggers/pending",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/workflow-triggers",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflow-triggers/one",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/workflow-triggers/one",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflow-triggers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"triggers\":[{\"id\":\"four\",\"workflowId\":\"deploy\",\"event\":\"ci-failure\",\"enabled\":true,\"filter\":\"\",\"autoRun\":false},{\"id\":\"five\",\"workflowId\":\"deploy\",\"event\":\"error-incident\",\"enabled\":true,\"autoRun\":false},{\"id\":\" one \",\"workflowId\":\"spaced\",\"event\":\"ci-failure\",\"enabled\":true,\"autoRun\":false}]}"
+    }
+  ],
+  "entries": []
+}

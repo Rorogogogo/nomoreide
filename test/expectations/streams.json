@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "gate": "streams",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/services/errorer/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"errorer\",\"state\":\"running\",\"kind\":\"local\",\"pid\":62160,\"startedAt\":\"2026-08-31T06:12:41.080Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/errorer/stop",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"errorer\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":62160,\"startedAt\":\"2026-08-31T06:12:41.080Z\",\"exitedAt\":\"2026-08-31T06:12:43.111Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/late/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"late\",\"state\":\"running\",\"kind\":\"local\",\"pid\":62478,\"startedAt\":\"2026-08-31T06:12:44.410Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/errors/stream",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/tool-calls/stream",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": [
+    {
+      "key": "stream:/api/errors/stream",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream",
+          "date": "Mon, 31 Aug 2026 06:12:43 GMT",
+          "transfer-encoding": "chunked"
+        },
+        "body": "retry: 2000\n\nevent: incident\ndata: {\"id\":1,\"service\":\"errorer\",\"level\":\"error\",\"signature\":\"errorer fatal error: the widget exploded\",\"title\":\"fatal error: the widget exploded\",\"firstSeen\":\"2026-08-31T06:12:41.101Z\",\"lastSeen\":\"2026-08-31T06:12:41.101Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the widget exploded\"]}\n\n"
+      }
+    },
+    {
+      "key": "stream:/api/errors/stream",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream",
+          "date": "Mon, 31 Aug 2026 06:12:44 GMT",
+          "transfer-encoding": "chunked"
+        },
+        "body": "retry: 2000\n\nevent: incident\ndata: {\"id\":1,\"service\":\"errorer\",\"level\":\"error\",\"signature\":\"errorer fatal error: the widget exploded\",\"title\":\"fatal error: the widget exploded\",\"firstSeen\":\"2026-08-31T06:12:41.101Z\",\"lastSeen\":\"2026-08-31T06:12:41.101Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the widget exploded\"]}\n\nevent: incident\ndata: {\"id\":2,\"service\":\"late\",\"level\":\"error\",\"signature\":\"late fatal error: the gasket failed\",\"title\":\"fatal error: the gasket failed\",\"firstSeen\":\"2026-08-31T06:12:44.441Z\",\"lastSeen\":\"2026-08-31T06:12:44.441Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the gasket failed\"]}\n\n"
+      }
+    },
+    {
+      "key": "stream:/api/errors/stream",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream",
+          "date": "Mon, 31 Aug 2026 06:12:46 GMT",
+          "transfer-encoding": "chunked"
+        },
+        "body": "retry: 2000\n\nevent: incident\ndata: {\"id\":2,\"service\":\"late\",\"level\":\"error\",\"signature\":\"late fatal error: the gasket failed\",\"title\":\"fatal error: the gasket failed\",\"firstSeen\":\"2026-08-31T06:12:44.441Z\",\"lastSeen\":\"2026-08-31T06:12:44.441Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the gasket failed\"]}\n\nevent: incident\ndata: {\"id\":1,\"service\":\"errorer\",\"level\":\"error\",\"signature\":\"errorer fatal error: the widget exploded\",\"title\":\"fatal error: the widget exploded\",\"firstSeen\":\"2026-08-31T06:12:41.101Z\",\"lastSeen\":\"2026-08-31T06:12:41.101Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the widget exploded\"]}\n\n: ping\n\n"
+      }
+    },
+    {
+      "key": "stream:/api/agent/tool-calls/stream",
+      "value": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-transform",
+          "connection": "keep-alive",
+          "content-type": "text/event-stream",
+          "date": "Mon, 31 Aug 2026 06:13:05 GMT",
+          "transfer-encoding": "chunked"
+        },
+        "body": "retry: 2000\n\n"
+      }
+    }
+  ]
+}

@@ -15,7 +15,6 @@ import { pathToFileURL } from "node:url";
 import { callMcpTool, normalizeMcpContract, type McpCommand } from "./mcp-contract.js";
 import {
   parityMode,
-  publishReplayState,
   Recorder,
   startRecordingProxy,
   startReplayServer,
@@ -90,12 +89,21 @@ export class RuntimeHarness {
    * default and still the strongest check — the recording exists so the gates
    * keep working after `src/` is deleted, not instead of running them now.
    */
-  readonly #recorder = new Recorder();
-  readonly #mode = this.#recorder.mode;
+  readonly #recorder: Recorder;
+  readonly #mode: ParityMode;
   readonly #servers: Server[] = [];
 
-  constructor(root: string) {
+  /**
+   * `gate` names the recording, and defaults to the script being run — which
+   * is what every gate wants. A gate that stands up more than one pair of
+   * daemons names each pair itself: two harnesses sharing a recording would
+   * write over each other, and on the way back a request could be answered
+   * with the other pair's reply, since replay matches on method and path.
+   */
+  constructor(root: string, gate?: string) {
     this.#root = root;
+    this.#recorder = new Recorder(gate);
+    this.#mode = this.#recorder.mode;
   }
 
   /** Which of the three modes this run is in, for a gate that wants to say so. */
@@ -108,7 +116,7 @@ export class RuntimeHarness {
    * process. Only ever the reference: the candidate is the thing under test
    * and always runs for real.
    */
-  #isReplayed(runtime: Runtime): boolean {
+  replayed(runtime: Runtime): boolean {
     return this.#recorder.isReplayed(runtime.label);
   }
 
@@ -179,10 +187,35 @@ export class RuntimeHarness {
     // Replayed: nothing is spawned. The recording answers on the port the
     // gate already knows, and the state the harness waits for is minted here
     // because it describes this run rather than the recorded one.
-    if (this.#isReplayed(runtime)) {
+    if (this.replayed(runtime)) {
       const recording = await this.#recorder.playback();
-      await publishReplayState(runtime);
-      this.#servers.push(await startReplayServer(runtime, recording.http));
+      const candidateLabel = runtime.label.replace(/^reference/, "candidate");
+      const candidate = this.#runtimes.find((entry) => entry.label === candidateLabel);
+      const shadowCommand = candidate?.command ?? process.env.NOMOREIDE_PARITY_SHADOW_COMMAND;
+      if (!shadowCommand) {
+        throw new Error(`Replay could not find ${candidateLabel} to shadow ${runtime.label}`);
+      }
+      const shadowPort = await availablePort();
+      const shadow: Runtime = {
+        ...runtime,
+        command: shadowCommand,
+        args: candidate?.args ?? [],
+        port: shadowPort,
+      };
+      const daemon = spawn(shadow.command, [...shadow.args, "daemon"], {
+        cwd,
+        env: this.env(shadow, overrides),
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let stderr = "";
+      daemon.stderr?.setEncoding("utf8");
+      daemon.stderr?.on("data", (chunk: string) => {
+        stderr += chunk;
+      });
+      this.#daemons.push(daemon);
+      this.#stderr.set(daemon, () => stderr);
+      await waitForDaemon(shadow, daemon, () => stderr);
+      this.#servers.push(await startReplayServer(runtime, recording.http, shadowPort));
       return;
     }
 
@@ -191,7 +224,7 @@ export class RuntimeHarness {
     // knowing. The private port is reserved the same way every other one is —
     // an offset would overflow, because the harness hands out ephemeral ports
     // that are already near the top of the range.
-    const recording = this.#mode === "record" && runtime.label === "reference";
+    const recording = this.#mode === "record" && this.#recorder.isReference(runtime.label);
     const listenPort = recording ? await availablePort() : runtime.port;
     const daemon = spawn(runtime.command, [...runtime.args, "daemon"], {
       cwd,
@@ -207,7 +240,11 @@ export class RuntimeHarness {
     this.#stderr.set(daemon, () => stderr);
     await waitForDaemon(runtime, daemon, () => stderr);
     if (recording) {
-      this.#servers.push(await startRecordingProxy(runtime, listenPort, this.#recorder.http));
+      this.#servers.push(
+        await startRecordingProxy(runtime, listenPort, this.#recorder.http, (exchange) =>
+          this.#recorder.redactBody(exchange),
+        ),
+      );
     }
   }
 
@@ -257,6 +294,11 @@ export class RuntimeHarness {
    * to survive replay too: in replay the reference makes no requests at all,
    * because there is no reference.
    */
+  /** Install a record-time body redactor. See {@link Recorder.redact}. */
+  redact(redactor: Parameters<Recorder["redact"]>[0]): void {
+    this.#recorder.redact(redactor);
+  }
+
   async takeStub<T>(runtime: Runtime, key: string, stub: { take(): T[] }): Promise<T[]> {
     return this.recorded(runtime, `stub:${key}`, () => stub.take());
   }
@@ -285,6 +327,7 @@ export class RuntimeHarness {
       whileOpen?: () => Promise<void>;
     } = {},
   ): Promise<{ status: number; headers: Record<string, string>; body: string }> {
+    return this.recorded(runtime, `stream:${path}`, async () => {
     const { headers = {}, idleMs = 750, totalMs = 8000, whileOpen } = options;
     const controller = new AbortController();
     const deadline = setTimeout(() => controller.abort(), totalMs);
@@ -325,7 +368,8 @@ export class RuntimeHarness {
       clearTimeout(deadline);
       controller.abort();
     }
-    return { status, headers: received, body };
+      return { status, headers: received, body };
+    });
   }
 
   async shutdown(): Promise<void> {

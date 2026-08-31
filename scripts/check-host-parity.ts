@@ -39,11 +39,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve as resolvePath } from "node:path";
 import { promisify } from "node:util";
-import { ConfigStore } from "../src/core/config-store.js";
-import {
-  providerCliStatus,
-  publicProviderConnection,
-} from "../src/core/providers/credentials.js";
+import { Recorder } from "../test/support/parity-recording.js";
+import type { Runtime } from "../test/support/runtime-parity.js";
 import { type ApiStub, type StubRoute, startApiStub } from "./support/http-api-stub.js";
 
 const execFileAsync = promisify(execFile);
@@ -89,14 +86,15 @@ const root = await mkdtemp(join(tmpdir(), "nomoreide-host-parity-"));
  */
 const stub = await startApiStub(fixture.api);
 process.env.NOMOREIDE_VULTR_API_BASE = stub.base;
-const { vultrHostProvider } = await import("../src/core/vultr-context.js");
 const stubs: ApiStub[] = [stub];
+const recorder = new Recorder();
 try {
   let compared = 0;
   compared += await pass("connected", fixture.config, fixture.plan);
   compared += await pass("disconnected", fixture.disconnected.config, fixture.disconnected.plan);
   console.log(`Host-provider parity passed (${compared} steps).`);
 } finally {
+  await recorder.finish();
   await Promise.all(stubs.map((stub) => stub.close().catch(() => {})));
   await rm(root, { recursive: true, force: true, maxRetries: 5 }).catch(() => {});
 }
@@ -113,14 +111,22 @@ async function pass(
       const configPath = join(home, ".config", "nomoreide", "config.json");
       await mkdir(join(home, ".config", "nomoreide"), { recursive: true });
       await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
-      return { side, home, configPath, stub };
+      const runtime: Runtime = {
+        label: side,
+        command: side === "reference" ? "/nonexistent/in-process-reference" : probeBinary,
+        args: [],
+        home,
+        workspace: home,
+        port: 0,
+      };
+      return { side, home, configPath, stub, runtime };
     }),
   );
   const [reference, candidate] = sides;
 
   for (const step of plan) {
     const observed = [
-      await runReference(reference, step),
+      await recorder.recorded(reference.runtime, `${label}/${step.id}`, () => runReference(reference, step)),
       await runCandidate(candidate, step),
     ];
     if (dump) {
@@ -160,58 +166,62 @@ interface Side {
   home: string;
   configPath: string;
   stub: ApiStub;
+  runtime: Runtime;
 }
 
 /** The TypeScript provider, called in-process against this side's stub. */
 async function runReference(side: Side, step: Step): Promise<unknown> {
+  const [{ ConfigStore }, { providerCliStatus, publicProviderConnection }, { vultrHostProvider }] =
+    await Promise.all([
+      import("../src/core/config-store.js"),
+      import("../src/core/providers/credentials.js"),
+      import("../src/core/vultr-context.js"),
+    ]);
   side.stub.take();
   const configStore = new ConfigStore(side.configPath);
   let reported: unknown;
   try {
-    reported = await referenceOperation(configStore, step);
+    switch (step.op) {
+      case "status": {
+        const config = await configStore.load();
+        const cli = await providerCliStatus(vultrHostProvider.auth);
+        const connection = publicProviderConnection(config.connections[vultrHostProvider.manifest.id]);
+        const report: Record<string, unknown> = {
+          provider: vultrHostProvider.manifest,
+          cliAvailable: cli.available,
+          cliError: cli.error ?? null,
+        };
+        if (connection) report.connection = connection;
+        try {
+          const context = await vultrHostProvider.context(configStore);
+          report.account = await context.provider.account();
+        } catch (error) {
+          report.account = { error: error instanceof Error ? error.message : String(error) };
+        }
+        reported = { ok: true, status: report };
+        break;
+      }
+      case "instances": {
+        const context = await vultrHostProvider.context(configStore);
+        reported = { ok: true, instances: await context.provider.listInstances() };
+        break;
+      }
+      case "instance": {
+        const context = await vultrHostProvider.context(configStore);
+        reported = { ok: true, instance: await context.provider.getInstance(step.args?.[0] ?? "") };
+        break;
+      }
+      case "action": {
+        const actions = await vultrHostProvider.actions(configStore);
+        await actions.run(step.args?.[0] ?? "", step.args?.[1] ?? "");
+        reported = { ok: true };
+        break;
+      }
+    }
   } catch (error) {
     reported = { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
   return wireShape({ reported, requests: side.stub.take() });
-}
-
-async function referenceOperation(configStore: ConfigStore, step: Step): Promise<unknown> {
-  switch (step.op) {
-    case "status": {
-      const config = await configStore.load();
-      const cli = await providerCliStatus(vultrHostProvider.auth);
-      const connection = publicProviderConnection(config.connections[vultrHostProvider.manifest.id]);
-      const report: Record<string, unknown> = {
-        provider: vultrHostProvider.manifest,
-        cliAvailable: cli.available,
-        cliError: cli.error ?? null,
-      };
-      if (connection) report.connection = connection;
-      // Only the credential layer's half is compared here; the route's
-      // assembly around it (auth_error vs connection_error, and the ambient
-      // `{ source: "cli" }` fallback) belongs to Phase 8 with the route.
-      try {
-        const context = await vultrHostProvider.context(configStore);
-        report.account = await context.provider.account();
-      } catch (error) {
-        report.account = { error: error instanceof Error ? error.message : String(error) };
-      }
-      return { ok: true, status: report };
-    }
-    case "instances": {
-      const context = await vultrHostProvider.context(configStore);
-      return { ok: true, instances: await context.provider.listInstances() };
-    }
-    case "instance": {
-      const context = await vultrHostProvider.context(configStore);
-      return { ok: true, instance: await context.provider.getInstance(step.args?.[0] ?? "") };
-    }
-    case "action": {
-      const actions = await vultrHostProvider.actions(configStore);
-      await actions.run(step.args?.[0] ?? "", step.args?.[1] ?? "");
-      return { ok: true };
-    }
-  }
 }
 
 /** The Rust provider, through the probe example. */

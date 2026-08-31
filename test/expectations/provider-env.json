@@ -1,0 +1,2285 @@
+{
+  "version": 1,
+  "gate": "provider-env",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":[{\"id\":\"env_a\",\"key\":\"ALPHA\",\"environments\":[\"production\"],\"type\":\"plain\",\"gitBranch\":null,\"comment\":null},{\"id\":\"env_b\",\"key\":\"BETA\",\"environments\":[\"production\",\"preview\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"createdAt\":1700000000000,\"updatedAt\":1700000001000},{\"id\":\"env_d\",\"key\":\"DELTA\",\"environments\":[\"development\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null},{\"id\":\"GAMMA\",\"key\":\"GAMMA\",\"environments\":[],\"type\":\"system\",\"gitBranch\":null,\"comment\":\"from vercel\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/nowhere/env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/providers/vercel/env",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/providers/nowhere/env",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/domains",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"domains\":[{\"name\":\"app.example.com\",\"apexName\":\"example.com\",\"verified\":true,\"redirect\":null,\"gitBranch\":null,\"createdAt\":1700000000000,\"updatedAt\":1700000002000,\"verification\":[]},{\"name\":\"www.example.com\",\"verified\":false,\"redirect\":null,\"gitBranch\":null,\"verification\":[{\"type\":\"TXT\",\"domain\":\"_vercel.www.example.com\",\"value\":\"abc\",\"reason\":\"pending\"},{\"type\":\"TXT\",\"domain\":\"d.example.com\",\"value\":\"v\"}]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/domains",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"domains\":[{\"name\":\"app.example.com\",\"apexName\":\"example.com\",\"verified\":true,\"redirect\":null,\"gitBranch\":null,\"createdAt\":1700000000000,\"updatedAt\":1700000002000,\"verification\":[]},{\"name\":\"www.example.com\",\"verified\":false,\"redirect\":null,\"gitBranch\":null,\"verification\":[{\"type\":\"TXT\",\"domain\":\"_vercel.www.example.com\",\"value\":\"abc\",\"reason\":\"pending\"},{\"type\":\"TXT\",\"domain\":\"d.example.com\",\"value\":\"v\"}]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/nowhere/domains",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/env/env_a/reveal",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env/env_a/reveal",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"value\":\"alpha-value\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env/env%20space/reveal",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"value\":\"spaced-value\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env/env%zz/reveal",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"URI malformed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/nowhere/env/env_a/reveal",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_new\",\"key\":\"NEW_KEY\",\"environments\":[\"production\",\"preview\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"createdAt\":1700000005000}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_new\",\"key\":\"NEW_KEY\",\"environments\":[\"production\",\"preview\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"createdAt\":1700000005000}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_new\",\"key\":\"NEW_KEY\",\"environments\":[\"production\",\"preview\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"createdAt\":1700000005000}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_new\",\"key\":\"NEW_KEY\",\"environments\":[\"production\",\"preview\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"createdAt\":1700000005000}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A key is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A key is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Choose at least one environment.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_new\",\"key\":\"NEW_KEY\",\"environments\":[\"production\",\"preview\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"createdAt\":1700000005000}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/providers/vercel/env/env_b",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_b\",\"key\":\"BETA\",\"environments\":[\"production\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"updatedAt\":1700000009000}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/providers/vercel/env/env_b",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_b\",\"key\":\"BETA\",\"environments\":[\"production\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"updatedAt\":1700000009000}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/providers/vercel/env/env_b",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_b\",\"key\":\"BETA\",\"environments\":[\"production\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"updatedAt\":1700000009000}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/providers/vercel/env/env_b",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_b\",\"key\":\"BETA\",\"environments\":[\"production\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"updatedAt\":1700000009000}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/providers/vercel/env/env_b",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"env_b\",\"key\":\"BETA\",\"environments\":[\"production\"],\"type\":\"encrypted\",\"gitBranch\":null,\"comment\":null,\"updatedAt\":1700000009000}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/providers/vercel/env/env_b",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/env/env_b",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":[{\"id\":\"ONLY_PROD\",\"key\":\"ONLY_PROD\",\"environments\":[\"production\"],\"type\":\"encrypted\"},{\"id\":\"PLAIN_ONLY\",\"key\":\"PLAIN_ONLY\",\"environments\":[\"production\"],\"type\":\"plain\"},{\"id\":\"SHARED\",\"key\":\"SHARED\",\"environments\":[\"production\",\"preview\"],\"type\":\"encrypted\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/env/PLAIN_ONLY/reveal",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"value\":\"visible\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/env/SHARED/reveal",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cloudflare never returns a secret's value. Set a new one to change it.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/env/NOPE/reveal",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No variable named \\\"NOPE\\\" on this project.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/env/REMOVED/reveal",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No variable named \\\"REMOVED\\\" on this project.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/domains",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"domains\":[{\"name\":\"custom.example.com\",\"verified\":true,\"createdAt\":1700000000000,\"verification\":[]},{\"name\":\"pending.example.com\",\"verified\":false,\"createdAt\":1700086400000,\"verification\":[{\"type\":\"TXT\",\"domain\":\"_cf.pending.example.com\",\"value\":\"tok\",\"reason\":\"pending\"}]},{\"name\":\"nothing.example.com\",\"verified\":false,\"verification\":[]},{\"name\":\"app.pages.dev\",\"verified\":true,\"createdAt\":1700000000000,\"verification\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"NEW_KEY\",\"key\":\"NEW_KEY\",\"environments\":[\"production\",\"preview\"],\"type\":\"encrypted\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"NEW_KEY\",\"key\":\"NEW_KEY\",\"environments\":[\"production\",\"preview\"],\"type\":\"encrypted\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/env",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cloudflare Pages only has production and preview environments, not development.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/providers/cloudflare/env/SHARED",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"SHARED\",\"key\":\"SHARED\",\"environments\":[\"production\"],\"type\":\"plain\"}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/providers/cloudflare/env/SHARED",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"env\":{\"id\":\"SHARED\",\"key\":\"SHARED\",\"environments\":[\"production\"],\"type\":\"plain\"}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/providers/cloudflare/env/ONLY_PROD",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Adding \\\"ONLY_PROD\\\" to preview needs a value — Cloudflare stores it separately per environment.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/providers/cloudflare/env/NOPE",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No variable named \\\"NOPE\\\" on this project.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/providers/cloudflare/env/SHARED",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/providers/cloudflare/env/NOPE",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No variable named \\\"NOPE\\\" on this project.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No project is linked to this repository.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/domains",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No project is linked to this repository.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env/env_a/reveal",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No project is linked to this repository.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/providers/vercel/env/env_a",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No project is linked to this repository.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/env",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No project is linked to this repository.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not authorized to read env.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/domains",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Domains unavailable.\"}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "vercel/env/list",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": [
+              {
+                "id": "env_a",
+                "key": "ALPHA",
+                "environments": [
+                  "production"
+                ],
+                "type": "plain",
+                "gitBranch": null,
+                "comment": null
+              },
+              {
+                "id": "env_b",
+                "key": "BETA",
+                "environments": [
+                  "production",
+                  "preview"
+                ],
+                "type": "encrypted",
+                "gitBranch": null,
+                "comment": null,
+                "createdAt": 1700000000000,
+                "updatedAt": 1700000001000
+              },
+              {
+                "id": "env_d",
+                "key": "DELTA",
+                "environments": [
+                  "development"
+                ],
+                "type": "encrypted",
+                "gitBranch": null,
+                "comment": null
+              },
+              {
+                "id": "GAMMA",
+                "key": "GAMMA",
+                "environments": [],
+                "type": "system",
+                "gitBranch": null,
+                "comment": "from vercel"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app/env?limit=200&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Unknown provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/env/a-put-is-neither-verb",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/a-put-on-an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Unknown provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/domains/list",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "domains": [
+              {
+                "name": "app.example.com",
+                "apexName": "example.com",
+                "verified": true,
+                "redirect": null,
+                "gitBranch": null,
+                "createdAt": 1700000000000,
+                "updatedAt": 1700000002000,
+                "verification": []
+              },
+              {
+                "name": "www.example.com",
+                "verified": false,
+                "redirect": null,
+                "gitBranch": null,
+                "verification": [
+                  {
+                    "type": "TXT",
+                    "domain": "_vercel.www.example.com",
+                    "value": "abc",
+                    "reason": "pending"
+                  },
+                  {
+                    "type": "TXT",
+                    "domain": "d.example.com",
+                    "value": "v"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app/domains?limit=100&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/domains/a-post-is-still-a-read",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "domains": [
+              {
+                "name": "app.example.com",
+                "apexName": "example.com",
+                "verified": true,
+                "redirect": null,
+                "gitBranch": null,
+                "createdAt": 1700000000000,
+                "updatedAt": 1700000002000,
+                "verification": []
+              },
+              {
+                "name": "www.example.com",
+                "verified": false,
+                "redirect": null,
+                "gitBranch": null,
+                "verification": [
+                  {
+                    "type": "TXT",
+                    "domain": "_vercel.www.example.com",
+                    "value": "abc",
+                    "reason": "pending"
+                  },
+                  {
+                    "type": "TXT",
+                    "domain": "d.example.com",
+                    "value": "v"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app/domains?limit=100&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/domains/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Unknown provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/reveal/a-get-is-not-a-verb",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/reveal/a-value",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "value": "alpha-value"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app/env/env_a?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/reveal/an-encoded-id",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "value": "spaced-value"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app/env/env%20space?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/reveal/a-broken-escape",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "URI malformed"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/reveal/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Unknown provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/env/create",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_new",
+              "key": "NEW_KEY",
+              "environments": [
+                "production",
+                "preview"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "createdAt": 1700000005000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v10/projects/prj_app/env?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "key": "NEW_KEY",
+              "value": "secret",
+              "target": [
+                "production",
+                "preview"
+              ],
+              "type": "encrypted"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/create-plain",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_new",
+              "key": "NEW_KEY",
+              "environments": [
+                "production",
+                "preview"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "createdAt": 1700000005000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v10/projects/prj_app/env?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "key": "NEW_KEY",
+              "value": "v",
+              "target": [
+                "production"
+              ],
+              "type": "plain"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/create-with-an-unknown-type",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_new",
+              "key": "NEW_KEY",
+              "environments": [
+                "production",
+                "preview"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "createdAt": 1700000005000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v10/projects/prj_app/env?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "key": "NEW_KEY",
+              "value": "v",
+              "target": [
+                "production"
+              ],
+              "type": "encrypted"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/create-drops-non-string-environments",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_new",
+              "key": "NEW_KEY",
+              "environments": [
+                "production",
+                "preview"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "createdAt": 1700000005000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v10/projects/prj_app/env?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "key": "NEW_KEY",
+              "value": "v",
+              "target": [
+                "production"
+              ],
+              "type": "encrypted"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/create-without-a-key",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "A key is required."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/create-with-a-key-of-spaces",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "A key is required."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/create-without-environments",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Choose at least one environment."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/create-without-a-value",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_new",
+              "key": "NEW_KEY",
+              "environments": [
+                "production",
+                "preview"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "createdAt": 1700000005000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v10/projects/prj_app/env?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "key": "NEW_KEY",
+              "value": "",
+              "target": [
+                "production"
+              ],
+              "type": "encrypted"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/update",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_b",
+              "key": "BETA",
+              "environments": [
+                "production"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "updatedAt": 1700000009000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/v9/projects/prj_app/env/env_b?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "value": "rotated",
+              "target": [
+                "production"
+              ]
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/update-with-an-empty-value",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_b",
+              "key": "BETA",
+              "environments": [
+                "production"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "updatedAt": 1700000009000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/v9/projects/prj_app/env/env_b?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "target": [
+                "production"
+              ]
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/update-environments-only",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_b",
+              "key": "BETA",
+              "environments": [
+                "production"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "updatedAt": 1700000009000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/v9/projects/prj_app/env/env_b?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "target": [
+                "production"
+              ]
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/update-value-only",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_b",
+              "key": "BETA",
+              "environments": [
+                "production"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "updatedAt": 1700000009000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/v9/projects/prj_app/env/env_b?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "value": "rotated"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/update-with-an-empty-body",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "env_b",
+              "key": "BETA",
+              "environments": [
+                "production"
+              ],
+              "type": "encrypted",
+              "gitBranch": null,
+              "comment": null,
+              "updatedAt": 1700000009000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/v9/projects/prj_app/env/env_b?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {},
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/delete",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "DELETE",
+            "path": "/v9/projects/prj_app/env/env_b?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/env/a-get-on-one-variable",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cloudflare/env/list",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": [
+              {
+                "id": "ONLY_PROD",
+                "key": "ONLY_PROD",
+                "environments": [
+                  "production"
+                ],
+                "type": "encrypted"
+              },
+              {
+                "id": "PLAIN_ONLY",
+                "key": "PLAIN_ONLY",
+                "environments": [
+                  "production"
+                ],
+                "type": "plain"
+              },
+              {
+                "id": "SHARED",
+                "key": "SHARED",
+                "environments": [
+                  "production",
+                  "preview"
+                ],
+                "type": "encrypted"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/reveal/a-plain-value",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "value": "visible"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/reveal/a-secret",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Cloudflare never returns a secret's value. Set a new one to change it."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/reveal/an-unknown-key",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "No variable named \"NOPE\" on this project."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/reveal/a-deleted-key",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "No variable named \"REMOVED\" on this project."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/domains/list",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "domains": [
+              {
+                "name": "custom.example.com",
+                "verified": true,
+                "createdAt": 1700000000000,
+                "verification": []
+              },
+              {
+                "name": "pending.example.com",
+                "verified": false,
+                "createdAt": 1700086400000,
+                "verification": [
+                  {
+                    "type": "TXT",
+                    "domain": "_cf.pending.example.com",
+                    "value": "tok",
+                    "reason": "pending"
+                  }
+                ]
+              },
+              {
+                "name": "nothing.example.com",
+                "verified": false,
+                "verification": []
+              },
+              {
+                "name": "app.pages.dev",
+                "verified": true,
+                "createdAt": 1700000000000,
+                "verification": []
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/domains",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/env/create",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "NEW_KEY",
+              "key": "NEW_KEY",
+              "environments": [
+                "production",
+                "preview"
+              ],
+              "type": "encrypted"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "deployment_configs": {
+                "production": {
+                  "env_vars": {
+                    "NEW_KEY": {
+                      "type": "secret_text",
+                      "value": "secret"
+                    }
+                  }
+                },
+                "preview": {
+                  "env_vars": {
+                    "NEW_KEY": {
+                      "type": "secret_text",
+                      "value": "secret"
+                    }
+                  }
+                }
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/env/create-plain",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "NEW_KEY",
+              "key": "NEW_KEY",
+              "environments": [
+                "production",
+                "preview"
+              ],
+              "type": "encrypted"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "deployment_configs": {
+                "production": {
+                  "env_vars": {
+                    "NEW_KEY": {
+                      "type": "plain_text",
+                      "value": "v"
+                    }
+                  }
+                }
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/env/create-in-an-environment-pages-lacks",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Cloudflare Pages only has production and preview environments, not development."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/env/update-a-value",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "SHARED",
+              "key": "SHARED",
+              "environments": [
+                "production"
+              ],
+              "type": "plain"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "deployment_configs": {
+                "production": {
+                  "env_vars": {
+                    "SHARED": {
+                      "type": "secret_text",
+                      "value": "rotated"
+                    }
+                  }
+                },
+                "preview": {
+                  "env_vars": {
+                    "SHARED": {
+                      "type": "secret_text",
+                      "value": "rotated"
+                    }
+                  }
+                }
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/env/update-narrowing-environments",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "env": {
+              "id": "SHARED",
+              "key": "SHARED",
+              "environments": [
+                "production"
+              ],
+              "type": "plain"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "deployment_configs": {
+                "production": {
+                  "env_vars": {
+                    "SHARED": {
+                      "type": "secret_text",
+                      "value": "rotated"
+                    }
+                  }
+                },
+                "preview": {
+                  "env_vars": {
+                    "SHARED": null
+                  }
+                }
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/env/update-adding-an-environment-without-a-value",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Adding \"ONLY_PROD\" to preview needs a value — Cloudflare stores it separately per environment."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/env/update-an-unknown-key",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "No variable named \"NOPE\" on this project."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/env/delete",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "deployment_configs": {
+                "production": {
+                  "env_vars": {
+                    "SHARED": null
+                  }
+                },
+                "preview": {
+                  "env_vars": {
+                    "SHARED": null
+                  }
+                }
+              }
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/env/delete-an-unknown-key",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "No variable named \"NOPE\" on this project."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "unpinned/env",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "No project is linked to this repository."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "unpinned/domains",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "No project is linked to this repository."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "unpinned/reveal",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "No project is linked to this repository."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "unpinned/delete",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "No project is linked to this repository."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "unpinned/create",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "No project is linked to this repository."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "degraded/vercel/env",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Not authorized to read env."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app/env?limit=200&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "degraded/vercel/domains",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Domains unavailable."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app/domains?limit=100&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    }
+  ]
+}

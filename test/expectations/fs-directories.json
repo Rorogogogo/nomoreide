@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "gate": "fs-directories",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/fs/directories",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%REPO%%\",\"parent\":\"%%USER-HOME%%/Developer/Personal Project/nomoreide-workspace\",\"entries\":[{\"name\":\".agents\",\"path\":\"%%REPO%%/.agents\",\"isDir\":true},{\"name\":\".claude\",\"path\":\"%%REPO%%/.claude\",\"isDir\":true},{\"name\":\".github\",\"path\":\"%%REPO%%/.github\",\"isDir\":true},{\"name\":\".idea\",\"path\":\"%%REPO%%/.idea\",\"isDir\":true},{\"name\":\".nomoreide\",\"path\":\"%%REPO%%/.nomoreide\",\"isDir\":true},{\"name\":\".worktrees\",\"path\":\"%%REPO%%/.worktrees\",\"isDir\":true},{\"name\":\".wrangler\",\"path\":\"%%REPO%%/.wrangler\",\"isDir\":true},{\"name\":\"apps\",\"path\":\"%%REPO%%/apps\",\"isDir\":true},{\"name\":\"assets\",\"path\":\"%%REPO%%/assets\",\"isDir\":true},{\"name\":\"crates\",\"path\":\"%%REPO%%/crates\",\"isDir\":true},{\"name\":\"dist\",\"path\":\"%%REPO%%/dist\",\"isDir\":true},{\"name\":\"docs\",\"path\":\"%%REPO%%/docs\",\"isDir\":true},{\"name\":\"handoffs\",\"path\":\"%%REPO%%/handoffs\",\"isDir\":true},{\"name\":\"out\",\"path\":\"%%REPO%%/out\",\"isDir\":true},{\"name\":\"profiles\",\"path\":\"%%REPO%%/profiles\",\"isDir\":true},{\"name\":\"scripts\",\"path\":\"%%REPO%%/scripts\",\"isDir\":true},{\"name\":\"src\",\"path\":\"%%REPO%%/src\",\"isDir\":true},{\"name\":\"target\",\"path\":\"%%REPO%%/target\",\"isDir\":true},{\"name\":\"test\",\"path\":\"%%REPO%%/test\",\"isDir\":true},{\"name\":\"video\",\"path\":\"%%REPO%%/video\",\"isDir\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%20%20",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%REPO%%\",\"parent\":\"%%USER-HOME%%/Developer/Personal Project/nomoreide-workspace\",\"entries\":[{\"name\":\".agents\",\"path\":\"%%REPO%%/.agents\",\"isDir\":true},{\"name\":\".claude\",\"path\":\"%%REPO%%/.claude\",\"isDir\":true},{\"name\":\".github\",\"path\":\"%%REPO%%/.github\",\"isDir\":true},{\"name\":\".idea\",\"path\":\"%%REPO%%/.idea\",\"isDir\":true},{\"name\":\".nomoreide\",\"path\":\"%%REPO%%/.nomoreide\",\"isDir\":true},{\"name\":\".worktrees\",\"path\":\"%%REPO%%/.worktrees\",\"isDir\":true},{\"name\":\".wrangler\",\"path\":\"%%REPO%%/.wrangler\",\"isDir\":true},{\"name\":\"apps\",\"path\":\"%%REPO%%/apps\",\"isDir\":true},{\"name\":\"assets\",\"path\":\"%%REPO%%/assets\",\"isDir\":true},{\"name\":\"crates\",\"path\":\"%%REPO%%/crates\",\"isDir\":true},{\"name\":\"dist\",\"path\":\"%%REPO%%/dist\",\"isDir\":true},{\"name\":\"docs\",\"path\":\"%%REPO%%/docs\",\"isDir\":true},{\"name\":\"handoffs\",\"path\":\"%%REPO%%/handoffs\",\"isDir\":true},{\"name\":\"out\",\"path\":\"%%REPO%%/out\",\"isDir\":true},{\"name\":\"profiles\",\"path\":\"%%REPO%%/profiles\",\"isDir\":true},{\"name\":\"scripts\",\"path\":\"%%REPO%%/scripts\",\"isDir\":true},{\"name\":\"src\",\"path\":\"%%REPO%%/src\",\"isDir\":true},{\"name\":\"target\",\"path\":\"%%REPO%%/target\",\"isDir\":true},{\"name\":\"test\",\"path\":\"%%REPO%%/test\",\"isDir\":true},{\"name\":\"video\",\"path\":\"%%REPO%%/video\",\"isDir\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%\",\"parent\":\"%%HOME%%\",\"entries\":[{\"name\":\"_under\",\"path\":\"%%WORKSPACE%%/_under\",\"isDir\":true},{\"name\":\".hidden\",\"path\":\"%%WORKSPACE%%/.hidden\",\"isDir\":true},{\"name\":\"10-ten\",\"path\":\"%%WORKSPACE%%/10-ten\",\"isDir\":true},{\"name\":\"2-two\",\"path\":\"%%WORKSPACE%%/2-two\",\"isDir\":true},{\"name\":\"alpha\",\"path\":\"%%WORKSPACE%%/alpha\",\"isDir\":true},{\"name\":\"Beta\",\"path\":\"%%WORKSPACE%%/Beta\",\"isDir\":true},{\"name\":\"dir with space\",\"path\":\"%%WORKSPACE%%/dir with space\",\"isDir\":true},{\"name\":\"eclair\",\"path\":\"%%WORKSPACE%%/eclair\",\"isDir\":true},{\"name\":\"éclair\",\"path\":\"%%WORKSPACE%%/éclair\",\"isDir\":true},{\"name\":\"empty\",\"path\":\"%%WORKSPACE%%/empty\",\"isDir\":true},{\"name\":\"zeta\",\"path\":\"%%WORKSPACE%%/zeta\",\"isDir\":true},{\"name\":\"Zulu\",\"path\":\"%%WORKSPACE%%/Zulu\",\"isDir\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%&files=1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%\",\"parent\":\"%%HOME%%\",\"entries\":[{\"name\":\"_under\",\"path\":\"%%WORKSPACE%%/_under\",\"isDir\":true},{\"name\":\".hidden\",\"path\":\"%%WORKSPACE%%/.hidden\",\"isDir\":true},{\"name\":\"10-ten\",\"path\":\"%%WORKSPACE%%/10-ten\",\"isDir\":true},{\"name\":\"2-two\",\"path\":\"%%WORKSPACE%%/2-two\",\"isDir\":true},{\"name\":\"alpha\",\"path\":\"%%WORKSPACE%%/alpha\",\"isDir\":true},{\"name\":\"Beta\",\"path\":\"%%WORKSPACE%%/Beta\",\"isDir\":true},{\"name\":\"dir with space\",\"path\":\"%%WORKSPACE%%/dir with space\",\"isDir\":true},{\"name\":\"eclair\",\"path\":\"%%WORKSPACE%%/eclair\",\"isDir\":true},{\"name\":\"éclair\",\"path\":\"%%WORKSPACE%%/éclair\",\"isDir\":true},{\"name\":\"empty\",\"path\":\"%%WORKSPACE%%/empty\",\"isDir\":true},{\"name\":\"zeta\",\"path\":\"%%WORKSPACE%%/zeta\",\"isDir\":true},{\"name\":\"Zulu\",\"path\":\"%%WORKSPACE%%/Zulu\",\"isDir\":true},{\"name\":\"_note.md\",\"path\":\"%%WORKSPACE%%/_note.md\",\"isDir\":false},{\"name\":\".dotfile\",\"path\":\"%%WORKSPACE%%/.dotfile\",\"isDir\":false},{\"name\":\"1.log\",\"path\":\"%%WORKSPACE%%/1.log\",\"isDir\":false},{\"name\":\"a.txt\",\"path\":\"%%WORKSPACE%%/a.txt\",\"isDir\":false},{\"name\":\"B.txt\",\"path\":\"%%WORKSPACE%%/B.txt\",\"isDir\":false},{\"name\":\"plain.txt\",\"path\":\"%%WORKSPACE%%/plain.txt\",\"isDir\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%&files=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%\",\"parent\":\"%%HOME%%\",\"entries\":[{\"name\":\"_under\",\"path\":\"%%WORKSPACE%%/_under\",\"isDir\":true},{\"name\":\".hidden\",\"path\":\"%%WORKSPACE%%/.hidden\",\"isDir\":true},{\"name\":\"10-ten\",\"path\":\"%%WORKSPACE%%/10-ten\",\"isDir\":true},{\"name\":\"2-two\",\"path\":\"%%WORKSPACE%%/2-two\",\"isDir\":true},{\"name\":\"alpha\",\"path\":\"%%WORKSPACE%%/alpha\",\"isDir\":true},{\"name\":\"Beta\",\"path\":\"%%WORKSPACE%%/Beta\",\"isDir\":true},{\"name\":\"dir with space\",\"path\":\"%%WORKSPACE%%/dir with space\",\"isDir\":true},{\"name\":\"eclair\",\"path\":\"%%WORKSPACE%%/eclair\",\"isDir\":true},{\"name\":\"éclair\",\"path\":\"%%WORKSPACE%%/éclair\",\"isDir\":true},{\"name\":\"empty\",\"path\":\"%%WORKSPACE%%/empty\",\"isDir\":true},{\"name\":\"zeta\",\"path\":\"%%WORKSPACE%%/zeta\",\"isDir\":true},{\"name\":\"Zulu\",\"path\":\"%%WORKSPACE%%/Zulu\",\"isDir\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%&files=true",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%\",\"parent\":\"%%HOME%%\",\"entries\":[{\"name\":\"_under\",\"path\":\"%%WORKSPACE%%/_under\",\"isDir\":true},{\"name\":\".hidden\",\"path\":\"%%WORKSPACE%%/.hidden\",\"isDir\":true},{\"name\":\"10-ten\",\"path\":\"%%WORKSPACE%%/10-ten\",\"isDir\":true},{\"name\":\"2-two\",\"path\":\"%%WORKSPACE%%/2-two\",\"isDir\":true},{\"name\":\"alpha\",\"path\":\"%%WORKSPACE%%/alpha\",\"isDir\":true},{\"name\":\"Beta\",\"path\":\"%%WORKSPACE%%/Beta\",\"isDir\":true},{\"name\":\"dir with space\",\"path\":\"%%WORKSPACE%%/dir with space\",\"isDir\":true},{\"name\":\"eclair\",\"path\":\"%%WORKSPACE%%/eclair\",\"isDir\":true},{\"name\":\"éclair\",\"path\":\"%%WORKSPACE%%/éclair\",\"isDir\":true},{\"name\":\"empty\",\"path\":\"%%WORKSPACE%%/empty\",\"isDir\":true},{\"name\":\"zeta\",\"path\":\"%%WORKSPACE%%/zeta\",\"isDir\":true},{\"name\":\"Zulu\",\"path\":\"%%WORKSPACE%%/Zulu\",\"isDir\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%&files=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%\",\"parent\":\"%%HOME%%\",\"entries\":[{\"name\":\"_under\",\"path\":\"%%WORKSPACE%%/_under\",\"isDir\":true},{\"name\":\".hidden\",\"path\":\"%%WORKSPACE%%/.hidden\",\"isDir\":true},{\"name\":\"10-ten\",\"path\":\"%%WORKSPACE%%/10-ten\",\"isDir\":true},{\"name\":\"2-two\",\"path\":\"%%WORKSPACE%%/2-two\",\"isDir\":true},{\"name\":\"alpha\",\"path\":\"%%WORKSPACE%%/alpha\",\"isDir\":true},{\"name\":\"Beta\",\"path\":\"%%WORKSPACE%%/Beta\",\"isDir\":true},{\"name\":\"dir with space\",\"path\":\"%%WORKSPACE%%/dir with space\",\"isDir\":true},{\"name\":\"eclair\",\"path\":\"%%WORKSPACE%%/eclair\",\"isDir\":true},{\"name\":\"éclair\",\"path\":\"%%WORKSPACE%%/éclair\",\"isDir\":true},{\"name\":\"empty\",\"path\":\"%%WORKSPACE%%/empty\",\"isDir\":true},{\"name\":\"zeta\",\"path\":\"%%WORKSPACE%%/zeta\",\"isDir\":true},{\"name\":\"Zulu\",\"path\":\"%%WORKSPACE%%/Zulu\",\"isDir\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2Fempty",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%/empty\",\"parent\":\"%%WORKSPACE%%\",\"entries\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2F.hidden&files=1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%/.hidden\",\"parent\":\"%%WORKSPACE%%\",\"entries\":[{\"name\":\"inside.txt\",\"path\":\"%%WORKSPACE%%/.hidden/inside.txt\",\"isDir\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2Fnode_modules&files=1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%/node_modules\",\"parent\":\"%%WORKSPACE%%\",\"entries\":[{\"name\":\"pkg\",\"path\":\"%%WORKSPACE%%/node_modules/pkg\",\"isDir\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2F",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%\",\"parent\":\"%%HOME%%\",\"entries\":[{\"name\":\"_under\",\"path\":\"%%WORKSPACE%%/_under\",\"isDir\":true},{\"name\":\".hidden\",\"path\":\"%%WORKSPACE%%/.hidden\",\"isDir\":true},{\"name\":\"10-ten\",\"path\":\"%%WORKSPACE%%/10-ten\",\"isDir\":true},{\"name\":\"2-two\",\"path\":\"%%WORKSPACE%%/2-two\",\"isDir\":true},{\"name\":\"alpha\",\"path\":\"%%WORKSPACE%%/alpha\",\"isDir\":true},{\"name\":\"Beta\",\"path\":\"%%WORKSPACE%%/Beta\",\"isDir\":true},{\"name\":\"dir with space\",\"path\":\"%%WORKSPACE%%/dir with space\",\"isDir\":true},{\"name\":\"eclair\",\"path\":\"%%WORKSPACE%%/eclair\",\"isDir\":true},{\"name\":\"éclair\",\"path\":\"%%WORKSPACE%%/éclair\",\"isDir\":true},{\"name\":\"empty\",\"path\":\"%%WORKSPACE%%/empty\",\"isDir\":true},{\"name\":\"zeta\",\"path\":\"%%WORKSPACE%%/zeta\",\"isDir\":true},{\"name\":\"Zulu\",\"path\":\"%%WORKSPACE%%/Zulu\",\"isDir\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2F.%2Fempty",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%/empty\",\"parent\":\"%%WORKSPACE%%\",\"entries\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2F.hidden%2F..%2Fempty",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%/empty\",\"parent\":\"%%WORKSPACE%%\",\"entries\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2F%2Fempty",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%/empty\",\"parent\":\"%%WORKSPACE%%\",\"entries\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2Flink",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"%%WORKSPACE%%/link\",\"parent\":\"%%WORKSPACE%%\",\"entries\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%2F",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"path\":\"/\",\"parent\":\"/\",\"entries\":[{\"name\":\".nofollow\",\"path\":\"/.nofollow\",\"isDir\":true},{\"name\":\".resolve\",\"path\":\"/.resolve\",\"isDir\":true},{\"name\":\".vol\",\"path\":\"/.vol\",\"isDir\":true},{\"name\":\"Applications\",\"path\":\"/Applications\",\"isDir\":true},{\"name\":\"bin\",\"path\":\"/bin\",\"isDir\":true},{\"name\":\"cores\",\"path\":\"/cores\",\"isDir\":true},{\"name\":\"dev\",\"path\":\"/dev\",\"isDir\":true},{\"name\":\"Library\",\"path\":\"/Library\",\"isDir\":true},{\"name\":\"opt\",\"path\":\"/opt\",\"isDir\":true},{\"name\":\"private\",\"path\":\"/private\",\"isDir\":true},{\"name\":\"sbin\",\"path\":\"/sbin\",\"isDir\":true},{\"name\":\"System\",\"path\":\"/System\",\"isDir\":true},{\"name\":\"Users\",\"path\":\"/Users\",\"isDir\":true},{\"name\":\"usr\",\"path\":\"/usr\",\"isDir\":true},{\"name\":\"Volumes\",\"path\":\"/Volumes\",\"isDir\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=no-such-directory-xyz",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"ENOENT: no such file or directory, scandir '%%REPO%%/no-such-directory-xyz'\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2Fmissing",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"ENOENT: no such file or directory, scandir '%%WORKSPACE%%/missing'\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2Fplain.txt",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"ENOTDIR: not a directory, scandir '%%WORKSPACE%%/plain.txt'\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2Ffilelink",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"ENOTDIR: not a directory, scandir '%%WORKSPACE%%/filelink'\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%%2Fempty%00",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The argument 'path' must be a string, Uint8Array, or URL without null bytes. Received '%%WORKSPACE%%/empty\\\\x00'\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/fs/directories?path=%%WORKSPACE%%",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

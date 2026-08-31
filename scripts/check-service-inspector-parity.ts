@@ -193,10 +193,27 @@ function compare(name: string, reference: unknown, candidate: unknown): void {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Run one closure against both runtimes and diff what it returned. */
+/**
+ * Run one closure against both runtimes and diff what it returned.
+ *
+ * The whole closure is the recorded unit, not just the daemon call inside it.
+ * Half the steps here reach past the daemon and speak to the *inspector proxy*
+ * it opened, on a port it chose — which a recording cannot stand in for,
+ * because in replay there is no reference to have opened one. What the
+ * reference saw through that proxy is what was written down.
+ */
 async function both(name: string, run: (runtime: Runtime) => Promise<unknown>): Promise<void> {
   const answers = await Promise.all(
-    runtimes.map(async (runtime) => normalize(await run(runtime), runtime)),
+    runtimes.map(async (runtime) => {
+      const observed = await harness.recorded(runtime, name, () => run(runtime));
+      // A replayed observation never went through `api`, which is where the
+      // ports in an answer are normally learned — and a port that was not
+      // learned is a port that is not masked. Note them here too; on a live
+      // observation this repeats what `api` already did, which a set and a
+      // last-write map both survive.
+      noteAndMask(runtime, (observed as { body?: unknown } | null)?.body ?? observed);
+      return normalize(observed, runtime);
+    }),
   );
   compare(name, answers[0], answers[1]);
 }
@@ -330,7 +347,7 @@ try {
     await api(runtime, "POST", "/api/services/quiet/stop").catch(() => undefined);
   }
   await harness.shutdown();
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 5 });
 }
 
 if (failures > 0) {

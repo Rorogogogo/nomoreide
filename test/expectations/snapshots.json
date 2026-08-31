@@ -1,0 +1,727 @@
+{
+  "version": 1,
+  "gate": "snapshots",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"label\":\"manual snapshot\",\"createdAt\":\"2026-08-31T06:12:38.584Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"label\":\"manual snapshot\",\"createdAt\":\"2026-08-31T06:12:38.643Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"label\":\"manual snapshot\",\"createdAt\":\"2026-08-31T06:12:38.710Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"label\":\"first checkpoint\",\"createdAt\":\"2026-08-31T06:12:38.772Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"label\":\"快照 ✅\",\"createdAt\":\"2026-08-31T06:12:38.830Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\",\"createdAt\":\"2026-08-31T06:12:38.889Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"label\":\"tabbed\\tlabel\",\"createdAt\":\"2026-08-31T06:12:38.946Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"label\":\"two\\nlines\",\"createdAt\":\"2026-08-31T06:12:39.013Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"label\":\"to rename\",\"createdAt\":\"2026-08-31T06:12:39.077Z\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[{\"status\":\"M\",\"path\":\"app.txt\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[{\"status\":\"A\",\"path\":\"added.txt\"},{\"status\":\"M\",\"path\":\"app.txt\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[{\"status\":\"A\",\"path\":\"added.txt\"},{\"status\":\"M\",\"path\":\"app.txt\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[{\"status\":\"A\",\"path\":\"added.txt\"},{\"status\":\"M\",\"path\":\"app.txt\"},{\"status\":\"D\",\"path\":\"doomed.txt\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[{\"status\":\"A\",\"path\":\"added.txt\"},{\"status\":\"M\",\"path\":\"app.txt\"},{\"status\":\"D\",\"path\":\"doomed.txt\"},{\"status\":\"D\",\"path\":\"tracked.log\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/diff",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "diff --git a/added.txt b/added.txt\nnew file mode 100644\nindex 0000000..3e75765\n--- /dev/null\n+++ b/added.txt\n@@ -0,0 +1 @@\n+new\ndiff --git a/app.txt b/app.txt\nindex 4b48dee..5ea2ed4 100644\n--- a/app.txt\n+++ b/app.txt\n@@ -1 +1 @@\n-original\n+changed\ndiff --git a/doomed.txt b/doomed.txt\ndeleted file mode 100644\nindex 2d030d7..0000000\n--- a/doomed.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-delete me\ndiff --git a/tracked.log b/tracked.log\ndeleted file mode 100644\nindex a72b338..0000000\n--- a/tracked.log\n+++ /dev/null\n@@ -1 +0,0 @@\n-tracked and ignored\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/diff?path=app.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "diff --git a/app.txt b/app.txt\nindex 4b48dee..5ea2ed4 100644\n--- a/app.txt\n+++ b/app.txt\n@@ -1 +1 @@\n-original\n+changed\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/diff?path=%20%20",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "diff --git a/added.txt b/added.txt\nnew file mode 100644\nindex 0000000..3e75765\n--- /dev/null\n+++ b/added.txt\n@@ -0,0 +1 @@\n+new\ndiff --git a/app.txt b/app.txt\nindex 4b48dee..5ea2ed4 100644\n--- a/app.txt\n+++ b/app.txt\n@@ -1 +1 @@\n-original\n+changed\ndiff --git a/doomed.txt b/doomed.txt\ndeleted file mode 100644\nindex 2d030d7..0000000\n--- a/doomed.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-delete me\ndiff --git a/tracked.log b/tracked.log\ndeleted file mode 100644\nindex a72b338..0000000\n--- a/tracked.log\n+++ /dev/null\n@@ -1 +0,0 @@\n-tracked and ignored\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/diff?path=keep.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/diff?path=no-such-file",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/abc/files",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid snapshot sha\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/files",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid snapshot sha\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/zzzz/files",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid snapshot sha\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/ABCDEF/files",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git diff --no-renames --name-status ABCDEF e68cd7febcffe101c6417f35c7aa027c23e820ed\\nfatal: ambiguous argument 'ABCDEF': unknown revision or path not in the working tree.\\nUse '--' to separate paths from revisions, like this:\\n'git <command> [<revision>...] -- [<file>...]'\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/%61bcd/files",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid snapshot sha\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots//files",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/231f843f9db91fa8118bafcad04c25c6a403d4e8/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[{\"status\":\"A\",\"path\":\"added.txt\"},{\"status\":\"M\",\"path\":\"app.txt\"},{\"status\":\"D\",\"path\":\"doomed.txt\"},{\"status\":\"D\",\"path\":\"tracked.log\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots/abcdef0/restore",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not a nomoreide snapshot: abcdef0\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/files",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/diff",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/restore",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/snapshots",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/snapshots/zzzz",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/snapshots/220090e1e14e6876b6501fab964a2216d5a0fa86",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A label is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/snapshots/220090e1e14e6876b6501fab964a2216d5a0fa86",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A label is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/snapshots/220090e1e14e6876b6501fab964a2216d5a0fa86",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A label is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"220090e1e14e6876b6501fab964a2216d5a0fa86\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"to rename\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/snapshots/220090e1e14e6876b6501fab964a2216d5a0fa86",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"f526948b15bfaf6ac8e62b1c1ff0867f9d4e0055\",\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"label\":\"relabelled\",\"createdAt\":\"2026-08-31T16:12:39+10:00\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"f526948b15bfaf6ac8e62b1c1ff0867f9d4e0055\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"relabelled\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/220090e1e14e6876b6501fab964a2216d5a0fa86/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[{\"status\":\"A\",\"path\":\"added.txt\"},{\"status\":\"M\",\"path\":\"app.txt\"},{\"status\":\"D\",\"path\":\"doomed.txt\"},{\"status\":\"D\",\"path\":\"tracked.log\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/snapshots/f526948b15bfaf6ac8e62b1c1ff0867f9d4e0055",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"131d9f6d422c65d7d2186b6bfd7cd548d96025e4\",\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"label\":\"relabelled twice\",\"createdAt\":\"2026-08-31T16:12:39+10:00\"}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/snapshots/abcdef0",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not a nomoreide snapshot: abcdef0\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"131d9f6d422c65d7d2186b6bfd7cd548d96025e4\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"relabelled twice\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758706-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/snapshots/184bbaf60c78bc0b24c8a222bf9be263b483c134",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"131d9f6d422c65d7d2186b6bfd7cd548d96025e4\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"relabelled twice\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/snapshots/abcdef0",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not a nomoreide snapshot: abcdef0\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots/abcdef0/restore",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not a nomoreide snapshot: abcdef0\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"131d9f6d422c65d7d2186b6bfd7cd548d96025e4\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"relabelled twice\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/restore",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preRestore\":{\"sha\":\"aebfb783fef6ca981cabceee563832841790307e\",\"ref\":\"refs/nomoreide/snapshots/1788156760177-pre-restore-first-checkpoint\",\"label\":\"pre-restore (first checkpoint)\",\"createdAt\":\"2026-08-31T06:12:40.181Z\"},\"restoredFiles\":3,\"deletedPaths\":[\"added.txt\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156760177-pre-restore-first-checkpoint\",\"sha\":\"aebfb783fef6ca981cabceee563832841790307e\",\"createdAt\":\"2026-08-31T16:12:40+10:00\",\"label\":\"pre-restore (first checkpoint)\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"131d9f6d422c65d7d2186b6bfd7cd548d96025e4\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"relabelled twice\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156760177-pre-restore-first-checkpoint\",\"sha\":\"aebfb783fef6ca981cabceee563832841790307e\",\"createdAt\":\"2026-08-31T16:12:40+10:00\",\"label\":\"pre-restore (first checkpoint)\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"131d9f6d422c65d7d2186b6bfd7cd548d96025e4\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"relabelled twice\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156760177-pre-restore-first-checkpoint\",\"sha\":\"aebfb783fef6ca981cabceee563832841790307e\",\"createdAt\":\"2026-08-31T16:12:40+10:00\",\"label\":\"pre-restore (first checkpoint)\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"131d9f6d422c65d7d2186b6bfd7cd548d96025e4\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"relabelled twice\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots/793e50d4da01fa4a217039c40b98b43fe6eee51c/restore",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preRestore\":{\"sha\":\"813151ce9b097d86606898c0d67da13183fc6848\",\"ref\":\"refs/nomoreide/snapshots/1788156760329-pre-restore-first-checkpoint\",\"label\":\"pre-restore (first checkpoint)\",\"createdAt\":\"2026-08-31T06:12:40.333Z\"},\"restoredFiles\":0,\"deletedPaths\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"adf401aee7db768eff9348d2887ab00172a7106c\",\"ref\":\"refs/nomoreide/snapshots/1788156760397-dirty-checkpoint\",\"label\":\"dirty checkpoint\",\"createdAt\":\"2026-08-31T06:12:40.400Z\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"snapshots\":[{\"ref\":\"refs/nomoreide/snapshots/1788156760397-dirty-checkpoint\",\"sha\":\"adf401aee7db768eff9348d2887ab00172a7106c\",\"createdAt\":\"2026-08-31T16:12:40+10:00\",\"label\":\"dirty checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156760329-pre-restore-first-checkpoint\",\"sha\":\"813151ce9b097d86606898c0d67da13183fc6848\",\"createdAt\":\"2026-08-31T16:12:40+10:00\",\"label\":\"pre-restore (first checkpoint)\"},{\"ref\":\"refs/nomoreide/snapshots/1788156760177-pre-restore-first-checkpoint\",\"sha\":\"aebfb783fef6ca981cabceee563832841790307e\",\"createdAt\":\"2026-08-31T16:12:40+10:00\",\"label\":\"pre-restore (first checkpoint)\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759073-to-rename\",\"sha\":\"131d9f6d422c65d7d2186b6bfd7cd548d96025e4\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"relabelled twice\"},{\"ref\":\"refs/nomoreide/snapshots/1788156759008-two-lines\",\"sha\":\"15ad8dbef35fd8f6c0adf984e08da18e7f1ed7da\",\"createdAt\":\"2026-08-31T16:12:39+10:00\",\"label\":\"two lines\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758942-tabbed-label\",\"sha\":\"89e9e51446365d12073c9b7e8a4983d9c19d4c2d\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"tabbed\\tlabel\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758886-long-long-long-long-long-long-long-long-\",\"sha\":\"e78f6a5a6ad34f371f27c2edf958eef839e8297f\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-end\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758826-snapshot\",\"sha\":\"b893d1aed90377d765ed0b6242e359d73080ecdb\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"快照 ✅\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758767-first-checkpoint\",\"sha\":\"793e50d4da01fa4a217039c40b98b43fe6eee51c\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"first checkpoint\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758639-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"},{\"ref\":\"refs/nomoreide/snapshots/1788156758580-manual-snapshot\",\"sha\":\"184bbaf60c78bc0b24c8a222bf9be263b483c134\",\"createdAt\":\"2026-08-31T16:12:38+10:00\",\"label\":\"manual snapshot\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots/adf401aee7db768eff9348d2887ab00172a7106c/restore",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preRestore\":{\"sha\":\"de9362a99e3333c2778a2d458ab278da38404d35\",\"ref\":\"refs/nomoreide/snapshots/1788156760435-pre-restore-dirty-checkpoint\",\"label\":\"pre-restore (dirty checkpoint)\",\"createdAt\":\"2026-08-31T06:12:40.438Z\"},\"restoredFiles\":1,\"deletedPaths\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"main\",\"ahead\":0,\"behind\":0,\"files\":[{\"index\":\" \",\"workingTree\":\"M\",\"path\":\"app.txt\"}]}}"
+    }
+  ],
+  "entries": []
+}

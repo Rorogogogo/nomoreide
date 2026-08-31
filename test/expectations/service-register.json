@@ -1,0 +1,376 @@
+{
+  "version": 1,
+  "gate": "service-register",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"web\",\"port\":4100,\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"web\",\"port\":4100,\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"port\":4101,\"description\":\"a service\",\"dependsOn\":[\"web\"],\"projectPath\":\"/tmp/proj\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"web\",\"port\":4100,\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"port\":4101,\"description\":\"a service\",\"dependsOn\":[\"web\"],\"projectPath\":\"/tmp/proj\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"stackman\",\"kind\":\"docker-compose\",\"cwd\":\"%%WORKSPACE%%\",\"composeFile\":\"compose.yml\",\"composeService\":\"api\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"web\",\"port\":4100,\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"full\",\"port\":4101,\"description\":\"a service\",\"dependsOn\":[\"web\"],\"projectPath\":\"/tmp/proj\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"stackman\",\"kind\":\"docker-compose\",\"cwd\":\"%%WORKSPACE%%\",\"composeFile\":\"compose.yml\",\"composeService\":\"api\"},{\"name\":\"remote\",\"kind\":\"ssh\",\"command\":\"sleep 100\",\"cwd\":\"/srv\",\"host\":\"example.invalid\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"full\",\"port\":4101,\"description\":\"a service\",\"dependsOn\":[\"web\"],\"projectPath\":\"/tmp/proj\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"stackman\",\"kind\":\"docker-compose\",\"cwd\":\"%%WORKSPACE%%\",\"composeFile\":\"compose.yml\",\"composeService\":\"api\"},{\"name\":\"remote\",\"kind\":\"ssh\",\"command\":\"sleep 100\",\"cwd\":\"/srv\",\"host\":\"example.invalid\"},{\"name\":\"web\",\"command\":\"sleep 200\",\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"cwd is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"composeService is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"host is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"full\",\"port\":4101,\"description\":\"a service\",\"dependsOn\":[\"web\"],\"projectPath\":\"/tmp/proj\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"stackman\",\"kind\":\"docker-compose\",\"cwd\":\"%%WORKSPACE%%\",\"composeFile\":\"compose.yml\",\"composeService\":\"api\"},{\"name\":\"remote\",\"kind\":\"ssh\",\"command\":\"sleep 100\",\"cwd\":\"/srv\",\"host\":\"example.invalid\"},{\"name\":\"web\",\"command\":\"sleep 200\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"podman\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"full\",\"port\":4101,\"description\":\"a service\",\"dependsOn\":[\"web\"],\"projectPath\":\"/tmp/proj\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"stackman\",\"kind\":\"docker-compose\",\"cwd\":\"%%WORKSPACE%%\",\"composeFile\":\"compose.yml\",\"composeService\":\"api\"},{\"name\":\"remote\",\"kind\":\"ssh\",\"command\":\"sleep 100\",\"cwd\":\"/srv\",\"host\":\"example.invalid\"},{\"name\":\"web\",\"command\":\"sleep 200\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"podman\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"mixed\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"args contain an invalid null byte.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"custom\\\",\\n    \\\"message\\\": \\\"SSH command contains invalid null byte.\\\",\\n    \\\"path\\\": [\\n      \\\"command\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"env must be a JSON object.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"env must be a JSON object.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid environment variable name: not a name\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid environment variable name: a.b\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Environment variable \\\"TOKEN\\\" must be a string.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"args must be a JSON array of strings.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"args must be a JSON array of strings.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"args must be a JSON array of strings.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_union\\\",\\n    \\\"unionErrors\\\": [\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"number\\\",\\n            \\\"received\\\": \\\"nan\\\",\\n            \\\"path\\\": [\\n              \\\"port\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected number, received nan\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"number\\\",\\n            \\\"received\\\": \\\"nan\\\",\\n            \\\"path\\\": [\\n              \\\"port\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected number, received nan\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"docker-compose\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"docker-compose\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"composeService\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"number\\\",\\n            \\\"received\\\": \\\"nan\\\",\\n            \\\"path\\\": [\\n              \\\"port\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected number, received nan\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"ssh\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"ssh\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"host\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      }\\n    ],\\n    \\\"path\\\": [],\\n    \\\"message\\\": \\\"Invalid input\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"full\",\"port\":4101,\"description\":\"a service\",\"dependsOn\":[\"web\"],\"projectPath\":\"/tmp/proj\",\"command\":\"sleep 100\",\"args\":[\"--flag\",\"value\"],\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"stackman\",\"kind\":\"docker-compose\",\"cwd\":\"%%WORKSPACE%%\",\"composeFile\":\"compose.yml\",\"composeService\":\"api\"},{\"name\":\"remote\",\"kind\":\"ssh\",\"command\":\"sleep 100\",\"cwd\":\"/srv\",\"host\":\"example.invalid\"},{\"name\":\"web\",\"command\":\"sleep 200\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"podman\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"mixed\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"blankport\",\"command\":\"sleep 100\",\"cwd\":\"%%WORKSPACE%%\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_union\\\",\\n    \\\"unionErrors\\\": [\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"number\\\",\\n            \\\"received\\\": \\\"nan\\\",\\n            \\\"path\\\": [\\n              \\\"port\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected number, received nan\\\"\\n          },\\n          {\\n            \\\"received\\\": \\\"ssh\\\",\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"local\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"local\\\\\\\"\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"number\\\",\\n            \\\"received\\\": \\\"nan\\\",\\n            \\\"path\\\": [\\n              \\\"port\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected number, received nan\\\"\\n          },\\n          {\\n            \\\"received\\\": \\\"ssh\\\",\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"docker-compose\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"docker-compose\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"composeService\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"number\\\",\\n            \\\"received\\\": \\\"nan\\\",\\n            \\\"path\\\": [\\n              \\\"port\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected number, received nan\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"custom\\\",\\n            \\\"message\\\": \\\"SSH command contains invalid null byte.\\\",\\n            \\\"path\\\": [\\n              \\\"command\\\"\\n            ]\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      }\\n    ],\\n    \\\"path\\\": [],\\n    \\\"message\\\": \\\"Invalid input\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"message\":\"Command completed successfully.\",\"exitCode\":0,\"signal\":null,\"stdout\":[],\"stderr\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"message\":\"Command exited with code 3.\",\"exitCode\":3,\"signal\":null,\"stdout\":[],\"stderr\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"message\":\"Command completed successfully.\",\"exitCode\":0,\"signal\":null,\"stdout\":[\"one\",\"three\"],\"stderr\":[\"two\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"message\":\"Command exited with code 127.\",\"exitCode\":127,\"signal\":null,\"stdout\":[],\"stderr\":[\"/bin/sh: definitely-not-a-real-binary-xyz: command not found\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"message\":\"Command completed successfully.\",\"exitCode\":0,\"signal\":null,\"stdout\":[\"from argv\"],\"stderr\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"message\":\"Command completed successfully.\",\"exitCode\":0,\"signal\":null,\"stdout\":[\"a; touch pwned\"],\"stderr\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"message\":\"Command completed successfully.\",\"exitCode\":0,\"signal\":null,\"stdout\":[\"caller\"],\"stderr\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"message\":\"Command completed successfully.\",\"exitCode\":0,\"signal\":null,\"stdout\":[\"dotenv\"],\"stderr\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"message\":\"Command completed successfully.\",\"exitCode\":0,\"signal\":null,\"stdout\":[\"caller\"],\"stderr\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"cwd is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"message\":\"spawn /bin/sh ENOENT\",\"exitCode\":1,\"signal\":null,\"stdout\":[],\"stderr\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/test",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    }
+  ],
+  "entries": []
+}

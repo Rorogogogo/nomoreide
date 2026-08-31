@@ -1,0 +1,1146 @@
+{
+  "version": 1,
+  "gate": "mcp-github",
+  "http": [],
+  "entries": [
+    {
+      "key": "context/no-token-yet",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_github_list_prs' execution failed: No stored GitHub token configured. Choose a GitHub CLI account or connect GitHub."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "context/no-origin",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_github_list_prs' execution failed: No git remote 'origin' found."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "context/not-a-github-remote",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_github_list_prs' execution failed: Could not parse GitHub remote URL: https://gitlab.com/parity-owner/parity-repo.git"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "context/not-a-repository",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_github_list_prs' execution failed: fatal: not a git repository (or any of the parent directories): .git"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "setup/store-a-token",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "GitHub token stored for github.com."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/list-defaults",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "number": 7,
+              "title": "PR 7",
+              "state": "open",
+              "body": "body of 7",
+              "html_url": "https://github.com/parity-owner/parity-repo/pull/7",
+              "head": {
+                "ref": "feature-7",
+                "sha": "0000000000000000000000000000000000000007"
+              },
+              "base": {
+                "ref": "main"
+              },
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-02T03:04:05Z",
+              "updated_at": "2026-01-02T04:05:06Z",
+              "merged_at": null,
+              "draft": false,
+              "mergeable": true
+            },
+            {
+              "number": 8,
+              "title": "PR 8",
+              "state": "merged",
+              "body": "body of 8",
+              "html_url": "https://github.com/parity-owner/parity-repo/pull/8",
+              "head": {
+                "ref": "feature-8",
+                "sha": "0000000000000000000000000000000000000008"
+              },
+              "base": {
+                "ref": "main"
+              },
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-02T03:04:05Z",
+              "updated_at": "2026-01-02T04:05:06Z",
+              "merged_at": "2026-01-03T00:00:00Z",
+              "draft": false,
+              "mergeable": true
+            },
+            {
+              "number": 9,
+              "title": "PR 9",
+              "state": "open",
+              "body": "body of 9",
+              "html_url": "https://github.com/parity-owner/parity-repo/pull/9",
+              "head": {
+                "ref": "feature-9",
+                "sha": "0000000000000000000000000000000000000009"
+              },
+              "base": {
+                "ref": "main"
+              },
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-02T03:04:05Z",
+              "updated_at": "2026-01-02T04:05:06Z",
+              "merged_at": null,
+              "draft": false,
+              "mergeable": null
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/pulls?state=open&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/list-all-page-two",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": []
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/pulls?state=all&per_page=30&page=2",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/get",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "number": 7,
+            "title": "PR 7",
+            "state": "open",
+            "body": "body of 7",
+            "html_url": "https://github.com/parity-owner/parity-repo/pull/7",
+            "head": {
+              "ref": "feature-7",
+              "sha": "0000000000000000000000000000000000000007"
+            },
+            "base": {
+              "ref": "main"
+            },
+            "user": {
+              "login": "octocat"
+            },
+            "created_at": "2026-01-02T03:04:05Z",
+            "updated_at": "2026-01-02T04:05:06Z",
+            "merged_at": null,
+            "draft": false,
+            "mergeable": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/pulls/7",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/get-missing",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_github_get_pr' execution failed: Not Found"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/pulls/404",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/diff",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-a\n+b\n"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/pulls/7",
+            "accept": "application/vnd.github.diff",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/diff-server-error",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_github_get_pr_diff' execution failed: upstream exploded"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/pulls/500",
+            "accept": "application/vnd.github.diff",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/create",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "Created PR #11: https://github.com/parity-owner/parity-repo/pull/11"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/parity-owner/parity-repo/pulls",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Parity PR",
+              "body": "from the gate",
+              "head": "feature-7",
+              "base": "main",
+              "draft": false
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/create-draft-without-body",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "Created PR #11: https://github.com/parity-owner/parity-repo/pull/11"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/parity-owner/parity-repo/pulls",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Parity PR",
+              "head": "feature-7",
+              "base": "main",
+              "draft": true
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-default-method",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "merged": true,
+            "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "message": "Pull Request successfully merged"
+          }
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/parity-owner/parity-repo/pulls/7/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "squash"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-with-overrides",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "merged": true,
+            "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "message": "Pull Request successfully merged"
+          }
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/parity-owner/parity-repo/pulls/7/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "rebase",
+              "commit_title": "T",
+              "commit_message": "M"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-refused",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_github_merge_pr' execution failed: Pull Request is not mergeable"
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/parity-owner/parity-repo/pulls/9/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "squash"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/list-defaults",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "number": 3,
+              "title": "Issue 3",
+              "state": "open",
+              "body": "body of issue 3",
+              "html_url": "https://github.com/parity-owner/parity-repo/issues/3",
+              "user": {
+                "login": "octocat"
+              },
+              "labels": [
+                {
+                  "name": "bug",
+                  "color": "d73a4a"
+                }
+              ],
+              "created_at": "2026-01-02T03:04:05Z",
+              "updated_at": "2026-01-02T04:05:06Z",
+              "comments": 2
+            },
+            {
+              "number": 4,
+              "title": "Issue 4",
+              "state": "open",
+              "body": "body of issue 4",
+              "html_url": "https://github.com/parity-owner/parity-repo/issues/4",
+              "user": {
+                "login": "octocat"
+              },
+              "labels": [
+                {
+                  "name": "bug",
+                  "color": "d73a4a"
+                }
+              ],
+              "created_at": "2026-01-02T03:04:05Z",
+              "updated_at": "2026-01-02T04:05:06Z",
+              "comments": 2
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/issues?state=open&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/list-closed-page-three",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": []
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/issues?state=closed&per_page=30&page=3",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/get",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "number": 3,
+            "title": "Issue 3",
+            "state": "open",
+            "body": "body of issue 3",
+            "html_url": "https://github.com/parity-owner/parity-repo/issues/3",
+            "user": {
+              "login": "octocat"
+            },
+            "labels": [
+              {
+                "name": "bug",
+                "color": "d73a4a"
+              }
+            ],
+            "created_at": "2026-01-02T03:04:05Z",
+            "updated_at": "2026-01-02T04:05:06Z",
+            "comments": 2
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/issues/3",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/get-missing",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_github_get_issue' execution failed: Not Found"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/issues/404",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/server-error-without-json",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_github_get_issue' execution failed: Internal Server Error"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/issues/500",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/comments",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": 101,
+              "body": "comment 101",
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-02T03:04:05Z",
+              "html_url": "https://github.com/parity-owner/parity-repo/issues/3#issuecomment-101"
+            },
+            {
+              "id": 102,
+              "body": "comment 102",
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-02T03:04:05Z",
+              "html_url": "https://github.com/parity-owner/parity-repo/issues/3#issuecomment-102"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/issues/3/comments?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/add-comment",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "Comment added: https://github.com/parity-owner/parity-repo/issues/3#issuecomment-103"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/parity-owner/parity-repo/issues/3/comments",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "body": "from the gate"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/create",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "Created issue #12: https://github.com/parity-owner/parity-repo/issues/12"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/parity-owner/parity-repo/issues",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Parity issue",
+              "body": "from the gate"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/create-without-body",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "Created issue #12: https://github.com/parity-owner/parity-repo/issues/12"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/parity-owner/parity-repo/issues",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Parity issue"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "ci/pending",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "state": "pending",
+            "totalCount": 2,
+            "runs": [
+              {
+                "id": 1,
+                "name": "build",
+                "status": "queued",
+                "conclusion": null,
+                "html_url": "https://github.com/parity-owner/parity-repo/runs/1",
+                "started_at": "2026-01-02T03:04:05Z",
+                "completed_at": null
+              },
+              {
+                "id": 2,
+                "name": "test",
+                "status": "completed",
+                "conclusion": "success",
+                "html_url": "https://github.com/parity-owner/parity-repo/runs/2",
+                "started_at": "2026-01-02T03:04:05Z",
+                "completed_at": "2026-01-02T03:14:05Z"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "ci/success",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "state": "success",
+            "totalCount": 3,
+            "runs": [
+              {
+                "id": 3,
+                "name": "build",
+                "status": "completed",
+                "conclusion": "success",
+                "html_url": "https://github.com/parity-owner/parity-repo/runs/3",
+                "started_at": "2026-01-02T03:04:05Z",
+                "completed_at": "2026-01-02T03:14:05Z"
+              },
+              {
+                "id": 4,
+                "name": "lint",
+                "status": "completed",
+                "conclusion": "skipped",
+                "html_url": "https://github.com/parity-owner/parity-repo/runs/4",
+                "started_at": "2026-01-02T03:04:05Z",
+                "completed_at": "2026-01-02T03:14:05Z"
+              },
+              {
+                "id": 5,
+                "name": "docs",
+                "status": "completed",
+                "conclusion": "neutral",
+                "html_url": "https://github.com/parity-owner/parity-repo/runs/5",
+                "started_at": "2026-01-02T03:04:05Z",
+                "completed_at": "2026-01-02T03:14:05Z"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/commits/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "ci/failure",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "sha": "cccccccccccccccccccccccccccccccccccccccc",
+            "state": "failure",
+            "totalCount": 2,
+            "runs": [
+              {
+                "id": 6,
+                "name": "build",
+                "status": "completed",
+                "conclusion": "success",
+                "html_url": "https://github.com/parity-owner/parity-repo/runs/6",
+                "started_at": "2026-01-02T03:04:05Z",
+                "completed_at": "2026-01-02T03:14:05Z"
+              },
+              {
+                "id": 7,
+                "name": "test",
+                "status": "completed",
+                "conclusion": "failure",
+                "html_url": "https://github.com/parity-owner/parity-repo/runs/7",
+                "started_at": "2026-01-02T03:04:05Z",
+                "completed_at": "2026-01-02T03:14:05Z"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/commits/cccccccccccccccccccccccccccccccccccccccc/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "ci/neither-passing-nor-failing",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "sha": "dddddddddddddddddddddddddddddddddddddddd",
+            "state": "error",
+            "totalCount": 1,
+            "runs": [
+              {
+                "id": 8,
+                "name": "build",
+                "status": "completed",
+                "conclusion": "cancelled",
+                "html_url": "https://github.com/parity-owner/parity-repo/runs/8",
+                "started_at": "2026-01-02T03:04:05Z",
+                "completed_at": "2026-01-02T03:14:05Z"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/commits/dddddddddddddddddddddddddddddddddddddddd/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "ci/no-runs",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "state": "unknown",
+            "totalCount": 0,
+            "runs": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/commits/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "ci/commit-not-found",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "sha": "ffffffffffffffffffffffffffffffffffffffff",
+            "state": "unknown",
+            "totalCount": 0,
+            "runs": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/commits/ffffffffffffffffffffffffffffffffffffffff/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "actions/list-defaults",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": 21,
+              "name": "CI",
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/parity-owner/parity-repo/actions/runs/21",
+              "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "head_branch": "main",
+              "created_at": "2026-01-02T03:04:05Z",
+              "updated_at": "2026-01-02T03:14:05Z",
+              "run_number": 21,
+              "event": "push"
+            },
+            {
+              "id": 22,
+              "name": "CI",
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/parity-owner/parity-repo/actions/runs/22",
+              "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "head_branch": "feature-7",
+              "created_at": "2026-01-02T03:04:05Z",
+              "updated_at": "2026-01-02T03:14:05Z",
+              "run_number": 22,
+              "event": "push"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/actions/runs?per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "actions/list-branch-page-two",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": 23,
+              "name": "CI",
+              "status": "completed",
+              "conclusion": null,
+              "html_url": "https://github.com/parity-owner/parity-repo/actions/runs/23",
+              "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "head_branch": "main",
+              "created_at": "2026-01-02T03:04:05Z",
+              "updated_at": "2026-01-02T03:14:05Z",
+              "run_number": 23,
+              "event": "push"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/parity-owner/parity-repo/actions/runs?per_page=30&page=2&branch=main",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer ghp_parity_github",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "invalid/list-prs-bad-state",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_list_prs' parameter validation failed: state: Invalid enum value. Expected 'open' | 'closed' | 'all', received 'everything'. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/list-prs-page-zero",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_list_prs' parameter validation failed: page: Number must be greater than 0. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/list-prs-page-float",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_list_prs' parameter validation failed: page: Expected integer, received float. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/get-pr-no-number",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_get_pr' parameter validation failed: number: Required. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/get-pr-wrong-type",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_get_pr' parameter validation failed: number: Expected number, received string. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/create-pr-missing-base",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_create_pr' parameter validation failed: title: String must contain at least 1 character(s), base: Required. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/create-pr-wrong-type-draft",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_create_pr' parameter validation failed: draft: Expected boolean, received string. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/merge-bad-method",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_merge_pr' parameter validation failed: method: Invalid enum value. Expected 'merge' | 'squash' | 'rebase', received 'fast-forward'. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/add-comment-empty-body",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_add_issue_comment' parameter validation failed: body: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/create-issue-no-title",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_create_issue' parameter validation failed: title: Required. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/commit-ci-short-sha",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_get_commit_ci' parameter validation failed: sha: String must contain at least 7 character(s). Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/commit-ci-no-sha",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_get_commit_ci' parameter validation failed: sha: Required. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "invalid/workflow-runs-empty-cwd",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_github_list_workflow_runs' parameter validation failed: cwd: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    }
+  ]
+}

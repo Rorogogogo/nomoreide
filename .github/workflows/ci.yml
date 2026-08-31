@@ -123,3 +123,11 @@ jobs:
       # A new gate is now covered the moment its file is committed.
       - name: Parity gates
         run: npm run parity -- ./target/debug/nomoreide
+      # The same gates again, with the reference replaced by the answers it
+      # gave when `test/expectations/` was recorded — and pointed at a path
+      # that cannot exist, so a gate that still reaches for TypeScript dies
+      # naming itself. This is what says the suite survives deleting `src/`,
+      # which is Phase 8's whole point; it is cheap (no second runtime to
+      # start) and it fails on a recording that has gone stale.
+      - name: Parity gates (replayed, without the TypeScript reference)
+        run: npm run parity -- ./target/debug/nomoreide --replay

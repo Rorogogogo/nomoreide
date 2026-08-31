@@ -5,6 +5,8 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { callMcpTool, type McpCommand } from "../test/support/mcp-contract.js";
+import { Recorder } from "../test/support/parity-recording.js";
+import { referenceSpec } from "../test/support/runtime-parity.js";
 
 const candidateArgs = process.argv.slice(2);
 if (candidateArgs.length === 0) {
@@ -20,6 +22,8 @@ const fixture = JSON.parse(
   config: Record<string, unknown>;
   expectedDiscovery: unknown;
 };
+const recorder = new Recorder();
+const reference_ = referenceSpec();
 const referenceHome = await mkdtemp(join(tmpdir(), "nomoreide-service-reference-"));
 const candidateHome = await mkdtemp(join(tmpdir(), "nomoreide-service-candidate-"));
 const port = await availablePort();
@@ -70,10 +74,19 @@ try {
   await waitForDaemon(candidateHome, daemon, () => daemonStderr);
   daemonReady = true;
 
-  const reference = await callMcpTool(
-    command(process.execPath, ["--import", "tsx", "src/index.ts", "mcp"], referenceHome),
-    "nomoreide_list_services",
-    {},
+  // In replay this answer comes from the recording, and `reference_.command`
+  // is a path that cannot exist — so a run that still tried to spawn the
+  // reference would die naming itself rather than pass because `src/` happens
+  // to still be here.
+  const reference = await recorder.recorded(
+    { ...reference_, home: referenceHome, workspace: referenceHome, port },
+    "list-services",
+    () =>
+      callMcpTool(
+        command(reference_.command, [...reference_.args, "mcp"], referenceHome),
+        "nomoreide_list_services",
+        {},
+      ),
   );
   const native = await callMcpTool(
     command(
@@ -91,6 +104,7 @@ try {
   assert.doesNotMatch(JSON.stringify(native), /fixture-secret-value|development/);
   process.stdout.write("MCP service discovery parity passed.\n");
 } finally {
+  await recorder.finish();
   if (daemon && daemon.exitCode === null) {
     daemon.kill("SIGTERM");
     await waitForExit(daemon);
