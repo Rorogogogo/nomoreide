@@ -289,8 +289,12 @@ jobs:
           # exact version, so publishing it first would leave a window where
           # `npm install -g nomoreide` resolves a shim whose binary package
           # does not exist yet — an install that fails at the first run.
-          for package in npm-dist/cli-*; do
+          #
+          # Absolute paths, because `npm publish a/b` is read as the GitHub
+          # shorthand `owner/repo` rather than a directory: the first run of
+          # this job died fetching `github.com/npm-dist/cli-darwin-arm64.git`.
+          for package in "$PWD"/npm-dist/cli-*; do
             npm publish --access public "$package"
           done
-          npm publish --access public npm-dist/nomoreide
+          npm publish --access public "$PWD/npm-dist/nomoreide"
 

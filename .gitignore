@@ -14,3 +14,8 @@ video/
 
 # Rust workspace build artifacts
 target/
+
+# Generated npm packages: `build-npm-packages.mjs` writes the release
+# packages here, and `bootstrap-npm-scope.mjs` the one-time placeholders.
+npm-dist/
+npm-bootstrap/
