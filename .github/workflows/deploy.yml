@@ -1,8 +1,14 @@
-name: Release (Version Bump & Publish to npm)
+name: Release (Version Bump & Tag)
 
 # Releasing is deliberate, not a side effect of merging. Merges accumulate on
 # main — tested by ci.yml on every push — and a release is cut by running this
 # workflow. Tagging v<version> here is what triggers desktop-release.yml.
+#
+# This no longer publishes to npm. It cannot: the package now carries the
+# compiled Rust binary for four platforms, and none of them exist yet at this
+# point — the tag pushed below is what starts the workflow that builds them.
+# `cli-release.yml` publishes npm from the same tag once all four are built and
+# attached, so npm can never name a version whose binaries are missing.
 on:
   workflow_dispatch:
     inputs:
@@ -59,6 +65,3 @@ jobs:
           git tag "v$NEW_VERSION"
           git push
           git push --tags
-
-      - name: Publish to npm
-        run: npm publish --access public

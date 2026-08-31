@@ -238,3 +238,59 @@ jobs:
           done
           echo "no release for $TAG after 30 minutes; the archives are on this run as artifacts" >&2
           exit 1
+
+  npm:
+    # npm ships the same binaries as the archives, through the same tag.
+    #
+    # It runs after `publish` rather than beside it so npm cannot carry a
+    # version the GitHub release does not, and after `build` so a shim can
+    # never name platform packages that were not produced — `publish` already
+    # refuses a partial set, and this inherits that guarantee.
+    #
+    # One-time setup on npmjs.com, because this publishes five packages from a
+    # workflow that has never published before: the `@nomoreide` scope must
+    # exist, and each of `nomoreide`, `@nomoreide/cli-darwin-arm64`,
+    # `-darwin-x64`, `-linux-x64` and `-linux-arm64` needs trusted publishing
+    # pointed at *this* file. There is no token to add — `id-token: write`
+    # above is the whole of the credential.
+    needs: [build, linux-compatibility, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nomoreide-*
+          merge-multiple: true
+          path: archives
+
+      - name: Unpack the archives the packages will carry
+        working-directory: archives
+        run: |
+          set -euo pipefail
+          for archive in *.tar.gz; do tar -xzf "$archive"; done
+          ls -d nomoreide-*/ | sed 's|/$||'
+
+      - name: Build the packages
+        run: node scripts/build-npm-packages.mjs "${TAG#v}" archives npm-dist
+
+      - name: Publish
+        run: |
+          set -euo pipefail
+          # Platform packages first, then the shim. The shim pins them at an
+          # exact version, so publishing it first would leave a window where
+          # `npm install -g nomoreide` resolves a shim whose binary package
+          # does not exist yet — an install that fails at the first run.
+          for package in npm-dist/cli-*; do
+            npm publish --access public "$package"
+          done
+          npm publish --access public npm-dist/nomoreide
+
