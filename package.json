@@ -1,6 +1,7 @@
 {
   "name": "nomoreide",
   "version": "0.2.0",
+  "private": true,
   "description": "An AI-native terminal workbench for services, Git review, logs, and MCP workflows.",
   "repository": {
     "type": "git",
@@ -23,19 +24,11 @@
     "apps/dashboard",
     "apps/website"
   ],
-  "bin": {
-    "nomoreide": "dist/index.js"
-  },
-  "files": [
-    "dist",
-    "profiles/nomoreide-debug",
-    "README.md"
-  ],
   "scripts": {
-    "build": "npm run build --workspace @nomoreide/dashboard && tsc -p tsconfig.json",
-    "lint": "biome lint src apps/dashboard/src",
-    "lint:fix": "biome lint --write src apps/dashboard/src",
-    "dev": "tsx src/index.ts",
+    "build": "npm run build --workspace @nomoreide/dashboard",
+    "lint": "biome lint apps/dashboard/src scripts test",
+    "lint:fix": "biome lint --write apps/dashboard/src scripts test",
+    "dev": "cargo run -p nomoreide-cli --",
     "dev:web": "npm run dev --workspace @nomoreide/dashboard",
     "mcp:contract:update": "node --import tsx scripts/update-mcp-contract.ts",
     "mcp:git-parity": "node --import tsx scripts/check-mcp-git-parity.ts",
@@ -107,7 +100,6 @@
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",
     "mcp:runtime-parity": "node --import tsx scripts/check-mcp-runtime-parity.ts",
-    "prepublishOnly": "npm test && npm run build",
     "test": "vitest run",
     "tauri": "tauri",
     "rust:dependency-check": "node scripts/check-rust-dependencies.mjs",
@@ -118,16 +110,6 @@
     "video:render": "npm --prefix video run render",
     "video:still": "npm --prefix video run still",
     "video:studio": "npm --prefix video run studio"
-  },
-  "dependencies": {
-    "fastmcp": "^3.0.0",
-    "js-yaml": "^4.1.1",
-    "mysql2": "^3.22.3",
-    "node-pty": "^1.1.0",
-    "pg": "^8.21.0",
-    "smol-toml": "^1.7.0",
-    "ws": "^8.21.0",
-    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.15",

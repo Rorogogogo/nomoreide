@@ -11,8 +11,15 @@
 # Options (also readable from the environment, for `curl … | sh`):
 #   --version <x.y.z>   NOMOREIDE_VERSION   a specific release; default latest
 #   --prefix <dir>      NOMOREIDE_PREFIX    default ~/.local
+#   --setup <agents>    NOMOREIDE_SETUP     auto (default), none, or a
+#                                           comma-separated list of
+#                                           claude,codex,gemini
 #   --uninstall                             remove what this installed
 #   --help
+#
+# `--setup auto` registers the MCP server with every agent it can find, so the
+# one command leaves a working setup rather than a binary and a hint. It writes
+# the agent's own config (backing up what was there); `--setup none` skips it.
 #
 # Exit codes: 0 installed, 1 refused or failed, 2 bad usage.
 
@@ -26,6 +33,7 @@ API_URL="${NOMOREIDE_API_URL:-https://api.github.com/repos/$REPO/releases/latest
 
 VERSION="${NOMOREIDE_VERSION:-}"
 PREFIX="${NOMOREIDE_PREFIX:-$HOME/.local}"
+SETUP="${NOMOREIDE_SETUP:-auto}"
 ACTION=install
 
 say() { printf '%s\n' "$*"; }
@@ -43,6 +51,9 @@ NoMoreIDE installer.
 Options (also readable from the environment, for `curl ... | sh`):
   --version <x.y.z>   NOMOREIDE_VERSION   a specific release; default latest
   --prefix <dir>      NOMOREIDE_PREFIX    default ~/.local
+  --setup <agents>    NOMOREIDE_SETUP     auto (default), none, or a
+                                          comma-separated list of
+                                          claude,codex,gemini
   --uninstall                             remove what this installed
   --help
 
@@ -56,11 +67,32 @@ while [ $# -gt 0 ]; do
     --version=*) VERSION="${1#--version=}"; shift ;;
     --prefix) [ $# -ge 2 ] || { usage >&2; exit 2; }; PREFIX="$2"; shift 2 ;;
     --prefix=*) PREFIX="${1#--prefix=}"; shift ;;
+    --setup) [ $# -ge 2 ] || { usage >&2; exit 2; }; SETUP="$2"; shift 2 ;;
+    --setup=*) SETUP="${1#--setup=}"; shift ;;
+    --no-setup) SETUP=none; shift ;;
     --uninstall) ACTION=uninstall; shift ;;
     -h|--help) usage; exit 0 ;;
     *) printf 'install.sh: unknown option %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
 done
+
+# Validated here rather than where it is used: a misspelled agent is a usage
+# error, and finding out after the download has landed and the binary is in
+# place is the wrong moment to be told the arguments were wrong.
+case "$SETUP" in
+  auto|none) ;;
+  *)
+    for agent in $(printf '%s' "$SETUP" | tr ',' ' '); do
+      case "$agent" in
+        claude|codex|gemini) ;;
+        *)
+          printf 'install.sh: --setup: unknown agent %s (expected claude, codex, gemini, auto or none)\n' "$agent" >&2
+          exit 2
+          ;;
+      esac
+    done
+    ;;
+esac
 
 # `~` is not expanded when it arrives in a variable rather than as a word.
 case "$PREFIX" in
@@ -226,7 +258,58 @@ else
   fi
 fi
 
+# ------------------------------------------------------------ agent setup
+
+# An agent counts as present if its CLI is on PATH or it already keeps a config
+# here. Either alone is enough: someone can drive Claude Code from the desktop
+# app with no `claude` on PATH, and someone can have just installed a CLI that
+# has not written a config yet.
+agent_present() {
+  case "$1" in
+    claude) command -v claude >/dev/null 2>&1 || [ -e "$HOME/.claude.json" ] || [ -d "$HOME/.claude" ] ;;
+    codex)  command -v codex  >/dev/null 2>&1 || [ -d "$HOME/.codex" ] ;;
+    gemini) command -v gemini >/dev/null 2>&1 || [ -d "$HOME/.gemini" ] ;;
+    *) return 1 ;;
+  esac
+}
+
+case "$SETUP" in
+  none) wanted="" ;;
+  auto)
+    wanted=""
+    for agent in claude codex gemini; do
+      if agent_present "$agent"; then
+        wanted="$wanted $agent"
+      fi
+    done
+    ;;
+  *)
+    # An explicit list is a request, not a guess, so it is not filtered by
+    # detection — naming an agent installs for it whether or not this can see
+    # it. Already validated at parse time.
+    wanted=$(printf '%s' "$SETUP" | tr ',' ' ')
+    ;;
+esac
+
+if [ -n "$wanted" ]; then
+  say ""
+  # Failure here is reported, not fatal: the binary is installed and working,
+  # and `setup` refuses rather than clobbers when it finds a different
+  # nomoreide entry already in an agent's config. Turning that into a failed
+  # install would throw away a good install over a config the user can fix.
+  for agent in $wanted; do
+    if "$PREFIX/bin/nomoreide" setup "$agent"; then
+      :
+    else
+      say "Could not set up $agent automatically. Do it by hand:"
+      note "$PREFIX/bin/nomoreide setup $agent --force"
+    fi
+  done
+fi
+
 say ""
 say "Next:"
-note "nomoreide setup claude     # or codex, or gemini"
+if [ -z "$wanted" ]; then
+  note "nomoreide setup claude     # or codex, or gemini"
+fi
 note "nomoreide daemon           # the workbench on http://127.0.0.1:4317"

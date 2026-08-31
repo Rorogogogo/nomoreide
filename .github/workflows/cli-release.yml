@@ -10,8 +10,10 @@ name: CLI Release
 # in `<prefix>/share/nomoreide`, so the dashboard works from a download with no
 # checkout anywhere near it.
 #
-# The Linux archives are glibc, not musl: the workspace links OpenSSL through
-# `reqwest`, and a static musl build would mean vendoring it. Building on the
+# The Linux archives are glibc, not musl. Nothing links OpenSSL any more —
+# `reqwest` is on rustls precisely because the native-tls build needed
+# `libssl.so.3` at runtime and a bare `debian:12` does not ship it — so musl is
+# now a matter of adding the target rather than vendoring a C library. Building on the
 # oldest runner GitHub still offers sets the floor at that runner's glibc, and
 # `linux-compatibility` below runs the result on the oldest distributions we
 # claim to support rather than asserting it from the version number.
@@ -154,7 +156,8 @@ jobs:
     # The floor is the build runner's own glibc — 2.35, from ubuntu-22.04 —
     # which covers Ubuntu 22.04+, Debian 12+, and Fedora. It does *not* cover
     # RHEL 9 and its rebuilds, which ship glibc 2.34; those need a musl build,
-    # and a musl build needs OpenSSL vendored first. Listing an image here that
+    # which nothing blocks now that the TLS stack is pure Rust — it is simply
+    # not built yet. Listing an image here that
     # is known to be below the floor would be a red build, not a warning, so
     # the gap is written down instead.
     name: glibc floor (${{ matrix.image }})
@@ -235,3 +238,59 @@ jobs:
           done
           echo "no release for $TAG after 30 minutes; the archives are on this run as artifacts" >&2
           exit 1
+
+  npm:
+    # npm ships the same binaries as the archives, through the same tag.
+    #
+    # It runs after `publish` rather than beside it so npm cannot carry a
+    # version the GitHub release does not, and after `build` so a shim can
+    # never name platform packages that were not produced — `publish` already
+    # refuses a partial set, and this inherits that guarantee.
+    #
+    # One-time setup on npmjs.com, because this publishes five packages from a
+    # workflow that has never published before: the `@nomoreide` scope must
+    # exist, and each of `nomoreide`, `@nomoreide/cli-darwin-arm64`,
+    # `-darwin-x64`, `-linux-x64` and `-linux-arm64` needs trusted publishing
+    # pointed at *this* file. There is no token to add — `id-token: write`
+    # above is the whole of the credential.
+    needs: [build, linux-compatibility, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nomoreide-*
+          merge-multiple: true
+          path: archives
+
+      - name: Unpack the archives the packages will carry
+        working-directory: archives
+        run: |
+          set -euo pipefail
+          for archive in *.tar.gz; do tar -xzf "$archive"; done
+          ls -d nomoreide-*/ | sed 's|/$||'
+
+      - name: Build the packages
+        run: node scripts/build-npm-packages.mjs "${TAG#v}" archives npm-dist
+
+      - name: Publish
+        run: |
+          set -euo pipefail
+          # Platform packages first, then the shim. The shim pins them at an
+          # exact version, so publishing it first would leave a window where
+          # `npm install -g nomoreide` resolves a shim whose binary package
+          # does not exist yet — an install that fails at the first run.
+          for package in npm-dist/cli-*; do
+            npm publish --access public "$package"
+          done
+          npm publish --access public npm-dist/nomoreide
+

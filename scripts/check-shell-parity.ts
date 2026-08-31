@@ -18,7 +18,7 @@
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, readdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -37,6 +37,24 @@ interface Case {
   readonly path: string;
   /** Send over a raw socket so the path reaches the server unnormalized. */
   readonly raw?: boolean;
+  /**
+   * A file under `dist/web/client` this case must serve byte for byte.
+   *
+   * Set it and the case is checked against that file rather than against the
+   * recording. Vite content-hashes asset filenames and `index.html` names
+   * them, so a recording of these answers is a snapshot of one dashboard
+   * build: rebuild the client and every one of them diverges, reporting a
+   * stale recording as a port defect. Nothing about that is parity — "the
+   * daemon serves what is in `dist/web/client`" is what these cases always
+   * meant, it is the stronger claim, and unlike a recording it stays checkable
+   * with no reference to compare against.
+   *
+   * The cases that stay on the recording are the ones where the *file* is not
+   * the answer: a path that climbs out, a percent-encoded dot, a directory,
+   * a name nothing built. Those are behaviour, and behaviour is what a
+   * recording is for.
+   */
+  readonly serves?: string;
 }
 
 const dump = process.argv.includes("--dump");
@@ -48,7 +66,8 @@ if (argv.length === 0) {
 
 // A real built asset, so the compare is over actual bytes rather than a name
 // both runtimes happen to miss.
-const assetsDirectory = join(repoRoot(), "dist", "web", "client", "assets");
+const clientDirectory = join(repoRoot(), "dist", "web", "client");
+const assetsDirectory = join(clientDirectory, "assets");
 const builtAssets = await readdir(assetsDirectory).catch(() => [] as string[]);
 if (builtAssets.length === 0) {
   console.error(
@@ -62,12 +81,13 @@ const styleAsset = pick(".css");
 const fontAsset = pick(".ttf");
 const svgAsset = pick(".svg");
 
+const SHELL = "index.html";
 const cases: Case[] = [
-  { name: "shell/root", method: "GET", path: "/" },
-  { name: "shell/services", method: "GET", path: "/services" },
-  { name: "shell/agent-env", method: "GET", path: "/agent-env" },
-  { name: "shell/extensions", method: "GET", path: "/extensions" },
-  { name: "shell/extension-id", method: "GET", path: "/extensions/some-plugin" },
+  { name: "shell/root", method: "GET", path: "/", serves: SHELL },
+  { name: "shell/services", method: "GET", path: "/services", serves: SHELL },
+  { name: "shell/agent-env", method: "GET", path: "/agent-env", serves: SHELL },
+  { name: "shell/extensions", method: "GET", path: "/extensions", serves: SHELL },
+  { name: "shell/extension-id", method: "GET", path: "/extensions/some-plugin", serves: SHELL },
   // The bare prefix names no plugin, so it is not a page.
   { name: "shell/extensions-trailing-slash", method: "GET", path: "/extensions/" },
   { name: "shell/unknown-page", method: "GET", path: "/nope" },
@@ -77,7 +97,7 @@ const cases: Case[] = [
   { name: "head/unknown-page", method: "HEAD", path: "/nope" },
   { name: "assets/missing", method: "GET", path: "/assets/definitely-not-here.js" },
   // An asset route registered for GET only: a HEAD is neither page nor asset.
-  { name: "assets/head", method: "HEAD", path: `/assets/${scriptAsset}` },
+  { name: "assets/head", method: "HEAD", path: `/assets/${scriptAsset}`, serves: SHELL },
   { name: "assets/directory-itself", method: "GET", path: "/assets/" },
   // Percent-encoded dots are a literal directory name, not a climb — both
   // runtimes read the path without decoding it.
@@ -91,11 +111,16 @@ const cases: Case[] = [
   },
   { name: "assets/climb-to-shell-root", method: "GET", path: "/assets/../index.html", raw: true },
 ];
-if (scriptAsset) cases.push({ name: "assets/script", method: "GET", path: `/assets/${scriptAsset}` });
-if (styleAsset) cases.push({ name: "assets/style", method: "GET", path: `/assets/${styleAsset}` });
-if (svgAsset) cases.push({ name: "assets/svg", method: "GET", path: `/assets/${svgAsset}` });
+const asset = (name: string) => join("assets", name);
+if (scriptAsset)
+  cases.push({ name: "assets/script", method: "GET", path: `/assets/${scriptAsset}`, serves: asset(scriptAsset) });
+if (styleAsset)
+  cases.push({ name: "assets/style", method: "GET", path: `/assets/${styleAsset}`, serves: asset(styleAsset) });
+if (svgAsset)
+  cases.push({ name: "assets/svg", method: "GET", path: `/assets/${svgAsset}`, serves: asset(svgAsset) });
 // Deliberately absent from the content-type switch on both sides.
-if (fontAsset) cases.push({ name: "assets/font", method: "GET", path: `/assets/${fontAsset}` });
+if (fontAsset)
+  cases.push({ name: "assets/font", method: "GET", path: `/assets/${fontAsset}`, serves: asset(fontAsset) });
 
 // The sibling `dist/web/client-evil/` the escape case reaches for. Without a
 // file there both runtimes 404 whatever their containment check does, and the
@@ -122,6 +147,40 @@ try {
   const [reference, candidate] = runtimes;
 
   for (const testCase of cases) {
+    // A case that names a built asset is checked against the file on disk
+    // rather than against the recording. The filenames are content-hashed, so
+    // the recording froze one build of the dashboard: rebuilding it renames
+    // every asset, the recorded answer is filed under a path nobody requests
+    // again, and the gate reports a divergence that is really a stale
+    // recording. There is no reference left to re-record from, and this is
+    // the stronger check anyway — "the daemon serves exactly the bytes in
+    // dist/web/client" is what these cases always meant, and it stays true
+    // for every future build.
+    if (testCase.serves) {
+      const answer = await send(candidate, testCase);
+      // A HEAD at an asset is the one case here whose answer is not the file:
+      // the asset route is registered for GET only, so it falls through to the
+      // 404 the reference recorded. That is a fact about the routing table
+      // rather than about any particular build, so it is asserted directly.
+      const expected =
+        testCase.method === "HEAD"
+          ? { status: 404, body: digest(Buffer.alloc(0)) }
+          : {
+              status: 200,
+              body: digest(await readFile(join(clientDirectory, testCase.serves))),
+            };
+      try {
+        assert.deepStrictEqual({ status: answer.status, body: answer.body }, expected);
+        console.log(`ok   ${testCase.name}`);
+      } catch (error) {
+        failures += 1;
+        console.log(`FAIL ${testCase.name}`);
+        console.log(`  served:   ${inspect(answer, { depth: null })}`);
+        console.log(`  on disk:  ${inspect(expected, { depth: null })}`);
+        console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+      }
+      continue;
+    }
     const answers = {
       reference: await send(reference, testCase),
       candidate: await send(candidate, testCase),

@@ -89,14 +89,15 @@ gh attestation verify nomoreide-0.1.103-aarch64-apple-darwin.tar.gz --repo Rorog
 ```
 
 <details>
-<summary>Or run it through npm (deprecated)</summary>
+<summary>Or install it from npm</summary>
 
-The npm package remains published for a deprecation window and needs Node.js 20
-or newer. It is a compatibility shim, not the canonical runtime — new releases
-are the native binaries above.
+npm ships the same native binaries as the archives above. `nomoreide` is a small
+shim whose per-platform `optionalDependencies` mean npm downloads exactly one
+binary for your machine — no build, and no Node.js needed to *run* it. Node 20 or
+newer is needed to launch the shim itself.
 
 ```bash
-npx -y nomoreide
+npm install -g nomoreide
 ```
 
 </details>
@@ -414,8 +415,8 @@ nomoreide git status --cwd /path/to/repo
 nomoreide git diff   --cwd /path/to/repo
 
 # Staging & committing
-nomoreide git stage   --cwd /path/to/repo src/index.ts README.md
-nomoreide git unstage --cwd /path/to/repo src/index.ts
+nomoreide git stage   --cwd /path/to/repo Cargo.toml README.md
+nomoreide git unstage --cwd /path/to/repo Cargo.toml
 nomoreide git commit  --cwd /path/to/repo --message "feat: add dashboard"
 
 # History

@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -23,7 +24,36 @@ function text(response: Awaited<ReturnType<typeof callMcpTool>>): string {
   return content?.[0]?.text ?? "";
 }
 
-describe("git config tools over MCP", () => {
+/**
+ * The built `nomoreide`, which this test drives as an MCP server.
+ *
+ * `NOMOREIDE_TEST_BINARY` first so a release build can be checked the same
+ * way; otherwise the debug binary a `cargo build` leaves behind.
+ */
+function candidateBinary(): string {
+  const override = process.env.NOMOREIDE_TEST_BINARY;
+  if (override) return override;
+  const target = process.env.CARGO_TARGET_DIR ?? join(root, "target");
+  return join(target, "debug", "nomoreide");
+}
+
+// This drives the real binary, which the Node test matrix does not build —
+// it installs Node and runs vitest, nothing more. Rather than let that job
+// fail on a missing binary, the test declares what it needs and is skipped
+// where that is absent. So that skipping it never means *not running it*,
+// `ci.yml`'s `desktop-check` job — which does build the workspace — runs this
+// file explicitly after `cargo build`.
+const binary = candidateBinary();
+const built = existsSync(binary);
+const describeIfBuilt = built ? describe : describe.skip;
+if (!built) {
+  console.warn(
+    `Skipping MCP redaction test: no binary at ${binary}. ` +
+      "Run `cargo build -p nomoreide-cli` to include it.",
+  );
+}
+
+describeIfBuilt("git config tools over MCP", () => {
   /**
    * These tools answer with the whole config, which holds every stored GitHub
    * token. The dashboard's own API has always redacted it; the agent surface
@@ -44,9 +74,13 @@ describe("git config tools over MCP", () => {
         (entry): entry is [string, string] => entry[1] !== undefined,
       ),
     );
+    // The native binary, the TypeScript one it used to drive having been
+    // deleted with the rest of the port's reference implementation. This is a
+    // security assertion — a stored token must never come back out of a git
+    // config read — so it is worth keeping pointed at what actually ships.
     const command: McpCommand = {
-      command: process.execPath,
-      args: ["--import", "tsx", "src/index.ts", "mcp"],
+      command: binary,
+      args: ["mcp"],
       cwd: root,
       env: {
         ...env,

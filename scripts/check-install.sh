@@ -159,6 +159,86 @@ for skill in "$SETUP_HOME/.claude/skills/nomoreide-debug/SKILL.md" \
     || bad "skill" "missing ${skill#"$SETUP_HOME/"}"
 done
 
+# --------------------------------------------- the installer does it too
+
+# The point of `--setup` is that one command leaves a working agent, so this
+# drives the installer rather than the binary: a separate home, a separate
+# prefix, and afterwards the agent's own config must name the binary that was
+# just installed into that prefix.
+# All three at once, through `auto`, because "one command and every agent I
+# use is ready" is the actual promise — not "one command and one agent". The
+# home is seeded with each agent's directory so detection finds all three
+# without needing their CLIs on this PATH.
+ONE_GO_HOME="$WORK/one-go-home"
+mkdir -p "$ONE_GO_HOME/.claude" "$ONE_GO_HOME/.codex" "$ONE_GO_HOME/.gemini"
+ONE_GO_PREFIX="$WORK/one-go-prefix"
+out=$(env -i PATH="$CLEAN_PATH" HOME="$ONE_GO_HOME" SHELL=/bin/zsh \
+      NOMOREIDE_BASE_URL="file://$RELEASE" \
+      NOMOREIDE_API_URL="file://$RELEASE/latest.json" \
+      sh "$INSTALLER" --version "$NEW" --prefix "$ONE_GO_PREFIX" 2>&1); code=$?
+if [ "$code" -eq 0 ]; then
+  ok "the installer exits 0 with every agent present"
+else
+  bad "installer --setup auto" "exit $code: $out"
+fi
+for file in .claude.json .codex/config.toml .gemini/settings.json; do
+  if grep -q "$ONE_GO_PREFIX/bin/nomoreide" "$ONE_GO_HOME/$file" 2>/dev/null; then
+    ok "one command registered the MCP in $file"
+  else
+    bad "installer --setup auto" "did not register the MCP in $file: $out"
+  fi
+done
+# The skill is half of what `setup` installs, and a registration without it
+# leaves the agent able to call the tools but not knowing when to.
+for skill in .claude/skills .agents/skills .gemini/skills; do
+  [ -s "$ONE_GO_HOME/$skill/nomoreide-debug/SKILL.md" ] \
+    && ok "one command installed the skill at $skill" \
+    || bad "installer --setup auto" "no skill at $skill"
+done
+
+# An explicit list is honoured over detection, and installs only what it names.
+PICK_HOME="$WORK/pick-home"; mkdir -p "$PICK_HOME/.claude" "$PICK_HOME/.codex"
+PICK_PREFIX="$WORK/pick-prefix"
+out=$(env -i PATH="$CLEAN_PATH" HOME="$PICK_HOME" SHELL=/bin/zsh \
+      NOMOREIDE_BASE_URL="file://$RELEASE" \
+      NOMOREIDE_API_URL="file://$RELEASE/latest.json" \
+      sh "$INSTALLER" --version "$NEW" --prefix "$PICK_PREFIX" --setup codex 2>&1); code=$?
+if [ "$code" -eq 0 ] && grep -q "$PICK_PREFIX/bin/nomoreide" "$PICK_HOME/.codex/config.toml" 2>/dev/null \
+   && [ ! -e "$PICK_HOME/.claude.json" ]; then
+  ok "--setup codex installs for codex only, though claude is present too"
+else
+  bad "--setup codex" "expected codex configured and claude untouched (exit $code): $out"
+fi
+
+# `auto` in an environment with no agent must be a silent no-op, not a guess:
+# writing a config for an agent that is not there is worse than not writing
+# one, because it is a file the user did not ask for and will not look in.
+AUTO_HOME="$WORK/auto-home"; mkdir -p "$AUTO_HOME"
+AUTO_PREFIX="$WORK/auto-prefix"
+out=$(env -i PATH="$CLEAN_PATH" HOME="$AUTO_HOME" SHELL=/bin/zsh \
+      NOMOREIDE_BASE_URL="file://$RELEASE" \
+      NOMOREIDE_API_URL="file://$RELEASE/latest.json" \
+      sh "$INSTALLER" --version "$NEW" --prefix "$AUTO_PREFIX" 2>&1); code=$?
+if [ "$code" -eq 0 ] && [ ! -e "$AUTO_HOME/.claude.json" ] \
+   && [ ! -e "$AUTO_HOME/.codex/config.toml" ] && [ ! -e "$AUTO_HOME/.gemini/settings.json" ]; then
+  ok "the default --setup auto writes nothing when no agent is installed"
+else
+  bad "--setup auto" "wrote an agent config with no agent present (exit $code): $out"
+fi
+
+# A misspelled agent is a usage error and must be refused before anything is
+# downloaded, let alone installed.
+BAD_PREFIX="$WORK/bad-prefix"
+out=$(env -i PATH="$CLEAN_PATH" HOME="$WORK/home" SHELL=/bin/zsh \
+      NOMOREIDE_BASE_URL="file://$RELEASE" \
+      NOMOREIDE_API_URL="file://$RELEASE/latest.json" \
+      sh "$INSTALLER" --prefix "$BAD_PREFIX" --setup nosuchagent 2>&1); code=$?
+if [ "$code" -eq 2 ] && [ ! -e "$BAD_PREFIX/bin/nomoreide" ]; then
+  ok "--setup with an unknown agent exits 2 and installs nothing"
+else
+  bad "--setup nosuchagent" "expected exit 2 and no install, got exit $code: $out"
+fi
+
 # ------------------------------------------------------------- upgrade
 
 out=$(installer --version "$NEW" --prefix "$PREFIX"); code=$?

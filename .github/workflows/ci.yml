@@ -15,8 +15,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Node 20 is supported; DB Peek's SQLite needs >=22.5 (built-in
-        # node:sqlite) and degrades gracefully on 20 — pg/mysql work everywhere.
+        # Node is no longer the runtime — the daemon, MCP server, CLI and TUI
+        # are a Rust binary that runs with no Node on the box, which
+        # `desktop-check` asserts. What is left needing Node is the dashboard
+        # build, this test suite, and the published npm shim, whose `engines`
+        # say `>=20`. That floor is why 20 is still here.
         node-version: ["20", "22", "24"]
 
     steps:
@@ -32,9 +35,10 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  # `npm run build` runs vite (which does not typecheck) plus tsc over the
-  # server only, so client type errors and lint violations used to reach main
-  # unnoticed. These run once rather than across the Node matrix.
+  # `npm run build` is vite, and vite does not typecheck, so client type errors
+  # and lint violations would otherwise reach main unnoticed. (It used to also
+  # run tsc over the TypeScript server; there is no TypeScript server any
+  # more.) These run once rather than across the Node matrix.
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -102,6 +106,14 @@ jobs:
       # produced above, which is what the daemon serves.
       - name: Runs with no Node.js on PATH
         run: ./scripts/check-no-node.sh
+
+      # A security assertion — a stored GitHub token must never come back out
+      # of a git config read — that drives the real binary over MCP. It lives
+      # in the Vitest suite, but the `test` matrix above only installs Node, so
+      # there it skips itself for want of a binary. Here there is one, so this
+      # is the job that actually runs it.
+      - name: The MCP surface does not leak a stored token
+        run: npx vitest run test/mcp-git-config-redaction.test.ts
       # Two gates reach neither MCP nor HTTP — GitActions is a dashboard and
       # desktop surface, and the daemon's `/api/hosts/*` routes are Phase 8 —
       # so they drive their crate's own probe example instead of a tool.

@@ -8,6 +8,14 @@
  * the answers they gave.
  *
  * Nothing here reads either implementation.
+ * The manifests planted in that fixture say `0.0.2`, which is deliberately a
+ * version this project has never been. `created_by.version` is written on
+ * export and never read back, so a planted one is an arbitrary constant — but
+ * while it happened to equal the *current* version, the recording's version
+ * tokeniser could not tell the fixture's constant from a value a runtime had
+ * produced, and rewrote both. A fixture that matches real output by
+ * coincidence is a fixture that stops testing what it names.
+ *
  * `test/fixtures/mcp-profiles-parity-v1.json` holds the planted tree and the
  * ordered plan; both runtimes see the same one.
  *

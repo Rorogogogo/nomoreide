@@ -157,19 +157,16 @@ function complaint(lines: string[], fallback: string): string {
  * daemons it started along with it — killing only the gate leaves those
  * running, and they are long-lived enough to still be there days later.
  */
-function run(gate: Gate, timeoutMs: number, mode: "live" | "record" | "replay"): Promise<Result> {
+function run(gate: Gate, timeoutMs: number, mode: "replay"): Promise<Result> {
   return new Promise((settle) => {
     const started = Date.now();
     const child = spawn("node", ["--import", "tsx", join("scripts", gate.file), ...gate.args], {
       cwd: repositoryRoot,
-      env:
-        mode === "live"
-          ? process.env
-          : {
-              ...process.env,
-              NOMOREIDE_PARITY_MODE: mode,
-              NOMOREIDE_PARITY_SHADOW_COMMAND: resolve(candidate),
-            },
+      env: {
+        ...process.env,
+        NOMOREIDE_PARITY_MODE: mode,
+        NOMOREIDE_PARITY_SHADOW_COMMAND: resolve(candidate),
+      },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -264,7 +261,21 @@ if (flags.has("--record") && flags.has("--replay")) {
   console.error("Choose either --record or --replay, not both");
   process.exit(2);
 }
-const mode = flags.has("--record") ? "record" : flags.has("--replay") ? "replay" : "live";
+// Replay is the only mode there is. `src/` — the TypeScript implementation
+// these gates diffed against — was deleted when the port finished, so there is
+// nothing to record from and nothing to run live beside. `--replay` is still
+// accepted, and still means what it always did; `--record` is refused with the
+// reason rather than left to fail deep inside a gate.
+if (flags.has("--record")) {
+  console.error(
+    "--record needs the TypeScript reference, which was deleted when the port\n" +
+      "finished. The recordings in test/expectations/ are what it answered.\n" +
+      "To re-record a gate, check out the commit before `src/` was deleted and\n" +
+      "record there.",
+  );
+  process.exit(2);
+}
+const mode = "replay" as const;
 
 const all = await discover(candidate ? resolve(candidate) : "<candidate>");
 const gates = only ? all.filter((g) => g.file.includes(only)) : all;
@@ -281,7 +292,7 @@ if (gates.length === 0) {
 
 const missed = await unreachable(all);
 console.log(
-  `Running ${gates.length} parity gate(s) against ${resolve(candidate)}, ${jobs} at a time${mode === "live" ? "" : `, ${mode}ing the reference`}.\n`,
+  `Running ${gates.length} parity gate(s) against ${resolve(candidate)}, ${jobs} at a time, replaying the recorded reference.\n`,
 );
 
 const results: Result[] = [];
