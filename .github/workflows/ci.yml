@@ -112,35 +112,39 @@ jobs:
       # the installed binary with node absent from PATH.
       - name: install.sh installs, upgrades and uninstalls
         run: ./scripts/check-install.sh
+      # Kept building even though the gates below do not run here: the two
+      # probe examples are ordinary crate targets, and a break in them is a
+      # break this job should catch.
       - name: Build the parity probe examples
         run: |
           cargo build --example git-actions-probe -p nomoreide-actions
           cargo build --example vultr-probe -p nomoreide-actions
-      # One step for every gate, discovered from `scripts/check-*-parity.ts`
-      # rather than listed here. This job used to name each gate in its own
-      # step, which meant it silently ran 13 of the 65 that existed: a gate is
-      # only evidence if it runs, and one nobody remembered to add ran nowhere.
-      # A new gate is now covered the moment its file is committed.
-      # Replayed, not live — and the reason is the runner, not the port.
+      # The parity gates do not run here, and the honest reason is that this
+      # runner is not a machine either mode can work on.
       #
-      # A live gate starts the TypeScript reference beside the native binary.
-      # On a hosted macOS runner the reference cannot open a PTY at all:
-      # node-pty answers `posix_spawnp failed.` for `/bin/bash`, `ssh` and
-      # every other shell, so four terminal gates report a difference that is
-      # entirely the reference's inability to run here. The native side spawns
-      # them fine. Diffing against a runtime that is broken in this environment
-      # measures the environment.
+      # *Live* starts the TypeScript reference beside the native binary, and on
+      # a hosted macOS runner the reference cannot open a PTY at all: node-pty
+      # answers `posix_spawnp failed.` for `/bin/bash`, for `ssh`, for every
+      # shell a gate asks for, while the native binary spawns them. Four
+      # terminal gates then report a difference that is the reference's
+      # inability to run here.
       #
-      # Replay has no such problem: the reference's answers come from
-      # `test/expectations/`, recorded where both runtimes work, and the
-      # candidate still runs for real against them. The reference is pointed at
-      # a path that cannot exist, so a gate that still reaches for TypeScript
-      # dies naming itself — which is also what says the suite survives
-      # deleting `src/`, Phase 8's whole point. Live remains the default for
-      # developers, and is what `npm run parity` does with no flag.
+      # *Replayed* frees us from the reference but not from the machine. A
+      # recording freezes what the daemon answered, and some of those answers
+      # are true of the recorder rather than of either runtime: the shell in
+      # `$SHELL`, the version of git whose help text a gate quotes, which agent
+      # CLIs are on PATH, where the checkout sits. Thirteen gates diverge on a
+      # runner for exactly that reason, and no path substitution fixes it —
+      # these are different facts, not the same fact spelled differently.
       #
-      # `--allow-skips` covers a gate that needs something this runner does not
-      # have; `check-mcp-terminal-parity` drives a docker-compose terminal and
-      # there is no Docker here.
-      - name: Parity gates (replayed, without the TypeScript reference)
-        run: npm run parity -- ./target/debug/nomoreide --replay --allow-skips
+      # So the suite is a **pre-merge local gate**, which is how it has always
+      # actually been run:
+      #
+      #   npm run parity -- "$PWD/target/debug/nomoreide"            # live
+      #   npm run parity -- "$PWD/target/debug/nomoreide" --replay   # no reference
+      #
+      # To make it a CI gate, the recordings have to be made *on this image* —
+      # a `workflow_dispatch` job that runs `--record` and commits the result —
+      # at which point they stop replaying on a developer's machine. One set of
+      # recordings cannot serve both; that is a decision to take deliberately,
+      # not a line to add here.
