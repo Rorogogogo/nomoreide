@@ -47,7 +47,19 @@ const cargoLock = replaceWorkspacePackageVersions(
   rustWorkspacePackages,
 );
 
+// Every crate depends on its siblings by path *and* version, because
+// crates.io rejects a bare path dependency — it has no path to resolve. That
+// version is a literal in seven manifests, so a bump that missed them would
+// leave a release publishing `nomoreide-cli` 0.4.0 against `nomoreide-core`
+// 0.3.0, which resolves to the *previous* release from the registry. `--check`
+// covers these for the same reason.
+const crateManifests = rustWorkspacePackages.map((name) => {
+  const path = resolve(root, `crates/${name}/Cargo.toml`);
+  return [path, replaceSiblingVersions(readFileSync(path, "utf8"), version, name)];
+});
+
 const expectedFiles = [
+  ...crateManifests,
   [dashboardPackagePath, `${JSON.stringify(dashboardPackage, null, 2)}\n`],
   [packageLockPath, `${JSON.stringify(packageLock, null, 2)}\n`],
   [tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`],
@@ -76,6 +88,18 @@ function replaceWorkspaceVersion(content, nextVersion, label) {
     throw new Error(`Could not find the workspace package version in ${label}.`);
   }
   return content.replace(workspacePattern, `$1${nextVersion}$2`);
+}
+
+function replaceSiblingVersions(content, nextVersion, label) {
+  const siblingPattern =
+    /(nomoreide-[a-z-]+ = \{ path = "\.\.\/[a-z-]+", version = ")[^"]+(")/g;
+  const updated = content.replace(siblingPattern, `$1${nextVersion}$2`);
+  // A crate with no siblings — `nomoreide-core` — is the expected case, not a
+  // failure, so unlike the two below this does not insist on a match.
+  if (updated !== content && !updated.includes(nextVersion)) {
+    throw new Error(`Failed to set sibling versions in crates/${label}/Cargo.toml.`);
+  }
+  return updated;
 }
 
 function replaceWorkspacePackageVersions(content, nextVersion, packageNames) {

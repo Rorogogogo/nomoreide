@@ -42,22 +42,22 @@ pub const MCP_KEY: &str = "nomoreide";
 /// because a skill quietly losing a file when someone moves it is worse than a
 /// build that stops. `skill_is_installed_exactly_as_it_is_bundled` checks the
 /// list still matches the directory on disk.
+///
+/// Read out of `OUT_DIR` rather than straight from `profiles/`: the source
+/// lives at the workspace root, which a packaged crate does not carry, so
+/// `build.rs` stages it here first. The file contents are unchanged.
 const SKILL_FILES: &[(&str, &str)] = &[
     (
         "SKILL.md",
-        include_str!("../../../../profiles/nomoreide-debug/skills/nomoreide-debug/SKILL.md"),
+        include_str!(concat!(env!("OUT_DIR"), "/debug-skill/SKILL.md")),
     ),
     (
         "agents/openai.yaml",
-        include_str!(
-            "../../../../profiles/nomoreide-debug/skills/nomoreide-debug/agents/openai.yaml"
-        ),
+        include_str!(concat!(env!("OUT_DIR"), "/debug-skill/agents/openai.yaml")),
     ),
     (
         "evals/evals.json",
-        include_str!(
-            "../../../../profiles/nomoreide-debug/skills/nomoreide-debug/evals/evals.json"
-        ),
+        include_str!(concat!(env!("OUT_DIR"), "/debug-skill/evals/evals.json")),
     ),
 ];
 
@@ -571,8 +571,15 @@ mod tests {
     /// still looks like it worked.
     #[test]
     fn every_bundled_skill_file_is_compiled_in() {
+        // The workspace copy, which is what the list is supposed to track.
+        // A *published* crate has no workspace above it — it carries the
+        // vendored copy `build.rs` staged instead — and there the comparison
+        // has nothing to say, so it steps aside rather than failing.
         let source = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../profiles/nomoreide-debug/skills/nomoreide-debug");
+        if !source.join("SKILL.md").is_file() {
+            return;
+        }
         let mut on_disk = Vec::new();
         collect_files(&source, Path::new(""), &mut on_disk).unwrap();
         let mut on_disk: Vec<String> = on_disk

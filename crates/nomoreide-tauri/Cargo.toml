@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+# The desktop app, not a library anyone installs from crates.io — and it
+# would drag the whole Tauri toolchain in behind it.
+publish = false
 
 [lib]
 name = "nomoreide_tauri"
@@ -18,8 +21,8 @@ base64.workspace = true
 chrono.workspace = true
 dirs.workspace = true
 futures-util.workspace = true
-nomoreide-actions = { path = "../nomoreide-actions" }
-nomoreide-core = { path = "../nomoreide-core" }
+nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.0" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.3.0" }
 portable-pty.workspace = true
 regex.workspace = true
 reqwest.workspace = true

@@ -4,12 +4,28 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "The NoMoreIDE MCP server — 70+ stdio tools that let an AI agent run and debug local services."
+readme = "README.md"
+# `include` rather than the default git-driven file list: `vendored/` is
+# gitignored build output that `build.rs` compiles in, and cargo would
+# otherwise leave it out of the package.
+include = [
+    "src/**/*",
+    "build.rs",
+    "vendored/**/*",
+    "README.md",
+    "Cargo.toml",
+]
 
 [dependencies]
 chrono.workspace = true
-nomoreide-actions = { path = "../nomoreide-actions" }
-nomoreide-core = { path = "../nomoreide-core" }
-nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }
+nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.0" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.3.0" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.3.0" }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
