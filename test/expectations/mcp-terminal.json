@@ -9,7 +9,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%REPO%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%REPO%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "POST",
@@ -18,7 +18,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:local-with-env\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"local-with-env\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:local-with-env\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"local-with-env\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "POST",
@@ -27,7 +27,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:needs encoding#hash\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"needs encoding#hash\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:needs encoding#hash\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"needs encoding#hash\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "POST",
@@ -54,7 +54,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:local-with-env\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"local-with-env\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:local-with-env\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"local-with-env\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "POST",
@@ -81,7 +81,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%REPO%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%REPO%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "POST",
@@ -160,7 +160,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  }\n]"
             }
           ]
         }
@@ -187,7 +187,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"id\": \"term_1\",\n  \"cols\": 80,\n  \"cwd\": \"%%REPO%%\",\n  \"kind\": \"shell\",\n  \"rows\": 24,\n  \"shell\": \"/bin/zsh\",\n  \"state\": \"running\",\n  \"presentation\": \"dock\"\n}"
+              "text": "{\n  \"id\": \"term_1\",\n  \"cols\": 80,\n  \"cwd\": \"%%REPO%%\",\n  \"kind\": \"shell\",\n  \"rows\": 24,\n  \"shell\": \"/bin/bash\",\n  \"state\": \"running\",\n  \"presentation\": \"dock\"\n}"
             }
           ]
         }
@@ -200,7 +200,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  }\n]"
             }
           ]
         }
@@ -213,7 +213,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  }\n]"
             }
           ]
         }
@@ -240,7 +240,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"id\": \"svc:needs encoding#hash\",\n  \"cols\": 80,\n  \"cwd\": \"%%WORKSPACE%%\",\n  \"kind\": \"service\",\n  \"label\": \"needs encoding#hash\",\n  \"rows\": 24,\n  \"shell\": \"/bin/zsh\",\n  \"state\": \"running\",\n  \"presentation\": \"dock\"\n}"
+              "text": "{\n  \"id\": \"svc:needs encoding#hash\",\n  \"cols\": 80,\n  \"cwd\": \"%%WORKSPACE%%\",\n  \"kind\": \"service\",\n  \"label\": \"needs encoding#hash\",\n  \"rows\": 24,\n  \"shell\": \"/bin/bash\",\n  \"state\": \"running\",\n  \"presentation\": \"dock\"\n}"
             }
           ]
         }
@@ -267,7 +267,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  }\n]"
             }
           ]
         }
@@ -280,7 +280,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"term_2\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 7,\n      \"signal\": 0\n    },\n    \"kind\": \"agent\",\n    \"label\": \"Codex task\",\n    \"provider\": \"codex\",\n    \"rows\": 24,\n    \"shell\": \"%%WORKSPACE%%/stubs/codex\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"term_2\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 7,\n      \"signal\": 0\n    },\n    \"kind\": \"agent\",\n    \"label\": \"Codex task\",\n    \"provider\": \"codex\",\n    \"rows\": 24,\n    \"shell\": \"%%WORKSPACE%%/stubs/codex\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  }\n]"
             }
           ]
         }
@@ -397,7 +397,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"term_2\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 7,\n      \"signal\": 0\n    },\n    \"kind\": \"agent\",\n    \"label\": \"Codex task\",\n    \"provider\": \"codex\",\n    \"rows\": 24,\n    \"shell\": \"%%WORKSPACE%%/stubs/codex\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"term_3\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"term_2\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 7,\n      \"signal\": 0\n    },\n    \"kind\": \"agent\",\n    \"label\": \"Codex task\",\n    \"provider\": \"codex\",\n    \"rows\": 24,\n    \"shell\": \"%%WORKSPACE%%/stubs/codex\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"term_3\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/bash\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  }\n]"
             }
           ]
         }

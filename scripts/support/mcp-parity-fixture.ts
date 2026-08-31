@@ -405,6 +405,11 @@ export function mcpCommand(runtime: Runtime): McpCommand {
       HOME: runtime.home,
       XDG_CONFIG_HOME: join(runtime.home, ".config"),
       NOMOREIDE_AUTO_UI: "0",
+      // Pinned for the same reason the HTTP harness pins it: a terminal opens
+      // whatever `$SHELL` names, and that is the runner's shell rather than
+      // anything either runtime decides. A gate that wants a different one
+      // sets it through `runtime.env` below.
+      SHELL: "/bin/bash",
       NOMOREIDE_WORKTREES_DIR: runtime.worktrees,
       NOMOREIDE_REPOS_DIR: runtime.clones,
       // Nothing here may reach the network or wait on a prompt: the fixture's

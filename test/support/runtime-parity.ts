@@ -177,6 +177,12 @@ export class RuntimeHarness {
       XDG_CONFIG_HOME: join(runtime.home, ".config"),
       NOMOREIDE_AUTO_UI: "0",
       NOMOREIDE_DAEMON_PORT: String(runtime.port),
+      // Both runtimes open a terminal with whatever `$SHELL` says, so without
+      // this a gate reports the shell of whoever ran it — `/bin/zsh` on one
+      // machine, `/bin/bash` on another — and a recording of that answer is
+      // only replayable back where it was made. Which shell it is was never
+      // the thing under test; that the two runtimes agree about it is.
+      SHELL: "/bin/bash",
       ...overrides,
     };
   }

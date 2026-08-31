@@ -99,7 +99,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "POST",
@@ -108,7 +108,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "POST",
@@ -117,7 +117,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "POST",
@@ -126,7 +126,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "GET",
@@ -135,7 +135,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -216,7 +216,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "PATCH",
@@ -225,7 +225,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "GET",
@@ -234,7 +234,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "GET",
@@ -243,25 +243,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/terminal/sessions/term_1",
-      "status": 400,
-      "headers": {
-        "content-type": "application/json; charset=utf-8"
-      },
-      "body": "{\"ok\":false,\"error\":\"Terminal session label must be 1–60 characters.\"}"
-    },
-    {
-      "method": "GET",
-      "path": "/api/terminal/sessions",
-      "status": 200,
-      "headers": {
-        "content-type": "application/json; charset=utf-8"
-      },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "PATCH",
@@ -279,25 +261,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/terminal/sessions/term_1",
-      "status": 200,
-      "headers": {
-        "content-type": "application/json; charset=utf-8"
-      },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
-    },
-    {
-      "method": "GET",
-      "path": "/api/terminal/sessions",
-      "status": 200,
-      "headers": {
-        "content-type": "application/json; charset=utf-8"
-      },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "PATCH",
@@ -315,7 +279,43 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal session label must be 1–60 characters.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "PATCH",
@@ -423,7 +423,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -441,7 +441,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -459,7 +459,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -477,7 +477,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -495,7 +495,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -513,7 +513,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -531,7 +531,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -549,7 +549,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -567,7 +567,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -585,7 +585,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -603,7 +603,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -621,7 +621,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -684,7 +684,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "POST",
@@ -693,7 +693,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "DELETE",
@@ -747,7 +747,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":false,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":false,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "GET",
@@ -756,7 +756,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "DELETE",
@@ -765,7 +765,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "DELETE",
@@ -774,7 +774,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":false,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":false,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     },
     {
       "method": "GET",
@@ -783,7 +783,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
     }
   ],
   "entries": []
