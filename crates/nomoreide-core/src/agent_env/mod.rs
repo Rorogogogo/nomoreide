@@ -181,7 +181,13 @@ impl Agent {
             Self::Codex => &[".agents/skills", ".codex/skills"],
             Self::Antigravity => &[".gemini/skills"],
             Self::Cursor => &[".cursor/skills"],
-            Self::Windsurf => &[".codeium/windsurf/skills", ".agents/skills"],
+            // Its own directory only. `~/.agents/skills` is the portable
+            // directory *Codex* installs into, and Windsurf does not read it —
+            // listing it here made `setup windsurf` find Codex's copy, report
+            // "skill identical" and write nothing where Windsurf would look.
+            // `--setup auto` runs codex before windsurf, so that was the
+            // common path rather than a corner case.
+            Self::Windsurf => &[".codeium/windsurf/skills"],
         }
     }
 
@@ -488,7 +494,8 @@ mod tests {
         );
         assert_eq!(
             Agent::Windsurf.user_skills_relative_paths(),
-            [".codeium/windsurf/skills", ".agents/skills"]
+            // Not Codex's portable root: sharing it made an install a no-op.
+            [".codeium/windsurf/skills"]
         );
     }
 

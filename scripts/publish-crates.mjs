@@ -21,14 +21,30 @@
 import { execFileSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
-// Dependency order: nothing here may depend on anything below it.
+// Dependency order: nothing here may depend on anything below it. `needs`
+// names the siblings each one resolves *from the registry* at package time,
+// which is what makes the order mandatory rather than tidy.
 const CRATES = [
-  "nomoreide-core",
-  "nomoreide-daemon-client",
-  "nomoreide-actions",
-  "nomoreide-daemon",
-  "nomoreide-mcp",
-  "nomoreide-cli",
+  { name: "nomoreide-core", needs: [] },
+  { name: "nomoreide-daemon-client", needs: [] },
+  { name: "nomoreide-actions", needs: ["nomoreide-core"] },
+  {
+    name: "nomoreide-daemon",
+    needs: ["nomoreide-actions", "nomoreide-core", "nomoreide-daemon-client"],
+  },
+  {
+    name: "nomoreide-mcp",
+    needs: ["nomoreide-actions", "nomoreide-core", "nomoreide-daemon-client"],
+  },
+  {
+    name: "nomoreide-cli",
+    needs: [
+      "nomoreide-core",
+      "nomoreide-daemon",
+      "nomoreide-daemon-client",
+      "nomoreide-mcp",
+    ],
+  },
 ];
 
 const dryRun = process.argv.includes("--dry-run");
@@ -52,13 +68,32 @@ console.log(
   `\n${dryRun ? "Dry run:" : "Publishing"} ${CRATES.length} crates at ${version}\n`,
 );
 
-for (const [index, crate] of CRATES.entries()) {
-  const step = `[${index + 1}/${CRATES.length}] ${crate}`;
-  console.log(`\n=== ${step} ===`);
+let skipped = 0;
+
+for (const [index, entry] of CRATES.entries()) {
+  const crate = entry.name;
+  console.log(`\n=== [${index + 1}/${CRATES.length}] ${crate} ===`);
 
   if (alreadyPublished(crate, version)) {
     console.log(`${crate} ${version} is already on crates.io; skipping.`);
     continue;
+  }
+
+  // A dry run cannot package a crate whose siblings are not on the registry —
+  // cargo fails at "failed to prepare local package for uploading", because it
+  // has a version to resolve and nowhere to resolve it from. That is cargo's
+  // ordering constraint, not a fault in this crate, so say so and move on
+  // rather than reporting a failure the first real publish would not hit.
+  if (dryRun) {
+    const missing = entry.needs.filter((need) => !alreadyPublished(need, version));
+    if (missing.length > 0) {
+      console.log(
+        `skipped: needs ${missing.join(", ")} on crates.io first. ` +
+          `A real run publishes those before reaching this one.`,
+      );
+      skipped += 1;
+      continue;
+    }
   }
 
   run("cargo", [
@@ -73,7 +108,7 @@ for (const [index, crate] of CRATES.entries()) {
     ...(dryRun ? ["--dry-run"] : []),
   ]);
 
-  if (dryRun || crate === CRATES.at(-1)) continue;
+  if (dryRun || crate === CRATES.at(-1).name) continue;
 
   // Wait for the index rather than sleeping a fixed guess: the next crate
   // cannot resolve this one until it appears, and how long that takes is not
@@ -98,7 +133,12 @@ for (const [index, crate] of CRATES.entries()) {
 
 console.log(
   dryRun
-    ? "\nDry run clean. Nothing was published."
+    ? `\nDry run clean. Nothing was published.` +
+        (skipped > 0
+          ? ` ${skipped} crate(s) could not be packaged yet because their ` +
+            `dependencies are not on crates.io — that resolves itself as the ` +
+            `real run publishes in order.`
+          : "")
     : `\nPublished ${CRATES.length} crates at ${version}. ` +
         `\`cargo install nomoreide-cli\` serves the dashboard from the binary.`,
 );

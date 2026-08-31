@@ -267,7 +267,9 @@ fn skill_directories(agent: SetupAgent, home: &Path) -> (PathBuf, Vec<PathBuf>) 
         SetupAgent::Codex => &[".agents/skills", ".codex/skills"],
         SetupAgent::Gemini => &[".gemini/skills"],
         SetupAgent::Cursor => &[".cursor/skills"],
-        SetupAgent::Windsurf => &[".codeium/windsurf/skills", ".agents/skills"],
+        // Windsurf's own directory only — see `user_skills_relative_paths`.
+        // Sharing Codex's portable root made an install a silent no-op.
+        SetupAgent::Windsurf => &[".codeium/windsurf/skills"],
     };
     let candidates: Vec<PathBuf> = relative
         .iter()
@@ -691,14 +693,14 @@ mod tests {
             skill_directories(SetupAgent::Cursor, home).0,
             PathBuf::from("/h/.cursor/skills/nomoreide-debug")
         );
+        // Windsurf looks only in its own directory. It used to also list
+        // Codex's `~/.agents/skills`, which made `setup windsurf` after
+        // `setup codex` report "skill identical" and install nothing.
         assert_eq!(
             skill_directories(SetupAgent::Windsurf, home),
             (
                 PathBuf::from("/h/.codeium/windsurf/skills/nomoreide-debug"),
-                vec![
-                    PathBuf::from("/h/.codeium/windsurf/skills/nomoreide-debug"),
-                    PathBuf::from("/h/.agents/skills/nomoreide-debug"),
-                ]
+                vec![PathBuf::from("/h/.codeium/windsurf/skills/nomoreide-debug")]
             )
         );
     }
