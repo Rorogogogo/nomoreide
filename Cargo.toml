@@ -21,7 +21,23 @@ flate2 = "1"
 tar = "0.4"
 futures-util = "0.3"
 regex = "1"
-reqwest = { version = "0.12", features = ["json", "stream"] }
+# rustls rather than the default native-tls, which on Linux means a dynamic
+# link to `libssl.so.3`. A bare `debian:12` does not ship it, so the binary
+# would not start at all there — caught by the `glibc floor` job, which runs
+# the release archive in the base image with nothing installed. The three
+# non-TLS defaults (`charset`, `http2`, `system-proxy`) are re-listed by hand
+# because `default-features = false` drops them too. `-native-roots` keeps the
+# OS trust store, so a corporate CA still works the way it did under
+# native-tls; the bundled-roots variant would have quietly stopped honouring
+# one. Dropping OpenSSL is also what a musl build was waiting on.
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "stream",
+    "charset",
+    "http2",
+    "system-proxy",
+    "rustls-tls-native-roots",
+] }
 serde = { version = "1", features = ["derive"] }
 # `preserve_order` because a JSON object's keys are sometimes the user's own
 # data — the MCP servers in a profile, say — and the reference preserves the

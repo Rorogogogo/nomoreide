@@ -10,8 +10,10 @@ name: CLI Release
 # in `<prefix>/share/nomoreide`, so the dashboard works from a download with no
 # checkout anywhere near it.
 #
-# The Linux archives are glibc, not musl: the workspace links OpenSSL through
-# `reqwest`, and a static musl build would mean vendoring it. Building on the
+# The Linux archives are glibc, not musl. Nothing links OpenSSL any more —
+# `reqwest` is on rustls precisely because the native-tls build needed
+# `libssl.so.3` at runtime and a bare `debian:12` does not ship it — so musl is
+# now a matter of adding the target rather than vendoring a C library. Building on the
 # oldest runner GitHub still offers sets the floor at that runner's glibc, and
 # `linux-compatibility` below runs the result on the oldest distributions we
 # claim to support rather than asserting it from the version number.
@@ -154,7 +156,8 @@ jobs:
     # The floor is the build runner's own glibc — 2.35, from ubuntu-22.04 —
     # which covers Ubuntu 22.04+, Debian 12+, and Fedora. It does *not* cover
     # RHEL 9 and its rebuilds, which ship glibc 2.34; those need a musl build,
-    # and a musl build needs OpenSSL vendored first. Listing an image here that
+    # which nothing blocks now that the TLS stack is pure Rust — it is simply
+    # not built yet. Listing an image here that
     # is known to be below the floor would be a red build, not a warning, so
     # the gap is written down instead.
     name: glibc floor (${{ matrix.image }})
