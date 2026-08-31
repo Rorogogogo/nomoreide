@@ -30,6 +30,8 @@ const MODEL_SUGGESTIONS: Record<AgentEnvAgentName, string[]> = {
   claude: ["opus", "sonnet", "haiku", "opusplan"],
   codex: ["gpt-5-codex", "gpt-5"],
   antigravity: [],
+  cursor: [],
+  windsurf: [],
 };
 
 /**

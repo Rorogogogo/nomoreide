@@ -1581,7 +1581,7 @@
       "name": "nomoreide_close_ui"
     },
     {
-      "description": "Check which coding agent CLIs (Claude Code, Codex, Antigravity) are installed and on PATH.",
+      "description": "Check which coding agent CLIs (Claude Code, Codex, Antigravity, Cursor, Windsurf) are installed and on PATH.",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -1591,7 +1591,7 @@
       "name": "nomoreide_agents_status"
     },
     {
-      "description": "Read the live MCP servers and skills configured for each coding agent (Claude Code, Codex, Antigravity). Read-only.",
+      "description": "Read the live MCP servers and skills configured for each coding agent (Claude Code, Codex, Antigravity, Cursor, Windsurf). Read-only.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1632,7 +1632,9 @@
             "enum": [
               "claude",
               "codex",
-              "antigravity"
+              "antigravity",
+              "cursor",
+              "windsurf"
             ]
           },
           "key": {
@@ -1701,7 +1703,9 @@
             "enum": [
               "claude",
               "codex",
-              "antigravity"
+              "antigravity",
+              "cursor",
+              "windsurf"
             ]
           },
           "key": {
@@ -1741,7 +1745,9 @@
             "enum": [
               "claude",
               "codex",
-              "antigravity"
+              "antigravity",
+              "cursor",
+              "windsurf"
             ]
           },
           "key": {
@@ -1776,7 +1782,7 @@
       "name": "nomoreide_agents_move_mcp_scope"
     },
     {
-      "description": "Move a skill between user and project scope (Claude reads .claude/skills/, Codex reads .agents/skills/; Antigravity has no project skills). The removed source directory is backed up; the backup path is returned.",
+      "description": "Move a skill between user and project scope (Claude, Codex, Cursor, and Windsurf have project skill directories; Antigravity is user-only). The removed source directory is backed up; the backup path is returned.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1785,7 +1791,9 @@
             "enum": [
               "claude",
               "codex",
-              "antigravity"
+              "antigravity",
+              "cursor",
+              "windsurf"
             ]
           },
           "skillName": {
@@ -1829,7 +1837,9 @@
             "enum": [
               "claude",
               "codex",
-              "antigravity"
+              "antigravity",
+              "cursor",
+              "windsurf"
             ]
           },
           "cwd": {
@@ -2009,7 +2019,9 @@
                   "enum": [
                     "claude",
                     "codex",
-                    "antigravity"
+                    "antigravity",
+                    "cursor",
+                    "windsurf"
                   ]
                 },
                 "source": {
@@ -2100,7 +2112,9 @@
             "enum": [
               "claude",
               "codex",
-              "antigravity"
+              "antigravity",
+              "cursor",
+              "windsurf"
             ]
           },
           "name": {
@@ -2141,7 +2155,9 @@
             "enum": [
               "claude",
               "codex",
-              "antigravity"
+              "antigravity",
+              "cursor",
+              "windsurf"
             ]
           },
           "dryRun": {

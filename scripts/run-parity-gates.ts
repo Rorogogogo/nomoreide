@@ -58,7 +58,6 @@ const IRREGULAR: Record<string, (candidate: string) => Gate["args"]> = {
   "check-git-actions-parity.ts": (candidate) => [probeBeside(candidate, "git-actions-probe")],
   "check-host-parity.ts": (candidate) => [probeBeside(candidate, "vultr-probe")],
   // The tool-surface gate wants a mode flag and an explicit subcommand.
-  "check-mcp-parity.ts": (candidate) => ["--surface-only", candidate, "mcp"],
 };
 
 /** The probe binary each example-driven gate needs on disk. */

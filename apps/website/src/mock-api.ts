@@ -1017,11 +1017,13 @@ const githubJobs: GitHubWorkflowJob[] = [
   },
 ];
 
-// Agent Environments demo data: three agents with plausible MCPs and skills.
+// Agent Environments demo data: five agents with plausible MCPs and skills.
 const agentEnvAgents = [
   { agent: "claude", available: true, command: "claude", resolvedPath: "/usr/local/bin/claude" },
   { agent: "codex", available: true, command: "codex", resolvedPath: "/usr/local/bin/codex" },
   { agent: "antigravity", available: false, command: "antigravity" },
+  { agent: "cursor", available: true, command: "cursor", resolvedPath: "/usr/local/bin/cursor" },
+  { agent: "windsurf", available: false, command: "windsurf" },
 ];
 
 const agentEnvConfigs = [
@@ -1083,6 +1085,26 @@ const agentEnvConfigs = [
   {
     agent: "antigravity",
     configPath: "/Users/demo/.gemini/antigravity-cli/mcp_config.json",
+    exists: false,
+    mcpServers: {},
+    remoteMcpServers: {},
+    projectMcpServers: {},
+    projectRemoteMcpServers: {},
+    skills: [],
+  },
+  {
+    agent: "cursor",
+    configPath: "/Users/demo/.cursor/mcp.json",
+    exists: true,
+    mcpServers: { nomoreide: { command: "nomoreide", args: ["mcp"] } },
+    remoteMcpServers: {},
+    projectMcpServers: {},
+    projectRemoteMcpServers: {},
+    skills: [{ name: "commit-push", source: "local", kind: "skill", scope: "user" }],
+  },
+  {
+    agent: "windsurf",
+    configPath: "/Users/demo/.codeium/windsurf/mcp_config.json",
     exists: false,
     mcpServers: {},
     remoteMcpServers: {},

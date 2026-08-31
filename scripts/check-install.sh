@@ -126,10 +126,10 @@ fi
 kill $DAEMON 2>/dev/null
 trap 'rm -rf "$WORK"' EXIT
 
-# ---------------------------------------------------- three setup flows
+# ----------------------------------------------------- five setup flows
 
 SETUP_HOME="$WORK/agent-home"; mkdir -p "$SETUP_HOME"
-for agent in claude codex gemini; do
+for agent in claude codex gemini cursor windsurf; do
   out=$(env -i PATH="$CLEAN_PATH" HOME="$SETUP_HOME" XDG_CONFIG_HOME="$SETUP_HOME/.config" \
         "$PREFIX/bin/nomoreide" setup "$agent" 2>&1); code=$?
   [ "$code" -eq 0 ] || { bad "setup $agent" "exit $code: $out"; continue; }
@@ -140,7 +140,11 @@ for agent in claude codex gemini; do
 done
 # What it wrote must name the installed binary — not npx, and not a relative
 # name an agent with a different PATH would fail to resolve.
-for file in "$SETUP_HOME/.claude.json" "$SETUP_HOME/.codex/config.toml" "$SETUP_HOME/.gemini/settings.json"; do
+for file in "$SETUP_HOME/.claude.json" \
+            "$SETUP_HOME/.codex/config.toml" \
+            "$SETUP_HOME/.gemini/settings.json" \
+            "$SETUP_HOME/.cursor/mcp.json" \
+            "$SETUP_HOME/.codeium/windsurf/mcp_config.json"; do
   short=${file#"$SETUP_HOME/"}
   if grep -q "$PREFIX/bin/nomoreide" "$file" 2>/dev/null; then
     if grep -q "npx" "$file" 2>/dev/null; then
@@ -154,7 +158,9 @@ for file in "$SETUP_HOME/.claude.json" "$SETUP_HOME/.codex/config.toml" "$SETUP_
 done
 for skill in "$SETUP_HOME/.claude/skills/nomoreide-debug/SKILL.md" \
              "$SETUP_HOME/.agents/skills/nomoreide-debug/SKILL.md" \
-             "$SETUP_HOME/.gemini/skills/nomoreide-debug/SKILL.md"; do
+             "$SETUP_HOME/.gemini/skills/nomoreide-debug/SKILL.md" \
+             "$SETUP_HOME/.cursor/skills/nomoreide-debug/SKILL.md" \
+             "$SETUP_HOME/.codeium/windsurf/skills/nomoreide-debug/SKILL.md"; do
   [ -s "$skill" ] && ok "the skill is installed at ${skill#"$SETUP_HOME/"}" \
     || bad "skill" "missing ${skill#"$SETUP_HOME/"}"
 done
@@ -165,12 +171,13 @@ done
 # drives the installer rather than the binary: a separate home, a separate
 # prefix, and afterwards the agent's own config must name the binary that was
 # just installed into that prefix.
-# All three at once, through `auto`, because "one command and every agent I
+# All five at once, through `auto`, because "one command and every agent I
 # use is ready" is the actual promise — not "one command and one agent". The
-# home is seeded with each agent's directory so detection finds all three
+# home is seeded with each agent's directory so detection finds all five
 # without needing their CLIs on this PATH.
 ONE_GO_HOME="$WORK/one-go-home"
-mkdir -p "$ONE_GO_HOME/.claude" "$ONE_GO_HOME/.codex" "$ONE_GO_HOME/.gemini"
+mkdir -p "$ONE_GO_HOME/.claude" "$ONE_GO_HOME/.codex" "$ONE_GO_HOME/.gemini" \
+         "$ONE_GO_HOME/.cursor" "$ONE_GO_HOME/.codeium/windsurf"
 ONE_GO_PREFIX="$WORK/one-go-prefix"
 out=$(env -i PATH="$CLEAN_PATH" HOME="$ONE_GO_HOME" SHELL=/bin/zsh \
       NOMOREIDE_BASE_URL="file://$RELEASE" \
@@ -181,7 +188,8 @@ if [ "$code" -eq 0 ]; then
 else
   bad "installer --setup auto" "exit $code: $out"
 fi
-for file in .claude.json .codex/config.toml .gemini/settings.json; do
+for file in .claude.json .codex/config.toml .gemini/settings.json \
+            .cursor/mcp.json .codeium/windsurf/mcp_config.json; do
   if grep -q "$ONE_GO_PREFIX/bin/nomoreide" "$ONE_GO_HOME/$file" 2>/dev/null; then
     ok "one command registered the MCP in $file"
   else
@@ -190,7 +198,8 @@ for file in .claude.json .codex/config.toml .gemini/settings.json; do
 done
 # The skill is half of what `setup` installs, and a registration without it
 # leaves the agent able to call the tools but not knowing when to.
-for skill in .claude/skills .agents/skills .gemini/skills; do
+for skill in .claude/skills .agents/skills .gemini/skills \
+             .cursor/skills .codeium/windsurf/skills; do
   [ -s "$ONE_GO_HOME/$skill/nomoreide-debug/SKILL.md" ] \
     && ok "one command installed the skill at $skill" \
     || bad "installer --setup auto" "no skill at $skill"
@@ -220,7 +229,9 @@ out=$(env -i PATH="$CLEAN_PATH" HOME="$AUTO_HOME" SHELL=/bin/zsh \
       NOMOREIDE_API_URL="file://$RELEASE/latest.json" \
       sh "$INSTALLER" --version "$NEW" --prefix "$AUTO_PREFIX" 2>&1); code=$?
 if [ "$code" -eq 0 ] && [ ! -e "$AUTO_HOME/.claude.json" ] \
-   && [ ! -e "$AUTO_HOME/.codex/config.toml" ] && [ ! -e "$AUTO_HOME/.gemini/settings.json" ]; then
+   && [ ! -e "$AUTO_HOME/.codex/config.toml" ] && [ ! -e "$AUTO_HOME/.gemini/settings.json" ] \
+   && [ ! -e "$AUTO_HOME/.cursor/mcp.json" ] \
+   && [ ! -e "$AUTO_HOME/.codeium/windsurf/mcp_config.json" ]; then
   ok "the default --setup auto writes nothing when no agent is installed"
 else
   bad "--setup auto" "wrote an agent config with no agent present (exit $code): $out"

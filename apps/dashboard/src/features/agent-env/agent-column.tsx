@@ -34,6 +34,8 @@ export const AGENT_LABELS: Record<AgentEnvConfig["agent"], string> = {
   claude: "Claude Code",
   codex: "Codex CLI",
   antigravity: "Antigravity",
+  cursor: "Cursor",
+  windsurf: "Windsurf",
 };
 
 /** Official mark for an agent, brand-colored where the brand has one color. */
@@ -46,10 +48,11 @@ export function AgentLogo({
 }) {
   if (agent === "claude") return <ClaudeLogo className={className} />;
   if (agent === "codex") return <CodexLogo className={className} />;
-  return <AntigravityLogo className={className} />;
+  if (agent === "antigravity") return <AntigravityLogo className={className} />;
+  return <Bot className={className} />;
 }
 
-const ALL_AGENTS: AgentEnvAgentName[] = ["claude", "codex", "antigravity"];
+const ALL_AGENTS: AgentEnvAgentName[] = ["claude", "codex", "antigravity", "cursor", "windsurf"];
 
 type StageChange = (change: AgentEnvPendingChange) => void;
 const AUTO_COLLAPSE_THRESHOLD = 5;
@@ -330,7 +333,7 @@ function SkillsSection({
                     t,
                     { category: "skill", name: skill.name, sourceAgent: agent, sourceScope: skill.scope },
                     onStage,
-                    // Claude and Codex read project-scoped skills; Antigravity is user-only.
+                    // Every supported agent except Antigravity reads project-scoped skills.
                     (target) => (target === "antigravity" ? "user" : skill.scope),
                   )}
                 />

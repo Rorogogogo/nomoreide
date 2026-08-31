@@ -37,6 +37,8 @@ impl Agent {
             Self::Claude => "Claude Code",
             Self::Codex => "Codex CLI",
             Self::Antigravity => "Antigravity",
+            Self::Cursor => "Cursor",
+            Self::Windsurf => "Windsurf",
         }
     }
 
@@ -45,6 +47,8 @@ impl Agent {
             "claude" => Some(Self::Claude),
             "codex" => Some(Self::Codex),
             "antigravity" => Some(Self::Antigravity),
+            "cursor" => Some(Self::Cursor),
+            "windsurf" => Some(Self::Windsurf),
             _ => None,
         }
     }

@@ -224,7 +224,7 @@ fn toml_table<'a>(parent: &'a mut Table, key: &str) -> &'a mut Table {
         .expect("just ensured a table is there")
 }
 
-/// What Claude and Antigravity write for one server.
+/// What the JSON-backed agents write for one server.
 fn json_entry(agent: Agent, spec: &ServerSpec) -> Json {
     let mut entry = OrderedMap::new();
     let string = |value: &str| Json::String(value.to_string());
@@ -240,6 +240,12 @@ fn json_entry(agent: Agent, spec: &ServerSpec) -> Json {
                 );
                 entry.insert("url".to_string(), string(&url));
             }
+            Reader::CursorJson => {
+                entry.insert("url".to_string(), string(&url));
+            }
+            Reader::WindsurfJson => {
+                entry.insert("serverUrl".to_string(), string(&url));
+            }
             // Antigravity has no transport field: which key holds the URL is
             // what says how to reach it.
             _ => {
@@ -249,7 +255,7 @@ fn json_entry(agent: Agent, spec: &ServerSpec) -> Json {
         }
         return Json::Object(entry);
     }
-    if matches!(agent.reader(), Reader::ClaudeJson) {
+    if matches!(agent.reader(), Reader::ClaudeJson | Reader::CursorJson) {
         entry.insert("type".to_string(), string("stdio"));
     }
     entry.insert(
@@ -363,5 +369,46 @@ pub(super) fn spec_from_stored(entry: &Json) -> ServerSpec {
         },
         env: map.get("env").and_then(Json::as_object).cloned(),
         ..ServerSpec::default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn remote() -> ServerSpec {
+        ServerSpec {
+            url: Some("https://example.test/mcp".to_string()),
+            transport: Some("http".to_string()),
+            ..ServerSpec::default()
+        }
+    }
+
+    fn stdio() -> ServerSpec {
+        ServerSpec {
+            command: Some("nomoreide".to_string()),
+            args: vec!["mcp".to_string()],
+            ..ServerSpec::default()
+        }
+    }
+
+    #[test]
+    fn cursor_and_windsurf_write_their_native_json_shapes() {
+        assert_eq!(
+            serde_json::to_value(json_entry(Agent::Cursor, &remote())).unwrap(),
+            serde_json::json!({"url": "https://example.test/mcp"})
+        );
+        assert_eq!(
+            serde_json::to_value(json_entry(Agent::Windsurf, &remote())).unwrap(),
+            serde_json::json!({"serverUrl": "https://example.test/mcp"})
+        );
+        assert_eq!(
+            serde_json::to_value(json_entry(Agent::Cursor, &stdio())).unwrap(),
+            serde_json::json!({"type": "stdio", "command": "nomoreide", "args": ["mcp"]})
+        );
+        assert_eq!(
+            serde_json::to_value(json_entry(Agent::Windsurf, &stdio())).unwrap(),
+            serde_json::json!({"command": "nomoreide", "args": ["mcp"]})
+        );
     }
 }

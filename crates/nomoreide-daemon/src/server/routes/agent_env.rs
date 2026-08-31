@@ -54,7 +54,7 @@ pub(crate) fn routes() -> Router<AppState> {
 /// The path segment naming the agent, exactly as it arrived.
 ///
 /// Not the `Path` extractor: that percent-decodes, and the reference does not.
-/// It matches the raw capture against three literal names, so `%63laude` is a
+/// It matches the raw capture against literal names, so `%63laude` is a
 /// stranger rather than a spelling of `claude`.
 fn agent_segment(uri: &Uri, trailing: bool) -> &str {
     let path = uri.path();
@@ -68,12 +68,14 @@ fn agent_segment(uri: &Uri, trailing: bool) -> &str {
     }
 }
 
-/// The three agents, by the only names the reference answers to.
+/// The agents accepted by the settings routes.
 fn agent_named(id: &str) -> Option<Agent> {
     match id {
         "claude" => Some(Agent::Claude),
         "codex" => Some(Agent::Codex),
         "antigravity" => Some(Agent::Antigravity),
+        "cursor" => Some(Agent::Cursor),
+        "windsurf" => Some(Agent::Windsurf),
         _ => None,
     }
 }
@@ -195,7 +197,7 @@ async fn snapshot(State(_state): State<AppState>, body: Bytes) -> Response {
     else {
         return error(
             StatusCode::BAD_REQUEST,
-            "agent must be claude, codex, or antigravity.",
+            "agent must be claude, codex, antigravity, cursor, or windsurf.",
         );
     };
     match agent_env::snapshot_agent(agent) {
@@ -272,4 +274,18 @@ fn settings_response(written: WrittenSettings) -> Response {
         "backup": written.backup,
     }))
     .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn settings_routes_recognise_every_supported_agent() {
+        for agent in nomoreide_core::agent_env::AGENTS {
+            assert_eq!(agent_named(agent.id()), Some(agent));
+        }
+        assert_eq!(agent_named("Cursor"), None);
+        assert_eq!(agent_named("vscode"), None);
+    }
 }

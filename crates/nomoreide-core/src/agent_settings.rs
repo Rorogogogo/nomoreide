@@ -1,7 +1,7 @@
 //! Each coding agent's *settings* file — the one a person edits by hand —
 //! which is not the MCP config [`crate::agent_env`] reads.
 //!
-//! Claude and Antigravity keep JSON; Codex keeps TOML, in the very file its
+//! Every supported agent except Codex keeps JSON; Codex keeps TOML, in the very file its
 //! MCP servers live in, so a write here can move an agent's servers as a side
 //! effect. Every write parses the content first, copies the previous version
 //! beside it, and replaces the file atomically. This is a human-only surface:
@@ -72,13 +72,18 @@ fn settings_path(agent: Agent, home: &Path) -> PathBuf {
         Agent::Claude => home.join(".claude").join("settings.json"),
         Agent::Codex => home.join(".codex").join("config.toml"),
         Agent::Antigravity => home.join(".gemini").join("settings.json"),
+        Agent::Cursor => home.join(".cursor").join("mcp.json"),
+        Agent::Windsurf => home
+            .join(".codeium")
+            .join("windsurf")
+            .join("mcp_config.json"),
     }
 }
 
 /// Antigravity's `settings.json` has no documented model key, so the curated
 /// switch has nothing to write there.
 fn model_editable(agent: Agent) -> bool {
-    agent != Agent::Antigravity
+    matches!(agent, Agent::Claude | Agent::Codex)
 }
 
 /// Parse, insisting the document is an object.
@@ -308,4 +313,26 @@ fn section_start(content: &str) -> Option<usize> {
 fn root_model_line(root: &str) -> Option<(usize, usize)> {
     let pattern = regex::Regex::new(r"(?m)^\s*model\s*=.*$").expect("a literal pattern");
     pattern.find(root).map(|found| (found.start(), found.end()))
+}
+
+#[cfg(test)]
+mod agent_tests {
+    use super::*;
+
+    #[test]
+    fn cursor_and_windsurf_edit_their_stable_json_config_paths() {
+        let home = Path::new("/home/tester");
+        assert_eq!(
+            settings_path(Agent::Cursor, home),
+            PathBuf::from("/home/tester/.cursor/mcp.json")
+        );
+        assert_eq!(
+            settings_path(Agent::Windsurf, home),
+            PathBuf::from("/home/tester/.codeium/windsurf/mcp_config.json")
+        );
+        assert_eq!(format_of(Agent::Cursor), Format::Json);
+        assert_eq!(format_of(Agent::Windsurf), Format::Json);
+        assert!(!model_editable(Agent::Cursor));
+        assert!(!model_editable(Agent::Windsurf));
+    }
 }

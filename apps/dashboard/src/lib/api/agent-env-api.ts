@@ -5,7 +5,7 @@
  */
 
 /** Distinct from the agent-chat domain's `AgentName` ("claude-code" | "codex"). */
-export type AgentEnvAgentName = "claude" | "codex" | "antigravity";
+export type AgentEnvAgentName = "claude" | "codex" | "antigravity" | "cursor" | "windsurf";
 
 export interface AgentEnvMcpEntry {
   command: string;

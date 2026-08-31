@@ -1,6 +1,6 @@
 //! Reading one agent's configured MCP servers out of its own config file.
 //!
-//! The three formats agree on very little, so the differences are the point of
+//! The formats agree on very little, so the differences are the point of
 //! this module: what makes a server remote, what transport it is reported as,
 //! whether its headers survive, whether the agent has project scope at all,
 //! and what an unparseable file counts as. Each rule is attached to the
@@ -21,11 +21,12 @@ struct RawServer {
     args: Option<Vec<String>>,
     env: Option<OrderedMap<Value>>,
     url: Option<String>,
-    /// Antigravity's spelling for a streamable-HTTP server. The other two
-    /// readers do not know the key, so an entry using it is not remote to
-    /// them at all.
+    /// Antigravity's spelling for a streamable-HTTP server. Other readers do
+    /// not know the key, so an entry using it is not remote to them at all.
     #[serde(rename = "httpUrl")]
     http_url: Option<String>,
+    #[serde(rename = "serverUrl")]
+    server_url: Option<String>,
     #[serde(rename = "type")]
     declared_transport: Option<String>,
     /// How the project-scope store spells the same idea.
@@ -86,6 +87,10 @@ impl Reader {
             Self::AntigravityJson => url(&raw.http_url)
                 .map(|url| ("http", url))
                 .or_else(|| url(&raw.url).map(|url| ("sse", url))),
+            Self::CursorJson => url(&raw.url).map(|url| ("http", url)),
+            Self::WindsurfJson => url(&raw.server_url)
+                .or_else(|| url(&raw.url))
+                .map(|url| ("http", url)),
         }
     }
 
@@ -95,7 +100,7 @@ impl Reader {
     }
 
     /// Only Claude records anything per project *in its own config*. The
-    /// other two have their project servers read out of the store instead.
+    /// other agents have their project servers read out of the store instead.
     fn has_project_scope(self) -> bool {
         matches!(self, Self::ClaudeJson)
     }
@@ -141,8 +146,8 @@ pub(super) fn read(agent: Agent, home: &Path, cwd: &Path) -> AgentConfigView {
         }
     };
 
-    // Codex and Antigravity report a file they could not parse as present;
-    // only Claude treats a file it cannot parse as no config at all.
+    // Every agent except Claude reports a file it could not parse as present;
+    // Claude treats a file it cannot parse as no config at all.
     let exists = match reader {
         Reader::ClaudeJson => present && parsed,
         _ => present,
@@ -275,7 +280,8 @@ mod tests {
             ("http", "https://h.test")
         );
 
-        // To the other two the key means nothing, so `url` still decides.
+        // To readers other than Antigravity the key means nothing, so `url`
+        // still decides.
         assert_eq!(
             remote(Reader::ClaudeJson).get("one").unwrap().url,
             "https://s.test"
@@ -309,7 +315,35 @@ mod tests {
         };
         assert!(headers(Reader::ClaudeJson));
         assert!(headers(Reader::AntigravityJson));
+        assert!(headers(Reader::CursorJson));
+        assert!(headers(Reader::WindsurfJson));
         assert!(!headers(Reader::CodexToml));
+    }
+
+    #[test]
+    fn cursor_and_windsurf_use_their_documented_remote_url_fields() {
+        let source = r#"{
+            "one": {
+                "url": "https://url.test/mcp",
+                "serverUrl": "https://server-url.test/mcp",
+                "type": "sse"
+            }
+        }"#;
+        let cursor = split(entries(source), Reader::CursorJson).1;
+        assert_eq!(cursor.get("one").unwrap().url, "https://url.test/mcp");
+        assert_eq!(cursor.get("one").unwrap().transport, "http");
+
+        let windsurf = split(entries(source), Reader::WindsurfJson).1;
+        assert_eq!(
+            windsurf.get("one").unwrap().url,
+            "https://server-url.test/mcp"
+        );
+        assert_eq!(windsurf.get("one").unwrap().transport, "http");
+
+        let server_url_only = r#"{"one":{"serverUrl":"https://example.test/mcp"}}"#;
+        let (stdio, remote) = split(entries(server_url_only), Reader::CursorJson);
+        assert!(remote.is_empty());
+        assert_eq!(stdio.get("one").unwrap().command, "");
     }
 
     #[test]

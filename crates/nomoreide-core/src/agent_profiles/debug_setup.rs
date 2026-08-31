@@ -61,7 +61,7 @@ const SKILL_FILES: &[(&str, &str)] = &[
     ),
 ];
 
-/// The three agents `setup` knows how to configure.
+/// The agents `setup` knows how to configure.
 ///
 /// Not [`Agent`]: Gemini keeps its MCP servers in `~/.gemini/settings.json`
 /// and its skills in `~/.gemini/skills`, which is Antigravity's directory —
@@ -72,6 +72,8 @@ pub enum SetupAgent {
     Claude,
     Codex,
     Gemini,
+    Cursor,
+    Windsurf,
 }
 
 impl SetupAgent {
@@ -80,6 +82,8 @@ impl SetupAgent {
             "claude" => Some(Self::Claude),
             "codex" => Some(Self::Codex),
             "gemini" => Some(Self::Gemini),
+            "cursor" => Some(Self::Cursor),
+            "windsurf" => Some(Self::Windsurf),
             _ => None,
         }
     }
@@ -89,6 +93,8 @@ impl SetupAgent {
             Self::Claude => "claude",
             Self::Codex => "codex",
             Self::Gemini => "gemini",
+            Self::Cursor => "cursor",
+            Self::Windsurf => "windsurf",
         }
     }
 
@@ -99,6 +105,8 @@ impl SetupAgent {
             Self::Claude => Agent::Claude,
             Self::Codex => Agent::Codex,
             Self::Gemini => Agent::Antigravity,
+            Self::Cursor => Agent::Cursor,
+            Self::Windsurf => Agent::Windsurf,
         }
     }
 }
@@ -258,6 +266,8 @@ fn skill_directories(agent: SetupAgent, home: &Path) -> (PathBuf, Vec<PathBuf>) 
         SetupAgent::Claude => &[".claude/skills"],
         SetupAgent::Codex => &[".agents/skills", ".codex/skills"],
         SetupAgent::Gemini => &[".gemini/skills"],
+        SetupAgent::Cursor => &[".cursor/skills"],
+        SetupAgent::Windsurf => &[".codeium/windsurf/skills", ".agents/skills"],
     };
     let candidates: Vec<PathBuf> = relative
         .iter()
@@ -344,6 +354,12 @@ fn write_server(
             .map(|outcome| outcome.backups)
             .map_err(SetupError::Failed),
         SetupAgent::Codex => add_mcp(Agent::Codex, MCP_KEY, desired, Scope::User, cwd)
+            .map(|outcome| outcome.backups)
+            .map_err(SetupError::Failed),
+        SetupAgent::Cursor => add_mcp(Agent::Cursor, MCP_KEY, desired, Scope::User, cwd)
+            .map(|outcome| outcome.backups)
+            .map_err(SetupError::Failed),
+        SetupAgent::Windsurf => add_mcp(Agent::Windsurf, MCP_KEY, desired, Scope::User, cwd)
             .map(|outcome| outcome.backups)
             .map_err(SetupError::Failed),
     }
@@ -643,7 +659,7 @@ mod tests {
     }
 
     #[test]
-    fn each_agent_installs_into_its_own_directory_and_codex_looks_in_two() {
+    fn each_agent_installs_into_its_own_directory_and_portable_roots_are_also_checked() {
         let home = Path::new("/h");
         assert_eq!(
             skill_directories(SetupAgent::Claude, home),
@@ -671,6 +687,20 @@ mod tests {
                 ]
             )
         );
+        assert_eq!(
+            skill_directories(SetupAgent::Cursor, home).0,
+            PathBuf::from("/h/.cursor/skills/nomoreide-debug")
+        );
+        assert_eq!(
+            skill_directories(SetupAgent::Windsurf, home),
+            (
+                PathBuf::from("/h/.codeium/windsurf/skills/nomoreide-debug"),
+                vec![
+                    PathBuf::from("/h/.codeium/windsurf/skills/nomoreide-debug"),
+                    PathBuf::from("/h/.agents/skills/nomoreide-debug"),
+                ]
+            )
+        );
     }
 
     /// The destination above is computed here but written by `agent_env`. If
@@ -678,7 +708,13 @@ mod tests {
     /// never puts one, and report `added` forever.
     #[test]
     fn the_computed_destination_is_where_agent_env_actually_installs() {
-        for agent in [SetupAgent::Claude, SetupAgent::Codex, SetupAgent::Gemini] {
+        for agent in [
+            SetupAgent::Claude,
+            SetupAgent::Codex,
+            SetupAgent::Gemini,
+            SetupAgent::Cursor,
+            SetupAgent::Windsurf,
+        ] {
             let home = home();
             let (mine, _) = skill_directories(agent, &home);
             let theirs =
@@ -830,10 +866,12 @@ mod tests {
     }
 
     #[test]
-    fn the_three_agent_names_parse_and_nothing_else_does() {
+    fn the_five_agent_names_parse_and_nothing_else_does() {
         assert_eq!(SetupAgent::parse("claude"), Some(SetupAgent::Claude));
         assert_eq!(SetupAgent::parse("codex"), Some(SetupAgent::Codex));
         assert_eq!(SetupAgent::parse("gemini"), Some(SetupAgent::Gemini));
+        assert_eq!(SetupAgent::parse("cursor"), Some(SetupAgent::Cursor));
+        assert_eq!(SetupAgent::parse("windsurf"), Some(SetupAgent::Windsurf));
         // Not an alias for Gemini here: the skill goes to Antigravity's
         // directory, but the MCP server does not go to Antigravity's config.
         assert_eq!(SetupAgent::parse("antigravity"), None);

@@ -1,11 +1,12 @@
 //! What the coding agents on this machine are configured with.
 //!
-//! Three agents are known — Claude Code, Codex, and Antigravity — and this
+//! Five agents are known — Claude Code, Codex, Antigravity, Cursor, and
+//! Windsurf — and this
 //! module answers three questions about each: whether its CLI is installed,
 //! what MCP servers and skills it is configured with, and whether that setup
 //! looks broken. Everything here reads; nothing writes.
 //!
-//! The three agents are deliberately *not* handled uniformly, because they are
+//! The agents are deliberately *not* handled uniformly, because they are
 //! not uniform. Each stores its servers in a different file, in a different
 //! format, under different rules for what a remote server's transport is; the
 //! differences are spelled out on [`Reader`] rather than smoothed away, since
@@ -39,13 +40,21 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 /// The agents this knows about, in the order every answer reports them.
-pub const AGENTS: [Agent; 3] = [Agent::Claude, Agent::Codex, Agent::Antigravity];
+pub const AGENTS: [Agent; 5] = [
+    Agent::Claude,
+    Agent::Codex,
+    Agent::Antigravity,
+    Agent::Cursor,
+    Agent::Windsurf,
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Agent {
     Claude,
     Codex,
     Antigravity,
+    Cursor,
+    Windsurf,
 }
 
 /// How an agent's config file is written, and what that format implies.
@@ -66,6 +75,11 @@ pub(crate) enum Reader {
     /// Antigravity's JSON: every remote server `sse`, `headers` kept, no
     /// project scope.
     AntigravityJson,
+    /// `~/.cursor/mcp.json`: JSON, `url` is streamable HTTP, headers kept.
+    CursorJson,
+    /// `~/.codeium/windsurf/mcp_config.json`: JSON, `serverUrl` preferred over
+    /// `url`, both streamable HTTP, headers kept.
+    WindsurfJson,
     /// Not an agent's format at all: the project-scope store this program
     /// keeps for the agents that have nowhere of their own to record one.
     /// It spells the transport out in a `transport` key, because nothing here
@@ -79,6 +93,8 @@ impl Agent {
             Self::Claude => "claude",
             Self::Codex => "codex",
             Self::Antigravity => "antigravity",
+            Self::Cursor => "cursor",
+            Self::Windsurf => "windsurf",
         }
     }
 
@@ -88,6 +104,8 @@ impl Agent {
             Self::Claude => "claude",
             Self::Codex => "codex",
             Self::Antigravity => "antigravity",
+            Self::Cursor => "cursor",
+            Self::Windsurf => "windsurf",
         }
     }
 
@@ -96,6 +114,8 @@ impl Agent {
             Self::Claude => Reader::ClaudeJson,
             Self::Codex => Reader::CodexToml,
             Self::Antigravity => Reader::AntigravityJson,
+            Self::Cursor => Reader::CursorJson,
+            Self::Windsurf => Reader::WindsurfJson,
         }
     }
 
@@ -105,6 +125,8 @@ impl Agent {
             Self::Claude => ".claude.json",
             Self::Codex => ".codex/config.toml",
             Self::Antigravity => ".gemini/antigravity-cli/mcp_config.json",
+            Self::Cursor => ".cursor/mcp.json",
+            Self::Windsurf => ".codeium/windsurf/mcp_config.json",
         }
     }
 
@@ -158,6 +180,8 @@ impl Agent {
             Self::Claude => &[".claude/skills"],
             Self::Codex => &[".agents/skills", ".codex/skills"],
             Self::Antigravity => &[".gemini/skills"],
+            Self::Cursor => &[".cursor/skills"],
+            Self::Windsurf => &[".codeium/windsurf/skills", ".agents/skills"],
         }
     }
 
@@ -168,6 +192,8 @@ impl Agent {
             Self::Claude => Some(".claude/skills"),
             Self::Codex => Some(".agents/skills"),
             Self::Antigravity => None,
+            Self::Cursor => Some(".cursor/skills"),
+            Self::Windsurf => Some(".windsurf/skills"),
         }
     }
 }
@@ -238,7 +264,7 @@ pub struct AgentConfigView {
     pub agent: &'static str,
     pub config_path: String,
     /// Whether the agent has a config here *that could be read*. Only the
-    /// Claude reader lets a parse failure clear this; the other two report a
+    /// Claude's reader lets a parse failure clear this; the others report a
     /// file they could not parse as present but empty.
     pub exists: bool,
     pub mcp_servers: OrderedMap<StdioServer>,
@@ -405,11 +431,11 @@ mod tests {
     fn every_agent_is_reported_in_the_same_fixed_order() {
         assert_eq!(
             AGENTS.iter().map(|agent| agent.id()).collect::<Vec<_>>(),
-            ["claude", "codex", "antigravity"]
+            ["claude", "codex", "antigravity", "cursor", "windsurf"]
         );
         assert_eq!(
             status().iter().map(|entry| entry.agent).collect::<Vec<_>>(),
-            ["claude", "codex", "antigravity"]
+            ["claude", "codex", "antigravity", "cursor", "windsurf"]
         );
     }
 
@@ -452,6 +478,18 @@ mod tests {
             Agent::Antigravity.user_skills_directory(Path::new("/h")),
             Some(PathBuf::from("/h/.gemini/skills"))
         );
+        assert_eq!(
+            Agent::Cursor.config_path(Path::new("/h")),
+            PathBuf::from("/h/.cursor/mcp.json")
+        );
+        assert_eq!(
+            Agent::Windsurf.config_path(Path::new("/h")),
+            PathBuf::from("/h/.codeium/windsurf/mcp_config.json")
+        );
+        assert_eq!(
+            Agent::Windsurf.user_skills_relative_paths(),
+            [".codeium/windsurf/skills", ".agents/skills"]
+        );
     }
 
     #[test]
@@ -465,5 +503,23 @@ mod tests {
             Some(".agents/skills")
         );
         assert_eq!(Agent::Antigravity.project_skills_relative_path(), None);
+        assert_eq!(
+            Agent::Cursor.project_skills_relative_path(),
+            Some(".cursor/skills")
+        );
+        assert_eq!(
+            Agent::Windsurf.project_skills_relative_path(),
+            Some(".windsurf/skills")
+        );
+    }
+
+    #[test]
+    fn every_agent_id_parses_back_to_the_same_agent() {
+        for agent in AGENTS {
+            assert_eq!(Agent::parse(agent.id()), Some(agent));
+            assert!(!agent.display_name().is_empty());
+            assert!(!agent.command().is_empty());
+        }
+        assert_eq!(Agent::parse("Cursor"), None);
     }
 }

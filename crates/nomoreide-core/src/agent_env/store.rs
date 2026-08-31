@@ -1,7 +1,7 @@
 //! Project-scoped MCP servers for the agents that have no place for them.
 //!
 //! Claude records per-project servers in its own config, keyed by the project
-//! directory. Codex and Antigravity have nowhere to put them — so a
+//! directory. Several agents have nowhere this module writes them — so a
 //! project-scoped server for either is kept here instead, in a file this
 //! program owns inside the project. Nothing reads it back into an agent's
 //! listing, because neither agent would read it either; it is a record of what

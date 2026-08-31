@@ -58,7 +58,7 @@ function reachesWorkspacePackage(packageName, targetName, visited = new Set()) {
 // restrict who may call them: the reference MCP surface exposes
 // `nomoreide_git_push`, so nomoreide-mcp must be able to reach at least part of
 // that crate. What an agent may do with git is defined by the MCP tool surface
-// and gated by `npm run mcp:parity -- --surface-only`, which diffs the exposed
+// and covered by the frozen MCP contract tests, which check the exposed
 // tool list against the frozen 90-tool manifest. See nomoreide-actions/src/lib.rs.
 const forbidden = [
   {

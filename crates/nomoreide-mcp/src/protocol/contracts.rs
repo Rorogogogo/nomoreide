@@ -256,7 +256,7 @@ const TERMINAL_SESSION_ID_MAX: usize = 200;
 /// The reference's `z.enum(["production", "preview"])`.
 const DEPLOY_TARGETS: &[&str] = &["production", "preview"];
 /// The agents an agent-environment write can name.
-const AGENTS: &[&str] = &["claude", "codex", "antigravity"];
+const AGENTS: &[&str] = &["claude", "codex", "antigravity", "cursor", "windsurf"];
 /// Where a server or a skill lives, for the writes that move one.
 const SCOPES: &[&str] = &["user", "project"];
 /// How a remote MCP server is reached.
@@ -1108,5 +1108,23 @@ fn schema_type(value: &Value) -> &'static str {
         Value::String(_) => "string",
         Value::Array(_) => "array",
         Value::Object(_) => "object",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn agent_contracts_accept_cursor_and_windsurf() {
+        for agent in AGENTS {
+            let mut arguments = Map::new();
+            arguments.insert("agent".to_string(), Value::String((*agent).to_string()));
+            assert!(required_enumerated(&arguments, "agent", AGENTS).is_empty());
+        }
+        assert_eq!(
+            AGENTS,
+            ["claude", "codex", "antigravity", "cursor", "windsurf"]
+        );
     }
 }

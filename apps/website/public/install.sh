@@ -13,7 +13,7 @@
 #   --prefix <dir>      NOMOREIDE_PREFIX    default ~/.local
 #   --setup <agents>    NOMOREIDE_SETUP     auto (default), none, or a
 #                                           comma-separated list of
-#                                           claude,codex,gemini
+#                                           claude,codex,gemini,cursor,windsurf
 #   --uninstall                             remove what this installed
 #   --help
 #
@@ -53,7 +53,7 @@ Options (also readable from the environment, for `curl ... | sh`):
   --prefix <dir>      NOMOREIDE_PREFIX    default ~/.local
   --setup <agents>    NOMOREIDE_SETUP     auto (default), none, or a
                                           comma-separated list of
-                                          claude,codex,gemini
+                                          claude,codex,gemini,cursor,windsurf
   --uninstall                             remove what this installed
   --help
 
@@ -84,9 +84,9 @@ case "$SETUP" in
   *)
     for agent in $(printf '%s' "$SETUP" | tr ',' ' '); do
       case "$agent" in
-        claude|codex|gemini) ;;
+        claude|codex|gemini|cursor|windsurf) ;;
         *)
-          printf 'install.sh: --setup: unknown agent %s (expected claude, codex, gemini, auto or none)\n' "$agent" >&2
+          printf 'install.sh: --setup: unknown agent %s (expected claude, codex, gemini, cursor, windsurf, auto or none)\n' "$agent" >&2
           exit 2
           ;;
       esac
@@ -269,6 +269,8 @@ agent_present() {
     claude) command -v claude >/dev/null 2>&1 || [ -e "$HOME/.claude.json" ] || [ -d "$HOME/.claude" ] ;;
     codex)  command -v codex  >/dev/null 2>&1 || [ -d "$HOME/.codex" ] ;;
     gemini) command -v gemini >/dev/null 2>&1 || [ -d "$HOME/.gemini" ] ;;
+    cursor) command -v cursor >/dev/null 2>&1 || command -v cursor-agent >/dev/null 2>&1 || [ -d "$HOME/.cursor" ] ;;
+    windsurf) command -v windsurf >/dev/null 2>&1 || [ -d "$HOME/.codeium/windsurf" ] ;;
     *) return 1 ;;
   esac
 }
@@ -277,7 +279,7 @@ case "$SETUP" in
   none) wanted="" ;;
   auto)
     wanted=""
-    for agent in claude codex gemini; do
+    for agent in claude codex gemini cursor windsurf; do
       if agent_present "$agent"; then
         wanted="$wanted $agent"
       fi
@@ -310,6 +312,6 @@ fi
 say ""
 say "Next:"
 if [ -z "$wanted" ]; then
-  note "nomoreide setup claude     # or codex, or gemini"
+  note "nomoreide setup claude     # or codex, gemini, cursor, or windsurf"
 fi
 note "nomoreide daemon           # the workbench on http://127.0.0.1:4317"

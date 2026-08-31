@@ -1,4 +1,4 @@
-//! `nomoreide setup [claude|codex|gemini] [--force]`.
+//! `nomoreide setup [claude|codex|gemini|cursor|windsurf] [--force]`.
 //!
 //! With no agent named it prints the instructions; with one it installs. The
 //! instructions are the native ones — `nomoreide mcp`, not `npx -y nomoreide`
@@ -46,7 +46,7 @@ pub fn run(arguments: &[String]) -> u8 {
     };
 
     let Some(agent) = SetupAgent::parse(named) else {
-        eprintln!("nomoreide: setup agent must be one of: claude, codex, gemini");
+        eprintln!("nomoreide: setup agent must be one of: claude, codex, gemini, cursor, windsurf");
         return 1;
     };
 

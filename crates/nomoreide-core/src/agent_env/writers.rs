@@ -117,8 +117,8 @@ pub fn add_mcp(
         return Err("Provide either command (stdio server) or url (remote server).".to_string());
     }
     let backups = match (scope, agent) {
-        (Scope::Project, Agent::Codex | Agent::Antigravity) => {
-            // Neither reads a project config, so what the user asked for is
+        (Scope::Project, Agent::Codex | Agent::Antigravity | Agent::Cursor | Agent::Windsurf) => {
+            // These agents use the guarded project store, so what the user asked for is
             // recorded where this program can find it again.
             vec![store::set(cwd, agent, key, stored_entry(spec))?]
         }
@@ -343,7 +343,7 @@ fn move_skill(
 
 fn no_project_skills(agent: Agent) -> String {
     format!(
-        "{} has no project-scoped skills; Claude reads .claude/skills/ and Codex reads .agents/skills/.",
+        "{} has no project-scoped skills; Claude, Codex, Cursor, and Windsurf support project skills.",
         agent.display_name()
     )
 }

@@ -2513,7 +2513,7 @@ export const en = {
   "agentEnv.tabProfiles": "Profiles",
   "agentEnv.doctor": "Doctor",
   "agentEnv.readingConfigs": "Reading agent configurations...",
-  "agentEnv.noConfigs": "No agent configurations found. This page reads Claude Code, Codex CLI, and Antigravity configs from your home directory.",
+  "agentEnv.noConfigs": "No agent configurations found. This page reads Claude Code, Codex CLI, Antigravity, Cursor, and Windsurf configs from your home directory.",
   "agentEnv.installed": "installed",
   "agentEnv.notOnPath": "not on PATH",
   "agentEnv.settingsTitle": "{name} settings",

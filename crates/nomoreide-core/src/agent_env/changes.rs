@@ -323,7 +323,7 @@ fn preview_one(change: &PendingChange, configs: &[AgentConfigView]) -> PreviewIt
             && target_agent == Agent::Antigravity
         {
             return fail(warnings, format!(
-                "{} has no project-scoped skills; Claude reads .claude/skills/ and Codex reads .agents/skills/.",
+                "{} has no project-scoped skills; Claude, Codex, Cursor, and Windsurf support project skills.",
                 target_agent.display_name()
             ));
         }
@@ -576,7 +576,7 @@ fn skills_directory(agent: Agent, scope: Scope, cwd: &Path) -> Result<PathBuf, S
     }
     .ok_or_else(|| {
         format!(
-            "{} has no project-scoped skills; Claude reads .claude/skills/ and Codex reads .agents/skills/.",
+            "{} has no project-scoped skills; Claude, Codex, Cursor, and Windsurf support project skills.",
             agent.display_name()
         )
     })

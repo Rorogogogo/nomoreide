@@ -42,7 +42,7 @@ Give your coding agents and yourself a **shared local control surface** for serv
 NoMoreIDE is the shared local control plane between you and your coding agents. The native macOS app, web dashboard, TUI, CLI, and MCP server all operate on the same services, repositories, logs, databases, workflows, and agent configuration.
 
 - **For humans:** one place to run services, inspect activity and Docker resources, review Git worktrees and GitHub changes, diagnose Vercel deployments, browse databases, and open terminals.
-- **For agents:** structured MCP tools expose the same live project state to Claude Code, Codex CLI, Gemini CLI, and other MCP clients.
+- **For agents:** structured MCP tools expose the same live project state to Claude Code, Codex CLI, Gemini CLI, Cursor, Windsurf, and other MCP clients.
 - **For safety:** destructive Git operations are omitted, database writes require human approval, secrets are redacted from shared profiles, and NoMoreIDE does not kill processes it did not start.
 
 ---
@@ -114,6 +114,8 @@ Install the NoMoreIDE MCP server together with its triggerable debugging skill:
 nomoreide setup codex
 nomoreide setup claude
 nomoreide setup gemini
+nomoreide setup cursor
+nomoreide setup windsurf
 ```
 
 Run the command for your agent, then start a new agent session. The skill routes
@@ -251,7 +253,7 @@ whichever binary ran it.
 
 ```mermaid
 graph TD
-    subgraph Agent["AI Agent (Claude / Codex / Gemini)"]
+    subgraph Agent["AI Agent (Claude / Codex / Gemini / Cursor / Windsurf)"]
         A[Coding Agent CLI]
     end
 
