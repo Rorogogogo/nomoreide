@@ -215,7 +215,12 @@ try {
       () => [],
     );
     await seed(runtime);
-    await harness.startDaemon(runtime, {});
+    // Run the daemon from the fixture workspace rather than the checkout. Two
+    // cases below ask what "no path at all" lists, and the answer is the
+    // daemon's own cwd — which as the checkout is a different directory on
+    // every machine, so its `parent` made the recording unreplayable anywhere
+    // else. A fixture workspace is rewritten to a token like any other.
+    await harness.startDaemon(runtime, {}, runtime.workspace);
     runtimes.push(runtime);
   }
   const [reference, candidate] = runtimes;

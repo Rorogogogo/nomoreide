@@ -42,7 +42,7 @@
  *   ... --dump    print both payloads per step
  */
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { inspect } from "node:util";
@@ -69,6 +69,8 @@ const ROOT = ".config/nomoreide/agent-profiles";
 interface HomeFile {
   readonly path: string;
   readonly contents: string;
+  /** A stub the daemon has to be able to *run*, not merely find. */
+  readonly executable?: boolean;
 }
 
 interface Step {
@@ -119,6 +121,18 @@ const FIXTURE: readonly HomeFile[] = [
 ];
 
 /** The agent configs a snapshot and an apply read. */
+/**
+ * The agents this fixture says are installed.
+ *
+ * A profile is a picture of an agent's setup, so several answers here name
+ * which agents exist. Left to the host that is a different list on every
+ * machine — and a recording of it only replays back where it was made.
+ */
+const AGENT_STUBS: readonly HomeFile[] = [
+  { path: "bin/claude", contents: "#!/bin/sh\nexit 0\n", executable: true },
+  { path: "bin/codex", contents: "#!/bin/sh\nexit 0\n", executable: true },
+];
+
 const AGENT_FILES: readonly HomeFile[] = [
   {
     path: ".claude.json",
@@ -465,6 +479,7 @@ async function plant(runtime: Runtime, files: readonly HomeFile[]): Promise<void
     const target = join(runtime.home, file.path);
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, file.contents);
+    if (file.executable) await chmod(target, 0o755);
   }
 }
 
@@ -509,8 +524,16 @@ try {
     );
     await plant(runtime, FIXTURE);
     await plant(runtime, AGENT_FILES);
+    await plant(runtime, AGENT_STUBS);
     await stampFixture(runtime);
-    await harness.startDaemon(runtime, { SHELL: "/bin/sh" });
+    // Which agents are installed is the fixture's answer, not this machine's.
+    // The PATH is replaced rather than prefixed so a developer's own `claude`
+    // cannot be found behind the stubs, and `/usr/bin:/bin` stays because the
+    // daemon shells out to `git` and `sh`.
+    await harness.startDaemon(runtime, {
+      PATH: `${join(runtime.home, "bin")}:/usr/bin:/bin`,
+      SHELL: "/bin/sh",
+    });
     runtimes.push(runtime);
   }
   const [reference, candidate] = runtimes;
