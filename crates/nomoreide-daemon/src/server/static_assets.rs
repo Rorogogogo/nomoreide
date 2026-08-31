@@ -12,6 +12,24 @@
 
 use std::path::{Component, Path, PathBuf};
 
+// The dashboard as it stood when this binary was compiled: `EMBEDDED_DASHBOARD`,
+// a table of slash-separated relative paths to bytes. Empty when the tree had
+// never run `npm run build`, which is a warning at build time and a missing UI
+// at runtime rather than a failure to compile.
+include!(concat!(env!("OUT_DIR"), "/embedded_dashboard.rs"));
+
+/// One embedded file, by the path a request would name it with.
+///
+/// A plain lookup in a fixed table, so unlike the disk roots there is no way
+/// for a request to walk out of it — `resolve_inside` has no counterpart here
+/// because there is nothing to escape into.
+fn embedded_asset(relative: &str) -> Option<&'static [u8]> {
+    EMBEDDED_DASHBOARD
+        .iter()
+        .find(|(name, _)| *name == relative)
+        .map(|(_, bytes)| *bytes)
+}
+
 /// Points the daemon at a `dist/web/client` it could not have guessed —
 /// a packaged layout, or a test that builds its own.
 pub(crate) const WEB_ROOT_ENV: &str = "NOMOREIDE_WEB_ROOT";
@@ -128,6 +146,14 @@ pub(crate) fn read_shell() -> Result<String, String> {
             return Ok(html);
         }
     }
+    // Then the copy compiled in. It comes *after* the disk roots so a
+    // `npm run build` in a checkout still takes effect without a `cargo
+    // build` behind it, which is the whole ergonomics of `npm run dev:web`.
+    if let Some(bytes) = embedded_asset("index.html") {
+        if let Ok(html) = std::str::from_utf8(bytes) {
+            return Ok(html.to_string());
+        }
+    }
     // The source index, so `cargo run` in a checkout that has never been built
     // still renders something rather than a bare error.
     for root in repo_candidates() {
@@ -152,7 +178,10 @@ pub(crate) fn read_asset(request_path: &str) -> Option<(Vec<u8>, &'static str)> 
             return Some((bytes, content_type_for(&path)));
         }
     }
-    None
+    // Nothing on disk holds it, so fall back to the compiled-in copy. An
+    // installed binary normally lands here for every asset: it is the reason
+    // the archive layout is no longer what makes the dashboard work.
+    embedded_asset(relative).map(|bytes| (bytes.to_vec(), content_type_for(Path::new(relative))))
 }
 
 /// Join `relative` under `root`, refusing anything that lands outside it.
@@ -375,6 +404,46 @@ mod tests {
     fn an_absolute_request_cannot_replace_the_root() {
         let root = Path::new("/srv/client");
         assert_eq!(resolve_inside(root, "/etc/passwd"), None);
+    }
+
+    /// The point of embedding: a binary built from a tree with a built
+    /// dashboard carries it, so an install needs no files beside it. Skipped
+    /// rather than failed when the tree has never run `npm run build` — a
+    /// Rust-only contributor should not see a red test for that.
+    #[test]
+    fn a_built_tree_embeds_its_dashboard() {
+        if EMBEDDED_DASHBOARD.is_empty() {
+            return;
+        }
+        assert!(
+            embedded_asset("index.html").is_some(),
+            "the shell is the one file an embedded dashboard cannot be missing"
+        );
+        assert!(
+            EMBEDDED_DASHBOARD
+                .iter()
+                .any(|(name, _)| name.starts_with("assets/")),
+            "index.html alone is a shell with nothing to load"
+        );
+    }
+
+    /// Keys are the shape a request arrives in — slash-separated and with no
+    /// leading slash — because `read_asset` looks them up with exactly the
+    /// path it was asked for, minus that slash.
+    #[test]
+    fn embedded_keys_are_request_shaped() {
+        for (name, _) in EMBEDDED_DASHBOARD {
+            assert!(!name.starts_with('/'), "{name} carries a leading slash");
+            assert!(!name.contains('\\'), "{name} is spelled with backslashes");
+        }
+    }
+
+    /// The table is a fixed map, so a traversal has nothing to traverse. This
+    /// pins that: the lookup never resolves a path, so no `..` can match.
+    #[test]
+    fn the_embedded_table_cannot_be_escaped() {
+        assert_eq!(embedded_asset("../Cargo.toml"), None);
+        assert_eq!(embedded_asset("/etc/passwd"), None);
     }
 
     #[test]

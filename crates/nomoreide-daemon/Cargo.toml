@@ -4,15 +4,32 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "The NoMoreIDE daemon: the local HTTP server, its route registry, and the embedded web dashboard."
+readme = "README.md"
+# `include` rather than the default git-driven file list, because the vendored
+# dashboard is gitignored build output and cargo would otherwise leave it out —
+# publishing a daemon whose UI is missing. Setting `include` stops cargo
+# consulting git at all, so everything the package needs is named here.
+include = [
+    "src/**/*",
+    "build.rs",
+    "web-client/**/*",
+    "README.md",
+    "Cargo.toml",
+]
 
 [dependencies]
 anyhow.workspace = true
 axum.workspace = true
 chrono.workspace = true
 futures-util.workspace = true
-nomoreide-actions = { path = "../nomoreide-actions" }
-nomoreide-core = { path = "../nomoreide-core" }
-nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }
+nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.0" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.3.0" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.3.0" }
 serde.workspace = true
 serde_json.workspace = true
 subtle.workspace = true

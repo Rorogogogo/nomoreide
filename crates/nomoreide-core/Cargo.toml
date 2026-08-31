@@ -4,6 +4,22 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "The backbone of NoMoreIDE: service config, process supervision, logs, git, agents, databases and providers."
+readme = "README.md"
+# `include` rather than the default git-driven file list: `vendored/` is
+# gitignored build output that `build.rs` compiles in, and cargo would
+# otherwise leave it out of the package.
+include = [
+    "src/**/*",
+    "build.rs",
+    "vendored/**/*",
+    "README.md",
+    "Cargo.toml",
+]
 
 [dependencies]
 anyhow.workspace = true

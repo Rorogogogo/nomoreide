@@ -3,7 +3,11 @@ use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
-const FROZEN_CONTRACT: &str = include_str!("../../../test/fixtures/mcp-contract-v1.json");
+// Staged into `OUT_DIR` by `build.rs`. The fixture itself lives at the
+// workspace root, shared with the parity harness, and a packaged crate does
+// not carry anything above its own directory.
+const FROZEN_CONTRACT: &str =
+    include_str!(concat!(env!("OUT_DIR"), "/mcp-contract-v1.json"));
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

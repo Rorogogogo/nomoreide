@@ -4,6 +4,12 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "The guarded write surface of NoMoreIDE: git pushes, database writes and deploy actions kept out of the read-safe modules."
+readme = "README.md"
 
 [dependencies]
 anyhow.workspace = true
@@ -15,7 +21,7 @@ serde_json.workspace = true
 # the read half uses, so this crate needs the HTTP client and the encoder.
 reqwest.workspace = true
 urlencoding.workspace = true
-nomoreide-core = { path = "../nomoreide-core" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.3.0" }
 
 # Only the parity probe in `examples/` needs to print JSON; the crate itself
 # does not serialise anything on its own.

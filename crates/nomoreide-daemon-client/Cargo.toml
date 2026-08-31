@@ -4,6 +4,12 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "HTTP client and lifecycle management for the NoMoreIDE daemon — discovery, adoption, and spawn."
+readme = "README.md"
 
 [dependencies]
 dirs.workspace = true

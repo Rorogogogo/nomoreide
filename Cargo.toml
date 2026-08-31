@@ -7,6 +7,14 @@ version = "0.3.0"
 edition = "2021"
 rust-version = "1.77.2"
 license = "AGPL-3.0-only"
+# Shared across every published crate, so a release cannot ship one of them
+# pointing somewhere else. `description` and `readme` stay per-crate: they are
+# the two fields crates.io shows, and a shared one would describe six crates
+# identically.
+repository = "https://github.com/Rorogogogo/nomoreide"
+homepage = "https://www.nomoreide.com"
+keywords = ["mcp", "ai-agents", "devtools", "cli", "developer-tools"]
+categories = ["development-tools", "command-line-utilities"]
 
 [workspace.dependencies]
 anyhow = "1"

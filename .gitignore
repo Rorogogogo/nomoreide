@@ -19,3 +19,9 @@ target/
 # packages here, and `bootstrap-npm-scope.mjs` the one-time placeholders.
 npm-dist/
 npm-bootstrap/
+
+# Workspace files copied into the crates that compile them in, so
+# `cargo publish` carries them. `scripts/vendor-crate-assets.mjs` writes these;
+# they are build output, and the copy at the workspace root is the real source.
+crates/nomoreide-daemon/web-client/
+crates/*/vendored/

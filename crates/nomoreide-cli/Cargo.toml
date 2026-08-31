@@ -4,16 +4,22 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "NoMoreIDE: an AI-native service workbench with a CLI, a TUI, a web dashboard and an MCP server."
+readme = "README.md"
 
 [[bin]]
 name = "nomoreide"
 path = "src/main.rs"
 
 [dependencies]
-nomoreide-core = { path = "../nomoreide-core" }
-nomoreide-daemon = { path = "../nomoreide-daemon" }
-nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }
-nomoreide-mcp = { path = "../nomoreide-mcp" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.3.0" }
+nomoreide-daemon = { path = "../nomoreide-daemon", version = "0.3.0" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.3.0" }
+nomoreide-mcp = { path = "../nomoreide-mcp", version = "0.3.0" }
 anyhow.workspace = true
 reqwest.workspace = true
 serde.workspace = true
