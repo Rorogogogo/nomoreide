@@ -33,6 +33,7 @@
  * of exactly the text it expects.
  */
 import { createServer, request as httpRequest, type Server } from "node:http";
+import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
@@ -89,6 +90,45 @@ const REPO = "%%REPO%%";
 const USER_HOME = "%%USER-HOME%%";
 const PID = "%%PID%%";
 const PGID = "%%PGID%%";
+const VERSION = "%%VERSION%%";
+
+/**
+ * The workspace version, which several answers report and `deploy.yml` moves
+ * on every release.
+ *
+ * Left untokenised, a recording stops replaying the moment a version is cut —
+ * `0.1.103` became `0.2.0` and two gates failed on nothing but that string,
+ * which reads exactly like a port defect. It is not one: both runtimes take
+ * the version from the same place, so it can never be what they disagree
+ * about, and pinning it into a recording only dates the recording.
+ */
+function workspaceVersion(): string {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(join(defaultRoot(), "package.json"), "utf8"),
+    ) as { version?: unknown };
+    return typeof manifest.version === "string" ? manifest.version : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Anchored to where a version is *reported*, not to the digits.
+ *
+ * The bare-number lesson from pids applies here too: a loose replacement of
+ * `0.2.0` would rewrite any fixture that happened to name that version of
+ * something else. These three are every spelling the recordings actually use.
+ */
+function tokeniseVersion(text: string): string {
+  const version = workspaceVersion();
+  if (!version) return text;
+  const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text
+    .replace(new RegExp(`("version\\\\?":\\s*\\\\?")${escaped}(\\\\?")`, "g"), `$1${VERSION}$2`)
+    .replace(new RegExp(`\\bv${escaped}\\b`, "g"), `v${VERSION}`)
+    .replace(new RegExp(`\\bnomoreide@${escaped}\\b`, "g"), `nomoreide@${VERSION}`);
+}
 
 /**
  * The gate's own process group, which is not always its pid.
@@ -269,7 +309,7 @@ export function tokenise(text: string, runtime: Runtime): string {
     .join(HOME)
     .split(process.execPath)
     .join(NODE);
-  const stable = tokeniseProcessIds(withoutPaths);
+  const stable = tokeniseVersion(tokeniseProcessIds(withoutPaths));
   // In-process gates have no daemon port and use 0 as the sentinel. Replacing
   // every zero would corrupt arbitrary JSON numbers before it can be parsed.
   if (runtime.port <= 0) return stable;
@@ -302,7 +342,12 @@ export function detokenise(text: string, runtime: Runtime): string {
     .split(PGID)
     .join(String(processGroup()))
     .split(PID)
-    .join(String(process.pid));
+    .join(String(process.pid))
+    // Back to whatever the version is *now*, which is the point: the recording
+    // stops carrying the version it was made at, so cutting a release no
+    // longer invalidates it.
+    .split(VERSION)
+    .join(workspaceVersion());
 }
 
 /** The same, for a parsed value — used for MCP results, which are JSON. */

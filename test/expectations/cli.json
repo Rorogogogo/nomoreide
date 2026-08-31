@@ -332,7 +332,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "NoMoreIDE daemon: running at http://127.0.0.1:63165 (pid 54697, v0.1.103)\nServices: 1 running / 1 known\n  alpha  pid 55665  \n",
+        "stdout": "NoMoreIDE daemon: running at http://127.0.0.1:63165 (pid 54697, v%%VERSION%%)\nServices: 1 running / 1 known\n  alpha  pid 55665  \n",
         "stderr": ""
       }
     },
@@ -377,7 +377,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "NoMoreIDE daemon: running at http://127.0.0.1:63165 (pid 54697, v0.1.103)\nServices: 0 running / 1 known\n",
+        "stdout": "NoMoreIDE daemon: running at http://127.0.0.1:63165 (pid 54697, v%%VERSION%%)\nServices: 0 running / 1 known\n",
         "stderr": ""
       }
     },
@@ -404,7 +404,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "NoMoreIDE daemon: running at http://127.0.0.1:63165 (pid 54697, v0.1.103)\nServices: 0 running / 3 known\n",
+        "stdout": "NoMoreIDE daemon: running at http://127.0.0.1:63165 (pid 54697, v%%VERSION%%)\nServices: 0 running / 3 known\n",
         "stderr": ""
       }
     },

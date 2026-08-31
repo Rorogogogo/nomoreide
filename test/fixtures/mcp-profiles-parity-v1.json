@@ -742,7 +742,7 @@
           "members": [
             {
               "name": "manifest.json",
-              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  },\n  \"credentials\": []\n}\n"
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.0.2\"\n  },\n  \"credentials\": []\n}\n"
             }
           ]
         }
@@ -784,7 +784,7 @@
           "members": [
             {
               "name": "manifest.json",
-              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  },\n  \"credentials\": []\n}\n"
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.0.2\"\n  },\n  \"credentials\": []\n}\n"
             },
             {
               "name": "profile.json",
@@ -811,7 +811,7 @@
           "members": [
             {
               "name": "manifest.json",
-              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  },\n  \"credentials\": []\n}\n"
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.0.2\"\n  },\n  \"credentials\": []\n}\n"
             },
             {
               "name": "profile.json",
@@ -837,7 +837,7 @@
           "members": [
             {
               "name": "manifest.json",
-              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  },\n  \"credentials\": []\n}\n"
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.0.2\"\n  },\n  \"credentials\": []\n}\n"
             },
             {
               "name": "profile.json",
@@ -1078,7 +1078,7 @@
           "members": [
             {
               "name": "manifest.json",
-              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"shaped\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  }\n}\n"
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"shaped\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.0.2\"\n  }\n}\n"
             },
             {
               "name": "profile.json",
@@ -1101,7 +1101,7 @@
           "members": [
             {
               "name": "manifest.json",
-              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"linked\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  }\n}\n"
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"linked\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.0.2\"\n  }\n}\n"
             },
             {
               "name": "profile.json",
