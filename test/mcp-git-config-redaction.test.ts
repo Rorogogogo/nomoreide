@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -36,7 +37,23 @@ function candidateBinary(): string {
   return join(target, "debug", "nomoreide");
 }
 
-describe("git config tools over MCP", () => {
+// This drives the real binary, which the Node test matrix does not build —
+// it installs Node and runs vitest, nothing more. Rather than let that job
+// fail on a missing binary, the test declares what it needs and is skipped
+// where that is absent. So that skipping it never means *not running it*,
+// `ci.yml`'s `desktop-check` job — which does build the workspace — runs this
+// file explicitly after `cargo build`.
+const binary = candidateBinary();
+const built = existsSync(binary);
+const describeIfBuilt = built ? describe : describe.skip;
+if (!built) {
+  console.warn(
+    `Skipping MCP redaction test: no binary at ${binary}. ` +
+      "Run `cargo build -p nomoreide-cli` to include it.",
+  );
+}
+
+describeIfBuilt("git config tools over MCP", () => {
   /**
    * These tools answer with the whole config, which holds every stored GitHub
    * token. The dashboard's own API has always redacted it; the agent surface
@@ -62,7 +79,7 @@ describe("git config tools over MCP", () => {
     // security assertion — a stored token must never come back out of a git
     // config read — so it is worth keeping pointed at what actually ships.
     const command: McpCommand = {
-      command: candidateBinary(),
+      command: binary,
       args: ["mcp"],
       cwd: root,
       env: {

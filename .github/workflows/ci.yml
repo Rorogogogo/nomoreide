@@ -106,6 +106,14 @@ jobs:
       # produced above, which is what the daemon serves.
       - name: Runs with no Node.js on PATH
         run: ./scripts/check-no-node.sh
+
+      # A security assertion — a stored GitHub token must never come back out
+      # of a git config read — that drives the real binary over MCP. It lives
+      # in the Vitest suite, but the `test` matrix above only installs Node, so
+      # there it skips itself for want of a binary. Here there is one, so this
+      # is the job that actually runs it.
+      - name: The MCP surface does not leak a stored token
+        run: npx vitest run test/mcp-git-config-redaction.test.ts
       # Two gates reach neither MCP nor HTTP — GitActions is a dashboard and
       # desktop surface, and the daemon's `/api/hosts/*` routes are Phase 8 —
       # so they drive their crate's own probe example instead of a tool.
