@@ -49,8 +49,15 @@ jobs:
         include:
           - target: aarch64-apple-darwin
             runner: macos-14
+          # Intel macOS on a standard runner. `macos-13` was the label for
+          # this until GitHub retired it on 2025-12-04, and a retired label
+          # does not fail — it queues forever, which is how v0.2.0 shipped a
+          # dmg and no CLI archives. Apple has ended x86_64 support, so this
+          # label goes too when the macOS 15 image retires in autumn 2027;
+          # cross-compiling it from `macos-14` builds and runs (under Rosetta),
+          # and is the fallback when that happens.
           - target: x86_64-apple-darwin
-            runner: macos-13
+            runner: macos-15-intel
           - target: x86_64-unknown-linux-gnu
             runner: ubuntu-22.04
           - target: aarch64-unknown-linux-gnu
