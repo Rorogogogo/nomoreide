@@ -1102,12 +1102,17 @@ try {
       () => [{ path: "README.md", contents: "# demo\n" }],
     );
     await plantHomeFiles(runtime, homeFiles);
-    // The agents the fixture says are installed, and nothing else: `bin` comes
-    // first so a real `claude` on this machine cannot win, and the login shell
-    // is neutralised because a stub reachable only through PATH loses to
-    // whatever `$SHELL -lc` would put ahead of it.
+    // The agents the fixture says are installed, and nothing else — which
+    // means *replacing* the PATH rather than prefixing it. Prefixing only wins
+    // while the stub is there, and one step below deletes the stub to ask what
+    // "not installed" looks like: with the machine's own PATH still trailing,
+    // a developer with `claude` installed had that question answered by their
+    // own binary, on both sides, and the case quietly asserted nothing. The
+    // system directories stay because the daemon shells out to `git` and `sh`.
+    // The login shell is neutralised because a stub reachable only through
+    // PATH loses to whatever `$SHELL -lc` would put ahead of it.
     await harness.startDaemon(runtime, {
-      PATH: `${join(runtime.home, "bin")}:${process.env.PATH ?? ""}`,
+      PATH: `${join(runtime.home, "bin")}:/usr/bin:/bin`,
       SHELL: "/bin/sh",
     });
     runtimes.push(runtime);

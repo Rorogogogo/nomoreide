@@ -2146,14 +2146,12 @@
           {
             "agent": "claude",
             "command": "claude",
-            "available": true,
-            "resolvedPath": "%%USER-HOME%%/.local/bin/claude"
+            "available": false
           },
           {
             "agent": "codex",
             "command": "codex",
-            "available": true,
-            "resolvedPath": "/opt/homebrew/bin/codex"
+            "available": false
           },
           {
             "agent": "antigravity",
@@ -2171,13 +2169,13 @@
           "checks": [
             {
               "label": "Agent CLI",
-              "status": "ok",
-              "message": "claude is available (%%USER-HOME%%/.local/bin/claude)"
+              "status": "warn",
+              "message": "claude is not available on PATH"
             },
             {
               "label": "Agent CLI",
-              "status": "ok",
-              "message": "codex is available (/opt/homebrew/bin/codex)"
+              "status": "warn",
+              "message": "codex is not available on PATH"
             },
             {
               "label": "Agent CLI",

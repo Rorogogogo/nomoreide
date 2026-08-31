@@ -128,7 +128,13 @@ try {
     // `bin` comes first so a real `claude` on this machine cannot win, and the
     // login shell is neutralised because a stub reachable only through PATH
     // loses to whatever `$SHELL -lc` would put ahead of it.
-    runtime.env.PATH = `${join(runtime.home, "bin")}:${process.env.PATH ?? ""}`;
+    // Replaced rather than prefixed: a prefix only wins while the stub is
+    // there, and this fixture deletes stubs to ask what "not installed" looks
+    // like. With the machine's own PATH still trailing, a developer with the
+    // real CLI installed answered that question with their own binary — on
+    // both sides, so the gate passed while asserting nothing. The system
+    // directories stay because the tools shell out to `git` and `sh`.
+    runtime.env.PATH = `${join(runtime.home, "bin")}:/usr/bin:/bin`;
     runtime.env.SHELL = "/bin/sh";
     // A step that passes no cwd falls back to the server's own, which is this
     // checkout — so the "all" steps do answer partly from the machine the gate
