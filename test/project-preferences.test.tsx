@@ -4,14 +4,14 @@ import { act, createRef, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
-import { SqlConsole } from "../src/web/client/src/features/database/sql-console";
-import { useTableBrowser } from "../src/web/client/src/features/database/use-databases";
+import { OperationProvider } from "../apps/dashboard/src/components/operations/operation-context";
+import { SqlConsole } from "../apps/dashboard/src/features/database/sql-console";
+import { useTableBrowser } from "../apps/dashboard/src/features/database/use-databases";
 import {
   LogViewer,
   logEntryText,
-} from "../src/web/client/src/features/services/log-viewer";
-import type { LogEntry } from "../src/web/client/src/lib/api";
+} from "../apps/dashboard/src/features/services/log-viewer";
+import type { LogEntry } from "../apps/dashboard/src/lib/api";
 
 const api = vi.hoisted(() => ({
   executeWrite: vi.fn(),
@@ -28,7 +28,7 @@ const sqlGenerate = vi.hoisted(() => ({
   generating: false,
 }));
 
-vi.mock("../src/web/client/src/lib/api", () => ({
+vi.mock("../apps/dashboard/src/lib/api", () => ({
   executeDatabaseWrite: api.executeWrite,
   getDatabaseRows: api.getRows,
   getDatabaseTables: api.getTables,
@@ -37,15 +37,15 @@ vi.mock("../src/web/client/src/lib/api", () => ({
   setDatabaseWriteAccess: api.setWriteAccess,
 }));
 
-vi.mock("../src/web/client/src/components/ui/toast", () => ({
+vi.mock("../apps/dashboard/src/components/ui/toast", () => ({
   useToasts: () => ({ error: vi.fn(), success: vi.fn() }),
 }));
 
-vi.mock("../src/web/client/src/features/agent/chat/agent-context", () => ({
+vi.mock("../apps/dashboard/src/features/agent/chat/agent-context", () => ({
   useAgentDock: () => ({ sendToAgent: vi.fn() }),
 }));
 
-vi.mock("../src/web/client/src/features/database/use-sql-generate", () => ({
+vi.mock("../apps/dashboard/src/features/database/use-sql-generate", () => ({
   useSqlGenerate: () => ({ ...sqlGenerate, error: null }),
 }));
 

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
   requestGitHubActions,
   subscribeToGitHubActions,
-} from "../src/web/client/src/features/github/github-navigation.js";
+} from "../apps/dashboard/src/features/github/github-navigation.js";
 
 describe("GitHub Actions navigation intent", () => {
   beforeEach(() => {

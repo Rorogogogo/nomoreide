@@ -58,7 +58,7 @@ const importBodySchema = z.object({
 
 /**
  * Agent Profiles (ROR-62). `GET /profiles` is read-on-mount — it has a
- * matching handler in `website/src/mock-api.ts`, as do the profile detail and
+ * matching handler in `apps/website/src/mock-api.ts`, as do the profile detail and
  * apply-preview endpoints the panel renders. Import accepts either a JSON
  * body naming a local archive or raw `.tar.gz` bytes (browser upload).
  */

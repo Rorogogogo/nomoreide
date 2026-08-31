@@ -22,7 +22,7 @@ vi.mock("@/features/agent/chat/agent-context", () => ({
   useAgentDock: () => ({ createTask, setOpen: setAgentDockOpen }),
 }));
 
-import { WorktreesView } from "../src/web/client/src/features/git/worktrees-view";
+import { WorktreesView } from "../apps/dashboard/src/features/git/worktrees-view";
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;

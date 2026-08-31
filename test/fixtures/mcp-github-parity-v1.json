@@ -1,0 +1,961 @@
+{
+  "fixtureVersion": 1,
+  "repositories": [
+    {
+      "id": "github",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commit": {
+            "file": "a.txt",
+            "contents": "a\n",
+            "message": "initial commit"
+          }
+        },
+        {
+          "originUrl": "https://github.com/parity-owner/parity-repo.git"
+        }
+      ]
+    },
+    {
+      "id": "no-remote",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commit": {
+            "file": "a.txt",
+            "contents": "a\n",
+            "message": "initial commit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "other-host",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commit": {
+            "file": "a.txt",
+            "contents": "a\n",
+            "message": "initial commit"
+          }
+        },
+        {
+          "originUrl": "https://gitlab.com/parity-owner/parity-repo.git"
+        }
+      ]
+    }
+  ],
+  "plainDirectories": [
+    "not-a-repo"
+  ],
+  "api": [
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/pulls?state=open&per_page=30&page=1",
+      "body": [
+        {
+          "number": 7,
+          "title": "PR 7",
+          "state": "open",
+          "body": "body of 7",
+          "html_url": "https://github.com/parity-owner/parity-repo/pull/7",
+          "head": {
+            "ref": "feature-7",
+            "sha": "0000000000000000000000000000000000000007"
+          },
+          "base": {
+            "ref": "main"
+          },
+          "user": {
+            "login": "octocat"
+          },
+          "created_at": "2026-01-02T03:04:05Z",
+          "updated_at": "2026-01-02T04:05:06Z",
+          "merged_at": null,
+          "draft": false,
+          "mergeable": true
+        },
+        {
+          "number": 8,
+          "title": "PR 8",
+          "state": "closed",
+          "body": "body of 8",
+          "html_url": "https://github.com/parity-owner/parity-repo/pull/8",
+          "head": {
+            "ref": "feature-8",
+            "sha": "0000000000000000000000000000000000000008"
+          },
+          "base": {
+            "ref": "main"
+          },
+          "user": {
+            "login": "octocat"
+          },
+          "created_at": "2026-01-02T03:04:05Z",
+          "updated_at": "2026-01-02T04:05:06Z",
+          "merged_at": "2026-01-03T00:00:00Z",
+          "draft": false,
+          "mergeable": true
+        },
+        {
+          "number": 9,
+          "title": "PR 9",
+          "state": "open",
+          "body": "body of 9",
+          "html_url": "https://github.com/parity-owner/parity-repo/pull/9",
+          "head": {
+            "ref": "feature-9",
+            "sha": "0000000000000000000000000000000000000009"
+          },
+          "base": {
+            "ref": "main"
+          },
+          "user": {
+            "login": "octocat"
+          },
+          "created_at": "2026-01-02T03:04:05Z",
+          "updated_at": "2026-01-02T04:05:06Z",
+          "merged_at": null
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/pulls?state=all&per_page=30&page=2",
+      "body": []
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/pulls/7",
+      "accept": "application/vnd.github+json",
+      "body": {
+        "number": 7,
+        "title": "PR 7",
+        "state": "open",
+        "body": "body of 7",
+        "html_url": "https://github.com/parity-owner/parity-repo/pull/7",
+        "head": {
+          "ref": "feature-7",
+          "sha": "0000000000000000000000000000000000000007"
+        },
+        "base": {
+          "ref": "main"
+        },
+        "user": {
+          "login": "octocat"
+        },
+        "created_at": "2026-01-02T03:04:05Z",
+        "updated_at": "2026-01-02T04:05:06Z",
+        "merged_at": null,
+        "draft": false,
+        "mergeable": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/pulls/7",
+      "accept": "application/vnd.github.diff",
+      "contentType": "application/vnd.github.diff",
+      "body": "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-a\n+b\n"
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/pulls/404",
+      "status": 404,
+      "body": {
+        "message": "Not Found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/pulls/500",
+      "accept": "application/vnd.github.diff",
+      "status": 500,
+      "contentType": "text/plain",
+      "body": "upstream exploded"
+    },
+    {
+      "method": "POST",
+      "path": "/repos/parity-owner/parity-repo/pulls",
+      "status": 201,
+      "body": {
+        "number": 11,
+        "title": "PR 11",
+        "state": "open",
+        "body": "body of 11",
+        "html_url": "https://github.com/parity-owner/parity-repo/pull/11",
+        "head": {
+          "ref": "feature-11",
+          "sha": "000000000000000000000000000000000000000b"
+        },
+        "base": {
+          "ref": "main"
+        },
+        "user": {
+          "login": "octocat"
+        },
+        "created_at": "2026-01-02T03:04:05Z",
+        "updated_at": "2026-01-02T04:05:06Z",
+        "merged_at": null,
+        "draft": false,
+        "mergeable": true
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/repos/parity-owner/parity-repo/pulls/7/merge",
+      "body": {
+        "merged": true,
+        "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "message": "Pull Request successfully merged"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/repos/parity-owner/parity-repo/pulls/9/merge",
+      "status": 405,
+      "body": {
+        "message": "Pull Request is not mergeable"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/issues?state=open&per_page=30&page=1",
+      "body": [
+        {
+          "number": 3,
+          "title": "Issue 3",
+          "state": "open",
+          "body": "body of issue 3",
+          "html_url": "https://github.com/parity-owner/parity-repo/issues/3",
+          "user": {
+            "login": "octocat"
+          },
+          "labels": [
+            {
+              "name": "bug",
+              "color": "d73a4a"
+            }
+          ],
+          "created_at": "2026-01-02T03:04:05Z",
+          "updated_at": "2026-01-02T04:05:06Z",
+          "comments": 2
+        },
+        {
+          "number": 7,
+          "title": "Issue 7",
+          "state": "open",
+          "body": "body of issue 7",
+          "html_url": "https://github.com/parity-owner/parity-repo/issues/7",
+          "user": {
+            "login": "octocat"
+          },
+          "labels": [
+            {
+              "name": "bug",
+              "color": "d73a4a"
+            }
+          ],
+          "created_at": "2026-01-02T03:04:05Z",
+          "updated_at": "2026-01-02T04:05:06Z",
+          "comments": 2,
+          "pull_request": {
+            "url": "https://api.github.com/repos/parity-owner/parity-repo/pulls/7"
+          }
+        },
+        {
+          "number": 4,
+          "title": "Issue 4",
+          "state": "open",
+          "body": "body of issue 4",
+          "html_url": "https://github.com/parity-owner/parity-repo/issues/4",
+          "user": {
+            "login": "octocat"
+          },
+          "labels": [
+            {
+              "name": "bug",
+              "color": "d73a4a"
+            }
+          ],
+          "created_at": "2026-01-02T03:04:05Z",
+          "updated_at": "2026-01-02T04:05:06Z",
+          "comments": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/issues?state=closed&per_page=30&page=3",
+      "body": []
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/issues/3",
+      "body": {
+        "number": 3,
+        "title": "Issue 3",
+        "state": "open",
+        "body": "body of issue 3",
+        "html_url": "https://github.com/parity-owner/parity-repo/issues/3",
+        "user": {
+          "login": "octocat"
+        },
+        "labels": [
+          {
+            "name": "bug",
+            "color": "d73a4a"
+          }
+        ],
+        "created_at": "2026-01-02T03:04:05Z",
+        "updated_at": "2026-01-02T04:05:06Z",
+        "comments": 2
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/issues/404",
+      "status": 404,
+      "body": {
+        "message": "Not Found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/issues/3/comments?per_page=100",
+      "body": [
+        {
+          "id": 101,
+          "body": "comment 101",
+          "user": {
+            "login": "octocat"
+          },
+          "created_at": "2026-01-02T03:04:05Z",
+          "html_url": "https://github.com/parity-owner/parity-repo/issues/3#issuecomment-101"
+        },
+        {
+          "id": 102,
+          "body": "comment 102",
+          "user": {
+            "login": "octocat"
+          },
+          "created_at": "2026-01-02T03:04:05Z",
+          "html_url": "https://github.com/parity-owner/parity-repo/issues/3#issuecomment-102"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/repos/parity-owner/parity-repo/issues/3/comments",
+      "status": 201,
+      "body": {
+        "id": 103,
+        "body": "comment 103",
+        "user": {
+          "login": "octocat"
+        },
+        "created_at": "2026-01-02T03:04:05Z",
+        "html_url": "https://github.com/parity-owner/parity-repo/issues/3#issuecomment-103"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/repos/parity-owner/parity-repo/issues",
+      "status": 201,
+      "body": {
+        "number": 12,
+        "title": "Issue 12",
+        "state": "open",
+        "body": "body of issue 12",
+        "html_url": "https://github.com/parity-owner/parity-repo/issues/12",
+        "user": {
+          "login": "octocat"
+        },
+        "labels": [
+          {
+            "name": "bug",
+            "color": "d73a4a"
+          }
+        ],
+        "created_at": "2026-01-02T03:04:05Z",
+        "updated_at": "2026-01-02T04:05:06Z",
+        "comments": 2
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/issues/500",
+      "status": 500,
+      "contentType": "text/plain",
+      "body": "upstream exploded"
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/check-runs?per_page=100",
+      "body": {
+        "total_count": 2,
+        "check_runs": [
+          {
+            "id": 1,
+            "name": "build",
+            "status": "queued",
+            "conclusion": null,
+            "html_url": "https://github.com/parity-owner/parity-repo/runs/1",
+            "started_at": "2026-01-02T03:04:05Z",
+            "completed_at": null
+          },
+          {
+            "id": 2,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "html_url": "https://github.com/parity-owner/parity-repo/runs/2",
+            "started_at": "2026-01-02T03:04:05Z",
+            "completed_at": "2026-01-02T03:14:05Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/commits/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/check-runs?per_page=100",
+      "body": {
+        "total_count": 3,
+        "check_runs": [
+          {
+            "id": 3,
+            "name": "build",
+            "status": "completed",
+            "conclusion": "success",
+            "html_url": "https://github.com/parity-owner/parity-repo/runs/3",
+            "started_at": "2026-01-02T03:04:05Z",
+            "completed_at": "2026-01-02T03:14:05Z"
+          },
+          {
+            "id": 4,
+            "name": "lint",
+            "status": "completed",
+            "conclusion": "skipped",
+            "html_url": "https://github.com/parity-owner/parity-repo/runs/4",
+            "started_at": "2026-01-02T03:04:05Z",
+            "completed_at": "2026-01-02T03:14:05Z"
+          },
+          {
+            "id": 5,
+            "name": "docs",
+            "status": "completed",
+            "conclusion": "neutral",
+            "html_url": "https://github.com/parity-owner/parity-repo/runs/5",
+            "started_at": "2026-01-02T03:04:05Z",
+            "completed_at": "2026-01-02T03:14:05Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/commits/cccccccccccccccccccccccccccccccccccccccc/check-runs?per_page=100",
+      "body": {
+        "total_count": 2,
+        "check_runs": [
+          {
+            "id": 6,
+            "name": "build",
+            "status": "completed",
+            "conclusion": "success",
+            "html_url": "https://github.com/parity-owner/parity-repo/runs/6",
+            "started_at": "2026-01-02T03:04:05Z",
+            "completed_at": "2026-01-02T03:14:05Z"
+          },
+          {
+            "id": 7,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "html_url": "https://github.com/parity-owner/parity-repo/runs/7",
+            "started_at": "2026-01-02T03:04:05Z",
+            "completed_at": "2026-01-02T03:14:05Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/commits/dddddddddddddddddddddddddddddddddddddddd/check-runs?per_page=100",
+      "body": {
+        "total_count": 1,
+        "check_runs": [
+          {
+            "id": 8,
+            "name": "build",
+            "status": "completed",
+            "conclusion": "cancelled",
+            "html_url": "https://github.com/parity-owner/parity-repo/runs/8",
+            "started_at": "2026-01-02T03:04:05Z",
+            "completed_at": "2026-01-02T03:14:05Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/commits/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/check-runs?per_page=100",
+      "body": {
+        "total_count": 0,
+        "check_runs": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/commits/ffffffffffffffffffffffffffffffffffffffff/check-runs?per_page=100",
+      "status": 404,
+      "body": {
+        "message": "No commit found for SHA"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/actions/runs?per_page=30&page=1",
+      "body": {
+        "total_count": 2,
+        "workflow_runs": [
+          {
+            "id": 21,
+            "name": "CI",
+            "status": "completed",
+            "conclusion": "success",
+            "html_url": "https://github.com/parity-owner/parity-repo/actions/runs/21",
+            "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "head_branch": "main",
+            "created_at": "2026-01-02T03:04:05Z",
+            "updated_at": "2026-01-02T03:14:05Z",
+            "run_number": 21,
+            "event": "push"
+          },
+          {
+            "id": 22,
+            "name": "CI",
+            "status": "completed",
+            "conclusion": "failure",
+            "html_url": "https://github.com/parity-owner/parity-repo/actions/runs/22",
+            "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "head_branch": "feature-7",
+            "created_at": "2026-01-02T03:04:05Z",
+            "updated_at": "2026-01-02T03:14:05Z",
+            "run_number": 22,
+            "event": "push"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/parity-owner/parity-repo/actions/runs?per_page=30&page=2&branch=main",
+      "body": {
+        "total_count": 1,
+        "workflow_runs": [
+          {
+            "id": 23,
+            "name": "CI",
+            "status": "completed",
+            "conclusion": null,
+            "html_url": "https://github.com/parity-owner/parity-repo/actions/runs/23",
+            "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "head_branch": "main",
+            "created_at": "2026-01-02T03:04:05Z",
+            "updated_at": "2026-01-02T03:14:05Z",
+            "run_number": 23,
+            "event": "push"
+          }
+        ]
+      }
+    }
+  ],
+  "plan": [
+    {
+      "id": "context/no-token-yet",
+      "comment": "Nothing is stored yet, so the refusal is about the credential rather than the repository.",
+      "tool": "nomoreide_github_list_prs",
+      "arguments": {
+        "cwd": "{{repo:github}}"
+      }
+    },
+    {
+      "id": "context/no-origin",
+      "tool": "nomoreide_github_list_prs",
+      "arguments": {
+        "cwd": "{{repo:no-remote}}"
+      }
+    },
+    {
+      "id": "context/not-a-github-remote",
+      "tool": "nomoreide_github_list_prs",
+      "arguments": {
+        "cwd": "{{repo:other-host}}"
+      }
+    },
+    {
+      "id": "context/not-a-repository",
+      "tool": "nomoreide_github_list_prs",
+      "arguments": {
+        "cwd": "{{dir:not-a-repo}}"
+      }
+    },
+    {
+      "id": "setup/store-a-token",
+      "tool": "nomoreide_github_set_token",
+      "arguments": {
+        "token": "ghp_parity_github"
+      }
+    },
+    {
+      "id": "prs/list-defaults",
+      "comment": "No state and no page: the schema's defaults decide the query, so this compares the query too.",
+      "tool": "nomoreide_github_list_prs",
+      "arguments": {
+        "cwd": "{{repo:github}}"
+      }
+    },
+    {
+      "id": "prs/list-all-page-two",
+      "tool": "nomoreide_github_list_prs",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "state": "all",
+        "page": 2
+      }
+    },
+    {
+      "id": "prs/get",
+      "tool": "nomoreide_github_get_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 7
+      }
+    },
+    {
+      "id": "prs/get-missing",
+      "tool": "nomoreide_github_get_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 404
+      }
+    },
+    {
+      "id": "prs/diff",
+      "comment": "Same path as the read above; only the Accept header tells them apart.",
+      "tool": "nomoreide_github_get_pr_diff",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 7
+      }
+    },
+    {
+      "id": "prs/diff-server-error",
+      "tool": "nomoreide_github_get_pr_diff",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 500
+      }
+    },
+    {
+      "id": "prs/create",
+      "tool": "nomoreide_github_create_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "title": "Parity PR",
+        "body": "from the gate",
+        "head": "feature-7",
+        "base": "main"
+      }
+    },
+    {
+      "id": "prs/create-draft-without-body",
+      "comment": "An absent body must be absent from the request, not sent as null.",
+      "tool": "nomoreide_github_create_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "title": "Parity PR",
+        "head": "feature-7",
+        "base": "main",
+        "draft": true
+      }
+    },
+    {
+      "id": "prs/merge-default-method",
+      "tool": "nomoreide_github_merge_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 7
+      }
+    },
+    {
+      "id": "prs/merge-with-overrides",
+      "tool": "nomoreide_github_merge_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 7,
+        "method": "rebase",
+        "commitTitle": "T",
+        "commitMessage": "M"
+      }
+    },
+    {
+      "id": "prs/merge-refused",
+      "tool": "nomoreide_github_merge_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 9
+      }
+    },
+    {
+      "id": "issues/list-defaults",
+      "comment": "The response holds a pull request, which the reference drops.",
+      "tool": "nomoreide_github_list_issues",
+      "arguments": {
+        "cwd": "{{repo:github}}"
+      }
+    },
+    {
+      "id": "issues/list-closed-page-three",
+      "tool": "nomoreide_github_list_issues",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "state": "closed",
+        "page": 3
+      }
+    },
+    {
+      "id": "issues/get",
+      "tool": "nomoreide_github_get_issue",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 3
+      }
+    },
+    {
+      "id": "issues/get-missing",
+      "tool": "nomoreide_github_get_issue",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 404
+      }
+    },
+    {
+      "id": "issues/server-error-without-json",
+      "tool": "nomoreide_github_get_issue",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 500
+      }
+    },
+    {
+      "id": "issues/comments",
+      "tool": "nomoreide_github_list_issue_comments",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 3
+      }
+    },
+    {
+      "id": "issues/add-comment",
+      "tool": "nomoreide_github_add_issue_comment",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 3,
+        "body": "from the gate"
+      }
+    },
+    {
+      "id": "issues/create",
+      "tool": "nomoreide_github_create_issue",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "title": "Parity issue",
+        "body": "from the gate"
+      }
+    },
+    {
+      "id": "issues/create-without-body",
+      "tool": "nomoreide_github_create_issue",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "title": "Parity issue"
+      }
+    },
+    {
+      "id": "ci/pending",
+      "tool": "nomoreide_github_get_commit_ci",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "id": "ci/success",
+      "tool": "nomoreide_github_get_commit_ci",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": "ci/failure",
+      "tool": "nomoreide_github_get_commit_ci",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "sha": "cccccccccccccccccccccccccccccccccccccccc"
+      }
+    },
+    {
+      "id": "ci/neither-passing-nor-failing",
+      "tool": "nomoreide_github_get_commit_ci",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "sha": "dddddddddddddddddddddddddddddddddddddddd"
+      }
+    },
+    {
+      "id": "ci/no-runs",
+      "tool": "nomoreide_github_get_commit_ci",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    },
+    {
+      "id": "ci/commit-not-found",
+      "comment": "A 404 here is answered, not raised: an unknown commit has unknown checks.",
+      "tool": "nomoreide_github_get_commit_ci",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "sha": "ffffffffffffffffffffffffffffffffffffffff"
+      }
+    },
+    {
+      "id": "actions/list-defaults",
+      "tool": "nomoreide_github_list_workflow_runs",
+      "arguments": {
+        "cwd": "{{repo:github}}"
+      }
+    },
+    {
+      "id": "actions/list-branch-page-two",
+      "comment": "The branch is added after the other two, so it is last in the query.",
+      "tool": "nomoreide_github_list_workflow_runs",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "branch": "main",
+        "page": 2
+      }
+    },
+    {
+      "id": "invalid/list-prs-bad-state",
+      "tool": "nomoreide_github_list_prs",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "state": "everything"
+      }
+    },
+    {
+      "id": "invalid/list-prs-page-zero",
+      "tool": "nomoreide_github_list_prs",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "page": 0
+      }
+    },
+    {
+      "id": "invalid/list-prs-page-float",
+      "tool": "nomoreide_github_list_prs",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "page": 1.5
+      }
+    },
+    {
+      "id": "invalid/get-pr-no-number",
+      "tool": "nomoreide_github_get_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}"
+      }
+    },
+    {
+      "id": "invalid/get-pr-wrong-type",
+      "tool": "nomoreide_github_get_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": "7"
+      }
+    },
+    {
+      "id": "invalid/create-pr-missing-base",
+      "tool": "nomoreide_github_create_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "title": "",
+        "head": "feature-7"
+      }
+    },
+    {
+      "id": "invalid/create-pr-wrong-type-draft",
+      "tool": "nomoreide_github_create_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "title": "T",
+        "head": "h",
+        "base": "b",
+        "draft": "yes"
+      }
+    },
+    {
+      "id": "invalid/merge-bad-method",
+      "tool": "nomoreide_github_merge_pr",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 7,
+        "method": "fast-forward"
+      }
+    },
+    {
+      "id": "invalid/add-comment-empty-body",
+      "tool": "nomoreide_github_add_issue_comment",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "number": 3,
+        "body": ""
+      }
+    },
+    {
+      "id": "invalid/create-issue-no-title",
+      "tool": "nomoreide_github_create_issue",
+      "arguments": {
+        "cwd": "{{repo:github}}"
+      }
+    },
+    {
+      "id": "invalid/commit-ci-short-sha",
+      "tool": "nomoreide_github_get_commit_ci",
+      "arguments": {
+        "cwd": "{{repo:github}}",
+        "sha": "abc123"
+      }
+    },
+    {
+      "id": "invalid/commit-ci-no-sha",
+      "tool": "nomoreide_github_get_commit_ci",
+      "arguments": {
+        "cwd": "{{repo:github}}"
+      }
+    },
+    {
+      "id": "invalid/workflow-runs-empty-cwd",
+      "tool": "nomoreide_github_list_workflow_runs",
+      "arguments": {
+        "cwd": ""
+      }
+    }
+  ]
+}

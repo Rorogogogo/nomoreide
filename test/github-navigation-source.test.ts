@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 
-const appSource = readFileSync("src/web/client/src/app.tsx", "utf8");
+const appSource = readFileSync("apps/dashboard/src/app.tsx", "utf8");
 const appNavigationSource = readFileSync(
-  "src/web/client/src/components/app-navigation.tsx",
+  "apps/dashboard/src/components/app-navigation.tsx",
   "utf8",
 );
 const gitReviewSource = readFileSync(
-  "src/web/client/src/features/git/git-review-view.tsx",
+  "apps/dashboard/src/features/git/git-review-view.tsx",
   "utf8",
 );
 

@@ -1,0 +1,1123 @@
+{
+  "fixtureVersion": 1,
+  "repositories": [
+    {
+      "id": "demo",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# demo\n",
+              ".claude/skills/review/SKILL.md": "---\nname: review\ndescription: Review code.\n---\n\nDo the review.\n"
+            },
+            "message": "init"
+          }
+        }
+      ]
+    }
+  ],
+  "pathStubs": [
+    "claude",
+    "codex"
+  ],
+  "homeFiles": [
+    {
+      "path": "bin/claude",
+      "contents": "#!/bin/sh\necho claude-stub\n",
+      "executable": true
+    },
+    {
+      "path": "bin/codex",
+      "contents": "#!/bin/sh\necho codex-stub\n",
+      "executable": true
+    },
+    {
+      "path": ".claude.json",
+      "contents": "{\n  \"mcpServers\": {\n    \"live-local\": {\n      \"command\": \"node\",\n      \"args\": [\n        \"s.js\"\n      ],\n      \"env\": {\n        \"T\": \"1\"\n      }\n    },\n    \"live-remote\": {\n      \"type\": \"sse\",\n      \"url\": \"https://live.example.test/mcp\"\n    }\n  },\n  \"projects\": {\n    \"{{repo:demo}}\": {\n      \"mcpServers\": {\n        \"scoped\": {\n          \"command\": \"true\"\n        }\n      }\n    }\n  }\n}\n"
+    },
+    {
+      "path": ".codex/config.toml",
+      "contents": "model = \"gpt-5\"\n\n[mcp_servers.codex-live]\ncommand = \"true\"\n"
+    },
+    {
+      "path": ".gemini/antigravity-cli/mcp_config.json",
+      "contents": "{\n  \"mcpServers\": {\n    \"ag-live\": {\n      \"command\": \"true\"\n    }\n  }\n}\n"
+    },
+    {
+      "path": ".claude/skills/summarise/SKILL.md",
+      "contents": "---\nname: summarise\ndescription: S.\n---\n\nS.\n"
+    },
+    {
+      "path": ".claude/skills/review/SKILL.md",
+      "contents": "---\nname: review\ndescription: R.\n---\n\nR.\n"
+    },
+    {
+      "path": ".codex/skills/refactor/SKILL.md",
+      "contents": "---\nname: refactor\ndescription: R.\n---\n\nR.\n"
+    }
+  ],
+  "plan": [
+    {
+      "id": "list/empty",
+      "tool": "nomoreide_profiles_list",
+      "arguments": {}
+    },
+    {
+      "id": "create/first",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "alpha",
+        "description": "The first one."
+      }
+    },
+    {
+      "id": "create/no-description",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "beta"
+      }
+    },
+    {
+      "id": "create/duplicate",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "alpha"
+      }
+    },
+    {
+      "id": "create/reject-a-bad-name",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "-nope"
+      }
+    },
+    {
+      "id": "create/reject-a-path",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "../escape"
+      }
+    },
+    {
+      "id": "list/after-two",
+      "tool": "nomoreide_profiles_list",
+      "arguments": {}
+    },
+    {
+      "id": "get/first",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "alpha"
+      }
+    },
+    {
+      "id": "get/missing",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "nope"
+      }
+    },
+    {
+      "id": "update/description",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "alpha",
+        "description": "Changed."
+      }
+    },
+    {
+      "id": "update/mcps",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "alpha",
+        "mcps": {
+          "zulu": {
+            "kind": "local",
+            "command": "true",
+            "args": [
+              "--x"
+            ],
+            "env": {
+              "K": "v"
+            }
+          },
+          "alpha-mcp": {
+            "kind": "remote",
+            "transport": "sse",
+            "url": "https://a.example.test/mcp"
+          },
+          "http-one": {
+            "kind": "remote",
+            "transport": "http",
+            "url": "https://h.example.test/mcp",
+            "headers": {
+              "X": "y"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "update/missing",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "nope",
+        "description": "x"
+      }
+    },
+    {
+      "id": "update/skills-and-plugins",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "alpha",
+        "skills": [
+          {
+            "name": "zeta"
+          },
+          {
+            "name": "apex"
+          }
+        ],
+        "plugins": [
+          {
+            "name": "plug",
+            "sourceAgent": "claude",
+            "bundleKey": "plug"
+          }
+        ]
+      }
+    },
+    {
+      "id": "update/nothing-at-all",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "alpha"
+      }
+    },
+    {
+      "id": "update/empty-the-mcps",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "beta",
+        "mcps": {}
+      }
+    },
+    {
+      "id": "get/after-update",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "alpha"
+      }
+    },
+    {
+      "id": "copy/into-beta",
+      "tool": "nomoreide_profiles_copy_items",
+      "arguments": {
+        "from": "alpha",
+        "to": "beta",
+        "mcps": [
+          "zulu"
+        ]
+      }
+    },
+    {
+      "id": "copy/missing-source",
+      "tool": "nomoreide_profiles_copy_items",
+      "arguments": {
+        "from": "nope",
+        "to": "beta",
+        "mcps": [
+          "zulu"
+        ]
+      }
+    },
+    {
+      "id": "copy/missing-item",
+      "tool": "nomoreide_profiles_copy_items",
+      "arguments": {
+        "from": "alpha",
+        "to": "beta",
+        "mcps": [
+          "ghost"
+        ]
+      }
+    },
+    {
+      "id": "copy/missing-skill",
+      "tool": "nomoreide_profiles_copy_items",
+      "arguments": {
+        "from": "alpha",
+        "to": "beta",
+        "mcps": [
+          "alpha-mcp"
+        ],
+        "skills": [
+          "ghost"
+        ]
+      }
+    },
+    {
+      "id": "copy/missing-plugin",
+      "tool": "nomoreide_profiles_copy_items",
+      "arguments": {
+        "from": "alpha",
+        "to": "beta",
+        "mcps": [
+          "http-one"
+        ],
+        "plugins": [
+          "ghost"
+        ]
+      }
+    },
+    {
+      "id": "get/beta-after-a-refused-copy",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "beta"
+      }
+    },
+    {
+      "id": "copy/skills-and-plugins",
+      "tool": "nomoreide_profiles_copy_items",
+      "arguments": {
+        "from": "alpha",
+        "to": "beta",
+        "skills": [
+          "apex"
+        ],
+        "plugins": [
+          "plug"
+        ]
+      }
+    },
+    {
+      "id": "get/beta",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "beta"
+      }
+    },
+    {
+      "id": "delete/beta",
+      "tool": "nomoreide_profiles_delete",
+      "arguments": {
+        "name": "beta"
+      }
+    },
+    {
+      "id": "delete/missing",
+      "tool": "nomoreide_profiles_delete",
+      "arguments": {
+        "name": "beta"
+      }
+    },
+    {
+      "id": "list/after-delete",
+      "tool": "nomoreide_profiles_list",
+      "arguments": {}
+    },
+    {
+      "id": "snapshot/claude",
+      "tool": "nomoreide_profiles_snapshot",
+      "arguments": {
+        "agent": "claude",
+        "name": "snap-claude",
+        "description": "From claude."
+      }
+    },
+    {
+      "id": "snapshot/codex",
+      "tool": "nomoreide_profiles_snapshot",
+      "arguments": {
+        "agent": "codex",
+        "name": "snap-codex"
+      }
+    },
+    {
+      "id": "snapshot/antigravity",
+      "tool": "nomoreide_profiles_snapshot",
+      "arguments": {
+        "agent": "antigravity",
+        "name": "snap-ag"
+      }
+    },
+    {
+      "id": "snapshot/in-a-repo",
+      "tool": "nomoreide_profiles_snapshot",
+      "arguments": {
+        "agent": "claude",
+        "name": "snap-repo",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "snapshot/duplicate",
+      "tool": "nomoreide_profiles_snapshot",
+      "arguments": {
+        "agent": "claude",
+        "name": "snap-claude"
+      }
+    },
+    {
+      "id": "snapshot/bad-name",
+      "tool": "nomoreide_profiles_snapshot",
+      "arguments": {
+        "agent": "claude",
+        "name": "-nope"
+      }
+    },
+    {
+      "id": "get/snap-claude",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "snap-claude"
+      }
+    },
+    {
+      "id": "get/snap-codex",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "snap-codex"
+      }
+    },
+    {
+      "id": "apply/dry-run",
+      "tool": "nomoreide_profiles_apply",
+      "arguments": {
+        "name": "alpha",
+        "agent": "codex",
+        "dryRun": true
+      }
+    },
+    {
+      "id": "apply/for-real",
+      "tool": "nomoreide_profiles_apply",
+      "arguments": {
+        "name": "alpha",
+        "agent": "codex"
+      }
+    },
+    {
+      "id": "apply/again",
+      "tool": "nomoreide_profiles_apply",
+      "arguments": {
+        "name": "alpha",
+        "agent": "codex"
+      }
+    },
+    {
+      "id": "apply/skipping-mcps",
+      "tool": "nomoreide_profiles_apply",
+      "arguments": {
+        "name": "alpha",
+        "agent": "antigravity",
+        "skipMcps": [
+          "alpha-mcp",
+          "http-one"
+        ]
+      }
+    },
+    {
+      "id": "apply/dry-run-claude",
+      "tool": "nomoreide_profiles_apply",
+      "arguments": {
+        "name": "alpha",
+        "agent": "claude",
+        "dryRun": true
+      }
+    },
+    {
+      "id": "apply/a-snapshot-with-bundled-skills",
+      "tool": "nomoreide_profiles_apply",
+      "arguments": {
+        "name": "snap-claude",
+        "agent": "codex"
+      }
+    },
+    {
+      "id": "apply/skipping-everything",
+      "tool": "nomoreide_profiles_apply",
+      "arguments": {
+        "name": "alpha",
+        "agent": "claude",
+        "skipSkills": [
+          "zeta",
+          "apex"
+        ],
+        "skipPlugins": [
+          "plug"
+        ],
+        "skipMcps": [
+          "zulu",
+          "alpha-mcp",
+          "http-one"
+        ]
+      }
+    },
+    {
+      "id": "apply/missing-profile",
+      "tool": "nomoreide_profiles_apply",
+      "arguments": {
+        "name": "nope",
+        "agent": "codex"
+      }
+    },
+    {
+      "id": "apply/unknown-agent",
+      "tool": "nomoreide_profiles_apply",
+      "arguments": {
+        "name": "alpha",
+        "agent": "nano"
+      }
+    },
+    {
+      "id": "configs/after-apply",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "transfer/build-a-profile",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "kit",
+        "description": "Portable."
+      }
+    },
+    {
+      "id": "transfer/fill-it",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "kit",
+        "mcps": {
+          "zeta": {
+            "kind": "remote",
+            "transport": "http",
+            "url": "https://z.example.test/mcp",
+            "headers": {
+              "Z-Token": "zt",
+              "A-Secret": "as",
+              "X-Trace": "on"
+            }
+          },
+          "alpha": {
+            "kind": "local",
+            "command": "node",
+            "args": [
+              "s.js"
+            ],
+            "env": {
+              "Z_TOKEN": "zt",
+              "A_SECRET": "as",
+              "APIKey": "ak",
+              "HTTPToken": "ht",
+              "XMLSecret": "xs",
+              "tOkEn": "not-a-secret",
+              "TOKENIZER": "nor-this",
+              "PRIVATE_KEY": "nor-this-either",
+              "APIKEY": "nor-this",
+              "PLAIN_VALUE": "ghp_looks_like_one_but_the_name_does_not"
+            }
+          },
+          "both": {
+            "kind": "remote",
+            "transport": "http",
+            "url": "https://b.example.test/mcp",
+            "headers": {
+              "M-Password": "mp",
+              "Authorization": "Bearer x"
+            },
+            "env": {
+              "B_TOKEN": "bt"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "transfer/export",
+      "tool": "nomoreide_profiles_export",
+      "arguments": {
+        "name": "kit",
+        "outputPath": "{{home}}/out/kit.tar.gz"
+      }
+    },
+    {
+      "id": "transfer/export-a-missing-profile",
+      "tool": "nomoreide_profiles_export",
+      "arguments": {
+        "name": "nope"
+      }
+    },
+    {
+      "id": "transfer/export-defaults-its-path",
+      "tool": "nomoreide_profiles_export",
+      "arguments": {
+        "name": "kit",
+        "cwd": "{{home}}/out"
+      }
+    },
+    {
+      "id": "transfer/snapshot-to-export",
+      "tool": "nomoreide_profiles_snapshot",
+      "arguments": {
+        "agent": "claude",
+        "name": "snapkit"
+      }
+    },
+    {
+      "id": "transfer/export-with-skills",
+      "tool": "nomoreide_profiles_export",
+      "arguments": {
+        "name": "snapkit",
+        "outputPath": "{{home}}/out/snapkit.tar.gz"
+      }
+    },
+    {
+      "id": "transfer/name-a-skill-it-lacks",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "kit",
+        "skills": [
+          {
+            "name": "ghost"
+          }
+        ]
+      }
+    },
+    {
+      "id": "transfer/export-missing-bundle",
+      "tool": "nomoreide_profiles_export",
+      "arguments": {
+        "name": "kit",
+        "outputPath": "{{home}}/out/never.tar.gz"
+      }
+    },
+    {
+      "id": "transfer/drop-the-skill",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "kit",
+        "skills": []
+      }
+    },
+    {
+      "id": "transfer/import-collides",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/kit.tar.gz"
+      }
+    },
+    {
+      "id": "transfer/import-as",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/kit.tar.gz",
+        "as": "copy-one"
+      }
+    },
+    {
+      "id": "transfer/read-the-import",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "copy-one"
+      }
+    },
+    {
+      "id": "transfer/import-with-credentials",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/kit.tar.gz",
+        "as": "copy-two",
+        "credentials": {
+          "z_token": "supplied-z",
+          "authorization": "Bearer supplied",
+          "not_asked_for": "ignored"
+        }
+      }
+    },
+    {
+      "id": "transfer/read-the-filled-import",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "copy-two"
+      }
+    },
+    {
+      "id": "transfer/import-over-itself",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/kit.tar.gz",
+        "force": true
+      }
+    },
+    {
+      "id": "transfer/import-with-skills",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/snapkit.tar.gz",
+        "as": "copy-skills"
+      }
+    },
+    {
+      "id": "transfer/read-the-skilled-import",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "copy-skills"
+      }
+    },
+    {
+      "id": "transfer/import-as-a-path",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/kit.tar.gz",
+        "as": "../escape"
+      }
+    },
+    {
+      "id": "transfer/read-the-escaped-import",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "../escape"
+      }
+    },
+    {
+      "id": "transfer/import-a-missing-archive",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/nothing.tar.gz"
+      }
+    },
+    {
+      "id": "transfer/list-after-transfers",
+      "tool": "nomoreide_profiles_list",
+      "arguments": {}
+    },
+    {
+      "id": "transfer/import-a-file-that-is-not-an-archive",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/bad/not-an-archive.tar.gz",
+        "as": "x1"
+      },
+      "writeHomeArchives": [
+        {
+          "path": "bad/not-an-archive.tar.gz",
+          "raw": "this was never a gzip stream\n"
+        }
+      ]
+    },
+    {
+      "id": "transfer/import-an-archive-with-no-manifest",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/bad/no-manifest.tar.gz",
+        "as": "x2"
+      },
+      "writeHomeArchives": [
+        {
+          "path": "bad/no-manifest.tar.gz",
+          "members": [
+            {
+              "name": "profile.json",
+              "contents": "{\n  \"name\": \"planted\",\n  \"mcps\": {},\n  \"skills\": [],\n  \"plugins\": []\n}\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer/import-an-archive-with-no-profile",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/bad/no-profile.tar.gz",
+        "as": "x3"
+      },
+      "writeHomeArchives": [
+        {
+          "path": "bad/no-profile.tar.gz",
+          "members": [
+            {
+              "name": "manifest.json",
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  },\n  \"credentials\": []\n}\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer/import-an-archive-from-another-schema",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/bad/old-schema.tar.gz",
+        "as": "x4"
+      },
+      "writeHomeArchives": [
+        {
+          "path": "bad/old-schema.tar.gz",
+          "members": [
+            {
+              "name": "manifest.json",
+              "contents": "{\n  \"schemaVersion\": 99,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.0.1\"\n  },\n  \"credentials\": []\n}\n"
+            },
+            {
+              "name": "profile.json",
+              "contents": "{\n  \"name\": \"planted\",\n  \"mcps\": {},\n  \"skills\": [],\n  \"plugins\": []\n}\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer/import-an-archive-that-climbs-out",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/bad/climbs-out.tar.gz",
+        "as": "x5"
+      },
+      "writeHomeArchives": [
+        {
+          "path": "bad/climbs-out.tar.gz",
+          "members": [
+            {
+              "name": "manifest.json",
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  },\n  \"credentials\": []\n}\n"
+            },
+            {
+              "name": "profile.json",
+              "contents": "{\n  \"name\": \"planted\",\n  \"mcps\": {},\n  \"skills\": [],\n  \"plugins\": []\n}\n"
+            },
+            {
+              "name": "../../climbed-out.txt",
+              "contents": "should never be written\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer/import-an-archive-with-an-absolute-member",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/bad/absolute.tar.gz",
+        "as": "x6"
+      },
+      "writeHomeArchives": [
+        {
+          "path": "bad/absolute.tar.gz",
+          "members": [
+            {
+              "name": "manifest.json",
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  },\n  \"credentials\": []\n}\n"
+            },
+            {
+              "name": "profile.json",
+              "contents": "{\n  \"name\": \"planted\",\n  \"mcps\": {},\n  \"skills\": [],\n  \"plugins\": []\n}\n"
+            },
+            {
+              "name": "/tmp/nomoreide-parity-absolute.txt",
+              "contents": "should never be written\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer/import-a-planted-archive",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/bad/fine.tar.gz"
+      },
+      "writeHomeArchives": [
+        {
+          "path": "bad/fine.tar.gz",
+          "members": [
+            {
+              "name": "manifest.json",
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"planted\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  },\n  \"credentials\": []\n}\n"
+            },
+            {
+              "name": "profile.json",
+              "contents": "{\n  \"name\": \"planted\",\n  \"mcps\": {},\n  \"skills\": [],\n  \"plugins\": []\n}\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer/read-the-planted-import",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "planted"
+      }
+    },
+    {
+      "id": "transfer/build-a-many-named-profile",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "named"
+      }
+    },
+    {
+      "id": "transfer/fill-the-many-named-profile",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "named",
+        "mcps": {
+          "one": {
+            "kind": "remote",
+            "transport": "http",
+            "url": "https://n.example.test/mcp",
+            "env": {
+              "SHARED_TOKEN": "e",
+              "A--TOKEN": "1",
+              "B..TOKEN": "2",
+              "C  TOKEN": "3",
+              "F__TOKEN": "4",
+              "D/TOKEN": "5"
+            },
+            "headers": {
+              "Shared-Token": "h"
+            }
+          },
+          "two": {
+            "kind": "local",
+            "command": "node",
+            "env": {
+              "Shared_Token": "e2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "transfer/export-the-many-named",
+      "tool": "nomoreide_profiles_export",
+      "arguments": {
+        "name": "named",
+        "outputPath": "{{home}}/out/named.tar.gz"
+      }
+    },
+    {
+      "id": "transfer/import-the-many-named",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/named.tar.gz",
+        "as": "named-back"
+      }
+    },
+    {
+      "id": "transfer/read-the-many-named",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "named-back"
+      }
+    },
+    {
+      "id": "transfer/send-servers-the-wrong-way-round",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "kit",
+        "mcps": {
+          "crossed-remote": {
+            "headers": {
+              "H": "1"
+            },
+            "env": {
+              "E": "2"
+            },
+            "url": "https://x.example.test/mcp",
+            "transport": "sse",
+            "kind": "remote",
+            "args": [
+              "ignored"
+            ],
+            "command": "ignored"
+          },
+          "crossed-local": {
+            "env": {
+              "E": "2"
+            },
+            "args": [
+              "a"
+            ],
+            "command": "node",
+            "kind": "local",
+            "url": "https://y.example.test/mcp",
+            "headers": {
+              "H": "1"
+            },
+            "transport": "http"
+          }
+        }
+      }
+    },
+    {
+      "id": "transfer/read-the-crossed-servers",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "kit"
+      }
+    },
+    {
+      "id": "transfer/a-remote-without-a-transport",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "kit",
+        "mcps": {
+          "r1": {
+            "kind": "remote",
+            "url": "https://r.example.test/mcp"
+          },
+          "l2": {
+            "kind": "local"
+          },
+          "r2": {
+            "kind": "remote"
+          }
+        }
+      }
+    },
+    {
+      "id": "transfer/build-a-thrice-named-profile",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "thrice"
+      }
+    },
+    {
+      "id": "transfer/fill-the-thrice-named-profile",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "thrice",
+        "mcps": {
+          "only": {
+            "kind": "remote",
+            "transport": "http",
+            "url": "https://t.example.test/mcp",
+            "headers": {
+              "Only-Token": "h",
+              "Only_Token": "h2"
+            },
+            "env": {
+              "ONLY_TOKEN": "e"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "transfer/export-the-thrice-named",
+      "tool": "nomoreide_profiles_export",
+      "arguments": {
+        "name": "thrice",
+        "outputPath": "{{home}}/out/thrice.tar.gz"
+      }
+    },
+    {
+      "id": "transfer/import-the-thrice-named",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/thrice.tar.gz",
+        "as": "thrice-back"
+      }
+    },
+    {
+      "id": "transfer/import-filled-from-the-environment",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/thrice.tar.gz",
+        "as": "thrice-env"
+      },
+      "env": {
+        "only_token": "from-the-environment",
+        "ONLY_TOKEN": "the-uppercase-one-is-not-consulted"
+      }
+    },
+    {
+      "id": "transfer/read-the-environment-filled",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "thrice-env"
+      }
+    },
+    {
+      "id": "transfer/supplied-beats-the-environment",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/out/thrice.tar.gz",
+        "as": "thrice-both",
+        "credentials": {
+          "only_token": "supplied"
+        }
+      },
+      "env": {
+        "only_token": "from-the-environment"
+      }
+    },
+    {
+      "id": "transfer/read-the-supplied",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "thrice-both"
+      }
+    },
+    {
+      "id": "transfer/import-a-badly-shaped-profile",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/bad/shaped.tar.gz",
+        "as": "s7"
+      },
+      "writeHomeArchives": [
+        {
+          "path": "bad/shaped.tar.gz",
+          "members": [
+            {
+              "name": "manifest.json",
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"shaped\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  }\n}\n"
+            },
+            {
+              "name": "profile.json",
+              "contents": "{\n  \"name\": \"shaped\",\n  \"mcps\": \"not-an-object\",\n  \"skills\": [],\n  \"plugins\": []\n}\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer/import-an-archive-with-a-link",
+      "tool": "nomoreide_profiles_import",
+      "arguments": {
+        "archivePath": "{{home}}/bad/linked.tar.gz",
+        "as": "s8"
+      },
+      "writeHomeArchives": [
+        {
+          "path": "bad/linked.tar.gz",
+          "members": [
+            {
+              "name": "manifest.json",
+              "contents": "{\n  \"schemaVersion\": 1,\n  \"profileName\": \"linked\",\n  \"createdBy\": {\n    \"tool\": \"nomoreide\",\n    \"version\": \"0.1.103\"\n  }\n}\n"
+            },
+            {
+              "name": "profile.json",
+              "contents": "{\n  \"name\": \"linked\",\n  \"mcps\": {},\n  \"skills\": [],\n  \"plugins\": []\n}\n"
+            },
+            {
+              "name": "escape",
+              "link": "/tmp"
+            },
+            {
+              "name": "escape/nomoreide-parity-link-escape.txt",
+              "contents": "should never be written\n"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

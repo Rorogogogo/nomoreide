@@ -4,21 +4,21 @@ import { describe, expect, test } from "vitest";
 import { NOMOREIDE_TOOL_NAMES } from "../src/mcp/server.js";
 
 const root = resolve(__dirname, "..");
-const appSource = readFileSync(resolve(root, "website/src/App.tsx"), "utf8");
+const appSource = readFileSync(resolve(root, "apps/website/src/App.tsx"), "utf8");
 const heroSource = readFileSync(
-  resolve(root, "website/src/components/hero.tsx"),
+  resolve(root, "apps/website/src/components/hero.tsx"),
   "utf8",
 );
 const ctaSource = readFileSync(
-  resolve(root, "website/src/components/cta.tsx"),
+  resolve(root, "apps/website/src/components/cta.tsx"),
   "utf8",
 );
 const footerSource = readFileSync(
-  resolve(root, "website/src/components/footer.tsx"),
+  resolve(root, "apps/website/src/components/footer.tsx"),
   "utf8",
 );
 const docsSource = readFileSync(
-  resolve(root, "website/src/components/docs-page.tsx"),
+  resolve(root, "apps/website/src/components/docs-page.tsx"),
   "utf8",
 );
 
@@ -36,9 +36,9 @@ describe("website docs", () => {
   });
 
   test("publishes AI-fetchable documentation assets", () => {
-    const llmsPath = resolve(root, "website/public/llms.txt");
-    const fullPath = resolve(root, "website/public/llms-full.txt");
-    const aiGuidePath = resolve(root, "website/public/docs/ai-guide.md");
+    const llmsPath = resolve(root, "apps/website/public/llms.txt");
+    const fullPath = resolve(root, "apps/website/public/llms-full.txt");
+    const aiGuidePath = resolve(root, "apps/website/public/docs/ai-guide.md");
 
     expect(existsSync(llmsPath)).toBe(true);
     expect(existsSync(fullPath)).toBe(true);
@@ -61,11 +61,11 @@ describe("website docs", () => {
 
   test("keeps every public tool reference aligned with the MCP registry", () => {
     const full = readFileSync(
-      resolve(root, "website/public/llms-full.txt"),
+      resolve(root, "apps/website/public/llms-full.txt"),
       "utf8",
     );
     const aiGuide = readFileSync(
-      resolve(root, "website/public/docs/ai-guide.md"),
+      resolve(root, "apps/website/public/docs/ai-guide.md"),
       "utf8",
     );
 

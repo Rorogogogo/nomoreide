@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { findLatestMacosRelease } from "../website/src/lib/latest-macos-release";
+import { findLatestMacosRelease } from "../apps/website/src/lib/latest-macos-release";
 
 function response(body: unknown, ok = true, status = 200): Response {
   return {

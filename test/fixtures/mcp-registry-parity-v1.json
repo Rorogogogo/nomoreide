@@ -1,0 +1,685 @@
+{
+  "fixtureVersion": 1,
+  "repositories": [
+    {
+      "id": "demo",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# demo\n",
+              ".claude/skills/review/SKILL.md": "---\nname: review\ndescription: Review code.\n---\n\nDo the review.\n"
+            },
+            "message": "init"
+          }
+        }
+      ]
+    }
+  ],
+  "pathStubs": [
+    "claude",
+    "codex"
+  ],
+  "homeFiles": [
+    {
+      "path": "bin/claude",
+      "contents": "#!/bin/sh\necho claude-stub\n",
+      "executable": true
+    },
+    {
+      "path": "bin/codex",
+      "contents": "#!/bin/sh\necho codex-stub\n",
+      "executable": true
+    },
+    {
+      "path": ".claude.json",
+      "contents": "{\n  \"mcpServers\": {\n    \"live-local\": {\n      \"command\": \"node\",\n      \"args\": [\n        \"s.js\"\n      ],\n      \"env\": {\n        \"T\": \"1\"\n      }\n    },\n    \"live-remote\": {\n      \"type\": \"sse\",\n      \"url\": \"https://live.example.test/mcp\"\n    }\n  },\n  \"projects\": {\n    \"{{repo:demo}}\": {\n      \"mcpServers\": {\n        \"scoped\": {\n          \"command\": \"true\"\n        }\n      }\n    }\n  }\n}\n"
+    },
+    {
+      "path": ".codex/config.toml",
+      "contents": "model = \"gpt-5\"\n\n[mcp_servers.codex-live]\ncommand = \"true\"\n"
+    },
+    {
+      "path": ".gemini/antigravity-cli/mcp_config.json",
+      "contents": "{\n  \"mcpServers\": {\n    \"ag-live\": {\n      \"command\": \"true\"\n    }\n  }\n}\n"
+    },
+    {
+      "path": ".claude/skills/summarise/SKILL.md",
+      "contents": "---\nname: summarise\ndescription: S.\n---\n\nS.\n"
+    },
+    {
+      "path": ".claude/skills/review/SKILL.md",
+      "contents": "---\nname: review\ndescription: R.\n---\n\nR.\n"
+    },
+    {
+      "path": ".codex/skills/refactor/SKILL.md",
+      "contents": "---\nname: refactor\ndescription: R.\n---\n\nR.\n"
+    }
+  ],
+  "api": [
+    {
+      "method": "GET",
+      "path": "/profiles/fresh",
+      "status": 404,
+      "body": {
+        "message": "Not Found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles",
+      "status": 201,
+      "body": {
+        "id": "prof-new",
+        "slug": "fresh"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/prof-new/versions",
+      "status": 201,
+      "body": {
+        "id": "ver-new"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/prof-new/versions/ver-new/package",
+      "status": 200,
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/prof-new/versions/ver-new/publish",
+      "status": 200,
+      "body": {
+        "status": "published"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/taken",
+      "status": 200,
+      "body": {
+        "id": "prof-old",
+        "slug": "taken",
+        "title": "Whatever"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/prof-old/versions",
+      "status": 201,
+      "body": {
+        "id": "ver-old"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/prof-old/versions/ver-old/package",
+      "status": 200,
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/prof-old/versions/ver-old/publish",
+      "status": 200,
+      "body": {
+        "status": "published"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/lookup-boom",
+      "status": 500,
+      "body": {
+        "message": "kaboom"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/create-boom",
+      "status": 404,
+      "body": {
+        "message": "Not Found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/version-boom",
+      "status": 200,
+      "body": {
+        "id": "pv"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/pv/versions",
+      "status": 422,
+      "body": {
+        "message": "bad version"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/upload-boom",
+      "status": 200,
+      "body": {
+        "id": "pu"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/pu/versions",
+      "status": 201,
+      "body": {
+        "id": "vu"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/pu/versions/vu/package",
+      "status": 413,
+      "body": {
+        "message": "too big"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/release-boom",
+      "status": 200,
+      "body": {
+        "id": "pr"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/pr/versions",
+      "status": 201,
+      "body": {
+        "id": "vr"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/pr/versions/vr/package",
+      "status": 200,
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/pr/versions/vr/publish",
+      "status": 409,
+      "body": {
+        "message": "already released"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/shared/install",
+      "status": 200,
+      "body": {
+        "slug": "shared",
+        "version": "1.4.2",
+        "download_url": "/packages/shared.tar.gz"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/packages/shared.tar.gz",
+      "status": 200,
+      "file": "out/pkg.tar.gz"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/absolute/install",
+      "status": 200,
+      "body": {
+        "slug": "absolute",
+        "version": "2.0.0",
+        "download_url": "{{api}}/packages/shared.tar.gz"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/no-package/install",
+      "status": 200,
+      "body": {
+        "slug": "no-package",
+        "version": "1"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/gone/install",
+      "status": 200,
+      "body": {
+        "slug": "gone",
+        "version": "1",
+        "download_url": "/packages/gone.tar.gz"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/github/register",
+      "status": 201,
+      "body": {
+        "id": "gh-1",
+        "slug": "from-repo",
+        "source": "github"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/blank-url/install",
+      "status": 200,
+      "body": {
+        "slug": "blank-url",
+        "version": "1",
+        "download_url": ""
+      }
+    }
+  ],
+  "plan": [
+    {
+      "id": "registry/publish-signed-out",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "fresh",
+        "title": "Kit"
+      }
+    },
+    {
+      "id": "registry/register-signed-out",
+      "tool": "nomoreide_profiles_register_github",
+      "arguments": {
+        "repoUrl": "https://github.com/owner/repo",
+        "slug": "from-repo",
+        "title": "From Repo"
+      }
+    },
+    {
+      "id": "registry/install-anonymously-missing",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {
+        "slug": "not-published"
+      }
+    },
+    {
+      "id": "registry/build-a-profile",
+      "tool": "nomoreide_profiles_snapshot",
+      "arguments": {
+        "agent": "claude",
+        "name": "kit"
+      }
+    },
+    {
+      "id": "registry/publish-a-new-slug",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "fresh",
+        "title": "Kit"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/publish-with-every-option",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "fresh",
+        "title": "Kit",
+        "summary": "A summary.",
+        "version": "2.1.0",
+        "changelog": "Changed things.",
+        "visibility": "private"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/publish-an-existing-slug",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "taken",
+        "title": "Ignored",
+        "summary": "Ignored too"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/publish-a-missing-profile",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "nope",
+        "slug": "fresh",
+        "title": "Kit"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/name-a-skill-it-lacks",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "kit",
+        "skills": [
+          {
+            "name": "ghost"
+          }
+        ]
+      }
+    },
+    {
+      "id": "registry/publish-an-unexportable-profile",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "fresh",
+        "title": "Kit"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/drop-the-skill",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "kit",
+        "skills": []
+      }
+    },
+    {
+      "id": "registry/publish-lookup-fails",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "lookup-boom",
+        "title": "Kit"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/publish-create-fails",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "create-boom",
+        "title": "Kit"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/publish-version-fails",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "version-boom",
+        "title": "Kit"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/publish-upload-fails",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "upload-boom",
+        "title": "Kit"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/publish-release-fails",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "release-boom",
+        "title": "Kit"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/export-a-package",
+      "tool": "nomoreide_profiles_export",
+      "arguments": {
+        "name": "kit",
+        "outputPath": "{{home}}/out/pkg.tar.gz"
+      }
+    },
+    {
+      "id": "registry/clear-the-local-profile",
+      "tool": "nomoreide_profiles_delete",
+      "arguments": {
+        "name": "kit"
+      }
+    },
+    {
+      "id": "registry/install",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {
+        "slug": "shared"
+      }
+    },
+    {
+      "id": "registry/install-collides",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {
+        "slug": "shared"
+      }
+    },
+    {
+      "id": "registry/install-with-force",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {
+        "slug": "shared",
+        "force": true
+      }
+    },
+    {
+      "id": "registry/install-under-another-name",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {
+        "slug": "shared",
+        "as": "renamed",
+        "credentials": {
+          "t": "supplied"
+        }
+      }
+    },
+    {
+      "id": "registry/read-the-install",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "renamed"
+      }
+    },
+    {
+      "id": "registry/install-from-an-absolute-url",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {
+        "slug": "absolute",
+        "as": "by-absolute"
+      }
+    },
+    {
+      "id": "registry/install-without-a-package",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {
+        "slug": "no-package"
+      }
+    },
+    {
+      "id": "registry/install-with-an-empty-download-url",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {
+        "slug": "blank-url"
+      }
+    },
+    {
+      "id": "registry/install-a-missing-package",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {
+        "slug": "gone"
+      }
+    },
+    {
+      "id": "registry/register-a-repository",
+      "tool": "nomoreide_profiles_register_github",
+      "arguments": {
+        "repoUrl": "https://github.com/owner/repo",
+        "slug": "from-repo",
+        "title": "From Repo"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/register-with-every-option",
+      "tool": "nomoreide_profiles_register_github",
+      "arguments": {
+        "repoUrl": "https://github.com/owner/repo",
+        "slug": "from-repo",
+        "title": "From Repo",
+        "summary": "A summary.",
+        "refName": "release",
+        "profilePath": "kits/main.yaml"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/reject-a-publish-without-a-slug",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "title": "Kit"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/reject-an-unknown-visibility",
+      "tool": "nomoreide_profiles_publish",
+      "arguments": {
+        "name": "kit",
+        "slug": "fresh",
+        "title": "Kit",
+        "visibility": "secret"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/reject-an-install-without-a-slug",
+      "tool": "nomoreide_profiles_install_from_registry",
+      "arguments": {}
+    },
+    {
+      "id": "registry/reject-a-registration-without-a-repo",
+      "tool": "nomoreide_profiles_register_github",
+      "arguments": {
+        "slug": "from-repo",
+        "title": "From Repo"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "registry-token"
+      }
+    },
+    {
+      "id": "registry/sign-in-through-a-config-file",
+      "tool": "nomoreide_profiles_register_github",
+      "arguments": {
+        "repoUrl": "https://github.com/owner/repo",
+        "slug": "from-repo",
+        "title": "From Repo"
+      },
+      "writeHomeFiles": [
+        {
+          "path": ".nomoreide/config.json",
+          "contents": "{\n  \"apiToken\": \"token-from-the-config-file\",\n  \"apiBaseUrl\": \"http://127.0.0.1:1\"\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "registry/the-environment-outranks-the-config-file",
+      "tool": "nomoreide_profiles_register_github",
+      "arguments": {
+        "repoUrl": "https://github.com/owner/repo",
+        "slug": "from-repo",
+        "title": "From Repo"
+      },
+      "env": {
+        "NOMOREIDE_API_TOKEN": "token-from-the-environment"
+      }
+    },
+    {
+      "id": "registry/an-empty-config-is-still-a-config",
+      "tool": "nomoreide_profiles_register_github",
+      "arguments": {
+        "repoUrl": "https://github.com/owner/repo",
+        "slug": "from-repo",
+        "title": "From Repo"
+      },
+      "writeHomeFiles": [
+        {
+          "path": ".nomoreide/config.json",
+          "contents": "{}\n"
+        },
+        {
+          "path": ".brainctl/config.json",
+          "contents": "{\n  \"apiToken\": \"token-from-the-brainctl-file\"\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "registry/fall-back-to-the-pre-rename-file",
+      "tool": "nomoreide_profiles_register_github",
+      "arguments": {
+        "repoUrl": "https://github.com/owner/repo",
+        "slug": "from-repo",
+        "title": "From Repo"
+      },
+      "removeHomeFiles": [
+        ".nomoreide/config.json"
+      ],
+      "writeHomeFiles": [
+        {
+          "path": ".brainctl/config.json",
+          "contents": "{\n  \"apiToken\": \"token-from-the-brainctl-file\"\n}\n"
+        }
+      ]
+    }
+  ]
+}

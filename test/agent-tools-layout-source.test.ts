@@ -7,19 +7,19 @@ const root = resolve(__dirname, "..");
 describe("agent tools layout source", () => {
   test("keeps all four tool cards visible as columns on wide screens", () => {
     const toolsTab = readFileSync(
-      resolve(root, "src/web/client/src/features/agent/tools-tab.tsx"),
+      resolve(root, "apps/dashboard/src/features/agent/tools-tab.tsx"),
       "utf8",
     );
     const mcpCard = readFileSync(
-      resolve(root, "src/web/client/src/features/agent/tools/mcp-servers-card.tsx"),
+      resolve(root, "apps/dashboard/src/features/agent/tools/mcp-servers-card.tsx"),
       "utf8",
     );
     const pluginsCard = readFileSync(
-      resolve(root, "src/web/client/src/features/agent/tools/plugins-card.tsx"),
+      resolve(root, "apps/dashboard/src/features/agent/tools/plugins-card.tsx"),
       "utf8",
     );
     const hooksCard = readFileSync(
-      resolve(root, "src/web/client/src/features/agent/tools/hooks-card.tsx"),
+      resolve(root, "apps/dashboard/src/features/agent/tools/hooks-card.tsx"),
       "utf8",
     );
 
@@ -33,7 +33,7 @@ describe("agent tools layout source", () => {
     const files = [
       {
         source: readFileSync(
-          resolve(root, "src/web/client/src/features/agent/tools/skills-card.tsx"),
+          resolve(root, "apps/dashboard/src/features/agent/tools/skills-card.tsx"),
           "utf8",
         ),
         title: "title={skill.name}",
@@ -41,7 +41,7 @@ describe("agent tools layout source", () => {
       },
       {
         source: readFileSync(
-          resolve(root, "src/web/client/src/features/agent/tools/mcp-servers-card.tsx"),
+          resolve(root, "apps/dashboard/src/features/agent/tools/mcp-servers-card.tsx"),
           "utf8",
         ),
         title: "title={server.name}",
@@ -49,7 +49,7 @@ describe("agent tools layout source", () => {
       },
       {
         source: readFileSync(
-          resolve(root, "src/web/client/src/features/agent/tools/plugins-card.tsx"),
+          resolve(root, "apps/dashboard/src/features/agent/tools/plugins-card.tsx"),
           "utf8",
         ),
         title: "title={plugin.name}",
@@ -57,7 +57,7 @@ describe("agent tools layout source", () => {
       },
       {
         source: readFileSync(
-          resolve(root, "src/web/client/src/features/agent/tools/hooks-card.tsx"),
+          resolve(root, "apps/dashboard/src/features/agent/tools/hooks-card.tsx"),
           "utf8",
         ),
         title: "title={hook.event}",
@@ -76,7 +76,7 @@ describe("agent tools layout source", () => {
 
   test("does not keep the removed tool detail dialog shell", () => {
     const sharedTools = readFileSync(
-      resolve(root, "src/web/client/src/features/agent/tools/tools-shared.tsx"),
+      resolve(root, "apps/dashboard/src/features/agent/tools/tools-shared.tsx"),
       "utf8",
     );
 

@@ -45,7 +45,11 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Type check web client
-        run: npx tsc -p src/web/client/tsconfig.json --noEmit
+        run: npm run typecheck --workspace @nomoreide/dashboard
+      - name: Type check website
+        run: npm run typecheck --workspace @nomoreide/website
+      - name: Build website
+        run: npm run build --workspace @nomoreide/website
       - run: npm run lint
 
   audit:
@@ -76,9 +80,71 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: .
 
       - run: npm ci
       - run: npm run version:check
+      - run: npm run rust:dependency-check
       - run: npm run build
-      - run: cargo check --manifest-path src-tauri/Cargo.toml
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+      # The parity gates: each one runs the TypeScript reference and the native
+      # binary side by side and diffs what the two answer. They need the binary
+      # on disk, which `cargo test` only builds incidentally, and the reference
+      # runs from source via tsx (`npm ci` above), against the client
+      # `npm run build` already produced.
+      - run: cargo build --workspace
+      # Phase 6's exit gate, kept executable rather than asserted once: the
+      # product must run with node, npm, npx and tsx absent from PATH. Node
+      # stays a build-time dependency for the frontend assets `npm run build`
+      # produced above, which is what the daemon serves.
+      - name: Runs with no Node.js on PATH
+        run: ./scripts/check-no-node.sh
+      # Two gates reach neither MCP nor HTTP — GitActions is a dashboard and
+      # desktop surface, and the daemon's `/api/hosts/*` routes are Phase 8 —
+      # so they drive their crate's own probe example instead of a tool.
+      # Phase 7's exit gate: it builds a release the way `cli-release.yml` does,
+      # serves it over `file://`, and drives the real `install.sh` through a
+      # fresh install, an upgrade, a downgrade, a corrupted download, the PATH
+      # diagnostics and an uninstall — then runs all three MCP setup flows off
+      # the installed binary with node absent from PATH.
+      - name: install.sh installs, upgrades and uninstalls
+        run: ./scripts/check-install.sh
+      # Kept building even though the gates below do not run here: the two
+      # probe examples are ordinary crate targets, and a break in them is a
+      # break this job should catch.
+      - name: Build the parity probe examples
+        run: |
+          cargo build --example git-actions-probe -p nomoreide-actions
+          cargo build --example vultr-probe -p nomoreide-actions
+      # The parity gates do not run here, and the honest reason is that this
+      # runner is not a machine either mode can work on.
+      #
+      # *Live* starts the TypeScript reference beside the native binary, and on
+      # a hosted macOS runner the reference cannot open a PTY at all: node-pty
+      # answers `posix_spawnp failed.` for `/bin/bash`, for `ssh`, for every
+      # shell a gate asks for, while the native binary spawns them. Four
+      # terminal gates then report a difference that is the reference's
+      # inability to run here.
+      #
+      # *Replayed* frees us from the reference but not from the machine. A
+      # recording freezes what the daemon answered, and some of those answers
+      # are true of the recorder rather than of either runtime: the shell in
+      # `$SHELL`, the version of git whose help text a gate quotes, which agent
+      # CLIs are on PATH, where the checkout sits. Thirteen gates diverge on a
+      # runner for exactly that reason, and no path substitution fixes it —
+      # these are different facts, not the same fact spelled differently.
+      #
+      # So the suite is a **pre-merge local gate**, which is how it has always
+      # actually been run:
+      #
+      #   npm run parity -- "$PWD/target/debug/nomoreide"            # live
+      #   npm run parity -- "$PWD/target/debug/nomoreide" --replay   # no reference
+      #
+      # To make it a CI gate, the recordings have to be made *on this image* —
+      # a `workflow_dispatch` job that runs `--record` and commits the result —
+      # at which point they stop replaying on a developer's machine. One set of
+      # recordings cannot serve both; that is a decision to take deliberately,
+      # not a line to add here.

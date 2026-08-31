@@ -1,0 +1,1347 @@
+{
+  "fixtureVersion": 1,
+  "repositories": [
+    {
+      "id": "snap",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commit": {
+            "file": "tracked.txt",
+            "contents": "one\n",
+            "message": "add tracked"
+          }
+        },
+        {
+          "commit": {
+            "file": "nested/deep.txt",
+            "contents": "deep\n",
+            "message": "add nested"
+          }
+        },
+        {
+          "write": {
+            "tracked.txt": "one\ntwo\n",
+            "untracked.txt": "fresh\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "snap-clean",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commit": {
+            "file": "only.txt",
+            "contents": "clean\n",
+            "message": "only"
+          }
+        }
+      ]
+    },
+    {
+      "id": "snap-staged",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commit": {
+            "file": "base.txt",
+            "contents": "base\n",
+            "message": "base"
+          }
+        },
+        {
+          "write": {
+            "base.txt": "base\nedited\n",
+            "added.txt": "added\n"
+          }
+        },
+        {
+          "stage": [
+            "base.txt",
+            "added.txt"
+          ]
+        },
+        {
+          "write": {
+            "base.txt": "base\nedited\nand again\n",
+            "loose.txt": "never staged\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "snap-unborn",
+      "initialBranch": "main",
+      "setup": []
+    },
+    {
+      "id": "snap-detached",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commit": {
+            "file": "a.txt",
+            "contents": "a\n",
+            "message": "a"
+          }
+        },
+        {
+          "commit": {
+            "file": "b.txt",
+            "contents": "b\n",
+            "message": "b"
+          }
+        },
+        {
+          "detach": true
+        },
+        {
+          "write": {
+            "a.txt": "a changed\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-node-pnpm",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "package.json": "{\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"dev\": \"vite --port 5173\",\n    \"build\": \"vite build\",\n    \"start\": \"node server.js\"\n  }\n}\n",
+              "pnpm-lock.yaml": "lockfileVersion: '9.0'\n",
+              ".env.example": "# comment line\nDATABASE_URL=postgres://localhost/demo\nexport API_KEY=abc\n\nEMPTY=\nnot a pair\nQUOTED=\"x\"\n",
+              "README.md": "# Demo Project\n\nSome prose nobody needs.\n\n## Getting Started\n\nInstall the dependencies and run the dev server:\n\n```\npnpm install\npnpm dev\n```\n\nIt listens on http://localhost:5173.\n\n## Licence\n\nMIT.\n",
+              "src/index.ts": "export const ok = true;\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-node-yarn",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "package.json": "{\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"start\": \"node index.js\"\n  }\n}\n",
+              "yarn.lock": "# yarn lockfile v1\n",
+              "index.js": "console.log('hi');\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-node-bun",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "package.json": "{\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"dev\": \"bun run serve -p 4000\",\n    \"start\": \"bun index.ts\"\n  }\n}\n",
+              "bun.lockb": "binary-ish\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-node-bare",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "package.json": "{\n  \"name\": \"bare\",\n  \"version\": \"0.0.1\"\n}\n",
+              "package-lock.json": "{\"lockfileVersion\": 3}\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-py-django",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "manage.py": "#!/usr/bin/env python\n",
+              "requirements.txt": "Django==5.0\npsycopg2-binary\n",
+              "README": "# Runbook\n\n## Setup\n\npython manage.py runserver\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-py-fastapi",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "pyproject.toml": "[project]\nname = \"svc\"\ndependencies = [\"fastapi\", \"uvicorn\"]\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-py-flask",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "requirements.txt": "Flask==3.0.0\n",
+              ".env.sample": "FLASK_ENV=development\nSECRET_KEY=shh\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-compose",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "docker-compose.yml": "services:\n  web:\n    build: .\n    ports:\n      - \"3000:3000\"\n    environment:\n      NODE_ENV: development\n      API_URL: http://localhost:9000\n  db:\n    image: postgres:16\n    ports:\n      - \"5544:5432\"\n    environment:\n      POSTGRES_USER: parity\n      POSTGRES_PASSWORD: s3cret\n      POSTGRES_DB: paritydb\n  cache:\n    image: redis:7\n    ports: [\"6379:6379\"]\n  legacy:\n    image: mysql:8.0\n    ports:\n      - \"3307:3306\"\n    environment:\n      - MYSQL_ROOT_PASSWORD=rootpw\n      - MYSQL_DATABASE=legacydb\n      - MYSQL_USER=legacy\n      - MYSQL_PASSWORD=legacypw\n  defaults:\n    image: postgres:15-alpine\n    ports:\n      - \"6000:5432\"\n    environment:\n      POSTGRES_PASSWORD: onlyapassword\n  unpublished:\n    image: postgres:16\n    environment:\n      POSTGRES_USER: hidden\n      POSTGRES_PASSWORD: hidden\n  bare:\n    image: postgres\n    ports:\n      - 8080\n",
+              "Dockerfile": "FROM node:22-alpine\n",
+              "package.json": "{\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"dev\": \"next dev\"\n  }\n}\n",
+              "package-lock.json": "{\"lockfileVersion\": 3}\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-compose-bad",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yaml": "services:\n  web:\n   - this: [is\n  broken\n",
+              "Dockerfile": "FROM scratch\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-compose-empty",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "version: '3'\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-plain",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "LICENSE": "MIT\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-readme-only",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "readme.md": "# Plain\n\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "snap-full",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commit": {
+            "file": "seed.txt",
+            "contents": "seed\n",
+            "message": "seed"
+          }
+        },
+        {
+          "snapshotRefs": 55
+        },
+        {
+          "write": {
+            "seed.txt": "seed\nchanged\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "snap-default",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commit": {
+            "file": "here.txt",
+            "contents": "here\n",
+            "message": "here"
+          }
+        },
+        {
+          "write": {
+            "here.txt": "here\nand there\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-dockerfile-only",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "Dockerfile": "FROM python:3.12-slim\nEXPOSE 8080\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-polyglot",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "package.json": "{\n  \"name\": \"poly\",\n  \"scripts\": {\n    \"dev\": \"node server.js\"\n  }\n}\n",
+              "requirements.txt": "fastapi\n",
+              "manage.py": "#!/usr/bin/env python\n",
+              ".env.template": "TEMPLATED_KEY=1\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-bad-package-json",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "package.json": "{ this is not json\n",
+              "yarn.lock": "# yarn lockfile v1\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-compose-list",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yaml": "services:\n  - web\n  - db\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-mysql",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: mysql:8.0\n    ports:\n      - \"3307:3306\"\n    environment:\n      MYSQL_ROOT_PASSWORD: rootpw\n      MYSQL_DATABASE: storedb\n      MYSQL_USER: keeper\n      MYSQL_PASSWORD: keeperpw\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-pg-minimal",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: postgres:15-alpine\n    ports:\n      - \"6000:5432\"\n    environment:\n      POSTGRES_PASSWORD: onlyapassword\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-pg-unpublished",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: postgres:16\n    environment:\n      POSTGRES_USER: hidden\n      POSTGRES_PASSWORD: hidden\n      POSTGRES_DB: hiddendb\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-env-edges",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              ".env.example": "# comment\n  # indented comment\n\nPLAIN=1\n  SPACED = 2 \nexport EXPORTED=3\nlower_case=4\nDOT.KEY=5\nDASH-KEY=6\nNUMS123=7\n1LEADING=8\nNO_VALUE\n=NOKEY\nDUP=a\nDUP=b\nWITH#HASH=9\nTRAIL=10 # trailing comment\nQUOTED='single'\nDQ=\"double\"\nMULTI=a=b=c\n\tTABBED=11\n",
+              ".env.sample": "NEVER_READ=1\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-env-fallthrough",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              ".env.example": "",
+              ".env.sample": "FROM_SAMPLE=1\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-readme-long",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "## Setup\nline 0 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 1 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 2 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 3 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 4 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 5 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 6 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 7 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 8 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 9 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 10 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 11 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 12 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 13 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 14 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 15 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 16 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 17 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 18 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 19 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 20 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 21 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 22 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 23 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 24 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 25 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 26 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 27 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 28 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 29 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 30 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 31 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 32 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 33 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 34 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 35 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 36 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 37 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 38 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 39 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 40 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 41 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 42 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 43 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 44 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 45 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 46 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 47 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 48 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 49 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 50 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 51 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 52 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 53 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 54 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 55 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 56 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 57 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 58 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 59 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-compose-odd",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  a:\n    image: 5\n    ports: \"3000:3000\"\n    environment:\n      NUM: 42\n      BOOL: true\n      NIL: null\n      EMPTY: ''\n  b:\n    image: null\n    ports:\n      - null\n      - 12\n    environment:\n      - LOOSE\n      - PAIR=1\n      - =NOKEY\n  c: null\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-port-word",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "package.json": "{\n  \"name\": \"x\",\n  \"scripts\": {\n    \"dev\": \"PORT=8080 node server.js\"\n  }\n}\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-port-out-of-range",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "package.json": "{\n  \"name\": \"x\",\n  \"scripts\": {\n    \"dev\": \"serve --port 99999\"\n  }\n}\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-py-unknown",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "requirements.txt": "requests\nhttpx\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-mariadb",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: mariadb:11\n    ports: [\"3310:3306\"]\n    environment: { MYSQL_ROOT_PASSWORD: rootpw }\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-compose-db-first",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  db:\n    image: postgres:16\n    ports: [\"5432:5432\"]\n    environment: { POSTGRES_PASSWORD: p }\n  web:\n    build: .\n    ports: [\"3000:3000\"]\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-bare-port",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: postgres:16\n    ports: [\"7777\"]\n    environment: { POSTGRES_PASSWORD: p }\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-encoded",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: postgres:16\n    ports: [\"5555:5432\"]\n    environment: { POSTGRES_USER: 'a b', POSTGRES_PASSWORD: 'p@ss:word/x', POSTGRES_DB: 'd b' }\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "snap-ignored",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              ".gitignore": "secret.txt\nbuild/\n",
+              "kept.txt": "kept\n"
+            },
+            "message": "base"
+          }
+        },
+        {
+          "write": {
+            "secret.txt": "do not capture\n",
+            "kept.txt": "kept\nchanged\n",
+            "build/out.txt": "generated\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-compose-two-files",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "docker-compose.yml": "services:\n  chosen:\n    build: .\n    ports: [\"4100:4100\"]\n",
+              "compose.yml": "services:\n  ignored:\n    build: .\n    ports: [\"4200:4200\"]\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-readme-short-lines",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "## Usage\nL0\nL1\nL2\nL3\nL4\nL5\nL6\nL7\nL8\nL9\nL10\nL11\nL12\nL13\nL14\nL15\nL16\nL17\nL18\nL19\nL20\nL21\nL22\nL23\nL24\nL25\nL26\nL27\nL28\nL29\nL30\nL31\nL32\nL33\nL34\nL35\nL36\nL37\nL38\nL39\nL40\nL41\nL42\nL43\nL44\nL45\nL46\nL47\nL48\nL49\nL50\nL51\nL52\nL53\nL54\nL55\nL56\nL57\nL58\nL59\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-readme-deep-heading",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "#### Getting Started\nnot this one\n\n### quick start\nthis one\nand this\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-port-both-spellings",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "package.json": "{\n  \"name\": \"x\",\n  \"scripts\": {\n    \"dev\": \"PORT=3000 vite --port 5173\"\n  }\n}\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-compose-env-equals",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  web:\n    build: .\n    environment:\n      - DSN=user=app host=db\n      - PLAIN=1\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-ambiguous-image",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: mysql-postgres:1\n    ports: [\"1234:5432\"]\n    environment: { POSTGRES_PASSWORD: p, MYSQL_PASSWORD: q }\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-not-a-database",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: maria:11\n    ports: [\"3399:3306\"]\n    environment: { MYSQL_ROOT_PASSWORD: p }\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-user-no-database",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: postgres:16\n    ports: [\"5599:5432\"]\n    environment: { POSTGRES_USER: appuser, POSTGRES_PASSWORD: p }\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "src-db-second-mapping",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "compose.yml": "services:\n  store:\n    image: postgres:16\n    ports:\n      - \"8080:80\"\n      - \"127.0.0.1:5401:5432\"\n    environment: { POSTGRES_PASSWORD: p }\n"
+            },
+            "message": "fixture"
+          }
+        }
+      ]
+    }
+  ],
+  "plainDirectories": [
+    "not-a-repo"
+  ],
+  "plan": [
+    {
+      "id": "snapshots/list-empty",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap-clean}}"
+      }
+    },
+    {
+      "id": "snapshots/create-first",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": "first checkpoint"
+      }
+    },
+    {
+      "id": "snapshots/list-one",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap}}"
+      }
+    },
+    {
+      "id": "snapshots/create-second",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": "second"
+      }
+    },
+    {
+      "id": "snapshots/list-two",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap}}"
+      }
+    },
+    {
+      "id": "snapshots/create-duplicate-label",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": "second"
+      }
+    },
+    {
+      "id": "snapshots/list-three",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap}}"
+      }
+    },
+    {
+      "id": "snapshots/create-clean",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap-clean}}",
+        "label": "nothing changed"
+      }
+    },
+    {
+      "id": "snapshots/list-clean",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap-clean}}"
+      }
+    },
+    {
+      "id": "snapshots/create-staged",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap-staged}}",
+        "label": "staged work"
+      }
+    },
+    {
+      "id": "snapshots/list-staged",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap-staged}}"
+      }
+    },
+    {
+      "id": "snapshots/status-after-create-staged",
+      "tool": "nomoreide_git_status",
+      "arguments": {
+        "cwd": "{{repo:snap-staged}}"
+      }
+    },
+    {
+      "id": "snapshots/create-with-ignored-files",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap-ignored}}",
+        "label": "ignores what git ignores"
+      }
+    },
+    {
+      "id": "snapshots/create-detached",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap-detached}}",
+        "label": "detached"
+      }
+    },
+    {
+      "id": "snapshots/list-detached",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap-detached}}"
+      }
+    },
+    {
+      "id": "snapshots/create-unborn",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap-unborn}}",
+        "label": "no commits yet"
+      }
+    },
+    {
+      "id": "snapshots/list-unborn",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap-unborn}}"
+      }
+    },
+    {
+      "id": "snapshots/create-unicode-label",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": "\u00fc\u00f1\u00ee \u2705 \u5feb\u7167"
+      }
+    },
+    {
+      "id": "snapshots/create-pathish-label",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": "feature/branch .. label~1"
+      }
+    },
+    {
+      "id": "snapshots/create-mixed-case-label",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": "MiXeD Case 123 ABC"
+      }
+    },
+    {
+      "id": "snapshots/create-long-label",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": "a checkpoint whose label is far too long to fit inside one ref name"
+      }
+    },
+    {
+      "id": "snapshots/create-label-cut-at-a-separator",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa tail"
+      }
+    },
+    {
+      "id": "snapshots/list-after-odd-labels",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap}}"
+      }
+    },
+    {
+      "id": "snapshots/list-many",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap-full}}"
+      }
+    },
+    {
+      "id": "snapshots/create-past-the-prune-limit",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap-full}}",
+        "label": "the one that triggers pruning"
+      }
+    },
+    {
+      "id": "snapshots/list-after-pruning",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap-full}}"
+      }
+    },
+    {
+      "id": "snapshots/list-plain-directory",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{dir:not-a-repo}}"
+      }
+    },
+    {
+      "id": "snapshots/create-plain-directory",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{dir:not-a-repo}}",
+        "label": "nope"
+      }
+    },
+    {
+      "id": "snapshots/list-absent-directory",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{home}}/absent"
+      }
+    },
+    {
+      "id": "snapshots/create-absent-directory",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{home}}/absent",
+        "label": "nope"
+      }
+    },
+    {
+      "id": "snapshots/list-default-cwd",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {},
+      "processCwd": "{{dir:not-a-repo}}"
+    },
+    {
+      "id": "snapshots/create-default-cwd",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "label": "from the process directory"
+      },
+      "processCwd": "{{repo:snap-default}}"
+    },
+    {
+      "id": "snapshots/list-from-subdirectory",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": "{{repo:snap}}/nested"
+      }
+    },
+    {
+      "id": "snapshots/create-from-subdirectory",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}/nested",
+        "label": "taken from a subdirectory"
+      }
+    },
+    {
+      "id": "snapshots/create-empty-label",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": ""
+      }
+    },
+    {
+      "id": "snapshots/create-missing-label",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}"
+      }
+    },
+    {
+      "id": "snapshots/list-empty-cwd",
+      "tool": "nomoreide_snapshots_list",
+      "arguments": {
+        "cwd": ""
+      }
+    },
+    {
+      "id": "snapshots/create-label-wrong-type",
+      "tool": "nomoreide_snapshot_create",
+      "arguments": {
+        "cwd": "{{repo:snap}}",
+        "label": 7
+      }
+    },
+    {
+      "id": "onboard/node-pnpm",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-node-pnpm}}"
+      }
+    },
+    {
+      "id": "onboard/node-yarn",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-node-yarn}}"
+      }
+    },
+    {
+      "id": "onboard/node-bun",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-node-bun}}"
+      }
+    },
+    {
+      "id": "onboard/node-bare",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-node-bare}}"
+      }
+    },
+    {
+      "id": "onboard/python-django",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-py-django}}"
+      }
+    },
+    {
+      "id": "onboard/python-fastapi",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-py-fastapi}}"
+      }
+    },
+    {
+      "id": "onboard/python-flask",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-py-flask}}"
+      }
+    },
+    {
+      "id": "onboard/compose",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-compose}}"
+      }
+    },
+    {
+      "id": "onboard/compose-unparseable",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-compose-bad}}"
+      }
+    },
+    {
+      "id": "onboard/compose-no-services",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-compose-empty}}"
+      }
+    },
+    {
+      "id": "onboard/no-signals",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-plain}}"
+      }
+    },
+    {
+      "id": "onboard/readme-without-heading",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-readme-only}}"
+      }
+    },
+    {
+      "id": "onboard/dockerfile-only",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-dockerfile-only}}"
+      }
+    },
+    {
+      "id": "onboard/polyglot",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-polyglot}}"
+      }
+    },
+    {
+      "id": "onboard/unreadable-manifest",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-bad-package-json}}"
+      }
+    },
+    {
+      "id": "onboard/compose-services-not-a-map",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-compose-list}}"
+      }
+    },
+    {
+      "id": "onboard/db-mysql",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-mysql}}"
+      }
+    },
+    {
+      "id": "onboard/db-pg-minimal",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-pg-minimal}}"
+      }
+    },
+    {
+      "id": "onboard/db-pg-unpublished",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-pg-unpublished}}"
+      }
+    },
+    {
+      "id": "onboard/env-edges",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-env-edges}}"
+      }
+    },
+    {
+      "id": "onboard/env-fallthrough",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-env-fallthrough}}"
+      }
+    },
+    {
+      "id": "onboard/readme-long",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-readme-long}}"
+      }
+    },
+    {
+      "id": "onboard/compose-odd",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-compose-odd}}"
+      }
+    },
+    {
+      "id": "onboard/port-word",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-port-word}}"
+      }
+    },
+    {
+      "id": "onboard/port-out-of-range",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-port-out-of-range}}"
+      }
+    },
+    {
+      "id": "onboard/py-unknown",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-py-unknown}}"
+      }
+    },
+    {
+      "id": "onboard/db-mariadb",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-mariadb}}"
+      }
+    },
+    {
+      "id": "onboard/compose-db-first",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-compose-db-first}}"
+      }
+    },
+    {
+      "id": "onboard/db-bare-port",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-bare-port}}"
+      }
+    },
+    {
+      "id": "onboard/db-encoded",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-encoded}}"
+      }
+    },
+    {
+      "id": "onboard/compose-file-precedence",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-compose-two-files}}"
+      }
+    },
+    {
+      "id": "onboard/readme-short-lines",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-readme-short-lines}}"
+      }
+    },
+    {
+      "id": "onboard/readme-deep-heading",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-readme-deep-heading}}"
+      }
+    },
+    {
+      "id": "onboard/port-both-spellings",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-port-both-spellings}}"
+      }
+    },
+    {
+      "id": "onboard/compose-env-equals",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-compose-env-equals}}"
+      }
+    },
+    {
+      "id": "onboard/db-ambiguous-image",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-ambiguous-image}}"
+      }
+    },
+    {
+      "id": "onboard/db-not-a-database",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-not-a-database}}"
+      }
+    },
+    {
+      "id": "onboard/db-user-no-database",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-user-no-database}}"
+      }
+    },
+    {
+      "id": "onboard/db-second-mapping",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-db-second-mapping}}"
+      }
+    },
+    {
+      "id": "onboard/already-cloned",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{repo:src-node-yarn}}"
+      }
+    },
+    {
+      "id": "onboard/refused-scheme",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "wat://nope/repo.git"
+      }
+    },
+    {
+      "id": "onboard/absent-source",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{home}}/absent.git"
+      }
+    },
+    {
+      "id": "onboard/source-not-a-repo",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": "file://{{dir:not-a-repo}}"
+      }
+    },
+    {
+      "id": "onboard/empty-url",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": ""
+      }
+    },
+    {
+      "id": "onboard/missing-url",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {}
+    },
+    {
+      "id": "onboard/url-wrong-type",
+      "tool": "nomoreide_onboard_repo",
+      "arguments": {
+        "url": false
+      }
+    }
+  ]
+}

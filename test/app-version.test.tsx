@@ -8,8 +8,8 @@ import {
   navButtonClassName,
   navButtonIconClassName,
   navButtonLabelClassName,
-} from "../src/web/client/src/app";
-import { AppCredit } from "../src/web/client/src/components/app-credit";
+} from "../apps/dashboard/src/app";
+import { AppCredit } from "../apps/dashboard/src/components/app-credit";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -18,7 +18,7 @@ afterEach(() => {
 describe("application operation feedback", () => {
   test("keeps the provider above page content and mounts one strip in the shell", () => {
     const source = readFileSync(
-      new URL("../src/web/client/src/app.tsx", import.meta.url),
+      new URL("../apps/dashboard/src/app.tsx", import.meta.url),
       "utf8",
     );
 
@@ -63,12 +63,12 @@ describe("AppCredit", () => {
 
   test("lives at the bottom of the settings pane, not the sidebar", () => {
     const appSource = readFileSync(
-      new URL("../src/web/client/src/app.tsx", import.meta.url),
+      new URL("../apps/dashboard/src/app.tsx", import.meta.url),
       "utf8",
     );
     const settingsSource = readFileSync(
       new URL(
-        "../src/web/client/src/features/settings/settings-layout.tsx",
+        "../apps/dashboard/src/features/settings/settings-layout.tsx",
         import.meta.url,
       ),
       "utf8",

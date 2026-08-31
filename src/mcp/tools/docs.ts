@@ -1,5 +1,6 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
+import { appVersion } from "../../core/app-version.js";
 import { stringify, type ToolContext } from "./context.js";
 
 export const DOC_TOOL_NAMES = ["nomoreide_docs"] as const;
@@ -49,7 +50,7 @@ const topicEntries: DocsTopicEntry[] = [
     id: "overview",
     title: "Overview",
     body:
-      "NoMoreIDE v0.1.99 is an AI-native local development workbench for services, activity, Docker, Git and worktrees, GitHub, Vercel, databases, workflows, terminals, and agent environments. It gives humans and AI coding agents one shared local control surface through MCP, CLI, TUI, web, and macOS desktop interfaces.",
+      "NoMoreIDE v{version} is an AI-native local development workbench for services, activity, Docker, Git and worktrees, GitHub, Vercel, databases, workflows, terminals, and agent environments. It gives humans and AI coding agents one shared local control surface through MCP, CLI, TUI, web, and macOS desktop interfaces.",
   },
   {
     id: "setup",
@@ -135,8 +136,9 @@ export function buildNoMoreIdeDocs({
     return {
       topic: "index",
       title: "NoMoreIDE documentation index",
-      body:
+      body: interpolate(
         "NoMoreIDE is an AI-native local development workbench. Pass a topic to `nomoreide_docs` for focused docs, or fetch the canonical docs links included in this response.",
+      ),
       topics,
       links: docsLinks,
     };
@@ -150,10 +152,19 @@ export function buildNoMoreIdeDocs({
   return {
     topic: entry.id,
     title: entry.title,
-    body: entry.body,
+    body: interpolate(entry.body),
     topics,
     links: docsLinks,
   };
+}
+
+/**
+ * The only substitution these bodies take. The overview used to name a
+ * hardcoded version, which drifted four releases behind the package it
+ * described; a placeholder cannot.
+ */
+function interpolate(body: string): string {
+  return body.replaceAll("{version}", appVersion());
 }
 
 export function registerDocTools(server: FastMCP, _ctx: ToolContext): void {

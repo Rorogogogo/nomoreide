@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
-const css = readFileSync(resolve(__dirname, "../website/src/index.css"), "utf8");
+const css = readFileSync(resolve(__dirname, "../apps/website/src/index.css"), "utf8");
 
 describe("website embedded app toast theme", () => {
   test("defines dashboard toast tokens at the page root", () => {

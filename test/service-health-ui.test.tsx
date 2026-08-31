@@ -1,9 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { AgentProvider } from "../src/web/client/src/features/agent/chat/agent-context";
-import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
-import { ServicesView } from "../src/web/client/src/features/services/services-view";
-import type { DashboardData, ServiceHealth } from "../src/web/client/src/lib/api";
+import { AgentProvider } from "../apps/dashboard/src/features/agent/chat/agent-context";
+import { OperationProvider } from "../apps/dashboard/src/components/operations/operation-context";
+import { ServicesView } from "../apps/dashboard/src/features/services/services-view";
+import type { DashboardData, ServiceHealth } from "../apps/dashboard/src/lib/api";
 
 function buildDashboard(health: ServiceHealth): DashboardData {
   return {

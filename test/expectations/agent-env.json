@@ -1,0 +1,1690 @@
+{
+  "version": 1,
+  "gate": "agent-env",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/agent-env/agents",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agents\":[{\"agent\":\"claude\",\"command\":\"claude\",\"available\":true,\"resolvedPath\":\"%%HOME%%/bin/claude\"},{\"agent\":\"codex\",\"command\":\"codex\",\"available\":true,\"resolvedPath\":\"%%HOME%%/bin/codex\"},{\"agent\":\"antigravity\",\"command\":\"antigravity\",\"available\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/agents",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agents\":[{\"agent\":\"claude\",\"command\":\"claude\",\"available\":true,\"resolvedPath\":\"%%HOME%%/bin/claude\"},{\"agent\":\"codex\",\"command\":\"codex\",\"available\":true,\"resolvedPath\":\"%%HOME%%/bin/codex\"},{\"agent\":\"antigravity\",\"command\":\"antigravity\",\"available\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/agents",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agents\":[{\"agent\":\"claude\",\"command\":\"claude\",\"available\":true,\"resolvedPath\":\"%%USER-HOME%%/.local/bin/claude\"},{\"agent\":\"codex\",\"command\":\"codex\",\"available\":true,\"resolvedPath\":\"%%HOME%%/bin/codex\"},{\"agent\":\"antigravity\",\"command\":\"antigravity\",\"available\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/agents",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agents\":[{\"agent\":\"claude\",\"command\":\"claude\",\"available\":true,\"resolvedPath\":\"%%HOME%%/bin/claude\"},{\"agent\":\"codex\",\"command\":\"codex\",\"available\":true,\"resolvedPath\":\"%%HOME%%/bin/codex\"},{\"agent\":\"antigravity\",\"command\":\"antigravity\",\"available\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":false,\"mcpServers\":{},\"remoteMcpServers\":{},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{},\"remoteMcpServers\":{},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{},\"remoteMcpServers\":{},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"bare\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/bare\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"bare\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/bare\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"renamed\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/renamed\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":false,\"mcpServers\":{},\"remoteMcpServers\":{},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":false,\"mcpServers\":{},\"remoteMcpServers\":{},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":false,\"mcpServers\":{},\"remoteMcpServers\":{},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/doctor",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"checks\":[{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"claude is available (%%HOME%%/bin/claude)\"},{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"codex is available (%%HOME%%/bin/codex)\"},{\"label\":\"Agent CLI\",\"status\":\"warn\",\"message\":\"antigravity is not available on PATH\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"claude config found at %%HOME%%/.claude.json\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"codex config found at %%HOME%%/.codex/config.toml\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"antigravity config found at %%HOME%%/.gemini/antigravity-cli/mcp_config.json\"}],\"hasIssues\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/doctor",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"checks\":[{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"claude is available (%%HOME%%/bin/claude)\"},{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"codex is available (%%HOME%%/bin/codex)\"},{\"label\":\"Agent CLI\",\"status\":\"warn\",\"message\":\"antigravity is not available on PATH\"},{\"label\":\"Config file\",\"status\":\"warn\",\"message\":\"claude has no config at %%HOME%%/.claude.json\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"codex config found at %%HOME%%/.codex/config.toml\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"antigravity config found at %%HOME%%/.gemini/antigravity-cli/mcp_config.json\"}],\"hasIssues\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/doctor",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"checks\":[{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"claude is available (%%HOME%%/bin/claude)\"},{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"codex is available (%%HOME%%/bin/codex)\"},{\"label\":\"Agent CLI\",\"status\":\"warn\",\"message\":\"antigravity is not available on PATH\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"claude config found at %%HOME%%/.claude.json\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"codex config found at %%HOME%%/.codex/config.toml\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"antigravity config found at %%HOME%%/.gemini/antigravity-cli/mcp_config.json\"}],\"hasIssues\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/doctor",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"checks\":[{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"claude is available (%%HOME%%/bin/claude)\"},{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"codex is available (%%HOME%%/bin/codex)\"},{\"label\":\"Agent CLI\",\"status\":\"warn\",\"message\":\"antigravity is not available on PATH\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"claude config found at %%HOME%%/.claude.json\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"codex config found at %%HOME%%/.codex/config.toml\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"antigravity config found at %%HOME%%/.gemini/antigravity-cli/mcp_config.json\"}],\"hasIssues\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\"],\"remove\":[]},{\"agent\":\"antigravity\",\"add\":[\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"   \",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy MCP \\\"   \\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[],\"error\":\"MCP \\\"   \\\" not found in Claude Code user scope.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/changes/preview",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"nothing-here\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy MCP \\\"nothing-here\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[],\"error\":\"MCP \\\"nothing-here\\\" not found in Claude Code user scope.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"claude\"},\"ok\":false,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Claude Code (user)\",\"warnings\":[],\"error\":\"Source and target are the same; nothing to copy.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":false,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to ? (user)\",\"warnings\":[],\"error\":\"A copy needs a target agent.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"sse-one\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"sse-one\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex config only stores a URL for remote MCPs; transport and headers will be dropped.\"]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"sse-one\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"no-shape\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"no-shape\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"no-shape\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"antigravity\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"ag-local\",\"sourceAgent\":\"antigravity\",\"sourceScope\":\"user\",\"targetAgent\":\"claude\"},\"ok\":true,\"summary\":\"Copy MCP \\\"ag-local\\\" from Antigravity (user) to Claude Code (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"claude\",\"add\":[\"mcp \\\"ag-local\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"scoped\",\"sourceAgent\":\"claude\",\"sourceScope\":\"project\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy MCP \\\"scoped\\\" from Claude Code (project) to Codex CLI (user)\",\"warnings\":[],\"error\":\"MCP \\\"scoped\\\" not found in Claude Code project scope.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\",\"targetScope\":\"project\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (project)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"move\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Move MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]}],\"agents\":[{\"agent\":\"claude\",\"add\":[],\"remove\":[\"mcp \\\"linear\\\"\"]},{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"remove\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Remove MCP \\\"linear\\\" from Claude Code (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"claude\",\"add\":[],\"remove\":[\"mcp \\\"linear\\\"\"]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"remove\",\"name\":\"nothing-here\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":false,\"summary\":\"Remove MCP \\\"nothing-here\\\" from Claude Code (user)\",\"warnings\":[],\"error\":\"MCP \\\"nothing-here\\\" not found in Claude Code user scope.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"remove\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Remove MCP \\\"linear\\\" from Claude Code (user)\",\"warnings\":[],\"error\":\"A remove cannot have a target agent.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"skill\",\"action\":\"copy\",\"name\":\"summarise\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy skill \\\"summarise\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"skill \\\"summarise\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"skill\",\"action\":\"copy\",\"name\":\"nothing-here\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy skill \\\"nothing-here\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[],\"error\":\"Skill \\\"nothing-here\\\" not found in Claude Code user scope.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"skill\",\"action\":\"copy\",\"name\":\"no-skill-file\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy skill \\\"no-skill-file\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"skill \\\"no-skill-file\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"skill\",\"action\":\"move\",\"name\":\"summarise\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Move skill \\\"summarise\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"claude\",\"add\":[],\"remove\":[\"skill \\\"summarise\\\"\"]},{\"agent\":\"codex\",\"add\":[\"skill \\\"summarise\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"skill\",\"action\":\"remove\",\"name\":\"summarise\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Remove skill \\\"summarise\\\" from Claude Code (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"claude\",\"add\":[],\"remove\":[\"skill \\\"summarise\\\"\"]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"plugin\",\"action\":\"remove\",\"name\":\"some-plugin\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":false,\"summary\":\"Uninstall plugin \\\"some-plugin\\\" from Claude Code\",\"warnings\":[],\"error\":\"Plugin \\\"some-plugin\\\" not found in Claude Code.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"plugin\",\"action\":\"remove\",\"name\":\"tidy\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Uninstall plugin \\\"tidy\\\" from Claude Code\",\"warnings\":[\"Uninstalling \\\"tidy\\\" removes 3 skills, 1 MCPs, 2 agents, 1 commands.\"]}],\"agents\":[{\"agent\":\"claude\",\"add\":[],\"remove\":[\"plugin \\\"tidy\\\"\"]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"plugin\",\"action\":\"remove\",\"name\":\"stale\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":false,\"summary\":\"Uninstall plugin \\\"stale\\\" from Claude Code\",\"warnings\":[],\"error\":\"Plugin \\\"stale\\\" can't be uninstalled from here — no install path or marketplace source was detected.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"plugin\",\"action\":\"remove\",\"name\":\"tidy\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\"},\"ok\":false,\"summary\":\"Uninstall plugin \\\"tidy\\\" from Codex CLI\",\"warnings\":[],\"error\":\"Plugin \\\"tidy\\\" not found in Codex CLI.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"plugin\",\"action\":\"remove\",\"name\":\"tidy\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Uninstall plugin \\\"tidy\\\" from Claude Code\",\"warnings\":[],\"error\":\"A remove cannot have a target agent.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"plugin\",\"action\":\"copy\",\"name\":\"tidy\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy plugin \\\"tidy\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[],\"error\":\"Plugins are managed installs; install \\\"tidy\\\" through the target agent's plugin marketplace instead of copying files.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"plugin\",\"action\":\"move\",\"name\":\"tidy\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Move plugin \\\"tidy\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[],\"error\":\"Plugins are managed installs; install \\\"tidy\\\" through the target agent's plugin marketplace instead of copying files.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"skill\",\"action\":\"copy\",\"name\":\"tidy\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy skill \\\"tidy\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[],\"error\":\"\\\"tidy\\\" is a plugin managed by Claude Code; install it through the plugin marketplace instead of copying files.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"skill\",\"action\":\"move\",\"name\":\"summarise\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\",\"targetScope\":\"project\"},\"ok\":false,\"summary\":\"Move skill \\\"summarise\\\" from Claude Code (user) to Antigravity (project)\",\"warnings\":[],\"error\":\"Antigravity has no project-scoped skills; Claude reads .claude/skills/ and Codex reads .agents/skills/.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"skill\",\"action\":\"copy\",\"name\":\"summarise\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\",\"targetScope\":\"project\"},\"ok\":true,\"summary\":\"Copy skill \\\"summarise\\\" from Claude Code (user) to Codex CLI (project)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"skill \\\"summarise\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\",\"targetScope\":\"project\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Antigravity (project)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"antigravity\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"a/b\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy MCP \\\"a/b\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[],\"error\":\"MCP \\\"a/b\\\" not found in Claude Code user scope.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"skill\",\"action\":\"copy\",\"name\":\"../escape\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy skill \\\"../escape\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[],\"error\":\"Skill \\\"../escape\\\" not found in Claude Code user scope.\"}],\"agents\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"sse-one\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":true,\"summary\":\"Copy MCP \\\"sse-one\\\" from Claude Code (user) to Antigravity (user)\",\"warnings\":[]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]},{\"agent\":\"antigravity\",\"add\":[\"mcp \\\"sse-one\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\",\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":false,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"nothing-here\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy MCP \\\"nothing-here\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[],\"error\":\"MCP \\\"nothing-here\\\" not found in Claude Code user scope.\"},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"linear\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"linear\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"linear\\\"; it will be overwritten.\"]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"linear\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"valid\":true,\"items\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"aa-ordered-first\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"aa-ordered-first\\\" from Claude Code (user) to Codex CLI (user)\",\"warnings\":[\"Codex CLI already has an MCP named \\\"aa-ordered-first\\\"; it will be overwritten.\"]}],\"agents\":[{\"agent\":\"codex\",\"add\":[\"mcp \\\"aa-ordered-first\\\"\"],\"remove\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agent\":\"claude\",\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-161456\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agent\":\"claude\",\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-161456-1\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agent\":\"codex\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agent\":\"antigravity\",\"backups\":[\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json.bak.20260831-161456\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent must be claude, codex, or antigravity.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent must be claude, codex, or antigravity.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent must be claude, codex, or antigravity.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent must be claude, codex, or antigravity.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent must be claude, codex, or antigravity.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent must be claude, codex, or antigravity.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent must be claude, codex, or antigravity.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agent\":\"codex\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456-1\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/snapshot",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"agent\":\"antigravity\",\"backups\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"changes must be a non-empty array of staged changes.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/changes/apply",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"applied\":0,\"failed\":1,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"nothing-here\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy MCP \\\"nothing-here\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[],\"error\":\"MCP \\\"nothing-here\\\" not found in Claude Code user scope.\"}],\"backups\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"local-tool\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"local-tool\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456-2\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456-2\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"empty-one\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/empty-one\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"},\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"local-tool\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"local-tool\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456-3\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456-3\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"sse-one\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"sse-one\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456-4\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456-4\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"empty-one\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/empty-one\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"},\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"},\"sse-one\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/x\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"applied\":0,\"failed\":1,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"nothing-here\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Copy MCP \\\"nothing-here\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[],\"error\":\"MCP \\\"nothing-here\\\" not found in Claude Code user scope.\"},{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"zz-ordered-last\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"antigravity\"},\"ok\":false,\"summary\":\"Copy MCP \\\"zz-ordered-last\\\" from Claude Code (user) to Antigravity (user)\",\"backups\":[],\"error\":\"Not applied — another staged change failed validation.\"}],\"backups\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"empty-one\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/empty-one\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"},\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"},\"sse-one\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/x\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"remove\",\"name\":\"local-tool\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Remove MCP \\\"local-tool\\\" from Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456-5\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-161456-5\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"empty-one\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/empty-one\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"},\"sse-one\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/x\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"applied\":0,\"failed\":1,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"remove\",\"name\":\"local-tool\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\"},\"ok\":false,\"summary\":\"Remove MCP \\\"local-tool\\\" from Codex CLI (user)\",\"backups\":[],\"error\":\"MCP \\\"local-tool\\\" not found in Codex CLI user scope.\"}],\"backups\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"move\",\"name\":\"docs\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\",\"targetAgent\":\"claude\"},\"ok\":true,\"summary\":\"Move MCP \\\"docs\\\" from Codex CLI (user) to Claude Code (user)\",\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-161456-2\",\"%%HOME%%/.codex/config.toml.bak.20260831-161456-6\"]}],\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-161456-2\",\"%%HOME%%/.codex/config.toml.bak.20260831-161456-6\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}},\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"empty-one\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/empty-one\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"},\"sse-one\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/x\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"skill\",\"action\":\"copy\",\"name\":\"summarise\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy skill \\\"summarise\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[]}],\"backups\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}},\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"empty-one\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/empty-one\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/zulu\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"},\"sse-one\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/x\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/summarise\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"skill\",\"action\":\"copy\",\"name\":\"summarise\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy skill \\\"summarise\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[]}],\"backups\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"skill\",\"action\":\"move\",\"name\":\"zulu\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Move skill \\\"zulu\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/zulu.20260831-161456\"]}],\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/zulu.20260831-161456\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}},\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"empty-one\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/empty-one\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"},\"sse-one\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/x\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/summarise\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/zulu\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"applied\":0,\"failed\":1,\"results\":[{\"change\":{\"category\":\"skill\",\"action\":\"move\",\"name\":\"zulu\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":false,\"summary\":\"Move skill \\\"zulu\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[],\"error\":\"Skill \\\"zulu\\\" not found in Claude Code user scope.\"}],\"backups\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"skill\",\"action\":\"remove\",\"name\":\"summarise\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Remove skill \\\"summarise\\\" from Codex CLI (user)\",\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/summarise.20260831-161456\"]}],\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/summarise.20260831-161456\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}},\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"empty-one\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/empty-one\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"},\"sse-one\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/x\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/zulu\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"applied\":0,\"failed\":1,\"results\":[{\"change\":{\"category\":\"plugin\",\"action\":\"remove\",\"name\":\"some-plugin\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":false,\"summary\":\"Uninstall plugin \\\"some-plugin\\\" from Claude Code\",\"backups\":[],\"error\":\"Plugin \\\"some-plugin\\\" not found in Claude Code.\"}],\"backups\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"applied\":0,\"failed\":1,\"results\":[{\"change\":{\"category\":\"plugin\",\"action\":\"remove\",\"name\":\"stale\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":false,\"summary\":\"Uninstall plugin \\\"stale\\\" from Claude Code\",\"backups\":[],\"error\":\"Plugin \\\"stale\\\" can't be uninstalled from here — no install path or marketplace source was detected.\"}],\"backups\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"plugin\",\"action\":\"remove\",\"name\":\"tidy\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Uninstall plugin \\\"tidy\\\" from Claude Code\",\"backups\":[]}],\"backups\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"zz-ordered-last\":{\"command\":\"echo\"},\"aa-ordered-first\":{\"command\":\"echo\"},\"extra-fields\":{\"command\":\"node\",\"args\":[\"x.js\"]},\"both-shapes\":{\"command\":\"node\"},\"no-shape\":{\"command\":\"\"},\"empty-command\":{\"command\":\"\"},\"empty-url\":{\"command\":\"\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"sse-one\":{\"transport\":\"sse\",\"url\":\"https://sse.example.test/x\"},\"url-without-a-type\":{\"transport\":\"http\",\"url\":\"https://bare.example.test/mcp\"},\"zz-remote-ordered-last\":{\"transport\":\"http\",\"url\":\"https://zz.example.test/mcp\"},\"aa-remote-ordered-first\":{\"transport\":\"sse\",\"url\":\"https://aa.example.test/mcp\"},\"extra-remote-fields\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/mcp\",\"headers\":{\"X-Token\":\"shh\"}},\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"tidy\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/tidy\",\"pluginSkills\":[\"archive\",\"tidy-up\",\"Zebra\"],\"pluginMcps\":[\"tidy-mcp\"],\"pluginAgents\":[\"planner\",\"reviewer\"],\"pluginCommands\":[\"tidy\"]},{\"name\":\"stale\",\"source\":\"acme\",\"kind\":\"plugin\",\"scope\":\"user\",\"pluginSkills\":[]},{\"name\":\"\",\"source\":\"acme/scoped\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/scoped\",\"pluginSkills\":[\"scoped-skill\"]},{\"name\":\"unsourced\",\"kind\":\"plugin\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/plugins/cache/unsourced\",\"pluginSkills\":[\"lonely\"]},{\"name\":\"alpha\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/alpha\"},{\"name\":\"broken\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/broken\"},{\"name\":\"dirname-x\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/dirname-x\"},{\"name\":\"empty-one\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/empty-one\"},{\"name\":\"no-skill-file\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/no-skill-file\"},{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"linear\":{\"command\":\"npx\",\"args\":[\"-y\",\"linear-mcp\"]},\"zz-ordered-last\":{\"command\":\"echo\",\"env\":{\"TOKEN\":\"shh\"}},\"aa-ordered-first\":{\"command\":\"echo\"},\"http-url-remote\":{\"command\":\"\"}},\"remoteMcpServers\":{\"sse-remote\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/codex\"},\"type-sse-remote\":{\"transport\":\"http\",\"url\":\"https://type-sse.example.test/codex\"},\"headed-remote\":{\"transport\":\"http\",\"url\":\"https://hdr.example.test/codex\"},\"sse-one\":{\"transport\":\"http\",\"url\":\"https://sse.example.test/x\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"aaa-first\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/aaa-first\"},{\"name\":\"portable\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/portable\"},{\"name\":\"zulu\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/zulu\"},{\"name\":\"refactor\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.codex/skills/refactor\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"ag-local\":{\"command\":\"ag-server\"},\"zz-ordered-last\":{\"command\":\"echo\",\"args\":[\"--x\"],\"env\":{\"A\":\"b\"}},\"aa-ordered-first\":{\"command\":\"echo\"}},\"remoteMcpServers\":{\"ag-remote\":{\"transport\":\"sse\",\"url\":\"https://ag.example.test/mcp\"},\"http-typed\":{\"transport\":\"sse\",\"url\":\"https://ht.example.test/mcp\"},\"headed-remote\":{\"transport\":\"sse\",\"url\":\"https://hdr.example.test/ag\",\"headers\":{\"X-Token\":\"shh\"}},\"http-url-remote\":{\"transport\":\"http\",\"url\":\"https://hu.example.test/ag\"},\"both-urls\":{\"transport\":\"http\",\"url\":\"https://hu2.example.test/ag\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/changes/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"plugin\",\"action\":\"remove\",\"name\":\"tidy\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Uninstall plugin \\\"tidy\\\" from Claude Code\",\"backups\":[]}],\"backups\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/doctor",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"checks\":[{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"claude is available (%%HOME%%/bin/claude)\"},{\"label\":\"Agent CLI\",\"status\":\"ok\",\"message\":\"codex is available (%%HOME%%/bin/codex)\"},{\"label\":\"Agent CLI\",\"status\":\"warn\",\"message\":\"antigravity is not available on PATH\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"claude config found at %%HOME%%/.claude.json\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"codex config found at %%HOME%%/.codex/config.toml\"},{\"label\":\"Config file\",\"status\":\"ok\",\"message\":\"antigravity config found at %%HOME%%/.gemini/antigravity-cli/mcp_config.json\"}],\"hasIssues\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":false,\"format\":\"json\",\"content\":\"\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"model = \\\"gpt-5\\\"\\n\\n[mcp_servers.linear]\\ncommand = \\\"npx\\\"\\nargs = [\\\"-y\\\", \\\"linear-mcp\\\"]\\n\\n[mcp_servers.docs]\\nurl = \\\"https://docs.example.test/mcp\\\"\\n\\n[mcp_servers.zz-ordered-last]\\ncommand = \\\"echo\\\"\\nstartup_timeout_ms = 5000\\n\\n[mcp_servers.zz-ordered-last.env]\\nTOKEN = \\\"shh\\\"\\n\\n[mcp_servers.aa-ordered-first]\\ncommand = \\\"echo\\\"\\n\\n[mcp_servers.sse-remote]\\nurl = \\\"https://sse.example.test/codex\\\"\\ntransport = \\\"sse\\\"\\n\\n[mcp_servers.type-sse-remote]\\nurl = \\\"https://type-sse.example.test/codex\\\"\\ntype = \\\"sse\\\"\\n\\n[mcp_servers.headed-remote]\\nurl = \\\"https://hdr.example.test/codex\\\"\\n\\n[mcp_servers.headed-remote.headers]\\nX-Token = \\\"shh\\\"\\n\\n[mcp_servers.http-url-remote]\\nhttpUrl = \\\"https://hu.example.test/codex\\\"\\n\",\"model\":\"gpt-5\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/antigravity",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"antigravity\",\"path\":\"%%HOME%%/.gemini/settings.json\",\"exists\":false,\"format\":\"json\",\"content\":\"\",\"modelEditable\":false}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/cursor",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown agent.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/%63laude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown agent.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/Claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown agent.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude%20",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown agent.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent-env/settings/claude",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent-env/settings/cursor",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown agent.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/settings/claude",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid settings body.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid settings body.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid settings body.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid settings body.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid settings body.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not valid JSON: Expected property name or '}' in JSON at position 2 (line 1 column 3)\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not valid JSON: Unexpected end of JSON input\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"model\\\": \\\"opus\\\",\\n  \\\"cleanupPeriodDays\\\": 7\\n}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":null}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"model\\\": \\\"opus\\\",\\n  \\\"cleanupPeriodDays\\\": 7\\n}\\n\",\"model\":\"opus\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\\"model\\\":\\\"opus\\\"}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-161457\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\\"model\\\":\\\"opus\\\"}\\n\",\"model\":\"opus\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"model\\\": \\\"opus\\\",\\n  \\\"cleanupPeriodDays\\\": 7\\n}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-161457-1\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/cursor",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown agent.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"model = \\\"gpt-5\\\"\\napproval_policy = \\\"on-request\\\"\\n\",\"model\":\"gpt-5\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.codex/config.toml.bak.20260831-161457\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"model = \\\"gpt-5\\\"\\napproval_policy = \\\"on-request\\\"\\n\",\"model\":\"gpt-5\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\nmodel = \\\"gpt-5\\\"\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"model\":\"gpt-5\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.codex/config.toml.bak.20260831-161457-1\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/codex/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\nmodel = \\\"o3\\\"\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"model\":\"o3\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.codex/config.toml.bak.20260831-161457-2\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\nmodel = \\\"o3\\\"\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"model\":\"o3\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/codex/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"modelEditable\":true},\"backup\":null}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/codex",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not valid TOML: Invalid TOML document: incomplete key-value: cannot find end of key\\n\\n1:  [oops\\n     ^\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{ not json\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{ \\\"model\\\": 7 }\\n\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"   \\n\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not valid JSON: top-level value must be an object\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not valid JSON: top-level value must be an object\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not valid JSON: Expected property name or '}' in JSON at position 2 (line 1 column 3)\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{ not json\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"model\\\": \\\"opus\\\"\\n}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-161457-2\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2\\n}\\n\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-161457-3\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2\\n}\\n\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/cursor/model",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/cursor/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown agent.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/%63laude/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown agent.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid model body.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid model body.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid model body.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid model body.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid model body.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2\\n}\\n\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-161457-4\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"sonnet\\\"\\n}\\n\",\"model\":\"sonnet\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-161457-5\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"sonnet\\\"\\n}\\n\",\"model\":\"sonnet\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"sonnet\\\"\\n}\\n\",\"model\":\"sonnet\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-161457-6\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/claude/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"gpt-5\\\"\\n}\\n\",\"model\":\"gpt-5\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-161457-7\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/codex/model",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"model = \\\"gpt-5-codex\\\"\\n# a comment\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"model\":\"gpt-5-codex\",\"modelEditable\":true},\"backup\":null}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/settings/codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"model = \\\"gpt-5-codex\\\"\\n# a comment\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"model\":\"gpt-5-codex\",\"modelEditable\":true}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/settings/antigravity/model",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Model switching isn't supported for \\\"antigravity\\\".\"}"
+    }
+  ],
+  "entries": []
+}

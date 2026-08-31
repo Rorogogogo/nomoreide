@@ -3,7 +3,7 @@ import {
   buildDiffRows,
   diffStats,
   visibleDiffRows,
-} from "../src/web/client/src/features/git/diff-viewer";
+} from "../apps/dashboard/src/features/git/diff-viewer";
 
 describe("buildDiffRows", () => {
   test("tracks old and new line numbers across unified diff rows", () => {

@@ -10,7 +10,7 @@ import { errorMessage, patternRoute, type Route } from "./context.js";
  * that would otherwise only ever show the selected one.
  *
  * Read on mount whenever the project scope is "all", so mirrored in
- * `website/src/mock-api.ts`.
+ * `apps/website/src/mock-api.ts`.
  */
 
 const DOMAINS = new Set<OverviewDomain>(["git", "github", "vercel"]);

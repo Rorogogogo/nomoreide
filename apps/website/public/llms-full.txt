@@ -1,0 +1,433 @@
+# NoMoreIDE Full AI Documentation
+
+Last reviewed for NoMoreIDE v0.1.99 in August 2026.
+
+NoMoreIDE is an AI-native local development workbench for services, logs, Git review, GitHub PR/issues/Actions workflows, database inspection, SQL review, terminal access, and MCP workflows. It runs locally and gives humans and AI coding agents one shared control surface.
+
+Human docs: https://www.nomoreide.com/docs
+AI agent guide: https://www.nomoreide.com/docs/ai-guide.md
+GitHub: https://github.com/Rorogogogo/nomoreide
+npm: https://www.npmjs.com/package/nomoreide
+
+## MCP Setup
+
+Install (no Node.js required):
+curl -fsSL https://www.nomoreide.com/install.sh | sh
+The installer detects OS and architecture, verifies the download against the release's SHA256SUMS, and installs a single binary into ~/.local/bin with the dashboard under ~/.local/share/nomoreide. Options: `sh -s -- --version <x.y.z>`, `--prefix <dir>`, `--uninstall`. Prebuilt for macOS arm64/x86_64 and Linux x86_64/arm64. The npm package remains published for a deprecation window as a compatibility shim.
+
+Recommended setup installs the NoMoreIDE MCP server and the bundled `nomoreide-debug` skill:
+
+```bash
+nomoreide setup codex
+nomoreide setup claude
+nomoreide setup gemini
+```
+
+Start a new agent session after setup, then verify with `/mcp`.
+
+Manual MCP-only setup:
+
+Claude Code:
+
+```bash
+claude mcp add --transport stdio nomoreide -- nomoreide mcp
+```
+
+Codex CLI:
+
+```bash
+codex mcp add nomoreide -- nomoreide mcp
+```
+
+Gemini CLI:
+
+```json
+{
+  "mcpServers": {
+    "nomoreide": {
+      "command": "nomoreide",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Universal prompt:
+
+```text
+Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs `nomoreide mcp`. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.
+```
+
+Verify with `/mcp`.
+
+## Interfaces
+
+Default MCP server:
+
+```bash
+nomoreide
+```
+
+Terminal UI:
+
+```bash
+nomoreide tui
+```
+
+Web dashboard:
+
+```bash
+nomoreide web
+```
+
+Default dashboard URL:
+
+```text
+http://127.0.0.1:4317
+```
+
+The standalone macOS desktop app is available from GitHub Releases. It provides the dashboard through a native Tauri shell without requiring a separately launched Node backend.
+
+## CLI Reference
+
+Important commands:
+
+```bash
+nomoreide setup
+nomoreide setup codex
+nomoreide web
+nomoreide tui
+nomoreide list
+nomoreide add service backend --command "npm run dev" --cwd /absolute/path/to/backend --port 3001
+nomoreide add bundle full-stack db backend frontend
+nomoreide start backend
+nomoreide stop backend
+nomoreide restart backend
+nomoreide logs backend
+```
+
+Git commands:
+
+```bash
+nomoreide git status --cwd /path/to/repo
+nomoreide git diff --cwd /path/to/repo
+nomoreide git stage --cwd /path/to/repo src/index.ts
+nomoreide git unstage --cwd /path/to/repo src/index.ts
+nomoreide git commit --cwd /path/to/repo --message "feat: add dashboard"
+nomoreide git log --cwd /path/to/repo
+nomoreide git branch --cwd /path/to/repo
+nomoreide git fetch --cwd /path/to/repo
+nomoreide git switch --cwd /path/to/repo feature/my-work
+nomoreide git create-branch --cwd /path/to/repo feature/new-work
+nomoreide git add-repo app --path /path/to/repo
+nomoreide git select-repo app
+```
+
+Agent environment and profile commands:
+
+```bash
+nomoreide agents status
+nomoreide agents doctor
+nomoreide agents read claude
+nomoreide profile list
+nomoreide profile snapshot claude my-setup
+nomoreide profile apply my-setup codex --dry-run
+nomoreide profile apply my-setup codex
+nomoreide profile export my-setup
+nomoreide profile import my-setup.tar.gz --as teammate-setup
+nomoreide profile publish my-setup --slug my-setup --title "My Setup"
+nomoreide profile install my-setup
+```
+
+## Web Dashboard Guide
+
+Overview: compare repository branch, change, CI, deployment, service, and activity state across all registered projects.
+
+Services: register local, Docker Compose, and SSH services; model dependencies; start, stop, restart, inspect process state and ports, open URLs, and manage bundles.
+
+Activity: monitor process CPU, memory, energy impact, ports, and runtime health across projects.
+
+Docker: inspect containers, images, volumes, networks, Compose projects, logs, and resource details.
+
+Git Review: select or clone repositories, manage branches and worktrees, inspect status, diffs, history, and large files, create snapshots, stage explicit files, commit reviewed work, push with resolved credentials, and inspect commit CI.
+
+GitHub: connect and switch accounts, review PRs, issues, comments, branches, CI status, and GitHub Actions workflow runs. Create PRs/issues or merge PRs only when user intent is explicit.
+
+Vercel: inspect linked projects, deployments, production state, and build logs. Vercel MCP tools are read-only; redeploy, cancel, promote, and rollback remain human dashboard actions.
+
+Workflows: run built-in commit/push/ship templates; author reusable action, isolated-agent, and approval-gate steps; resume interrupted runs; and bind workflows to project events.
+
+Error Inbox: review deduplicated incidents and use snapshots plus reviewable change-sets for agent-assisted fixes.
+
+Database: register and verify connections, browse schemas and database objects, inspect definitions and create scripts, sample rows, run read-only SQL, generate SQL with the agent dock, and use unlock + preview + commit for human-approved writes.
+
+Terminal: use project shells, split agent task terminals, and a draggable bottom or side dock.
+
+Agent dock: pass structured UI context to Codex or Claude, discover skills, inspect usage and tool-call activity, and keep live run status visible.
+
+Agent Environments: inspect and safely move MCP servers, skills, and plugins between supported agents and scopes. Snapshot, apply, export, import, publish, and install portable credential-redacted profiles.
+
+Settings: search global and per-project preferences for appearance, language, agent behavior, runtime, and integrations.
+
+## MCP Tool Reference
+
+Service tools:
+
+```text
+nomoreide_list_services
+nomoreide_register_service
+nomoreide_start_service
+nomoreide_stop_service
+nomoreide_restart_service
+nomoreide_read_logs
+nomoreide_register_bundle
+nomoreide_start_bundle
+nomoreide_stop_bundle
+nomoreide_status
+nomoreide_service_context
+nomoreide_service_health
+nomoreide_timeline
+```
+
+Repo onboarding:
+
+```text
+nomoreide_onboard_repo
+```
+
+Git tools:
+
+```text
+nomoreide_git_status
+nomoreide_git_branches
+nomoreide_git_switch_branch
+nomoreide_git_create_branch
+nomoreide_git_fetch
+nomoreide_git_diff
+nomoreide_git_staged_diff
+nomoreide_git_log
+nomoreide_git_stage
+nomoreide_git_unstage
+nomoreide_git_commit
+nomoreide_git_push
+nomoreide_git_clone
+nomoreide_git_register_repository
+nomoreide_git_select_repository
+nomoreide_git_worktrees
+nomoreide_git_create_worktree
+nomoreide_git_select_worktree
+nomoreide_git_prune_worktrees
+```
+
+Snapshot tools:
+
+```text
+nomoreide_snapshots_list
+nomoreide_snapshot_create
+```
+
+Error tools:
+
+```text
+nomoreide_list_errors
+nomoreide_error_prompt
+```
+
+Database tools:
+
+```text
+nomoreide_list_databases
+nomoreide_register_database
+nomoreide_check_database
+nomoreide_db_schemas
+nomoreide_db_objects
+nomoreide_db_object_details
+nomoreide_db_tables
+nomoreide_db_sample
+nomoreide_db_query
+```
+
+GitHub tools:
+
+```text
+nomoreide_github_set_token
+nomoreide_github_list_prs
+nomoreide_github_get_pr
+nomoreide_github_get_pr_diff
+nomoreide_github_create_pr
+nomoreide_github_merge_pr
+nomoreide_github_list_issues
+nomoreide_github_get_issue
+nomoreide_github_list_issue_comments
+nomoreide_github_add_issue_comment
+nomoreide_github_create_issue
+nomoreide_github_get_commit_ci
+nomoreide_github_list_workflow_runs
+```
+
+Vercel tools:
+
+```text
+nomoreide_deploy_list_projects
+nomoreide_deploy_list_deployments
+nomoreide_deploy_get_deployment
+nomoreide_deploy_logs
+```
+
+Documentation and UI tools:
+
+```text
+nomoreide_docs
+nomoreide_open_ui
+nomoreide_close_ui
+```
+
+Terminal presentation tools (macOS):
+
+```text
+nomoreide_list_terminal_sessions
+nomoreide_open_terminal
+nomoreide_reclaim_terminal
+```
+
+Agent environment tools:
+
+```text
+nomoreide_agents_status
+nomoreide_agents_read_configs
+nomoreide_agents_doctor
+nomoreide_agents_add_mcp
+nomoreide_agents_remove_mcp
+nomoreide_agents_move_mcp_scope
+nomoreide_agents_move_skill_scope
+nomoreide_agents_snapshot_agent
+```
+
+Agent profile and registry tools:
+
+```text
+nomoreide_profiles_list
+nomoreide_profiles_get
+nomoreide_profiles_create
+nomoreide_profiles_update
+nomoreide_profiles_delete
+nomoreide_profiles_snapshot
+nomoreide_profiles_apply
+nomoreide_profiles_export
+nomoreide_profiles_import
+nomoreide_profiles_copy_items
+nomoreide_profiles_publish
+nomoreide_profiles_install_from_registry
+nomoreide_profiles_register_github
+```
+
+## Configuration Model
+
+Config path:
+
+```text
+~/.config/nomoreide/config.json
+```
+
+Config sections:
+
+- services: local, Docker Compose, or SSH service definitions.
+- bundles: ordered groups of service names.
+- gitRepositories: named repository paths.
+- selectedGitRepository: active repository for the UI.
+- databases: Postgres, MySQL, or SQLite connections.
+- logSources: file, SSH, command, journald, or Docker log readers.
+- githubTokens: GitHub tokens used for PR, issue, CI, and Actions API access.
+- githubIdentities: selectable Git author and GitHub account identities.
+- vercel: the active Vercel authentication and team scope.
+- workflows: user-saved git/GitHub workflows built from action, agent, and gate steps.
+- workflowTriggers: event bindings that automatically start saved workflows.
+
+## Safety Model
+
+NoMoreIDE is designed for safe AI-assisted local development:
+
+- It does not scan or enumerate the whole filesystem.
+- It only works from registered services, repositories, databases, and log sources.
+- It does not kill external processes that it did not start.
+- It reports port conflicts instead of terminating the occupying process.
+- Git tools omit hard reset, clean, force push, and branch deletion.
+- Git staging requires explicit file paths.
+- Database MCP tools are read-only. Writes are staged for the human-only SQL console.
+- Database writes require explicit unlock, preview, and commit.
+- GitHub merge/comment/create tools require a configured token and explicit user intent.
+- Vercel MCP tools are read-only; deployment mutations are available only in the human dashboard.
+- Agent environment writes create backups, and profile exports/publishing redact credential values.
+- SSH services rely on the user's local SSH config and agent.
+- Managed service logs are scoped to `.nomoreide/logs/`.
+
+## AI Agent Guide
+
+Recommended session prompt:
+
+```text
+Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git and GitHub work, inspect status, diffs, PRs, issues, and CI before staging, committing, or merging. For database work, keep MCP queries read-only; return one statement in a standard sql fence, identify the target connection, and direct the human to review it in the locked Web UI SQL console.
+```
+
+Recommended workflow:
+
+1. Call `nomoreide_list_services`.
+2. Call `nomoreide_status`.
+3. Use `nomoreide_open_ui` if the human wants the dashboard.
+4. For service debugging, call `nomoreide_service_health`, `nomoreide_read_logs`, and `nomoreide_timeline`.
+5. For Git work, call status and diffs before staging or committing.
+6. For database inspection, list databases, schemas, and objects; inspect the selected object; then sample rows or run read-only SQL when needed.
+7. For database writes, reply with exactly one statement in a standard `sql` fenced block, identify the target connection, and direct the human to the locked Web UI SQL console for unlock, preview, and commit.
+8. For GitHub work, use NoMoreIDE GitHub tools for PRs, issues, comments, CI, and workflow runs.
+9. For Vercel work, inspect projects, deployments, and logs through MCP; leave deployment mutations to the human dashboard.
+10. Preview agent environment or profile changes before applying them, and report created backups.
+
+## Troubleshooting
+
+MCP server does not show up: re-run setup, restart the agent, verify with `/mcp`, and confirm `nomoreide mcp` starts.
+
+Node or npx problems: use Node.js 20 or newer, check `node --version`, or install globally with `npm install -g nomoreide`.
+
+Dashboard port conflict: default port is `4317`; start with `nomoreide web --port=4320`.
+
+Service will not start: check absolute `cwd`, command validity, service health, logs, and timeline.
+
+Logs are empty: confirm the service was started by NoMoreIDE and writes to stdout or stderr.
+
+Git repository is not registered: register an absolute Git worktree path.
+
+Database connection fails: verify the URL, network reachability, and credentials.
+
+## Architecture
+
+Core layer: configuration, the shared daemon and process registry, logs and activity metrics, Git/worktrees/snapshots, GitHub and Vercel context, database inspection, workflows, agent environments, profiles, and error/change-set diagnostics.
+
+MCP server: FastMCP stdio server that registers domain tool groups from `src/mcp/tools/`.
+
+Web server: local HTTP server and route registry under `src/web/routes/`.
+
+React dashboard: Vite, React, Tailwind CSS, feature modules under `apps/dashboard/src/features/`.
+
+CLI, TUI, and desktop: `src/index.ts` dispatches to MCP, TUI, web, service, Git, database, agent environment, and profile commands; Tauri provides the standalone macOS shell.
+
+Data flow:
+
+```text
+AI agent -> MCP stdio -> NoMoreIDE tools -> shared core and daemon -> local development resources
+Human -> CLI/TUI/Web/macOS dashboard -> the same core managers
+```
+
+## Development
+
+```bash
+npm install
+npm run dev
+npm run dev:web
+npm test
+npm run build
+npm --prefix apps/website run build
+```
+
+## Licensing
+
+NoMoreIDE is AGPL-3.0 licensed with a commercial license available. See `LICENSE` and `COMMERCIAL.md`.

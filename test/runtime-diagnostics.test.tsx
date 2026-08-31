@@ -9,11 +9,11 @@ import {
   runtimeApiTarget,
   runtimeDiagnosticsMockEnabled,
   runtimeRestartCommand,
-} from "../src/web/client/src/components/runtime-diagnostics";
+} from "../apps/dashboard/src/components/runtime-diagnostics";
 import {
   probeRuntimeHealth,
   resetRuntimeConnectionForTests,
-} from "../src/web/client/src/lib/runtime-connection";
+} from "../apps/dashboard/src/lib/runtime-connection";
 
 let host: HTMLDivElement;
 let root: Root;

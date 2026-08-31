@@ -1,0 +1,457 @@
+{
+  "version": 1,
+  "gate": "service-files",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cwd\":\"%%WORKSPACE%%\",\"files\":[{\"path\":\"%%WORKSPACE%%/.env\",\"relativePath\":\".env\",\"format\":\"env\"},{\"path\":\"%%WORKSPACE%%/.env.production\",\"relativePath\":\".env.production\",\"format\":\"env\"},{\"path\":\"%%WORKSPACE%%/application.yml\",\"relativePath\":\"application.yml\",\"format\":\"yaml\"},{\"path\":\"%%WORKSPACE%%/appsettings.json\",\"relativePath\":\"appsettings.json\",\"format\":\"json\"},{\"path\":\"%%WORKSPACE%%/nested/application-test.yaml\",\"relativePath\":\"nested/application-test.yaml\",\"format\":\"yaml\"},{\"path\":\"%%WORKSPACE%%/nested/appsettings.Development.json\",\"relativePath\":\"nested/appsettings.Development.json\",\"format\":\"json\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/ghost/config-files",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"ghost\\\" not found.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/api/config-files",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cwd\":\"%%WORKSPACE%%\",\"currentPath\":\"%%WORKSPACE%%\",\"relativePath\":\"\",\"isRoot\":true,\"entries\":[{\"name\":\"a\",\"relativePath\":\"a\",\"kind\":\"directory\",\"supported\":true},{\"name\":\"nested\",\"relativePath\":\"nested\",\"kind\":\"directory\",\"supported\":true},{\"name\":\".env\",\"relativePath\":\".env\",\"kind\":\"file\",\"format\":\"env\",\"supported\":true},{\"name\":\".env.production\",\"relativePath\":\".env.production\",\"kind\":\"file\",\"format\":\"env\",\"supported\":true},{\"name\":\"application.yml\",\"relativePath\":\"application.yml\",\"kind\":\"file\",\"format\":\"yaml\",\"supported\":true},{\"name\":\"appsettings.json\",\"relativePath\":\"appsettings.json\",\"kind\":\"file\",\"format\":\"json\",\"supported\":true},{\"name\":\"config.json\",\"relativePath\":\"config.json\",\"kind\":\"file\",\"supported\":false},{\"name\":\"readme.md\",\"relativePath\":\"readme.md\",\"kind\":\"file\",\"supported\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse?path=%20%20",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cwd\":\"%%WORKSPACE%%\",\"currentPath\":\"%%WORKSPACE%%\",\"relativePath\":\"\",\"isRoot\":true,\"entries\":[{\"name\":\"a\",\"relativePath\":\"a\",\"kind\":\"directory\",\"supported\":true},{\"name\":\"nested\",\"relativePath\":\"nested\",\"kind\":\"directory\",\"supported\":true},{\"name\":\".env\",\"relativePath\":\".env\",\"kind\":\"file\",\"format\":\"env\",\"supported\":true},{\"name\":\".env.production\",\"relativePath\":\".env.production\",\"kind\":\"file\",\"format\":\"env\",\"supported\":true},{\"name\":\"application.yml\",\"relativePath\":\"application.yml\",\"kind\":\"file\",\"format\":\"yaml\",\"supported\":true},{\"name\":\"appsettings.json\",\"relativePath\":\"appsettings.json\",\"kind\":\"file\",\"format\":\"json\",\"supported\":true},{\"name\":\"config.json\",\"relativePath\":\"config.json\",\"kind\":\"file\",\"supported\":false},{\"name\":\"readme.md\",\"relativePath\":\"readme.md\",\"kind\":\"file\",\"supported\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse?path=nested",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cwd\":\"%%WORKSPACE%%\",\"currentPath\":\"%%WORKSPACE%%/nested\",\"relativePath\":\"nested\",\"isRoot\":false,\"entries\":[{\"name\":\"application-test.yaml\",\"relativePath\":\"nested/application-test.yaml\",\"kind\":\"file\",\"format\":\"yaml\",\"supported\":true},{\"name\":\"appsettings.Development.json\",\"relativePath\":\"nested/appsettings.Development.json\",\"kind\":\"file\",\"format\":\"json\",\"supported\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse?path=.%2Fnested",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cwd\":\"%%WORKSPACE%%\",\"currentPath\":\"%%WORKSPACE%%/nested\",\"relativePath\":\"nested\",\"isRoot\":false,\"entries\":[{\"name\":\"application-test.yaml\",\"relativePath\":\"nested/application-test.yaml\",\"kind\":\"file\",\"format\":\"yaml\",\"supported\":true},{\"name\":\"appsettings.Development.json\",\"relativePath\":\"nested/appsettings.Development.json\",\"kind\":\"file\",\"format\":\"json\",\"supported\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse?path=%%WORKSPACE%%%2Fnested",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cwd\":\"%%WORKSPACE%%\",\"currentPath\":\"%%WORKSPACE%%/nested\",\"relativePath\":\"nested\",\"isRoot\":false,\"entries\":[{\"name\":\"application-test.yaml\",\"relativePath\":\"nested/application-test.yaml\",\"kind\":\"file\",\"format\":\"yaml\",\"supported\":true},{\"name\":\"appsettings.Development.json\",\"relativePath\":\"nested/appsettings.Development.json\",\"kind\":\"file\",\"format\":\"json\",\"supported\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse?path=..",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Path must live inside the service directory.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse?path=nested%2F..%2F..%2F..",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Path must live inside the service directory.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse?path=%2Fetc",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Path must live inside the service directory.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse?path=missing",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cwd\":\"%%WORKSPACE%%\",\"currentPath\":\"%%WORKSPACE%%/missing\",\"relativePath\":\"missing\",\"isRoot\":false,\"entries\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-browse?path=.env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cwd\":\"%%WORKSPACE%%\",\"currentPath\":\"%%WORKSPACE%%/.env\",\"relativePath\":\".env\",\"isRoot\":false,\"entries\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/api/config-browse",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"path is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=%20%20",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"path is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"env\",\"path\":\"%%WORKSPACE%%/.env\",\"relativePath\":\".env\",\"entries\":[{\"key\":\"TOKEN\",\"value\":\"original\",\"secret\":true},{\"key\":\"PLAIN\",\"value\":\"value\",\"secret\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=.env.production",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"env\",\"path\":\"%%WORKSPACE%%/.env.production\",\"relativePath\":\".env.production\",\"entries\":[{\"key\":\"MODE\",\"value\":\"prod\",\"secret\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=appsettings.json",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"json\",\"path\":\"%%WORKSPACE%%/appsettings.json\",\"relativePath\":\"appsettings.json\",\"content\":\"{ \\\"from\\\": \\\"fixture\\\" }\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=application.yml",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"yaml\",\"path\":\"%%WORKSPACE%%/application.yml\",\"relativePath\":\"application.yml\",\"content\":\"from: fixture\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=nested%2Fappsettings.Development.json",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"json\",\"path\":\"%%WORKSPACE%%/nested/appsettings.Development.json\",\"relativePath\":\"nested/appsettings.Development.json\",\"content\":\"{ \\\"nested\\\": true }\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=.env.local",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":false,\"format\":\"env\",\"path\":\"%%WORKSPACE%%/.env.local\",\"relativePath\":\".env.local\",\"entries\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=config.json",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unsupported config file: config.json\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=readme.md",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unsupported config file: readme.md\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=..%2Fsecrets.env",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Config file must live inside the service directory.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=%2Fetc%2Fhosts",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Config file must live inside the service directory.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=.env%00",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid config file path.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"env\",\"path\":\"%%WORKSPACE%%/.env\",\"relativePath\":\".env\",\"entries\":[{\"key\":\"TOKEN\",\"value\":\"rotated\",\"secret\":true},{\"key\":\"FRESH\",\"value\":\"added\",\"secret\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"env\",\"path\":\"%%WORKSPACE%%/.env\",\"relativePath\":\".env\",\"entries\":[{\"key\":\"TOKEN\",\"value\":\"rotated\",\"secret\":true},{\"key\":\"FRESH\",\"value\":\"added\",\"secret\":false}]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env.local",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"env\",\"path\":\"%%WORKSPACE%%/.env.local\",\"relativePath\":\".env.local\",\"entries\":[{\"key\":\"ONLY\",\"value\":\"one\",\"secret\":false}]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"entries must be an array.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"entries must be an array.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"entries must be an array.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"each entry must be { key, value }.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"invalid env key: \\\"not a name\\\"\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"invalid env key: undefined\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"value for \\\"TOKEN\\\" must be a string.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"duplicate env key: TOKEN\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=.env",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"env\",\"path\":\"%%WORKSPACE%%/.env\",\"relativePath\":\".env\",\"entries\":[{\"key\":\"A.B\",\"value\":\"dotted\",\"secret\":false}]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=appsettings.json",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"json\",\"path\":\"%%WORKSPACE%%/appsettings.json\",\"relativePath\":\"appsettings.json\",\"content\":\"{\\n  \\\"a\\\": 1\\n}\\n\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=appsettings.json",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid JSON: Expected property name or '}' in JSON at position 2 (line 1 column 3)\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=appsettings.json",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"content must be a string\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=appsettings.json",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"content must be a string\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=application.yml",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"yaml\",\"path\":\"%%WORKSPACE%%/application.yml\",\"relativePath\":\"application.yml\",\"content\":\":\\n  not: [valid\\n\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=brand%2Fnew%2Fappsettings.json",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"exists\":true,\"format\":\"json\",\"path\":\"%%WORKSPACE%%/brand/new/appsettings.json\",\"relativePath\":\"brand/new/appsettings.json\",\"content\":\"{}\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/services/api/config-file?path=..%2Fescape.env",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Config file must live inside the service directory.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/api/env/runtime",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"runtime\":{\"running\":false,\"staleFiles\":[],\"stale\":false}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/ghost/env/runtime",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"ghost\\\" not found.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/api/env/runtime",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    }
+  ],
+  "entries": []
+}

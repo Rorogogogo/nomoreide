@@ -1,0 +1,2186 @@
+{
+  "version": 1,
+  "gate": "github-connection",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":false,\"storedConfigured\":false,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"status\":\"not_configured\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/accounts",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"available\":true,\"accounts\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/token",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"token is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/token",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"token is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/token",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"token is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"login\":\"octocat\",\"avatarUrl\":\"https://avatars.example/octocat.png\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"status\":\"connection_error\",\"error\":\"Server Error\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"login\":\"octocat\",\"avatarUrl\":\"https://avatars.example/octocat.png\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"login\":\"octocat\",\"avatarUrl\":\"https://avatars.example/octocat.png\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/repositories",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[],\"bundles\":[],\"gitRepositories\":[{\"name\":\"widgets\",\"path\":\"%%WORKSPACE%%\"}],\"selectedGitRepository\":\"widgets\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[{\"host\":\"github.com\",\"login\":\"octocat\",\"avatarUrl\":\"https://avatars.example/octocat.png\"}],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"repositoryName\":\"widgets\",\"status\":\"connected\",\"credential\":{\"source\":\"stored\",\"host\":\"github.com\"},\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\",\"private\":false,\"html_url\":\"https://github.com/acme/widgets\"},\"repositorySlug\":\"acme/widgets\",\"user\":{\"login\":\"octocat\",\"avatarUrl\":\"https://avatars.example/octocat.png\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"repositoryName\":\"widgets\",\"status\":\"repo_access\",\"credential\":{\"source\":\"stored\",\"host\":\"github.com\"},\"repositorySlug\":\"acme/widgets\",\"user\":{\"login\":\"octocat\",\"avatarUrl\":\"https://avatars.example/octocat.png\"},\"error\":\"Not Found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"repositoryName\":\"widgets\",\"status\":\"auth_error\",\"error\":\"Bad credentials\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"repositoryName\":\"widgets\",\"status\":\"auth_error\",\"error\":\"Resource not accessible\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"repositoryName\":\"widgets\",\"status\":\"connection_error\",\"error\":\"Server Error\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"repository and credential are required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"repository and credential are required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"repository and credential are required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unsupported GitHub credential source\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"repository and credential are required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"repository and credential are required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"repository and credential are required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected repository uses github.com; choose a github.com account.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unsupported GitHub credential source\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"GitHub CLI host and login are required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"GitHub CLI host and login are required\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"GitHub CLI could not provide credentials for @nmi-gate-no-such-account on github.com. Re-authenticate with gh auth login or choose another account.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/account",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Git repository \\\"never-registered\\\" is not registered.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"selected\":{\"source\":\"stored\",\"host\":\"github.com\"},\"repositoryName\":\"widgets\",\"status\":\"connected\",\"credential\":{\"source\":\"stored\",\"host\":\"github.com\"},\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\",\"private\":false,\"html_url\":\"https://github.com/acme/widgets\"},\"repositorySlug\":\"acme/widgets\",\"user\":{\"login\":\"octocat\",\"avatarUrl\":\"https://avatars.example/octocat.png\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"device_code\":\"dev-code-1\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"verification_uri_complete\":\"https://github.com/login/device?user_code=ABCD-1234\",\"expires_in\":600,\"interval\":7}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"device_code\":\"dev-code-2\",\"verification_uri\":\"https://github.com/login/device\",\"verification_uri_complete\":\"https://github.com/login/device\",\"expires_in\":900,\"interval\":5}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"expires_in\":900,\"interval\":5}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"device_code\":\"dev-code-3\",\"expires_in\":0,\"interval\":5}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"This app cannot use the device flow.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"unauthorized_client\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"device_code\":\"dev-code-4\",\"expires_in\":900,\"interval\":5}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"device_code\":42,\"user_code\":null,\"verification_uri\":{\"href\":\"x\"},\"verification_uri_complete\":{\"href\":\"x\"},\"expires_in\":900,\"interval\":5}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"device_flow_disabled\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unexpected token 'h', \\\"that is not json\\\" is not valid JSON\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"device_code is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"device_code is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"device_code is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"device_code is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"done\":false,\"slowDown\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"done\":false,\"slowDown\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The user cancelled.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Authorization failed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Authorization failed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"expired_token\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/oauth/poll",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"done\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"selected\":{\"source\":\"stored\",\"host\":\"github.com\"},\"repositoryName\":\"widgets\",\"status\":\"connected\",\"credential\":{\"source\":\"stored\",\"host\":\"github.com\"},\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\",\"private\":false,\"html_url\":\"https://github.com/acme/widgets\"},\"repositorySlug\":\"acme/widgets\",\"user\":{\"login\":\"octocat\",\"avatarUrl\":\"https://avatars.example/octocat.png\"}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/github/token/enterprise.example",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/github/token/github%2Ecom",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":false,\"storedConfigured\":false,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"selected\":{\"source\":\"stored\",\"host\":\"github.com\"},\"repositoryName\":\"widgets\",\"status\":\"connection_error\",\"error\":\"No stored GitHub token configured for github.com. Choose a GitHub CLI account or connect GitHub.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token/github.com",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":false,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"selected\":{\"source\":\"gh\",\"host\":\"github.com\",\"login\":\"nmi-gate-no-such-account\"},\"repositoryName\":\"widgets\",\"status\":\"connection_error\",\"error\":\"GitHub CLI could not provide credentials for @nmi-gate-no-such-account on github.com. Re-authenticate with gh auth login or choose another account.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":false,\"storedConfigured\":false,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"selected\":{\"source\":\"stored\",\"host\":\"enterprise.example\"},\"repositoryName\":\"widgets\",\"status\":\"connection_error\",\"error\":\"The selected GitHub credential is for enterprise.example, but this repository uses github.com.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"login\":\"no-avatar-user\",\"avatarUrl\":\"https://github.com/no-avatar-user.png?size=64\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"login\":\"we ird/name+x\",\"avatarUrl\":\"https://github.com/we%20ird%2Fname%2Bx.png?size=64\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/token",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configured\":true,\"storedConfigured\":true,\"deviceFlowAvailable\":true,\"accounts\":[],\"cliAvailable\":true,\"status\":\"connected\",\"user\":{\"avatarUrl\":\"https://github.com/undefined.png?size=64\"}}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "status/not-configured",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": false,
+            "storedConfigured": false,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "status": "not_configured"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "accounts/from-gh",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "available": true,
+            "accounts": []
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "token/no-body",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "token is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "token/blank-token",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "token is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "token/only-a-host",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "token is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "token/store-with-identity",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-one",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/token-only",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "login": "octocat",
+              "avatarUrl": "https://avatars.example/octocat.png"
+            }
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "token/store-when-identity-is-unavailable",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/identity-unavailable",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "status": "connection_error",
+            "error": "Server Error"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/backfills-the-identity",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "login": "octocat",
+              "avatarUrl": "https://avatars.example/octocat.png"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/identity-is-cached",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "login": "octocat",
+              "avatarUrl": "https://avatars.example/octocat.png"
+            }
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "setup/register-the-repository",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "config": {
+              "version": 1,
+              "services": [],
+              "bundles": [],
+              "gitRepositories": [
+                {
+                  "name": "widgets",
+                  "path": "%%WORKSPACE%%"
+                }
+              ],
+              "selectedGitRepository": "widgets",
+              "databases": [],
+              "logSources": [],
+              "sshServers": [],
+              "githubTokens": [
+                {
+                  "host": "github.com",
+                  "login": "octocat",
+                  "avatarUrl": "https://avatars.example/octocat.png"
+                }
+              ],
+              "githubIdentities": [],
+              "connections": {},
+              "workflows": [],
+              "workflowTriggers": []
+            }
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/connected",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "repositoryName": "widgets",
+            "status": "connected",
+            "credential": {
+              "source": "stored",
+              "host": "github.com"
+            },
+            "repository": {
+              "full_name": "acme/widgets",
+              "default_branch": "main",
+              "private": false,
+              "html_url": "https://github.com/acme/widgets"
+            },
+            "repositorySlug": "acme/widgets",
+            "user": {
+              "login": "octocat",
+              "avatarUrl": "https://avatars.example/octocat.png"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/repository-not-visible",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "repositoryName": "widgets",
+            "status": "repo_access",
+            "credential": {
+              "source": "stored",
+              "host": "github.com"
+            },
+            "repositorySlug": "acme/widgets",
+            "user": {
+              "login": "octocat",
+              "avatarUrl": "https://avatars.example/octocat.png"
+            },
+            "error": "Not Found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/credential-rejected",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "repositoryName": "widgets",
+            "status": "auth_error",
+            "error": "Bad credentials"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/forbidden",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "repositoryName": "widgets",
+            "status": "auth_error",
+            "error": "Resource not accessible"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/github-broken",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "repositoryName": "widgets",
+            "status": "connection_error",
+            "error": "Server Error"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "account/no-body",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "repository and credential are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/no-credential",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "repository and credential are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/credential-is-a-string",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "repository and credential are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/credential-is-an-array",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Unsupported GitHub credential source"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/credential-is-null",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "repository and credential are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/no-repository",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "repository and credential are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/blank-repository",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "repository and credential are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/enterprise-host",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "The selected repository uses github.com; choose a github.com account."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/unsupported-source",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Unsupported GitHub credential source"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/gh-without-a-login",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "GitHub CLI host and login are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/gh-without-a-host",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "GitHub CLI host and login are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/gh-account-this-machine-does-not-have",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "GitHub CLI could not provide credentials for @nmi-gate-no-such-account on github.com. Re-authenticate with gh auth login or choose another account."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/stored",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "account/unregistered-repository",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Git repository \"never-registered\" is not registered."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/after-choosing-stored",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "selected": {
+              "source": "stored",
+              "host": "github.com"
+            },
+            "repositoryName": "widgets",
+            "status": "connected",
+            "credential": {
+              "source": "stored",
+              "host": "github.com"
+            },
+            "repository": {
+              "full_name": "acme/widgets",
+              "default_branch": "main",
+              "private": false,
+              "html_url": "https://github.com/acme/widgets"
+            },
+            "repositorySlug": "acme/widgets",
+            "user": {
+              "login": "octocat",
+              "avatarUrl": "https://avatars.example/octocat.png"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-two",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "device_code": "dev-code-1",
+            "user_code": "ABCD-1234",
+            "verification_uri": "https://github.com/login/device",
+            "verification_uri_complete": "https://github.com/login/device?user_code=ABCD-1234",
+            "expires_in": 600,
+            "interval": 7
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start-minimal",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "device_code": "dev-code-2",
+            "verification_uri": "https://github.com/login/device",
+            "verification_uri_complete": "https://github.com/login/device",
+            "expires_in": 900,
+            "interval": 5
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start-empty-payload",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "expires_in": 900,
+            "interval": 5
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start-null-and-zero",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "device_code": "dev-code-3",
+            "expires_in": 0,
+            "interval": 5
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start-refused",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "This app cannot use the device flow."
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start-refused-without-a-description",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "unauthorized_client"
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start-empty-error",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "device_code": "dev-code-4",
+            "expires_in": 900,
+            "interval": 5
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start-unexpected-types",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "device_code": 42,
+            "user_code": null,
+            "verification_uri": {
+              "href": "x"
+            },
+            "verification_uri_complete": {
+              "href": "x"
+            },
+            "expires_in": 900,
+            "interval": 5
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start-refused-with-a-null-description",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "device_flow_disabled"
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/start-not-json",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Unexpected token 'h', \"that is not json\" is not valid JSON"
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/device/code",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "scope": "repo workflow read:org"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/poll-no-body",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "device_code is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "oauth/poll-empty-device-code",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "device_code is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "oauth/poll-numeric-device-code",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "device_code is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "oauth/poll-garbage-body",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "device_code is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "oauth/poll-pending",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "done": false,
+            "slowDown": false
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/oauth/access_token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "device_code": "dev-code-1",
+              "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/poll-slow-down",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "done": false,
+            "slowDown": true
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/oauth/access_token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "device_code": "dev-code-1",
+              "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/poll-denied",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "The user cancelled."
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/oauth/access_token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "device_code": "dev-code-1",
+              "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/poll-nothing-at-all",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Authorization failed"
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/oauth/access_token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "device_code": "dev-code-1",
+              "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/poll-empty-token",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Authorization failed"
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/oauth/access_token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "device_code": "dev-code-1",
+              "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/poll-empty-error",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": ""
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/oauth/access_token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "device_code": "dev-code-1",
+              "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/poll-null-description",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "expired_token"
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/login/oauth/access_token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "device_code": "dev-code-1",
+              "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "oauth/poll-authorized",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "done": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-from-device-flow",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/login/oauth/access_token",
+            "accept": "application/json",
+            "authorization": null,
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "client_id": "Ov23litfv3LE0LevxlT2",
+              "device_code": "dev-code-1",
+              "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/after-the-device-flow",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "selected": {
+              "source": "stored",
+              "host": "github.com"
+            },
+            "repositoryName": "widgets",
+            "status": "connected",
+            "credential": {
+              "source": "stored",
+              "host": "github.com"
+            },
+            "repository": {
+              "full_name": "acme/widgets",
+              "default_branch": "main",
+              "private": false,
+              "html_url": "https://github.com/acme/widgets"
+            },
+            "repositorySlug": "acme/widgets",
+            "user": {
+              "login": "octocat",
+              "avatarUrl": "https://avatars.example/octocat.png"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-from-device-flow",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "token/remove-unknown-host",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "token/remove-percent-encoded",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/after-removal",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": false,
+            "storedConfigured": false,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "selected": {
+              "source": "stored",
+              "host": "github.com"
+            },
+            "repositoryName": "widgets",
+            "status": "connection_error",
+            "error": "No stored GitHub token configured for github.com. Choose a GitHub CLI account or connect GitHub."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "token/remove-wrong-method",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/gh-credential-no-stored-token",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": false,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "selected": {
+              "source": "gh",
+              "host": "github.com",
+              "login": "nmi-gate-no-such-account"
+            },
+            "repositoryName": "widgets",
+            "status": "connection_error",
+            "error": "GitHub CLI could not provide credentials for @nmi-gate-no-such-account on github.com. Re-authenticate with gh auth login or choose another account."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "status/gh-credential-for-another-host",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": false,
+            "storedConfigured": false,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "selected": {
+              "source": "stored",
+              "host": "enterprise.example"
+            },
+            "repositoryName": "widgets",
+            "status": "connection_error",
+            "error": "The selected GitHub credential is for enterprise.example, but this repository uses github.com."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "setup/token-for-an-account-with-no-avatar",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-avatar",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/avatar-derived-from-the-login",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "login": "no-avatar-user",
+              "avatarUrl": "https://github.com/no-avatar-user.png?size=64"
+            }
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "setup/token-for-an-account-needing-escaping",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-escape",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/avatar-escapes-the-login",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "login": "we ird/name+x",
+              "avatarUrl": "https://github.com/we%20ird%2Fname%2Bx.png?size=64"
+            }
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "setup/token-for-an-unnamed-account",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-nameless",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "status/account-github-would-not-name",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "configured": true,
+            "storedConfigured": true,
+            "deviceFlowAvailable": true,
+            "accounts": [],
+            "cliAvailable": true,
+            "status": "connected",
+            "user": {
+              "avatarUrl": "https://github.com/undefined.png?size=64"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-nameless",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/user",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-nameless",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    }
+  ]
+}

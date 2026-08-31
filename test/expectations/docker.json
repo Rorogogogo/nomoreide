@@ -1,0 +1,745 @@
+{
+  "version": 1,
+  "gate": "docker",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/docker/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"available\":true,\"canStart\":true,\"version\":\"27.3.1\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"available\":false,\"canStart\":true,\"error\":\"Command failed: docker version --format {{.Server.Version}}\\nCannot connect to the Docker daemon at unix:///var/run/docker.sock.\\nIs the docker daemon running?\\n\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"available\":true,\"canStart\":false,\"installUrl\":\"https://docs.docker.com/desktop/setup/install/mac-install/\",\"version\":\"27.3.1\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"available\":false,\"canStart\":false,\"installUrl\":\"https://docs.docker.com/desktop/setup/install/mac-install/\",\"error\":\"Command failed: docker version --format {{.Server.Version}}\\nCannot connect to the Docker daemon at unix:///var/run/docker.sock.\\nIs the docker daemon running?\\n\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/status",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/start",
+      "status": 202,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Docker Desktop is not installed.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: open -a Docker\\nThe application cannot be opened.\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/start",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"containers\":[{\"id\":\"abc123456789\",\"name\":\"web\",\"image\":\"nginx:1.27\",\"state\":\"running\",\"status\":\"Up 2 hours\",\"ports\":\"0.0.0.0:8080->80/tcp\",\"createdAt\":\"2026-01-01 10:00:00 +0000 UTC\",\"project\":\"shop\",\"service\":\"web\"},{\"id\":\"def123456789\",\"name\":\"def123456789\",\"image\":\"postgres:16\",\"state\":\"exited\",\"status\":\"Exited (0) 3 days ago\",\"ports\":\"\"},{\"id\":\"ghi123456789\",\"name\":\"ghi123456789\",\"image\":\"\",\"state\":\"unknown\",\"status\":\"\",\"ports\":\"\"},{\"id\":\"jkl123456789\",\"name\":\"jkl123456789\",\"image\":\"redis\",\"state\":\"paused\",\"status\":\"Paused\",\"ports\":\"\",\"project\":\"shop\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/stats",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"stats\":[{\"id\":\"abc123456789\",\"cpuPercent\":2.43,\"memoryPercent\":11.2,\"memoryUsage\":\"184MiB / 2GiB\",\"netIo\":\"1.2kB / 648B\",\"blockIo\":\"0B / 4.1kB\"},{\"id\":\"def123456789\",\"cpuPercent\":null,\"memoryPercent\":null,\"memoryUsage\":\"-- / --\",\"netIo\":\"--\",\"blockIo\":\"--\"},{\"id\":\"ghi123456789\",\"cpuPercent\":0,\"memoryPercent\":0.05,\"memoryUsage\":\"1MiB / 2GiB\",\"netIo\":\"0B / 0B\",\"blockIo\":\"0B / 0B\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/stats",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/images",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"images\":[{\"id\":\"sha256:aaa\",\"repository\":\"nginx\",\"tag\":\"1.27\",\"size\":\"187MB\",\"createdSince\":\"2 weeks ago\",\"dangling\":false},{\"id\":\"sha256:bbb\",\"repository\":\"<none>\",\"tag\":\"<none>\",\"size\":\"417MB\",\"createdSince\":\"3 months ago\",\"dangling\":true},{\"id\":\"sha256:ccc\",\"repository\":\"app\",\"tag\":\"<none>\",\"size\":\"1.2GB\",\"createdSince\":\"1 hour ago\",\"dangling\":true},{\"id\":\"sha256:ddd\",\"repository\":\"<none>\",\"tag\":\"latest\",\"size\":\"90MB\",\"createdSince\":\"1 day ago\",\"dangling\":true}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/docker/images",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/volumes",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"volumes\":[{\"name\":\"shop_db\",\"driver\":\"local\",\"mountpoint\":\"/var/lib/docker/volumes/shop_db/_data\",\"scope\":\"local\"},{\"name\":\"cache\",\"driver\":\"local\",\"mountpoint\":\"\",\"scope\":\"local\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/volumes",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/networks",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"networks\":[{\"id\":\"net111111\",\"name\":\"bridge\",\"driver\":\"bridge\",\"scope\":\"local\"},{\"id\":\"net222222\",\"name\":\"shop_default\",\"driver\":\"bridge\",\"scope\":\"local\"}]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/docker/networks",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker ps -a --format {{json .}}\\nError response from daemon: something went wrong\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/stats",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker stats --no-stream --format {{json .}}\\nError response from daemon: something went wrong\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/images",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker images --format {{json .}}\\nError response from daemon: something went wrong\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/volumes",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker volume ls --format {{json .}}\\nError response from daemon: something went wrong\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/networks",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker network ls --format {{json .}}\\nError response from daemon: something went wrong\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"directory\":{\"containerId\":\"abc123456789\",\"path\":\"/app\",\"entries\":[{\"name\":\"assets\",\"path\":\"/app/assets\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000002250},{\"name\":\"Static\",\"path\":\"/app/Static\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000001000},{\"name\":\"eclair.txt\",\"path\":\"/app/eclair.txt\",\"type\":\"file\",\"size\":7,\"modifiedAt\":1700000005000},{\"name\":\"éclair.txt\",\"path\":\"/app/éclair.txt\",\"type\":\"file\",\"size\":9,\"modifiedAt\":1700000004000},{\"name\":\"server.js\",\"path\":\"/app/server.js\",\"type\":\"file\",\"size\":1024,\"modifiedAt\":1700000000500}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files?path=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"directory\":{\"containerId\":\"abc123456789\",\"path\":\"/app\",\"entries\":[{\"name\":\"assets\",\"path\":\"/app/assets\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000002250},{\"name\":\"Static\",\"path\":\"/app/Static\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000001000},{\"name\":\"eclair.txt\",\"path\":\"/app/eclair.txt\",\"type\":\"file\",\"size\":7,\"modifiedAt\":1700000005000},{\"name\":\"éclair.txt\",\"path\":\"/app/éclair.txt\",\"type\":\"file\",\"size\":9,\"modifiedAt\":1700000004000},{\"name\":\"server.js\",\"path\":\"/app/server.js\",\"type\":\"file\",\"size\":1024,\"modifiedAt\":1700000000500}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files?path=.",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"directory\":{\"containerId\":\"abc123456789\",\"path\":\"/app\",\"entries\":[{\"name\":\"assets\",\"path\":\"/app/assets\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000002250},{\"name\":\"Static\",\"path\":\"/app/Static\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000001000},{\"name\":\"eclair.txt\",\"path\":\"/app/eclair.txt\",\"type\":\"file\",\"size\":7,\"modifiedAt\":1700000005000},{\"name\":\"éclair.txt\",\"path\":\"/app/éclair.txt\",\"type\":\"file\",\"size\":9,\"modifiedAt\":1700000004000},{\"name\":\"server.js\",\"path\":\"/app/server.js\",\"type\":\"file\",\"size\":1024,\"modifiedAt\":1700000000500}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files?path=%2Fsrv%2Fapp",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"directory\":{\"containerId\":\"abc123456789\",\"path\":\"/srv/app\",\"entries\":[{\"name\":\"assets\",\"path\":\"/srv/app/assets\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000002250},{\"name\":\"Static\",\"path\":\"/srv/app/Static\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000001000},{\"name\":\"eclair.txt\",\"path\":\"/srv/app/eclair.txt\",\"type\":\"file\",\"size\":7,\"modifiedAt\":1700000005000},{\"name\":\"éclair.txt\",\"path\":\"/srv/app/éclair.txt\",\"type\":\"file\",\"size\":9,\"modifiedAt\":1700000004000},{\"name\":\"server.js\",\"path\":\"/srv/app/server.js\",\"type\":\"file\",\"size\":1024,\"modifiedAt\":1700000000500}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files?path=%2Fapp&hidden=1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"directory\":{\"containerId\":\"abc123456789\",\"path\":\"/app\",\"entries\":[{\"name\":\"assets\",\"path\":\"/app/assets\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000002250},{\"name\":\"Static\",\"path\":\"/app/Static\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000001000},{\"name\":\".env\",\"path\":\"/app/.env\",\"type\":\"file\",\"size\":64,\"modifiedAt\":1700000003000},{\"name\":\"eclair.txt\",\"path\":\"/app/eclair.txt\",\"type\":\"file\",\"size\":7,\"modifiedAt\":1700000005000},{\"name\":\"éclair.txt\",\"path\":\"/app/éclair.txt\",\"type\":\"file\",\"size\":9,\"modifiedAt\":1700000004000},{\"name\":\"server.js\",\"path\":\"/app/server.js\",\"type\":\"file\",\"size\":1024,\"modifiedAt\":1700000000500}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files?path=%2Fapp&hidden=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"directory\":{\"containerId\":\"abc123456789\",\"path\":\"/app\",\"entries\":[{\"name\":\"assets\",\"path\":\"/app/assets\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000002250},{\"name\":\"Static\",\"path\":\"/app/Static\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000001000},{\"name\":\"eclair.txt\",\"path\":\"/app/eclair.txt\",\"type\":\"file\",\"size\":7,\"modifiedAt\":1700000005000},{\"name\":\"éclair.txt\",\"path\":\"/app/éclair.txt\",\"type\":\"file\",\"size\":9,\"modifiedAt\":1700000004000},{\"name\":\"server.js\",\"path\":\"/app/server.js\",\"type\":\"file\",\"size\":1024,\"modifiedAt\":1700000000500}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files?path=%2Fapp%2Fit%27s%20here",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"directory\":{\"containerId\":\"abc123456789\",\"path\":\"/app/it's here\",\"entries\":[{\"name\":\"assets\",\"path\":\"/app/it's here/assets\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000002250},{\"name\":\"Static\",\"path\":\"/app/it's here/Static\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000001000},{\"name\":\"eclair.txt\",\"path\":\"/app/it's here/eclair.txt\",\"type\":\"file\",\"size\":7,\"modifiedAt\":1700000005000},{\"name\":\"éclair.txt\",\"path\":\"/app/it's here/éclair.txt\",\"type\":\"file\",\"size\":9,\"modifiedAt\":1700000004000},{\"name\":\"server.js\",\"path\":\"/app/it's here/server.js\",\"type\":\"file\",\"size\":1024,\"modifiedAt\":1700000000500}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files?path=%2Fapp%2Ftwo%20words",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"directory\":{\"containerId\":\"abc123456789\",\"path\":\"/app/two words\",\"entries\":[{\"name\":\"assets\",\"path\":\"/app/two words/assets\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000002250},{\"name\":\"Static\",\"path\":\"/app/two words/Static\",\"type\":\"directory\",\"size\":4096,\"modifiedAt\":1700000001000},{\"name\":\"eclair.txt\",\"path\":\"/app/two words/eclair.txt\",\"type\":\"file\",\"size\":7,\"modifiedAt\":1700000005000},{\"name\":\"éclair.txt\",\"path\":\"/app/two words/éclair.txt\",\"type\":\"file\",\"size\":9,\"modifiedAt\":1700000004000},{\"name\":\"server.js\",\"path\":\"/app/two words/server.js\",\"type\":\"file\",\"size\":1024,\"modifiedAt\":1700000000500}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files?path=app",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"File path must be absolute.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files?path=%2Fapp%00",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"File path is invalid.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc%3B%20rm/files",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid container id: \\\"abc; rm\\\"\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/-rm/files",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid container id: \\\"-rm\\\"\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/broken/files",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker exec broken sh -c target=$1\\ncd \\\"$target\\\" || exit 1\\nprintf 'NMI_PATH\\\\0%s\\\\0' \\\"$PWD\\\"\\nfind . -mindepth 1 -maxdepth 1 -printf 'NMI_ENTRY\\\\0%f\\\\0%y\\\\0%s\\\\0%T@\\\\0\\\\0' nomoreide .\\nError response from daemon: no such container\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc123456789/files",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"path is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/file?path=",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"path is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/file?path=.",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"File path must be absolute.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/file?path=app%2Fx",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"File path must be absolute.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/file?path=%2Fapp%2Fserver.js",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"file\":{\"containerId\":\"abc123456789\",\"path\":\"/app/server.js\",\"content\":\"the path was: /app/server.js\\n\",\"size\":29,\"binary\":false,\"truncated\":false}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/file?path=%2Fbin%2Fblob",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"file\":{\"containerId\":\"abc123456789\",\"path\":\"/bin/blob\",\"content\":\"\",\"size\":4,\"binary\":true,\"truncated\":false}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/file?path=%2Fnope",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker exec abc123456789 sh -c target=$1\\ntest -f \\\"$target\\\" || { printf '%s\\\\n' 'Path is not a regular file.' >&2; exit 1; }\\nsize=$(wc -c < \\\"$target\\\") || exit 1\\nprintf 'NMI_FILE\\\\0%s\\\\0' \\\"$size\\\"\\nhead -c 262145 -- \\\"$target\\\" nomoreide /nope\\nPath is not a regular file.\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc%3B%20rm/file?path=%2Fx",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid container id: \\\"abc; rm\\\"\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc123456789/file?path=%2Fx",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/inspect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"detail\":{\"id\":\"abc123456789abcdef\",\"name\":\"web\",\"image\":\"nginx:1.27\",\"command\":\"/docker-entrypoint.sh nginx -g daemon off;\",\"created\":\"2026-01-01T10:00:00.000000000Z\",\"state\":\"running\",\"startedAt\":\"2026-01-01T10:00:01.000000000Z\",\"restartCount\":3,\"env\":[{\"key\":\"PATH\",\"value\":\"/usr/local/sbin\",\"secret\":false},{\"key\":\"DB_PASSWORD\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"api_key\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"MY_TOKEN\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"OAUTH_CREDENTIAL\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"SOME_AUTHORITY\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"MONKEY\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"EMPTY_PASSWORD\",\"value\":\"\",\"secret\":false},{\"key\":\"NOEQUALS\",\"value\":\"\",\"secret\":false}],\"mounts\":[{\"type\":\"volume\",\"source\":\"shop_db\",\"destination\":\"/data\",\"readOnly\":false},{\"type\":\"bind\",\"source\":\"/host/conf\",\"destination\":\"/etc/conf\",\"readOnly\":true}],\"ports\":[{\"containerPort\":\"80/tcp\",\"hostPort\":\"0.0.0.0:8080\"},{\"containerPort\":\"80/tcp\",\"hostPort\":\"9090\"},{\"containerPort\":\"443/tcp\",\"hostPort\":\"\"},{\"containerPort\":\"9999/tcp\",\"hostPort\":\"\"}],\"networks\":[\"bridge\",\"shop_default\"],\"labels\":{\"com.docker.compose.project\":\"shop\"}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/def123456789/inspect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"detail\":{\"id\":\"def123456789abcdef\",\"name\":\"db\",\"image\":\"\",\"command\":\"\",\"created\":\"\",\"state\":\"\",\"startedAt\":\"\",\"restartCount\":0,\"env\":[],\"mounts\":[],\"ports\":[],\"networks\":[],\"labels\":{}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/empty/inspect",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No inspect output for container \\\"empty\\\"\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/notjson/inspect",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Expected property name or '}' in JSON at position 1 (line 1 column 2)\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/zzz999999999/inspect",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker inspect zzz999999999\\nError: No such object: zzz999999999\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc%3B%20rm/inspect",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid container id: \\\"abc; rm\\\"\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/inspect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"detail\":{\"id\":\"abc123456789abcdef\",\"name\":\"web\",\"image\":\"nginx:1.27\",\"command\":\"/docker-entrypoint.sh nginx -g daemon off;\",\"created\":\"2026-01-01T10:00:00.000000000Z\",\"state\":\"running\",\"startedAt\":\"2026-01-01T10:00:01.000000000Z\",\"restartCount\":3,\"env\":[{\"key\":\"PATH\",\"value\":\"/usr/local/sbin\",\"secret\":false},{\"key\":\"DB_PASSWORD\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"api_key\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"MY_TOKEN\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"OAUTH_CREDENTIAL\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"SOME_AUTHORITY\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"MONKEY\",\"value\":\"••••••••\",\"secret\":true},{\"key\":\"EMPTY_PASSWORD\",\"value\":\"\",\"secret\":false},{\"key\":\"NOEQUALS\",\"value\":\"\",\"secret\":false}],\"mounts\":[{\"type\":\"volume\",\"source\":\"shop_db\",\"destination\":\"/data\",\"readOnly\":false},{\"type\":\"bind\",\"source\":\"/host/conf\",\"destination\":\"/etc/conf\",\"readOnly\":true}],\"ports\":[{\"containerPort\":\"80/tcp\",\"hostPort\":\"0.0.0.0:8080\"},{\"containerPort\":\"80/tcp\",\"hostPort\":\"9090\"},{\"containerPort\":\"443/tcp\",\"hostPort\":\"\"},{\"containerPort\":\"9999/tcp\",\"hostPort\":\"\"}],\"networks\":[\"bridge\",\"shop_default\"],\"labels\":{\"com.docker.compose.project\":\"shop\"}}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc123456789/inspect",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc123456789/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc123456789/stop",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc123456789/restart",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc123456789/pause",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc123456789/kill",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc%3B%20rm/start",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid container id: \\\"abc; rm\\\"\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/broken/stop",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker stop broken\\nError response from daemon: no such container\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/start",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=200\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs?tail=50",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=50\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs?tail=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=200\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs?tail=-5",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=200\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs?tail=1.9",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=1\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs?tail=0.5",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=200\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs?tail=abc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=200\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs?tail=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=200\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs?tail=5000",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=2000\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs?tail=2000",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":\"2026-01-01T10:00:00.000000000Z out first tail=2000\\n2026-01-01T10:00:01.000000000Z err early\\n2026-01-01T10:00:02.000000000Z out second\\n2026-01-01T10:00:03.000000000Z err middle\\n2026-01-01T10:00:05.000000000Z out last\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc%3B%20rm/logs",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid container id: \\\"abc; rm\\\"\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/broken/logs",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: docker logs --tail 200 --timestamps broken\\nError response from daemon: no such container\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/docker/containers/abc123456789/logs",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/nope",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/files/more",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers//files",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/nope",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docker/containers/abc123456789/logs/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

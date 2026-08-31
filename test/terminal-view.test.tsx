@@ -4,7 +4,7 @@ import { act, createRef } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { TerminalPane } from "../src/web/client/src/features/terminal/terminal-pane";
+import { TerminalPane } from "../apps/dashboard/src/features/terminal/terminal-pane";
 import {
   attachWebglRenderer,
   connectWebTerminal,
@@ -16,8 +16,8 @@ import {
   TERMINAL_RESIZE_SETTLE_MS,
   TerminalViewport,
   type TerminalViewportStatus,
-} from "../src/web/client/src/features/terminal/terminal-viewport";
-import { TerminalView } from "../src/web/client/src/features/terminal/terminal-view";
+} from "../apps/dashboard/src/features/terminal/terminal-viewport";
+import { TerminalView } from "../apps/dashboard/src/features/terminal/terminal-view";
 
 const xtermMocks = vi.hoisted(() => ({
   fits: [] as Array<{
@@ -75,7 +75,7 @@ vi.mock("@xterm/addon-fit", () => ({
   },
 }));
 
-vi.mock("../src/web/client/src/features/settings/settings-context", () => ({
+vi.mock("../apps/dashboard/src/features/settings/settings-context", () => ({
   useSettings: () => ({
     confirmedGlobal: {
       version: 1,
@@ -420,7 +420,7 @@ describe("TerminalViewport", () => {
     );
     const statuses: TerminalViewportStatus[] = [];
     const viewportRef = createRef<
-      import("../src/web/client/src/features/terminal/terminal-viewport").TerminalViewportHandle
+      import("../apps/dashboard/src/features/terminal/terminal-viewport").TerminalViewportHandle
     >();
     const host = document.createElement("div");
     document.body.append(host);

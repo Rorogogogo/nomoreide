@@ -3,7 +3,7 @@ import {
   parseRemoteDirectoryListing,
   parseRemoteFileContent,
 } from "../src/core/ssh-servers.js";
-import { parentRemotePath } from "../src/web/client/src/features/servers/remote-file-explorer.js";
+import { parentRemotePath } from "../apps/dashboard/src/features/servers/remote-file-explorer.js";
 
 describe("SSH remote file parsing", () => {
   test("walks from the SSH home directory to the filesystem root", () => {

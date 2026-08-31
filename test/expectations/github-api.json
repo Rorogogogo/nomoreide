@@ -1,0 +1,3243 @@
+{
+  "version": 1,
+  "gate": "github-api",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/github/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"defaultBranch\":\"main\",\"currentBranch\":\"main\",\"branches\":[{\"name\":\"main\",\"protected\":true,\"commit\":{\"sha\":\"aaa\"}},{\"name\":\"feature\",\"protected\":false,\"commit\":{\"sha\":\"bbb\"}}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"repository\":{\"full_name\":\"acme/widgets\"},\"defaultBranch\":null,\"currentBranch\":\"main\",\"branches\":[{\"name\":\"main\",\"protected\":true,\"commit\":{\"sha\":\"aaa\"}},{\"name\":\"feature\",\"protected\":false,\"commit\":{\"sha\":\"bbb\"}}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":null},\"defaultBranch\":null,\"currentBranch\":\"main\",\"branches\":[{\"name\":\"main\",\"protected\":true,\"commit\":{\"sha\":\"aaa\"}},{\"name\":\"feature\",\"protected\":false,\"commit\":{\"sha\":\"bbb\"}}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":null},\"defaultBranch\":null,\"currentBranch\":\"main\",\"branches\":[{\"name\":\"odd\",\"protected\":false,\"commit\":{}}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/branches",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Server Error\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"prs\":[{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?state=closed&page=2",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"prs\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?state=banana",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not Found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?state=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"prs\":[{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=abc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"prs\":[{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"prs\":[{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=2.7",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not Found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=-3",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not Found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=0x10",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not Found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=1e2",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not Found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=%20%204%20",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not Found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"prs\":[{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=inf",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"prs\":[{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?page=Infinity",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not Found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs?state=closed&page=2",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid page\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"title, head, and base are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"title, head, and base are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"title, head, and base are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"title, head, and base are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"pr\":{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"pr\":{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"pr\":{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"pr\":{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A pull request already exists.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/7",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"pr\":{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/abc",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/7a",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/404",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Not Found\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs/7/merge",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"merged\":true,\"sha\":\"deadbeef\",\"message\":\"Pull Request successfully merged\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs/7/merge",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"merged\":true,\"sha\":\"deadbeef\",\"message\":\"Pull Request successfully merged\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs/7/merge",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"merged\":true,\"sha\":\"deadbeef\",\"message\":\"Pull Request successfully merged\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs/7/merge",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"merged\":true,\"sha\":\"deadbeef\",\"message\":\"Pull Request successfully merged\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs/7/merge",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"merged\":true,\"sha\":\"deadbeef\",\"message\":\"Pull Request successfully merged\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs/7/merge",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"merged\":true,\"sha\":\"deadbeef\",\"message\":\"Pull Request successfully merged\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs/7/merge",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Pull Request is not mergeable\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/prs/x/merge",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/7/review",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cockpit\":{\"pr\":{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true},\"files\":[{\"path\":\"src/app.ts\",\"status\":\"modified\",\"additions\":3,\"deletions\":1,\"changes\":4,\"patch\":\"@@ -1 +1 @@\",\"blob_url\":\"https://github.com/acme/widgets/blob/abc/src/app.ts\"},{\"path\":\"huge.bin\",\"status\":\"added\",\"additions\":0,\"deletions\":0,\"changes\":0}],\"reviews\":[{\"id\":1,\"state\":\"APPROVED\",\"user\":{\"login\":\"octocat\"}}],\"comments\":[{\"id\":9,\"body\":\"Looks good\"}],\"checks\":{\"sha\":\"abc123def456\",\"state\":\"failure\",\"totalCount\":2,\"runs\":[{\"id\":1,\"name\":\"build\",\"status\":\"completed\",\"conclusion\":\"success\"},{\"id\":2,\"name\":\"test\",\"status\":\"completed\",\"conclusion\":\"failure\"}]}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/7/review",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cockpit\":{\"pr\":{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\",\"sha\":\"abc123def456\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true},\"files\":[{\"path\":\"src/app.ts\",\"status\":\"modified\",\"additions\":3,\"deletions\":1,\"changes\":4,\"patch\":\"@@ -1 +1 @@\",\"blob_url\":\"https://github.com/acme/widgets/blob/abc/src/app.ts\"},{\"path\":\"huge.bin\",\"status\":\"added\",\"additions\":0,\"deletions\":0,\"changes\":0}],\"reviews\":[{\"id\":1,\"state\":\"APPROVED\",\"user\":{\"login\":\"octocat\"}}],\"comments\":[{\"id\":9,\"body\":\"Looks good\"}],\"checks\":{\"sha\":\"abc123def456\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/7/review",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"cockpit\":{\"pr\":{\"number\":7,\"title\":\"Add the thing\",\"state\":\"open\",\"body\":\"Because the thing was missing.\",\"html_url\":\"https://github.com/acme/widgets/pull/7\",\"head\":{\"ref\":\"feature\"},\"base\":{\"ref\":\"main\",\"sha\":\"0000111122223333\"},\"user\":{\"login\":\"octocat\"},\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-02T00:00:00Z\",\"merged_at\":null,\"draft\":false,\"mergeable\":true},\"files\":[{\"path\":\"src/app.ts\",\"status\":\"modified\",\"additions\":3,\"deletions\":1,\"changes\":4,\"patch\":\"@@ -1 +1 @@\",\"blob_url\":\"https://github.com/acme/widgets/blob/abc/src/app.ts\"},{\"path\":\"huge.bin\",\"status\":\"added\",\"additions\":0,\"deletions\":0,\"changes\":0}],\"reviews\":[{\"id\":1,\"state\":\"APPROVED\",\"user\":{\"login\":\"octocat\"}}],\"comments\":[{\"id\":9,\"body\":\"Looks good\"}],\"checks\":{\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/7/review",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Server Error\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/7/diff",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "diff --git a/src/app.ts b/src/app.ts\n@@ -1 +1 @@\n-old\n+new\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/7/diff",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"too large\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs/nan/diff",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/issues",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"issues\":[{\"number\":1,\"title\":\"A real issue\"},{\"number\":8,\"title\":\"Null marker\",\"pull_request\":null}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/issues?state=all&page=3",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"issues\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/issues",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"title is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/issues",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"title is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/issues",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"issue\":{\"number\":12,\"title\":\"Something broke\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/issues",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"issue\":{\"number\":12,\"title\":\"Something broke\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/issues/1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"issue\":{\"number\":1,\"title\":\"A real issue\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/issues/one",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/issues/1/comments",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"comments\":[{\"id\":3,\"body\":\"Any update?\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/issues/1/comments",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"body is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/issues/1/comments",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"body is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/github/issues/1/comments",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"comment\":{\"id\":4,\"body\":\"On it.\"}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/github/issues/1/comments",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/ci/abc123def456",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"sha\":\"abc123def456\",\"state\":\"success\",\"totalCount\":1,\"runs\":[{\"id\":1,\"name\":\"build\",\"status\":\"completed\",\"conclusion\":\"success\"}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/ci/abc123def456",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"sha\":\"abc123def456\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/ci/abc123def456",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Server Error\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/ci/abc",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/ci/zzzzzz",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/ci/ABC123",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/ci/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/runs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"runs\":[{\"id\":100,\"name\":\"ci\",\"head_sha\":\"abc\",\"status\":\"completed\",\"conclusion\":\"success\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/runs?branch=feature&page=2",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"runs\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/runs?branch=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"runs\":[{\"id\":100,\"name\":\"ci\",\"head_sha\":\"abc\",\"status\":\"completed\",\"conclusion\":\"success\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/runs/100/jobs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"jobs\":[{\"id\":5,\"name\":\"build\",\"conclusion\":\"success\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/runs/100/jobs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/runs/latest/jobs",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/ci/abc123def456",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"sha\":\"abc123def456\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No stored GitHub token configured. Choose a GitHub CLI account or connect GitHub.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/branches",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No stored GitHub token configured. Choose a GitHub CLI account or connect GitHub.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/prs",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"No stored GitHub token configured. Choose a GitHub CLI account or connect GitHub.\"}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "branches/connected",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "repository": {
+              "full_name": "acme/widgets",
+              "default_branch": "main"
+            },
+            "defaultBranch": "main",
+            "currentBranch": "main",
+            "branches": [
+              {
+                "name": "main",
+                "protected": true,
+                "commit": {
+                  "sha": "aaa"
+                }
+              },
+              {
+                "name": "feature",
+                "protected": false,
+                "commit": {
+                  "sha": "bbb"
+                }
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/branches?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "branches/no-default-branch",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "repository": {
+              "full_name": "acme/widgets"
+            },
+            "defaultBranch": null,
+            "currentBranch": "main",
+            "branches": [
+              {
+                "name": "main",
+                "protected": true,
+                "commit": {
+                  "sha": "aaa"
+                }
+              },
+              {
+                "name": "feature",
+                "protected": false,
+                "commit": {
+                  "sha": "bbb"
+                }
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/branches?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "branches/null-default-branch",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "repository": {
+              "full_name": "acme/widgets",
+              "default_branch": null
+            },
+            "defaultBranch": null,
+            "currentBranch": "main",
+            "branches": [
+              {
+                "name": "main",
+                "protected": true,
+                "commit": {
+                  "sha": "aaa"
+                }
+              },
+              {
+                "name": "feature",
+                "protected": false,
+                "commit": {
+                  "sha": "bbb"
+                }
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/branches?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "branches/commit-without-a-sha",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "repository": {
+              "full_name": "acme/widgets",
+              "default_branch": null
+            },
+            "defaultBranch": null,
+            "currentBranch": "main",
+            "branches": [
+              {
+                "name": "odd",
+                "protected": false,
+                "commit": {}
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/branches?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "branches/github-fails",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Server Error"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/branches?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/default-query",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "prs": [
+              {
+                "number": 7,
+                "title": "Add the thing",
+                "state": "open",
+                "body": "Because the thing was missing.",
+                "html_url": "https://github.com/acme/widgets/pull/7",
+                "head": {
+                  "ref": "feature",
+                  "sha": "abc123def456"
+                },
+                "base": {
+                  "ref": "main",
+                  "sha": "0000111122223333"
+                },
+                "user": {
+                  "login": "octocat"
+                },
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+                "merged_at": null,
+                "draft": false,
+                "mergeable": true
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/state-and-page",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "prs": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=closed&per_page=30&page=2",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/unknown-state",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Not Found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=banana&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/blank-state",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "prs": [
+              {
+                "number": 7,
+                "title": "Add the thing",
+                "state": "open",
+                "body": "Because the thing was missing.",
+                "html_url": "https://github.com/acme/widgets/pull/7",
+                "head": {
+                  "ref": "feature",
+                  "sha": "abc123def456"
+                },
+                "base": {
+                  "ref": "main",
+                  "sha": "0000111122223333"
+                },
+                "user": {
+                  "login": "octocat"
+                },
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+                "merged_at": null,
+                "draft": false,
+                "mergeable": true
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-not-a-number",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "prs": [
+              {
+                "number": 7,
+                "title": "Add the thing",
+                "state": "open",
+                "body": "Because the thing was missing.",
+                "html_url": "https://github.com/acme/widgets/pull/7",
+                "head": {
+                  "ref": "feature",
+                  "sha": "abc123def456"
+                },
+                "base": {
+                  "ref": "main",
+                  "sha": "0000111122223333"
+                },
+                "user": {
+                  "login": "octocat"
+                },
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+                "merged_at": null,
+                "draft": false,
+                "mergeable": true
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-zero",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "prs": [
+              {
+                "number": 7,
+                "title": "Add the thing",
+                "state": "open",
+                "body": "Because the thing was missing.",
+                "html_url": "https://github.com/acme/widgets/pull/7",
+                "head": {
+                  "ref": "feature",
+                  "sha": "abc123def456"
+                },
+                "base": {
+                  "ref": "main",
+                  "sha": "0000111122223333"
+                },
+                "user": {
+                  "login": "octocat"
+                },
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+                "merged_at": null,
+                "draft": false,
+                "mergeable": true
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-fractional",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Not Found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=2.7",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-negative",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Not Found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=-3",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-hex",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Not Found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=16",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-exponent",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Not Found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-padded",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Not Found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=4",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-empty",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "prs": [
+              {
+                "number": 7,
+                "title": "Add the thing",
+                "state": "open",
+                "body": "Because the thing was missing.",
+                "html_url": "https://github.com/acme/widgets/pull/7",
+                "head": {
+                  "ref": "feature",
+                  "sha": "abc123def456"
+                },
+                "base": {
+                  "ref": "main",
+                  "sha": "0000111122223333"
+                },
+                "user": {
+                  "login": "octocat"
+                },
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+                "merged_at": null,
+                "draft": false,
+                "mergeable": true
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-rust-infinity",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "prs": [
+              {
+                "number": 7,
+                "title": "Add the thing",
+                "state": "open",
+                "body": "Because the thing was missing.",
+                "html_url": "https://github.com/acme/widgets/pull/7",
+                "head": {
+                  "ref": "feature",
+                  "sha": "abc123def456"
+                },
+                "base": {
+                  "ref": "main",
+                  "sha": "0000111122223333"
+                },
+                "user": {
+                  "login": "octocat"
+                },
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+                "merged_at": null,
+                "draft": false,
+                "mergeable": true
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/page-word-infinity",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Not Found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=open&per_page=30&page=Infinity",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/github-refuses",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Invalid page"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls?state=closed&per_page=30&page=2",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/create-no-body",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "title, head, and base are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/create-only-a-title",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "title, head, and base are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/create-blank-after-trimming",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "title, head, and base are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/create-non-string-fields",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "title, head, and base are required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/create",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "pr": {
+              "number": 7,
+              "title": "Add the thing",
+              "state": "open",
+              "body": "Because the thing was missing.",
+              "html_url": "https://github.com/acme/widgets/pull/7",
+              "head": {
+                "ref": "feature",
+                "sha": "abc123def456"
+              },
+              "base": {
+                "ref": "main",
+                "sha": "0000111122223333"
+              },
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-01T00:00:00Z",
+              "updated_at": "2026-01-02T00:00:00Z",
+              "merged_at": null,
+              "draft": false,
+              "mergeable": true
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/acme/widgets/pulls",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Add the thing",
+              "body": "Why.",
+              "head": "feature",
+              "base": "main",
+              "draft": false
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/create-without-a-body",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "pr": {
+              "number": 7,
+              "title": "Add the thing",
+              "state": "open",
+              "body": "Because the thing was missing.",
+              "html_url": "https://github.com/acme/widgets/pull/7",
+              "head": {
+                "ref": "feature",
+                "sha": "abc123def456"
+              },
+              "base": {
+                "ref": "main",
+                "sha": "0000111122223333"
+              },
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-01T00:00:00Z",
+              "updated_at": "2026-01-02T00:00:00Z",
+              "merged_at": null,
+              "draft": false,
+              "mergeable": true
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/acme/widgets/pulls",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "No body",
+              "head": "feature",
+              "base": "main",
+              "draft": false
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/create-draft",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "pr": {
+              "number": 7,
+              "title": "Add the thing",
+              "state": "open",
+              "body": "Because the thing was missing.",
+              "html_url": "https://github.com/acme/widgets/pull/7",
+              "head": {
+                "ref": "feature",
+                "sha": "abc123def456"
+              },
+              "base": {
+                "ref": "main",
+                "sha": "0000111122223333"
+              },
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-01T00:00:00Z",
+              "updated_at": "2026-01-02T00:00:00Z",
+              "merged_at": null,
+              "draft": false,
+              "mergeable": true
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/acme/widgets/pulls",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Draft",
+              "head": "feature",
+              "base": "main",
+              "draft": true
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/create-draft-is-a-string",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "pr": {
+              "number": 7,
+              "title": "Add the thing",
+              "state": "open",
+              "body": "Because the thing was missing.",
+              "html_url": "https://github.com/acme/widgets/pull/7",
+              "head": {
+                "ref": "feature",
+                "sha": "abc123def456"
+              },
+              "base": {
+                "ref": "main",
+                "sha": "0000111122223333"
+              },
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-01T00:00:00Z",
+              "updated_at": "2026-01-02T00:00:00Z",
+              "merged_at": null,
+              "draft": false,
+              "mergeable": true
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/acme/widgets/pulls",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Draft",
+              "head": "feature",
+              "base": "main",
+              "draft": false
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/create-refused",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "A pull request already exists."
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/acme/widgets/pulls",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Dupe",
+              "head": "feature",
+              "base": "main",
+              "draft": false
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/get",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "pr": {
+              "number": 7,
+              "title": "Add the thing",
+              "state": "open",
+              "body": "Because the thing was missing.",
+              "html_url": "https://github.com/acme/widgets/pull/7",
+              "head": {
+                "ref": "feature",
+                "sha": "abc123def456"
+              },
+              "base": {
+                "ref": "main",
+                "sha": "0000111122223333"
+              },
+              "user": {
+                "login": "octocat"
+              },
+              "created_at": "2026-01-01T00:00:00Z",
+              "updated_at": "2026-01-02T00:00:00Z",
+              "merged_at": null,
+              "draft": false,
+              "mergeable": true
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/get-not-a-number",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/get-mixed",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/get-unknown",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Not Found"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/404",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-no-body",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "merged": true,
+            "sha": "deadbeef",
+            "message": "Pull Request successfully merged"
+          }
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/acme/widgets/pulls/7/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "squash"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-rebase",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "merged": true,
+            "sha": "deadbeef",
+            "message": "Pull Request successfully merged"
+          }
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/acme/widgets/pulls/7/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "rebase"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-unknown-method",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "merged": true,
+            "sha": "deadbeef",
+            "message": "Pull Request successfully merged"
+          }
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/acme/widgets/pulls/7/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "squash"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-numeric-method",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "merged": true,
+            "sha": "deadbeef",
+            "message": "Pull Request successfully merged"
+          }
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/acme/widgets/pulls/7/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "squash"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-with-a-commit-title",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "merged": true,
+            "sha": "deadbeef",
+            "message": "Pull Request successfully merged"
+          }
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/acme/widgets/pulls/7/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "merge",
+              "commit_title": "Merge it",
+              "commit_message": "Because."
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-with-an-empty-commit-title",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "merged": true,
+            "sha": "deadbeef",
+            "message": "Pull Request successfully merged"
+          }
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/acme/widgets/pulls/7/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "merge"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-refused",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Pull Request is not mergeable"
+          }
+        },
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/repos/acme/widgets/pulls/7/merge",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "merge_method": "squash"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/merge-not-a-number",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/review",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "cockpit": {
+              "pr": {
+                "number": 7,
+                "title": "Add the thing",
+                "state": "open",
+                "body": "Because the thing was missing.",
+                "html_url": "https://github.com/acme/widgets/pull/7",
+                "head": {
+                  "ref": "feature",
+                  "sha": "abc123def456"
+                },
+                "base": {
+                  "ref": "main",
+                  "sha": "0000111122223333"
+                },
+                "user": {
+                  "login": "octocat"
+                },
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+                "merged_at": null,
+                "draft": false,
+                "mergeable": true
+              },
+              "files": [
+                {
+                  "path": "src/app.ts",
+                  "status": "modified",
+                  "additions": 3,
+                  "deletions": 1,
+                  "changes": 4,
+                  "patch": "@@ -1 +1 @@",
+                  "blob_url": "https://github.com/acme/widgets/blob/abc/src/app.ts"
+                },
+                {
+                  "path": "huge.bin",
+                  "status": "added",
+                  "additions": 0,
+                  "deletions": 0,
+                  "changes": 0
+                }
+              ],
+              "reviews": [
+                {
+                  "id": 1,
+                  "state": "APPROVED",
+                  "user": {
+                    "login": "octocat"
+                  }
+                }
+              ],
+              "comments": [
+                {
+                  "id": 9,
+                  "body": "Looks good"
+                }
+              ],
+              "checks": {
+                "sha": "abc123def456",
+                "state": "failure",
+                "totalCount": 2,
+                "runs": [
+                  {
+                    "id": 1,
+                    "name": "build",
+                    "status": "completed",
+                    "conclusion": "success"
+                  },
+                  {
+                    "id": 2,
+                    "name": "test",
+                    "status": "completed",
+                    "conclusion": "failure"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/abc123def456/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/issues/7/comments?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7/files?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7/reviews?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/review-with-no-checks",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "cockpit": {
+              "pr": {
+                "number": 7,
+                "title": "Add the thing",
+                "state": "open",
+                "body": "Because the thing was missing.",
+                "html_url": "https://github.com/acme/widgets/pull/7",
+                "head": {
+                  "ref": "feature",
+                  "sha": "abc123def456"
+                },
+                "base": {
+                  "ref": "main",
+                  "sha": "0000111122223333"
+                },
+                "user": {
+                  "login": "octocat"
+                },
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+                "merged_at": null,
+                "draft": false,
+                "mergeable": true
+              },
+              "files": [
+                {
+                  "path": "src/app.ts",
+                  "status": "modified",
+                  "additions": 3,
+                  "deletions": 1,
+                  "changes": 4,
+                  "patch": "@@ -1 +1 @@",
+                  "blob_url": "https://github.com/acme/widgets/blob/abc/src/app.ts"
+                },
+                {
+                  "path": "huge.bin",
+                  "status": "added",
+                  "additions": 0,
+                  "deletions": 0,
+                  "changes": 0
+                }
+              ],
+              "reviews": [
+                {
+                  "id": 1,
+                  "state": "APPROVED",
+                  "user": {
+                    "login": "octocat"
+                  }
+                }
+              ],
+              "comments": [
+                {
+                  "id": 9,
+                  "body": "Looks good"
+                }
+              ],
+              "checks": {
+                "sha": "abc123def456",
+                "state": "unknown",
+                "totalCount": 0,
+                "runs": []
+              }
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/abc123def456/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/issues/7/comments?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7/files?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7/reviews?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/review-head-without-a-sha",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "cockpit": {
+              "pr": {
+                "number": 7,
+                "title": "Add the thing",
+                "state": "open",
+                "body": "Because the thing was missing.",
+                "html_url": "https://github.com/acme/widgets/pull/7",
+                "head": {
+                  "ref": "feature"
+                },
+                "base": {
+                  "ref": "main",
+                  "sha": "0000111122223333"
+                },
+                "user": {
+                  "login": "octocat"
+                },
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+                "merged_at": null,
+                "draft": false,
+                "mergeable": true
+              },
+              "files": [
+                {
+                  "path": "src/app.ts",
+                  "status": "modified",
+                  "additions": 3,
+                  "deletions": 1,
+                  "changes": 4,
+                  "patch": "@@ -1 +1 @@",
+                  "blob_url": "https://github.com/acme/widgets/blob/abc/src/app.ts"
+                },
+                {
+                  "path": "huge.bin",
+                  "status": "added",
+                  "additions": 0,
+                  "deletions": 0,
+                  "changes": 0
+                }
+              ],
+              "reviews": [
+                {
+                  "id": 1,
+                  "state": "APPROVED",
+                  "user": {
+                    "login": "octocat"
+                  }
+                }
+              ],
+              "comments": [
+                {
+                  "id": 9,
+                  "body": "Looks good"
+                }
+              ],
+              "checks": {
+                "state": "unknown",
+                "totalCount": 0,
+                "runs": []
+              }
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/undefined/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/issues/7/comments?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7/files?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7/reviews?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/review-files-fail",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Server Error"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/abc123def456/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/issues/7/comments?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7/files?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7/reviews?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/diff",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "text/plain; charset=utf-8",
+          "body": "diff --git a/src/app.ts b/src/app.ts\n@@ -1 +1 @@\n-old\n+new\n"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7",
+            "accept": "application/vnd.github.diff",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/diff-refused",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "too large"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/pulls/7",
+            "accept": "application/vnd.github.diff",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "prs/diff-not-a-number",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "issues/default",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "issues": [
+              {
+                "number": 1,
+                "title": "A real issue"
+              },
+              {
+                "number": 8,
+                "title": "Null marker",
+                "pull_request": null
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/issues?state=open&per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/state-and-page",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "issues": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/issues?state=all&per_page=30&page=3",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/create-no-body",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "title is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "issues/create-blank-title",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "title is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "issues/create",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "issue": {
+              "number": 12,
+              "title": "Something broke"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/acme/widgets/issues",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Something broke",
+              "body": "Here is how."
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/create-without-a-body",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "issue": {
+              "number": 12,
+              "title": "Something broke"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/acme/widgets/issues",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "title": "Terse"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/get",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "issue": {
+              "number": 1,
+              "title": "A real issue"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/issues/1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/get-not-a-number",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "issues/comments-list",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "comments": [
+              {
+                "id": 3,
+                "body": "Any update?"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/issues/1/comments?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/comments-blank",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "body is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "issues/comments-non-string",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "body is required"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "issues/comments-add",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "comment": {
+              "id": 4,
+              "body": "On it."
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/repos/acme/widgets/issues/1/comments",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": "application/json",
+            "apiVersion": "2022-11-28",
+            "body": {
+              "body": "On it."
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "issues/comments-wrong-method",
+      "value": {
+        "answer": {
+          "status": 405,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "ci/known-sha",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "status": {
+              "sha": "abc123def456",
+              "state": "success",
+              "totalCount": 1,
+              "runs": [
+                {
+                  "id": 1,
+                  "name": "build",
+                  "status": "completed",
+                  "conclusion": "success"
+                }
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/abc123def456/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "ci/no-checks",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "status": {
+              "sha": "abc123def456",
+              "state": "unknown",
+              "totalCount": 0,
+              "runs": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/abc123def456/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "ci/github-fails",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "Server Error"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/abc123def456/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "ci/too-short",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "ci/not-hex",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "ci/uppercase",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "ci/too-long",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "runs/default",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "runs": [
+              {
+                "id": 100,
+                "name": "ci",
+                "head_sha": "abc",
+                "status": "completed",
+                "conclusion": "success"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/actions/runs?per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "runs/for-a-branch",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "runs": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/actions/runs?per_page=30&page=2&branch=feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "runs/empty-branch",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "runs": [
+              {
+                "id": 100,
+                "name": "ci",
+                "head_sha": "abc",
+                "status": "completed",
+                "conclusion": "success"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/actions/runs?per_page=30&page=1",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "runs/jobs",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "jobs": [
+              {
+                "id": 5,
+                "name": "build",
+                "conclusion": "success"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/actions/runs/100/jobs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "runs/jobs-without-a-jobs-key",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/actions/runs/100/jobs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "runs/jobs-not-a-number",
+      "value": {
+        "answer": {
+          "status": 404,
+          "contentType": "text/html; charset=utf-8",
+          "body": "Not found"
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "ci/no-account-connected",
+      "value": {
+        "answer": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": true,
+            "status": {
+              "sha": "abc123def456",
+              "state": "unknown",
+              "totalCount": 0,
+              "runs": []
+            }
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/no-account-connected",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "No stored GitHub token configured. Choose a GitHub CLI account or connect GitHub."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "branches/no-account-connected",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "No stored GitHub token configured. Choose a GitHub CLI account or connect GitHub."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "prs/no-repository-selected",
+      "value": {
+        "answer": {
+          "status": 400,
+          "contentType": "application/json; charset=utf-8",
+          "body": {
+            "ok": false,
+            "error": "No stored GitHub token configured. Choose a GitHub CLI account or connect GitHub."
+          }
+        },
+        "requests": []
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
-const root = resolve(__dirname, "../src/web/client/src");
+const root = resolve(__dirname, "../apps/dashboard/src");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("native agent terminal cleanup", () => {
@@ -45,7 +45,7 @@ describe("native agent terminal cleanup", () => {
   });
 
   test("database write guidance matches the raw terminal dock", () => {
-    const source = readFileSync(resolve(root, "../../../mcp/tools/database.ts"), "utf8");
+    const source = readFileSync(resolve(root, "../../../src/mcp/tools/database.ts"), "utf8");
     expect(source).not.toContain("sql-write");
     expect(source).not.toContain("message-options");
     expect(source).not.toContain('"Open in SQL console" button');
@@ -64,7 +64,7 @@ describe("native agent terminal cleanup", () => {
   test.each(["usage-guide.md", "ai-agent-guide.md"])(
     "%s documents terminal-compatible SQL review",
     (name) => {
-      const source = readFileSync(resolve(root, `../../../../docs/${name}`), "utf8");
+      const source = readFileSync(resolve(root, `../../../docs/${name}`), "utf8");
       expect(source).not.toContain("sql-write");
       expect(source).not.toContain('"Open in SQL console"');
       expect(source).toContain("```sql");

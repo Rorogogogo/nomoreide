@@ -3,9 +3,9 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
-import { servicesWidget } from "../src/web/client/src/features/services/widgets";
-import type { DashboardData } from "../src/web/client/src/lib/api";
+import { OperationProvider } from "../apps/dashboard/src/components/operations/operation-context";
+import { servicesWidget } from "../apps/dashboard/src/features/services/widgets";
+import type { DashboardData } from "../apps/dashboard/src/lib/api";
 
 let host: HTMLDivElement;
 let root: Root;

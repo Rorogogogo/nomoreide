@@ -3,15 +3,15 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { RemoteActivityView } from "../src/web/client/src/features/activity/activity-page";
-import type { RemoteHostMetrics, SshServerSummary } from "../src/web/client/src/lib/api";
+import { RemoteActivityView } from "../apps/dashboard/src/features/activity/activity-page";
+import type { RemoteHostMetrics, SshServerSummary } from "../apps/dashboard/src/lib/api";
 
 const api = vi.hoisted(() => ({
   getRemoteHostMetrics: vi.fn(),
 }));
 
 vi.mock("@/lib/api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/web/client/src/lib/api")>()),
+  ...(await importOriginal<typeof import("../apps/dashboard/src/lib/api")>()),
   getRemoteHostMetrics: api.getRemoteHostMetrics,
 }));
 

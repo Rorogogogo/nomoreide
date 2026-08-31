@@ -1,0 +1,1150 @@
+{
+  "version": 1,
+  "gate": "cli",
+  "http": [],
+  "entries": [
+    {
+      "key": "usage/unknown-command",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|agents|profile|list|logs|start|stop|restart|add]\n"
+      }
+    },
+    {
+      "key": "usage/unknown-command-with-a-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|agents|profile|list|logs|start|stop|restart|add]\n"
+      }
+    },
+    {
+      "key": "usage/add-with-no-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|agents|profile|list|logs|start|stop|restart|add]\n"
+      }
+    },
+    {
+      "key": "usage/add-with-an-unknown-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|agents|profile|list|logs|start|stop|restart|add]\n"
+      }
+    },
+    {
+      "key": "add/service-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "service name is required\n"
+      }
+    },
+    {
+      "key": "add/service-with-no-command",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--command is required\n"
+      }
+    },
+    {
+      "key": "add/service-local",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Registered service alpha\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/service-with-inline-flag-values",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Registered service beta\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/service-with-env-and-args",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Registered service gamma\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/service-rejects-a-non-array-args-flag",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--args must be a JSON array of strings\n"
+      }
+    },
+    {
+      "key": "add/service-rejects-unparseable-args",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--args must be a JSON array of strings\n"
+      }
+    },
+    {
+      "key": "add/service-rejects-a-non-string-env-value",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--env must be a JSON object with string values\n"
+      }
+    },
+    {
+      "key": "add/service-rejects-an-env-array",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--env must be a JSON object with string values\n"
+      }
+    },
+    {
+      "key": "add/service-with-an-empty-inline-command",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--command is required\n"
+      }
+    },
+    {
+      "key": "add/service-with-two-equals-signs",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Registered service zeta\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/service-list-after-the-quirks",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Services\nalpha\t-\tsh serve.sh\t/private%%WORKSPACE%%\nbeta\t4002\tprintf beta\t/private%%WORKSPACE%%\ngamma\t-\tprintf gamma\t/private%%WORKSPACE%%\nzeta\t-\ttrue\t/private%%WORKSPACE%%\nBundles\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/compose-without-a-compose-service",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--compose-service is required\n"
+      }
+    },
+    {
+      "key": "add/compose-service",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Registered service compose-a\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/ssh-without-a-host",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--host is required\n"
+      }
+    },
+    {
+      "key": "add/ssh-without-a-command",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--command is required\n"
+      }
+    },
+    {
+      "key": "add/ssh-without-a-cwd",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--cwd is required\n"
+      }
+    },
+    {
+      "key": "add/ssh-service",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Registered service ssh-a\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/list-with-commandless-services",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Services\nalpha\t-\tsh serve.sh\t/private%%WORKSPACE%%\nbeta\t4002\tprintf beta\t/private%%WORKSPACE%%\ngamma\t-\tprintf gamma\t/private%%WORKSPACE%%\nzeta\t-\ttrue\t/private%%WORKSPACE%%\ncompose-a\t-\tundefined\t/private%%WORKSPACE%%\nssh-a\t-\tprintf remote\t/srv/app\nBundles\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/bundle-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "bundle name is required\n"
+      }
+    },
+    {
+      "key": "add/bundle-with-no-services",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "at least one service is required\n"
+      }
+    },
+    {
+      "key": "add/bundle",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Registered bundle pair\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/bundle-naming-an-unregistered-service",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Registered bundle ghosts\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/bundle-replaces-a-same-named-one",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Registered bundle pair\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "add/list-with-bundles",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Services\nalpha\t-\tsh serve.sh\t/private%%WORKSPACE%%\nbeta\t4002\tprintf beta\t/private%%WORKSPACE%%\ngamma\t-\tprintf gamma\t/private%%WORKSPACE%%\nzeta\t-\ttrue\t/private%%WORKSPACE%%\ncompose-a\t-\tundefined\t/private%%WORKSPACE%%\nssh-a\t-\tprintf remote\t/srv/app\nBundles\nghosts\tnobody\npair\talpha\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "runtime/logs-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "service name is required\n"
+      }
+    },
+    {
+      "key": "runtime/start-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "service or bundle name is required\n"
+      }
+    },
+    {
+      "key": "runtime/stop-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "service or bundle name is required\n"
+      }
+    },
+    {
+      "key": "runtime/restart-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "service or bundle name is required\n"
+      }
+    },
+    {
+      "key": "runtime/start-an-unregistered-service",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Service \"no-such-service\" is not registered.\n"
+      }
+    },
+    {
+      "key": "runtime/logs-for-an-unregistered-service",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "runtime/start-a-service",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 55665,\n  \"startedAt\": \"2026-08-31T06:02:41.859Z\"\n}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "daemon/status-with-one-service-running",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "NoMoreIDE daemon: running at http://127.0.0.1:63165 (pid 54697, v0.1.103)\nServices: 1 running / 1 known\n  alpha  pid 55665  \n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "runtime/logs-after-a-start",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "2026-08-31T06:02:41.865Z\tstdout\talpha listening\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "runtime/stop-a-service",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"stopped\",\n  \"kind\": \"local\",\n  \"pid\": 55665,\n  \"startedAt\": \"2026-08-31T06:02:41.859Z\",\n  \"exitedAt\": \"2026-08-31T06:02:42.776Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "runtime/restart-a-stopped-service",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 55832,\n  \"startedAt\": \"2026-08-31T06:02:43.088Z\"\n}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "runtime/stop-again",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"stopped\",\n  \"kind\": \"local\",\n  \"pid\": 55832,\n  \"startedAt\": \"2026-08-31T06:02:43.088Z\",\n  \"exitedAt\": \"2026-08-31T06:02:43.404Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "daemon/status-with-nothing-running",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "NoMoreIDE daemon: running at http://127.0.0.1:63165 (pid 54697, v0.1.103)\nServices: 0 running / 1 known\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "runtime/stop-an-unregistered-service",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "{\n  \"name\": \"no-such-service\",\n  \"state\": \"stopped\"\n}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "runtime/restart-a-bundle-name",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Service \"pair\" is not registered.\n"
+      }
+    },
+    {
+      "key": "daemon/status-after-the-phantoms",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "NoMoreIDE daemon: running at http://127.0.0.1:63165 (pid 54697, v0.1.103)\nServices: 0 running / 3 known\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/no-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide git [status|branch|switch|create-branch|fetch|diff|staged-diff|log|stage|unstage|commit]\n"
+      }
+    },
+    {
+      "key": "git/unknown-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide git [status|branch|switch|create-branch|fetch|diff|staged-diff|log|stage|unstage|commit]\n"
+      }
+    },
+    {
+      "key": "git/status",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Branch\tmain\n??\tserve.sh\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/branch",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "*\tmain\tlocal\t-\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/log",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "fb697257\tseed\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/log-with-a-limit",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "fb697257\tseed\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/log-with-a-nonsense-limit",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "fatal: unrecognized argument: -NaN\n"
+      }
+    },
+    {
+      "key": "git/diff-of-a-clean-tree",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/staged-diff-of-a-clean-tree",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/commit-with-no-message",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--message is required\n"
+      }
+    },
+    {
+      "key": "git/switch-with-no-branch",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "branch name is required\n"
+      }
+    },
+    {
+      "key": "git/create-branch-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "branch name is required\n"
+      }
+    },
+    {
+      "key": "git/create-branch",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Switched to a new branch 'side'\n\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/status-on-the-new-branch",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Branch\tside\n??\tserve.sh\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/switch-back",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Switched to branch 'main'\n\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/switch-to-a-branch-that-is-not-there",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "fatal: invalid reference: nope\n"
+      }
+    },
+    {
+      "key": "git/stage-a-file",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Staged tracked.txt\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/status-after-staging",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Branch\tmain\n??\tserve.sh\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/unstage-a-file",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Unstaged tracked.txt\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "git/add-repo-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "repository name is required\n"
+      }
+    },
+    {
+      "key": "git/add-repo-with-no-path",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--path is required\n"
+      }
+    },
+    {
+      "key": "git/select-repo-that-is-not-registered",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Git repository \"ghost\" is not registered.\n"
+      }
+    },
+    {
+      "key": "agents/status",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Agent\tInstalled\tMCPs\tSkills\tConfig\nclaude\tyes\t0\t0\t(none)\ncodex\tyes\t0\t0\t(none)\nantigravity\tno\t0\t0\t(none)\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "agents/status-is-the-default",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Agent\tInstalled\tMCPs\tSkills\tConfig\nclaude\tyes\t0\t0\t(none)\ncodex\tyes\t0\t0\t(none)\nantigravity\tno\t0\t0\t(none)\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "agents/unknown-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide agents [status|doctor|read [claude|codex|antigravity]]\n"
+      }
+    },
+    {
+      "key": "agents/read-all",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "[\n  {\n    \"agent\": \"claude\",\n    \"configPath\": \"%%HOME%%/.claude.json\",\n    \"exists\": false,\n    \"mcpServers\": {},\n    \"remoteMcpServers\": {},\n    \"projectMcpServers\": {},\n    \"projectRemoteMcpServers\": {},\n    \"skills\": []\n  },\n  {\n    \"agent\": \"codex\",\n    \"configPath\": \"%%HOME%%/.codex/config.toml\",\n    \"exists\": false,\n    \"mcpServers\": {},\n    \"remoteMcpServers\": {},\n    \"projectMcpServers\": {},\n    \"projectRemoteMcpServers\": {},\n    \"skills\": []\n  },\n  {\n    \"agent\": \"antigravity\",\n    \"configPath\": \"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\n    \"exists\": false,\n    \"mcpServers\": {},\n    \"remoteMcpServers\": {},\n    \"projectMcpServers\": {},\n    \"projectRemoteMcpServers\": {},\n    \"skills\": []\n  }\n]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "agents/read-one",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "{\n  \"agent\": \"claude\",\n  \"configPath\": \"%%HOME%%/.claude.json\",\n  \"exists\": false,\n  \"mcpServers\": {},\n  \"remoteMcpServers\": {},\n  \"projectMcpServers\": {},\n  \"projectRemoteMcpServers\": {},\n  \"skills\": []\n}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "agents/read-an-unknown-agent",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Unknown agent \"emacs\". Use one of: claude, codex, antigravity\n"
+      }
+    },
+    {
+      "key": "db/no-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide db <command>\n  list\n  add <name> --engine <postgres|mysql|sqlite> --url <url> [--project-path <path>] [--replace] [--no-check]\n  check <connection>\n  remove <connection>\n  schemas <connection>\n  objects <connection> --schema <schema>\n  describe <connection> --key <opaque-key>\n  script <connection> --key <opaque-key>\n  sample <connection> <table> [--limit <rows>] [--offset <rows>]\n  query <connection> --sql <select> [--limit <rows>]\n"
+      }
+    },
+    {
+      "key": "db/unknown-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide db <command>\n  list\n  add <name> --engine <postgres|mysql|sqlite> --url <url> [--project-path <path>] [--replace] [--no-check]\n  check <connection>\n  remove <connection>\n  schemas <connection>\n  objects <connection> --schema <schema>\n  describe <connection> --key <opaque-key>\n  script <connection> --key <opaque-key>\n  sample <connection> <table> [--limit <rows>] [--offset <rows>]\n  query <connection> --sql <select> [--limit <rows>]\n"
+      }
+    },
+    {
+      "key": "db/list-when-empty",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "[]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "db/add-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "connection name is required\n"
+      }
+    },
+    {
+      "key": "db/add-with-no-engine",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--engine is required\n"
+      }
+    },
+    {
+      "key": "db/add-with-an-unsupported-engine",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--engine must be one of: postgres, mysql, sqlite\n"
+      }
+    },
+    {
+      "key": "db/add-with-no-url",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--url is required\n"
+      }
+    },
+    {
+      "key": "db/add-a-sqlite-connection",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "{\n  \"name\": \"local\",\n  \"engine\": \"sqlite\",\n  \"url\": \"fixture.db\",\n  \"writeUnlocked\": false\n}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "db/list-after-adding",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "[\n  {\n    \"name\": \"local\",\n    \"engine\": \"sqlite\",\n    \"url\": \"fixture.db\",\n    \"writeUnlocked\": false\n  }\n]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "db/add-the-same-name-again",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Database connection \"local\" already exists. Set replace=true to replace it.\n"
+      }
+    },
+    {
+      "key": "db/replace-an-existing-connection",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "{\n  \"name\": \"local\",\n  \"engine\": \"sqlite\",\n  \"url\": \"other.db\",\n  \"writeUnlocked\": false\n}\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "db/check-an-unregistered-connection",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Database connection \"ghost\" is not registered.\n"
+      }
+    },
+    {
+      "key": "db/schemas-of-an-unregistered-connection",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Database connection \"ghost\" is not registered.\n"
+      }
+    },
+    {
+      "key": "db/objects-with-no-schema-flag",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--schema is required\n"
+      }
+    },
+    {
+      "key": "db/describe-with-no-key",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--key is required\n"
+      }
+    },
+    {
+      "key": "db/sample-with-no-table",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "table is required\n"
+      }
+    },
+    {
+      "key": "db/sample-with-a-bad-limit",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--limit must be a positive integer\n"
+      }
+    },
+    {
+      "key": "db/sample-with-a-bad-offset",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--offset must be a non-negative integer\n"
+      }
+    },
+    {
+      "key": "db/query-with-no-sql",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--sql is required\n"
+      }
+    },
+    {
+      "key": "db/remove-a-connection",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "Removed database connection local\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "db/list-after-removing",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "[]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "profile/list-when-empty",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "No profiles yet. Create one with: nomoreide profile snapshot <agent> <name>\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "profile/list-is-the-default",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "No profiles yet. Create one with: nomoreide profile snapshot <agent> <name>\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "profile/unknown-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide profile <subcommand>\n  list                                  saved profiles\n  show <name>                           full profile JSON\n  snapshot <agent> <name> [--description <text>]\n  apply <name> <agent> [--dry-run] [--skip-mcps a,b] [--skip-skills x,y] [--skip-plugins p,q]\n  export <name> [--output <path>]      credential-redacted .tar.gz\n  import <archive> [--force] [--as <name>]\n  delete <name>\n  publish <name> --slug <slug> --title <title> [--version <v>] [--summary <text>]\n  install <slug> [--force] [--as <name>]   install from the hosted registry\n"
+      }
+    },
+    {
+      "key": "profile/show-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "profile name is required\n"
+      }
+    },
+    {
+      "key": "profile/show-a-profile-that-is-not-there",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide profile <subcommand>\n  list                                  saved profiles\n  show <name>                           full profile JSON\n  snapshot <agent> <name> [--description <text>]\n  apply <name> <agent> [--dry-run] [--skip-mcps a,b] [--skip-skills x,y] [--skip-plugins p,q]\n  export <name> [--output <path>]      credential-redacted .tar.gz\n  import <archive> [--force] [--as <name>]\n  delete <name>\n  publish <name> --slug <slug> --title <title> [--version <v>] [--summary <text>]\n  install <slug> [--force] [--as <name>]   install from the hosted registry\n"
+      }
+    },
+    {
+      "key": "profile/snapshot-with-no-agent",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "agent is required (one of: claude, codex, antigravity)\n"
+      }
+    },
+    {
+      "key": "profile/snapshot-with-an-unknown-agent",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "agent is required (one of: claude, codex, antigravity)\n"
+      }
+    },
+    {
+      "key": "profile/snapshot-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "profile name is required\n"
+      }
+    },
+    {
+      "key": "profile/snapshot",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Agent \"claude\" has no live config to snapshot.\n"
+      }
+    },
+    {
+      "key": "profile/list-after-a-snapshot",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "No profiles yet. Create one with: nomoreide profile snapshot <agent> <name>\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "profile/snapshot-the-same-name-again",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Agent \"claude\" has no live config to snapshot.\n"
+      }
+    },
+    {
+      "key": "profile/apply-with-no-agent",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "agent is required (one of: claude, codex, antigravity)\n"
+      }
+    },
+    {
+      "key": "profile/apply-dry-run",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Profile \"kit\" not found.\n"
+      }
+    },
+    {
+      "key": "profile/delete-with-no-name",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "profile name is required\n"
+      }
+    },
+    {
+      "key": "profile/delete",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Profile \"kit\" not found.\n"
+      }
+    },
+    {
+      "key": "profile/delete-again",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Profile \"kit\" not found.\n"
+      }
+    },
+    {
+      "key": "profile/import-with-no-archive",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "archive path is required\n"
+      }
+    },
+    {
+      "key": "profile/import-an-archive-that-is-not-there",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Archive not found: nope.tgz\n"
+      }
+    },
+    {
+      "key": "profile/export-a-profile-that-is-not-there",
+      "value": {
+        "code": 2,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Profile \"kit\" not found.\n"
+      }
+    },
+    {
+      "key": "profile/publish-without-a-slug",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "--slug and --title are required\n"
+      }
+    },
+    {
+      "key": "tui/opening-frame",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/moving-down-the-service-list",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n> beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n  beta               stopped  port 4002 \n> gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/moving-past-the-end",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n> beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n  beta               stopped  port 4002 \n> gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n> zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n> compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n> ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n> ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n> ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n  alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n> ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/moving-up-from-the-top",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/the-bundles-screen",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nBundles\n> ghosts  [nobody]\n  pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/toggling-bundles-off-again",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nBundles\n> ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/selecting-a-bundle",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nBundles\n> ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nBundles\n  ghosts  [nobody]\n> pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/the-logs-screen",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nLogs - alpha\n2026-08-31T06:02:41.865Z stdout alpha listening\n2026-08-31T06:02:43.094Z stdout alpha listening\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/escape-returns-to-services",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nLogs - alpha\n2026-08-31T06:02:41.865Z stdout alpha listening\n2026-08-31T06:02:43.094Z stdout alpha listening\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/ctrl-c-quits",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "tui/an-unnamed-escape-sequence-still-redraws",
+      "value": {
+        "code": 0,
+        "signal": null,
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
+        "stderr": ""
+      }
+    },
+    {
+      "key": "daemon/unknown-subcommand",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide daemon [status|stop|restart] [--port=N]\n"
+      }
+    },
+    {
+      "key": "daemon/unknown-subcommand-after-a-port-flag",
+      "value": {
+        "code": 1,
+        "signal": null,
+        "stdout": "",
+        "stderr": "Usage: nomoreide daemon [status|stop|restart] [--port=N]\n"
+      }
+    }
+  ]
+}

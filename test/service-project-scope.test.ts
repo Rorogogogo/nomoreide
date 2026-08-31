@@ -3,8 +3,8 @@ import {
   pathInScope,
   serviceInScope,
   unassignedServices,
-} from "../src/web/client/src/features/services/project-scope";
-import type { ServiceDefinition } from "../src/web/client/src/lib/api";
+} from "../apps/dashboard/src/features/services/project-scope";
+import type { ServiceDefinition } from "../apps/dashboard/src/lib/api";
 
 const REPOS = [
   { name: "JobJourney", path: "/Users/dev/work/JJ/JobJourney" },

@@ -1,0 +1,93 @@
+{
+  "fixtureVersion": 1,
+  "config": {
+    "version": 1,
+    "services": [
+      {
+        "name": "api",
+        "port": 3000,
+        "description": "HTTP API",
+        "test": "npm test",
+        "dependsOn": ["database"],
+        "projectPath": "/workspace",
+        "command": "node",
+        "args": ["server.js", "literal value; not-a-shell"],
+        "cwd": "/workspace/api",
+        "env": {
+          "Z_TOKEN": "fixture-secret-value",
+          "A_MODE": "development"
+        }
+      },
+      {
+        "name": "worker",
+        "kind": "local",
+        "command": "npm run worker",
+        "cwd": "/workspace/worker"
+      },
+      {
+        "name": "compose",
+        "kind": "docker-compose",
+        "cwd": "/workspace",
+        "composeFile": "compose.yml",
+        "composeService": "web"
+      },
+      {
+        "name": "remote",
+        "kind": "ssh",
+        "host": "dev-box",
+        "cwd": "/srv/app",
+        "command": "npm start",
+        "env": {}
+      }
+    ],
+    "bundles": [
+      {
+        "name": "app",
+        "services": ["api", "worker", "compose", "remote"]
+      }
+    ]
+  },
+  "expectedDiscovery": {
+    "services": [
+      {
+        "name": "api",
+        "port": 3000,
+        "description": "HTTP API",
+        "test": "npm test",
+        "dependsOn": ["database"],
+        "projectPath": "/workspace",
+        "command": "node",
+        "args": ["server.js", "literal value; not-a-shell"],
+        "cwd": "/workspace/api",
+        "envKeys": ["A_MODE", "Z_TOKEN"]
+      },
+      {
+        "name": "worker",
+        "kind": "local",
+        "command": "npm run worker",
+        "cwd": "/workspace/worker"
+      },
+      {
+        "name": "compose",
+        "kind": "docker-compose",
+        "cwd": "/workspace",
+        "composeFile": "compose.yml",
+        "composeService": "web"
+      },
+      {
+        "name": "remote",
+        "kind": "ssh",
+        "host": "dev-box",
+        "cwd": "/srv/app",
+        "command": "npm start",
+        "envKeys": []
+      }
+    ],
+    "bundles": [
+      {
+        "name": "app",
+        "services": ["api", "worker", "compose", "remote"]
+      }
+    ]
+  }
+}

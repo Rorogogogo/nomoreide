@@ -1,0 +1,407 @@
+{
+  "version": 1,
+  "gate": "mcp-terminal",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%REPO%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:local-with-env\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"local-with-env\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:needs encoding#hash\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"needs encoding#hash\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:remote\",\"cols\":80,\"cwd\":\"%%REPO%%\",\"kind\":\"service\",\"label\":\"remote\",\"rows\":24,\"shell\":\"ssh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:composed\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"composed\",\"rows\":24,\"shell\":\"docker\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"svc:local-with-env\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"service\",\"label\":\"local-with-env\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%REPO%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"%%WORKSPACE%%/stubs/codex\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown service: not-registered\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%REPO%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent provider must be codex or claude.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent resume id is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid model name: --oops\"}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "tool:nomoreide_list_terminal_sessions",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "[]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Tool 'nomoreide_open_terminal' execution failed: Unknown terminal session: nope"
+            }
+          ],
+          "isError": true
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_reclaim_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Tool 'nomoreide_reclaim_terminal' execution failed: Unknown terminal session: nope"
+            }
+          ],
+          "isError": true
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_list_terminal_sessions",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  }\n]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Tool 'nomoreide_open_terminal' execution failed: Only agent sessions can open in Terminal."
+            }
+          ],
+          "isError": true
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_reclaim_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"id\": \"term_1\",\n  \"cols\": 80,\n  \"cwd\": \"%%REPO%%\",\n  \"kind\": \"shell\",\n  \"rows\": 24,\n  \"shell\": \"/bin/zsh\",\n  \"state\": \"running\",\n  \"presentation\": \"dock\"\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_list_terminal_sessions",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  }\n]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_list_terminal_sessions",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  }\n]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Tool 'nomoreide_open_terminal' execution failed: Only agent sessions can open in Terminal."
+            }
+          ],
+          "isError": true
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_reclaim_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"id\": \"svc:needs encoding#hash\",\n  \"cols\": 80,\n  \"cwd\": \"%%WORKSPACE%%\",\n  \"kind\": \"service\",\n  \"label\": \"needs encoding#hash\",\n  \"rows\": 24,\n  \"shell\": \"/bin/zsh\",\n  \"state\": \"running\",\n  \"presentation\": \"dock\"\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Tool 'nomoreide_open_terminal' execution failed: Unknown terminal session: svc:needs encoding"
+            }
+          ],
+          "isError": true
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_list_terminal_sessions",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  }\n]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_list_terminal_sessions",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"term_2\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 7,\n      \"signal\": 0\n    },\n    \"kind\": \"agent\",\n    \"label\": \"Codex task\",\n    \"provider\": \"codex\",\n    \"rows\": 24,\n    \"shell\": \"%%WORKSPACE%%/stubs/codex\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  }\n]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Tool 'nomoreide_open_terminal' execution failed: Only a running agent session can open in Terminal."
+            }
+          ],
+          "isError": true
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_reclaim_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"id\": \"term_2\",\n  \"cols\": 80,\n  \"cwd\": \"%%REPO%%\",\n  \"exit\": {\n    \"exitCode\": 7,\n    \"signal\": 0\n  },\n  \"kind\": \"agent\",\n  \"label\": \"Codex task\",\n  \"provider\": \"codex\",\n  \"rows\": 24,\n  \"shell\": \"%%WORKSPACE%%/stubs/codex\",\n  \"state\": \"exited\",\n  \"presentation\": \"dock\"\n}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_open_terminal' parameter validation failed: id: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_open_terminal' parameter validation failed: id: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_open_terminal' parameter validation failed: id: Invalid input. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_reclaim_terminal",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_reclaim_terminal' parameter validation failed: id: Invalid input. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_open_terminal' parameter validation failed: id: Invalid input. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_open_terminal' parameter validation failed: id: String must contain at most 200 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Tool 'nomoreide_open_terminal' execution failed: Unknown terminal session: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          ],
+          "isError": true
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_open_terminal",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_open_terminal' parameter validation failed: id: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "tool:nomoreide_list_terminal_sessions",
+      "value": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "[\n  {\n    \"id\": \"term_1\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:local-with-env\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"local-with-env\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:needs encoding#hash\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"kind\": \"service\",\n    \"label\": \"needs encoding#hash\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:remote\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 255,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"remote\",\n    \"rows\": 24,\n    \"shell\": \"ssh\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"svc:composed\",\n    \"cols\": 80,\n    \"cwd\": \"%%WORKSPACE%%\",\n    \"exit\": {\n      \"exitCode\": 1,\n      \"signal\": 0\n    },\n    \"kind\": \"service\",\n    \"label\": \"composed\",\n    \"rows\": 24,\n    \"shell\": \"docker\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"term_2\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"exit\": {\n      \"exitCode\": 7,\n      \"signal\": 0\n    },\n    \"kind\": \"agent\",\n    \"label\": \"Codex task\",\n    \"provider\": \"codex\",\n    \"rows\": 24,\n    \"shell\": \"%%WORKSPACE%%/stubs/codex\",\n    \"state\": \"exited\",\n    \"presentation\": \"dock\"\n  },\n  {\n    \"id\": \"term_3\",\n    \"cols\": 80,\n    \"cwd\": \"%%REPO%%\",\n    \"kind\": \"shell\",\n    \"rows\": 24,\n    \"shell\": \"/bin/zsh\",\n    \"state\": \"running\",\n    \"presentation\": \"dock\"\n  }\n]"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

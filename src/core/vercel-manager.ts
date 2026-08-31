@@ -7,6 +7,7 @@
  * so an agent holding these tools can observe a deploy but never ship one.
  */
 
+import { providerApiBase } from "./providers/api-base.js";
 import type { ProviderFetch } from "./providers/egress.js";
 
 export type VercelDeploymentState =
@@ -185,11 +186,16 @@ export interface VercelManagerOptions {
   fetch?: ProviderFetch;
 }
 
+/** Vercel's API, or the loopback stand-in an environment override names. */
+export function vercelApiBase(): string {
+  return providerApiBase("NOMOREIDE_VERCEL_API_BASE", "https://api.vercel.com");
+}
+
 export class VercelManager {
   constructor(
     private readonly token: string,
     private readonly teamId?: string,
-    private readonly baseUrl = "https://api.vercel.com",
+    private readonly baseUrl = vercelApiBase(),
     private readonly options: VercelManagerOptions = {},
   ) {}
 
@@ -409,7 +415,7 @@ export async function vercelRequest<T>(
   opts?: { method?: string; body?: unknown; accept?: string },
 ): Promise<T> {
   const url = new URL(
-    path.startsWith("http") ? path : `${auth.baseUrl ?? "https://api.vercel.com"}${path}`,
+    path.startsWith("http") ? path : `${auth.baseUrl ?? vercelApiBase()}${path}`,
   );
   if (auth.teamId) url.searchParams.set("teamId", auth.teamId);
 
@@ -480,8 +486,16 @@ export function parseBuildLogEvents(raw: string): VercelBuildLogLine[] {
       type: event.type ?? "stdout",
       // Build output is ANSI-colored; strip the SGR codes so the log renders
       // as plain text rather than as escape soup. The ESC is the point here.
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: matching an ANSI escape sequence requires the ESC character.
-      text: (event.payload?.text ?? "").replace(/\u001b\[[0-9;]*m/g, "").trimEnd(),
+      //
+      // The `typeof` guard is not belt-and-braces: `?? ""` passes a number
+      // through, and a build event whose `text` is not a string used to throw
+      // `.replace is not a function` out of a log read — an unreadable failure
+      // in place of the one line it could not use.
+      text:
+        typeof event.payload?.text === "string"
+          ? // biome-ignore lint/suspicious/noControlCharactersInRegex: matching an ANSI escape sequence requires the ESC character.
+            event.payload.text.replace(/\u001b\[[0-9;]*m/g, "").trimEnd()
+          : "",
     }))
     .filter((line) => line.text.length > 0)
     .sort((a, b) => a.createdAt - b.createdAt);

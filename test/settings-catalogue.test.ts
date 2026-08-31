@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import * as catalogue from "../src/web/client/src/features/settings/settings-catalogue";
+import * as catalogue from "../apps/dashboard/src/features/settings/settings-catalogue";
 
 test("fails fast when rendered setting copy is missing", () => {
   expect(() =>

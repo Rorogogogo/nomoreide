@@ -9,6 +9,19 @@ import { runExternalTerminalAttach } from "./core/external-terminal.js";
 
 const command = process.argv[2] ?? "mcp";
 
+// The npm package is a compatibility shim for a deprecation window, not the
+// canonical runtime any more — that is the native binary. Said on a terminal
+// only: when stderr is a pipe this is an agent's MCP transport log or a parity
+// gate's capture, and neither is a person who can act on it.
+if (process.stderr.isTTY && process.env.NOMOREIDE_NO_DEPRECATION_NOTICE !== "1") {
+  console.error(
+    "nomoreide: the npm package is deprecated and will stop being published.\n" +
+      "  Install the native build instead — no Node.js, and it starts faster:\n" +
+      "    curl -fsSL https://www.nomoreide.com/install.sh | sh\n" +
+      "  Then re-run `nomoreide setup <agent>` so your agents point at it.",
+  );
+}
+
 if (command === "__terminal-attach") {
   const socketPath = process.argv[3] ?? "";
   const token = process.argv[4] ?? "";

@@ -2,58 +2,58 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 
 const viewSource = readFileSync(
-  "src/web/client/src/features/github/github-view.tsx",
+  "apps/dashboard/src/features/github/github-view.tsx",
   "utf8",
 );
 const setupSource = readFileSync(
-  "src/web/client/src/features/github/github-token-setup.tsx",
+  "apps/dashboard/src/features/github/github-token-setup.tsx",
   "utf8",
 );
 const accountSelectorSource = readFileSync(
-  "src/web/client/src/features/github/github-account-selector.tsx",
+  "apps/dashboard/src/features/github/github-account-selector.tsx",
   "utf8",
 );
 const accountMenuSource = readFileSync(
-  "src/web/client/src/features/github/github-account-menu.tsx",
+  "apps/dashboard/src/features/github/github-account-menu.tsx",
   "utf8",
 );
 const accountMenuHookSource = readFileSync(
-  "src/web/client/src/features/github/hooks/use-github-account-menu.ts",
+  "apps/dashboard/src/features/github/hooks/use-github-account-menu.ts",
   "utf8",
 );
 const actionsSource = readFileSync(
-  "src/web/client/src/features/github/actions-view.tsx",
+  "apps/dashboard/src/features/github/actions-view.tsx",
   "utf8",
 );
 const branchesSource = readFileSync(
-  "src/web/client/src/features/github/branches-view.tsx",
+  "apps/dashboard/src/features/github/branches-view.tsx",
   "utf8",
 );
 const prDetailSource = readFileSync(
-  "src/web/client/src/features/github/pr-detail.tsx",
+  "apps/dashboard/src/features/github/pr-detail.tsx",
   "utf8",
 );
 const tabsSource = readFileSync(
   // Shared with the Vercel view, so it lives in components/ui rather than
   // inside the GitHub feature.
-  "src/web/client/src/components/ui/tab-strip.tsx",
+  "apps/dashboard/src/components/ui/tab-strip.tsx",
   "utf8",
 );
 const prListSource = readFileSync(
-  "src/web/client/src/features/github/pr-list.tsx",
+  "apps/dashboard/src/features/github/pr-list.tsx",
   "utf8",
 );
 const issueListSource = readFileSync(
-  "src/web/client/src/features/github/issue-list.tsx",
+  "apps/dashboard/src/features/github/issue-list.tsx",
   "utf8",
 );
 const issueDetailSource = readFileSync(
-  "src/web/client/src/features/github/issue-detail.tsx",
+  "apps/dashboard/src/features/github/issue-detail.tsx",
   "utf8",
 );
 // UI copy now lives in the i18n catalog (t("...")), so text the views render is
 // asserted against en.ts rather than the component source.
-const catalog = readFileSync("src/web/client/src/lib/i18n/en.ts", "utf8");
+const catalog = readFileSync("apps/dashboard/src/lib/i18n/en.ts", "utf8");
 
 describe("GitHub connection recovery UI", () => {
   test("announces account selection failures accessibly", () => {

@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ServersView } from "../src/web/client/src/features/servers/servers-view";
+import { ServersView } from "../apps/dashboard/src/features/servers/servers-view";
 
 const api = vi.hoisted(() => ({
   getSshSetupStatus: vi.fn(),

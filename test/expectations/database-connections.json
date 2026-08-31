@@ -1,0 +1,430 @@
+{
+  "version": 1,
+  "gate": "database-connections",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false},{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"odd name/slash\",\"engine\":\"postgres\",\"url\":\"this****-all\",\"writeUnlocked\":false},{\"name\":\"pct%20name\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/pct\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/detect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"detected\":[{\"service\":\"api\",\"cwd\":\"%%WORKSPACE%%/api\",\"key\":\"DATABASE_URL\",\"engine\":\"postgres\",\"url\":\"postgres://user:envpassword@localhost:5432/api\",\"maskedUrl\":\"postgres://user:****@localhost:5432/api\"},{\"service\":\"api\",\"cwd\":\"%%WORKSPACE%%/api\",\"key\":\"QUOTED_URL\",\"engine\":\"mysql\",\"url\":\"mysql://root:envpassword@127.0.0.1:3306/shop\",\"maskedUrl\":\"mysql://root:****@127.0.0.1:3306/shop\"},{\"service\":\"api\",\"cwd\":\"%%WORKSPACE%%/api\",\"key\":\"SINGLE_QUOTED\",\"engine\":\"mysql\",\"url\":\"mariadb://root@127.0.0.1:3306/legacy\",\"maskedUrl\":\"mariadb://root@127.0.0.1:3306/legacy\"},{\"service\":\"api\",\"cwd\":\"%%WORKSPACE%%/api\",\"key\":\"SQLITE_PATH\",\"engine\":\"sqlite\",\"url\":\"./data/app.sqlite3\",\"maskedUrl\":\"./data/app.sqlite3\"},{\"service\":\"api\",\"cwd\":\"%%WORKSPACE%%/api\",\"key\":\"FILE_URL\",\"engine\":\"sqlite\",\"url\":\"file:./data/other.db\",\"maskedUrl\":\"file:./data/other.db\"},{\"service\":\"api\",\"cwd\":\"%%WORKSPACE%%/api\",\"key\":\"FILE_URL_WITH_QUERY\",\"engine\":\"sqlite\",\"url\":\"file:./data/third.db?mode=ro\",\"maskedUrl\":\"file:./data/third.db?mode=ro\"},{\"service\":\"api\",\"cwd\":\"%%WORKSPACE%%/api\",\"key\":\"lowercase_key\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/lower\",\"maskedUrl\":\"postgres://user@localhost:5432/lower\"},{\"service\":\"web\",\"cwd\":\"%%WORKSPACE%%/web\",\"key\":\"WEB_DB\",\"engine\":\"sqlite\",\"url\":\"sqlite://./web.db\",\"maskedUrl\":\"sqlite://./web.db\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"engine is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"url is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unsupported engine \\\"oracle\\\". Use one of: postgres, mysql, sqlite.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"engine is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unsupported engine \\\"SQLite\\\". Use one of: postgres, mysql, sqlite.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"lite\",\"engine\":\"sqlite\"},{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"odd name/slash\",\"engine\":\"postgres\"},{\"name\":\"pct%20name\",\"engine\":\"postgres\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"pg\",\"engine\":\"postgres\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"lite\",\"engine\":\"sqlite\"},{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"odd name/slash\",\"engine\":\"postgres\"},{\"name\":\"pct%20name\",\"engine\":\"postgres\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"pg\",\"engine\":\"postgres\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false},{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"odd name/slash\",\"engine\":\"postgres\",\"url\":\"this****-all\",\"writeUnlocked\":false},{\"name\":\"pct%20name\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/pct\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"lite\",\"engine\":\"sqlite\"},{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"odd name/slash\",\"engine\":\"postgres\"},{\"name\":\"pct%20name\",\"engine\":\"postgres\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"pg\",\"engine\":\"postgres\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false},{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"odd name/slash\",\"engine\":\"postgres\",\"url\":\"this****-all\",\"writeUnlocked\":false},{\"name\":\"pct%20name\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/pct\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"odd name/slash\",\"engine\":\"postgres\"},{\"name\":\"pct%20name\",\"engine\":\"postgres\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"pg\",\"engine\":\"postgres\"},{\"name\":\"lite\",\"engine\":\"sqlite\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"odd name/slash\",\"engine\":\"postgres\",\"url\":\"this****-all\",\"writeUnlocked\":false},{\"name\":\"pct%20name\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/pct\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false},{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"odd name/slash\",\"engine\":\"postgres\"},{\"name\":\"pct%20name\",\"engine\":\"postgres\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"pg\",\"engine\":\"postgres\"},{\"name\":\"lite\",\"engine\":\"sqlite\"},{\"name\":\"broken\",\"engine\":\"postgres\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"odd name/slash\",\"engine\":\"postgres\"},{\"name\":\"pct%20name\",\"engine\":\"postgres\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"lite\",\"engine\":\"sqlite\"},{\"name\":\"broken\",\"engine\":\"postgres\"},{\"name\":\"pg\",\"engine\":\"postgres\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"odd name/slash\",\"engine\":\"postgres\"},{\"name\":\"pct%20name\",\"engine\":\"postgres\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"lite\",\"engine\":\"sqlite\"},{\"name\":\"broken\",\"engine\":\"postgres\"},{\"name\":\"pg\",\"engine\":\"postgres\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"odd name/slash\",\"engine\":\"postgres\"},{\"name\":\"pct%20name\",\"engine\":\"postgres\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"lite\",\"engine\":\"sqlite\"},{\"name\":\"broken\",\"engine\":\"postgres\"},{\"name\":\"pg\",\"engine\":\"postgres\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"odd name/slash\",\"engine\":\"postgres\",\"url\":\"this****-all\",\"writeUnlocked\":false},{\"name\":\"pct%20name\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/pct\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false},{\"name\":\"broken\",\"engine\":\"postgres\",\"url\":\"not **** url\",\"writeUnlocked\":false},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/test",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"engine is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/test",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"url is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/test",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unsupported engine \\\"oracle\\\". Use one of: postgres, mysql, sqlite.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"odd name/slash\",\"engine\":\"postgres\",\"url\":\"this****-all\",\"writeUnlocked\":false},{\"name\":\"pct%20name\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/pct\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false},{\"name\":\"broken\",\"engine\":\"postgres\",\"url\":\"not **** url\",\"writeUnlocked\":false},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"odd name/slash\",\"engine\":\"postgres\",\"url\":\"this****-all\",\"writeUnlocked\":false},{\"name\":\"pct%20name\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/pct\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false},{\"name\":\"broken\",\"engine\":\"postgres\",\"url\":\"not **** url\",\"writeUnlocked\":false},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/lite/write-access",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"writeUnlocked\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/lite/write-access",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"writeUnlocked\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/lite/write-access",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"writeUnlocked\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/lite/write-access",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"unlocked is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/nope/write-access",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Database connection \\\"nope\\\" is not registered.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases/lite/write-access",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/lite/write-access",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"writeUnlocked\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"odd name/slash\",\"engine\":\"postgres\"},{\"name\":\"pct%20name\",\"engine\":\"postgres\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"broken\",\"engine\":\"postgres\"},{\"name\":\"pg\",\"engine\":\"postgres\"},{\"name\":\"lite\",\"engine\":\"sqlite\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"odd name/slash\",\"engine\":\"postgres\",\"url\":\"this****-all\",\"writeUnlocked\":false},{\"name\":\"pct%20name\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/pct\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"broken\",\"engine\":\"postgres\",\"url\":\"not **** url\",\"writeUnlocked\":false},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false},{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"odd name/slash\",\"engine\":\"postgres\",\"url\":\"this****-all\",\"writeUnlocked\":false},{\"name\":\"pct%20name\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/pct\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"broken\",\"engine\":\"postgres\",\"url\":\"not **** url\",\"writeUnlocked\":false},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false},{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true}]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/databases/lite",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/databases/does-not-exist",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/databases/odd%20name%2Fslash",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/databases/pct%2520name",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/databases/broken",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/databases/detect",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/databases/test",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases/detect",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false},{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"databases\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\"},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\"},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\"},{\"name\":\"mysql-plain\",\"engine\":\"mysql\"},{\"name\":\"short-url\",\"engine\":\"postgres\"},{\"name\":\"eight-chars\",\"engine\":\"postgres\"},{\"name\":\"nine-chars\",\"engine\":\"postgres\"},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\"},{\"name\":\"with-project\",\"engine\":\"sqlite\"},{\"name\":\"pg\",\"engine\":\"postgres\"},{\"name\":\"lite\",\"engine\":\"sqlite\"},{\"name\":\"spaced\",\"engine\":\"sqlite\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"connections\":[{\"name\":\"pg-plain\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/app\",\"writeUnlocked\":false},{\"name\":\"pg-query-secret\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?sslmode=require&password=****\",\"writeUnlocked\":false},{\"name\":\"pg-many-secrets\",\"engine\":\"postgres\",\"url\":\"postgres://user@localhost:5432/app?token=****&api_key=****&apiKey=****&passwd=****&secret=****&keep=visible\",\"writeUnlocked\":false},{\"name\":\"mysql-plain\",\"engine\":\"mysql\",\"url\":\"mysql://root:****@127.0.0.1:3306/shop\",\"writeUnlocked\":false},{\"name\":\"short-url\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"eight-chars\",\"engine\":\"postgres\",\"url\":\"****\",\"writeUnlocked\":false},{\"name\":\"nine-chars\",\"engine\":\"postgres\",\"url\":\"1234****6789\",\"writeUnlocked\":false},{\"name\":\"unlocked-already\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"with-project\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false,\"projectPath\":\"%%WORKSPACE%%\"},{\"name\":\"pg\",\"engine\":\"postgres\",\"url\":\"postgres://user:****@localhost:5432/renamed\",\"writeUnlocked\":false},{\"name\":\"lite\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":true},{\"name\":\"spaced\",\"engine\":\"sqlite\",\"url\":\"%%HOME%%/fixture.db\",\"writeUnlocked\":false}]}"
+    }
+  ],
+  "entries": []
+}

@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "gate": "jetbrains",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/scan",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"projectRoot is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/scan",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"projectRoot is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"ENOENT: no such file or directory, realpath '%%WORKSPACE%%/nope'\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Project root must be a directory.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/scan",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preview\":{\"sessionId\":\"afa7af7e-20be-40be-b053-bbfd8bf95593\",\"projectRoot\":\"/private%%WORKSPACE%%\",\"candidates\":[{\"id\":\"06534a88-7987-47ad-aa7b-05ac4710e1e1\",\"name\":\"web dev\",\"runType\":\"js.build_tools.npm\",\"source\":\".idea/runConfigurations/web_dev.xml\",\"command\":\"npm\",\"args\":[\"run\",\"dev\"],\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[\"API_TOKEN\",\"PORT\"],\"conflict\":false},{\"id\":\"9025bed5-0c75-4042-8278-f659daa90c69\",\"name\":\"worker\",\"runType\":\"ShConfigurationType\",\"source\":\".idea/runConfigurations/worker.xml\",\"command\":\"node worker.js\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":true},{\"id\":\"3658c0b0-b5eb-4230-b633-73a6e401bcdc\",\"name\":\"extra\",\"runType\":\"ShConfigurationType\",\"source\":\".run/extra.run.xml\",\"command\":\"echo extra\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":false}],\"unsupported\":[{\"name\":\"deploy\",\"runType\":\"AndroidRunConfigurationType\",\"source\":\".idea/runConfigurations/deploy.xml\",\"reason\":\"This JetBrains run configuration type is not supported.\"},{\"name\":\".idea/runConfigurations/evil.xml\",\"runType\":\"file\",\"source\":\".idea/runConfigurations/evil.xml\",\"reason\":\"DTD and entity declarations are not allowed.\"}],\"databases\":[{\"id\":\"ca407908-e0d8-4a89-beb9-06f3c5d8293a\",\"name\":\"app db\",\"engine\":\"postgres\",\"source\":\".idea/dataSources.xml\",\"conflict\":false,\"host\":\"localhost\",\"port\":5432,\"database\":\"appdb\"}],\"unsupportedDatabases\":[{\"name\":\"mystery\",\"source\":\".idea/dataSources.xml\",\"reason\":\"Only PostgreSQL, MySQL, and SQLite data sources are supported.\"}],\"expiresAt\":\"2026-08-31T06:14:31.803Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/scan",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preview\":{\"sessionId\":\"7b89c7fb-e90b-4e21-b925-9ec1c7fafef0\",\"projectRoot\":\"/private%%WORKSPACE%%\",\"candidates\":[{\"id\":\"e1266a99-3343-4e94-97b6-bf9946e12e4d\",\"name\":\"web dev\",\"runType\":\"js.build_tools.npm\",\"source\":\".idea/runConfigurations/web_dev.xml\",\"command\":\"npm\",\"args\":[\"run\",\"dev\"],\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[\"API_TOKEN\",\"PORT\"],\"conflict\":false},{\"id\":\"909d8ed3-3e38-43b8-a100-c21eed51c9c2\",\"name\":\"worker\",\"runType\":\"ShConfigurationType\",\"source\":\".idea/runConfigurations/worker.xml\",\"command\":\"node worker.js\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":true},{\"id\":\"9506128f-c761-4b80-bcbe-f6e377a1bfab\",\"name\":\"personal task\",\"runType\":\"ShConfigurationType\",\"source\":\".idea/workspace.xml\",\"command\":\"echo personal\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":false},{\"id\":\"453679f0-4f2c-43d8-bf01-cfc7a054f20f\",\"name\":\"extra\",\"runType\":\"ShConfigurationType\",\"source\":\".run/extra.run.xml\",\"command\":\"echo extra\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":false}],\"unsupported\":[{\"name\":\"deploy\",\"runType\":\"AndroidRunConfigurationType\",\"source\":\".idea/runConfigurations/deploy.xml\",\"reason\":\"This JetBrains run configuration type is not supported.\"},{\"name\":\".idea/runConfigurations/evil.xml\",\"runType\":\"file\",\"source\":\".idea/runConfigurations/evil.xml\",\"reason\":\"DTD and entity declarations are not allowed.\"}],\"databases\":[{\"id\":\"a36cec8f-f905-4610-a9e1-f5c128597461\",\"name\":\"app db\",\"engine\":\"postgres\",\"source\":\".idea/dataSources.xml\",\"conflict\":false,\"host\":\"localhost\",\"port\":5432,\"database\":\"appdb\"}],\"unsupportedDatabases\":[{\"name\":\"mystery\",\"source\":\".idea/dataSources.xml\",\"reason\":\"Only PostgreSQL, MySQL, and SQLite data sources are supported.\"}],\"expiresAt\":\"2026-08-31T06:14:31.822Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/apply",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sessionId and selections are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/apply",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"sessionId and selections are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/apply",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Import preview expired. Scan the project again.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/apply",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid import selection.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/apply",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid import selection.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/scan",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preview\":{\"sessionId\":\"2d7288d3-5742-4e36-912e-e352631a315f\",\"projectRoot\":\"/private%%WORKSPACE%%\",\"candidates\":[{\"id\":\"01ed25a3-589c-4451-8746-2684464b03b9\",\"name\":\"web dev\",\"runType\":\"js.build_tools.npm\",\"source\":\".idea/runConfigurations/web_dev.xml\",\"command\":\"npm\",\"args\":[\"run\",\"dev\"],\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[\"API_TOKEN\",\"PORT\"],\"conflict\":false},{\"id\":\"6792f7f7-ec8a-4214-a064-0fe13cb4d5b5\",\"name\":\"worker\",\"runType\":\"ShConfigurationType\",\"source\":\".idea/runConfigurations/worker.xml\",\"command\":\"node worker.js\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":true},{\"id\":\"b9c74d5c-214a-4252-a7cc-a21b455927b4\",\"name\":\"extra\",\"runType\":\"ShConfigurationType\",\"source\":\".run/extra.run.xml\",\"command\":\"echo extra\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":false}],\"unsupported\":[{\"name\":\"deploy\",\"runType\":\"AndroidRunConfigurationType\",\"source\":\".idea/runConfigurations/deploy.xml\",\"reason\":\"This JetBrains run configuration type is not supported.\"},{\"name\":\".idea/runConfigurations/evil.xml\",\"runType\":\"file\",\"source\":\".idea/runConfigurations/evil.xml\",\"reason\":\"DTD and entity declarations are not allowed.\"}],\"databases\":[{\"id\":\"e3e1e878-9fca-460f-8352-e9834640b925\",\"name\":\"app db\",\"engine\":\"postgres\",\"source\":\".idea/dataSources.xml\",\"conflict\":false,\"host\":\"localhost\",\"port\":5432,\"database\":\"appdb\"}],\"unsupportedDatabases\":[{\"name\":\"mystery\",\"source\":\".idea/dataSources.xml\",\"reason\":\"Only PostgreSQL, MySQL, and SQLite data sources are supported.\"}],\"expiresAt\":\"2026-08-31T06:14:31.841Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"imported\":[\"web dev\"],\"importedDatabases\":[],\"config\":{\"version\":1,\"services\":[{\"name\":\"worker\",\"command\":\"true\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web dev\",\"description\":\"Imported from JetBrains (js.build_tools.npm)\",\"command\":\"npm\",\"args\":[\"run\",\"dev\"],\"cwd\":\"/private%%WORKSPACE%%\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/scan",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preview\":{\"sessionId\":\"f022fb4a-e165-46ef-9e0f-aa0406206c08\",\"projectRoot\":\"/private%%WORKSPACE%%\",\"candidates\":[{\"id\":\"d913aab8-54d1-4525-931d-71462d0f583b\",\"name\":\"web dev\",\"runType\":\"js.build_tools.npm\",\"source\":\".idea/runConfigurations/web_dev.xml\",\"command\":\"npm\",\"args\":[\"run\",\"dev\"],\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[\"API_TOKEN\",\"PORT\"],\"conflict\":true},{\"id\":\"99d6ee70-f43d-4f23-bbcf-2f1a10850aa4\",\"name\":\"worker\",\"runType\":\"ShConfigurationType\",\"source\":\".idea/runConfigurations/worker.xml\",\"command\":\"node worker.js\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":true},{\"id\":\"9cdd40a6-5a2f-470b-a592-326f1ac9a2cb\",\"name\":\"extra\",\"runType\":\"ShConfigurationType\",\"source\":\".run/extra.run.xml\",\"command\":\"echo extra\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":false}],\"unsupported\":[{\"name\":\"deploy\",\"runType\":\"AndroidRunConfigurationType\",\"source\":\".idea/runConfigurations/deploy.xml\",\"reason\":\"This JetBrains run configuration type is not supported.\"},{\"name\":\".idea/runConfigurations/evil.xml\",\"runType\":\"file\",\"source\":\".idea/runConfigurations/evil.xml\",\"reason\":\"DTD and entity declarations are not allowed.\"}],\"databases\":[{\"id\":\"5e5423ea-59f8-486b-b45f-e2917a141c61\",\"name\":\"app db\",\"engine\":\"postgres\",\"source\":\".idea/dataSources.xml\",\"conflict\":false,\"host\":\"localhost\",\"port\":5432,\"database\":\"appdb\"}],\"unsupportedDatabases\":[{\"name\":\"mystery\",\"source\":\".idea/dataSources.xml\",\"reason\":\"Only PostgreSQL, MySQL, and SQLite data sources are supported.\"}],\"expiresAt\":\"2026-08-31T06:14:31.856Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"imported\":[\"worker-imported\"],\"importedDatabases\":[],\"config\":{\"version\":1,\"services\":[{\"name\":\"worker\",\"command\":\"true\",\"cwd\":\"%%WORKSPACE%%\"},{\"name\":\"web dev\",\"description\":\"Imported from JetBrains (js.build_tools.npm)\",\"command\":\"npm\",\"args\":[\"run\",\"dev\"],\"cwd\":\"/private%%WORKSPACE%%\"},{\"name\":\"worker-imported\",\"description\":\"Imported from JetBrains (ShConfigurationType)\",\"command\":\"node worker.js\",\"cwd\":\"/private%%WORKSPACE%%\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/scan",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"preview\":{\"sessionId\":\"8f88fe9d-bb28-4515-8e35-2041cd35cb43\",\"projectRoot\":\"/private%%WORKSPACE%%\",\"candidates\":[{\"id\":\"880b0df2-ab74-45d8-80d0-70b3d03f7acd\",\"name\":\"web dev\",\"runType\":\"js.build_tools.npm\",\"source\":\".idea/runConfigurations/web_dev.xml\",\"command\":\"npm\",\"args\":[\"run\",\"dev\"],\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[\"API_TOKEN\",\"PORT\"],\"conflict\":true},{\"id\":\"e6f93995-3418-41fa-8cba-007f4bb711ed\",\"name\":\"worker\",\"runType\":\"ShConfigurationType\",\"source\":\".idea/runConfigurations/worker.xml\",\"command\":\"node worker.js\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":true},{\"id\":\"348a9abb-bcb3-4ef8-b31d-4ba4a9ae60a3\",\"name\":\"extra\",\"runType\":\"ShConfigurationType\",\"source\":\".run/extra.run.xml\",\"command\":\"echo extra\",\"cwd\":\"/private%%WORKSPACE%%\",\"envKeys\":[],\"conflict\":false}],\"unsupported\":[{\"name\":\"deploy\",\"runType\":\"AndroidRunConfigurationType\",\"source\":\".idea/runConfigurations/deploy.xml\",\"reason\":\"This JetBrains run configuration type is not supported.\"},{\"name\":\".idea/runConfigurations/evil.xml\",\"runType\":\"file\",\"source\":\".idea/runConfigurations/evil.xml\",\"reason\":\"DTD and entity declarations are not allowed.\"}],\"databases\":[{\"id\":\"abf3c11b-f11a-4481-a509-6d1f80214af6\",\"name\":\"app db\",\"engine\":\"postgres\",\"source\":\".idea/dataSources.xml\",\"conflict\":false,\"host\":\"localhost\",\"port\":5432,\"database\":\"appdb\"}],\"unsupportedDatabases\":[{\"name\":\"mystery\",\"source\":\".idea/dataSources.xml\",\"reason\":\"Only PostgreSQL, MySQL, and SQLite data sources are supported.\"}],\"expiresAt\":\"2026-08-31T06:14:31.868Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/import/jetbrains/apply",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown import candidate: 00000000-0000-0000-0000-000000000000\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/config/reload",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

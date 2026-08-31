@@ -25,22 +25,24 @@ import { registerTerminalTools, TERMINAL_TOOL_NAMES } from "./terminal.js";
  * a new domain module and register it below. This aggregator never grows a
  * per-tool branch.
  */
-export const NOMOREIDE_TOOL_NAMES = [
-  ...SERVICE_TOOL_NAMES,
-  ...ONBOARD_TOOL_NAMES,
-  ...GIT_TOOL_NAMES,
-  ...SNAPSHOT_TOOL_NAMES,
-  ...GITHUB_TOOL_NAMES,
-  ...PROVIDER_TOOL_NAMES,
-  ...ERROR_TOOL_NAMES,
-  ...DATABASE_TOOL_NAMES,
-  ...DOC_TOOL_NAMES,
-  ...AGENT_TOOL_NAMES,
-  ...AGENT_ENV_TOOL_NAMES,
-  ...AGENT_PROFILE_TOOL_NAMES,
-  ...AGENT_REGISTRY_TOOL_NAMES,
-  ...TERMINAL_TOOL_NAMES,
-] as const;
+export const NOMOREIDE_TOOL_DOMAINS = {
+  services: SERVICE_TOOL_NAMES,
+  onboarding: ONBOARD_TOOL_NAMES,
+  git: GIT_TOOL_NAMES,
+  snapshots: SNAPSHOT_TOOL_NAMES,
+  github: GITHUB_TOOL_NAMES,
+  providers: PROVIDER_TOOL_NAMES,
+  errors: ERROR_TOOL_NAMES,
+  databases: DATABASE_TOOL_NAMES,
+  "documentation-ui": [...DOC_TOOL_NAMES, ...AGENT_TOOL_NAMES],
+  "agent-status": [AGENT_ENV_TOOL_NAMES[0]],
+  "agent-environments": AGENT_ENV_TOOL_NAMES.slice(1),
+  profiles: AGENT_PROFILE_TOOL_NAMES,
+  "profile-registry": AGENT_REGISTRY_TOOL_NAMES,
+  terminals: TERMINAL_TOOL_NAMES,
+} as const;
+
+export const NOMOREIDE_TOOL_NAMES = Object.values(NOMOREIDE_TOOL_DOMAINS).flat();
 
 interface RegisterNoMoreIdeToolsOptions extends ToolContext {
   server: FastMCP;

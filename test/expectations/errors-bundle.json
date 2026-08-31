@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "gate": "errors-bundle",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/services/errorer/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"errorer\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65207,\"startedAt\":\"2026-08-31T06:04:00.884Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/errorer/stop",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"errorer\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":65207,\"startedAt\":\"2026-08-31T06:04:00.884Z\",\"exitedAt\":\"2026-08-31T06:04:02.907Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/errors/1/bundle",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"incidentId\":1,\"markdown\":\"# Bug report: fatal error: the widget exploded\\n\\n**Service:** `errorer` · **Level:** error · seen ×1 · first 2026-08-31T06:04:00.905Z · last 2026-08-31T06:04:00.905Z\\n\\n## Error\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Last 1 log lines\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Service state\\n- **State:** stopped\\n- **Kind:** local\\n- **PID:** 65207\\n- **Started:** 2026-08-31T06:04:00.884Z\\n- **Exited:** 2026-08-31T06:04:02.907Z\\n\\n## Environment (`.env`, secrets masked)\\n\\n| Key | Value |\\n| --- | --- |\\n| `API_KEY` | •••••• |\\n| `PORT` | `3000` |\\n| `DATABASE_URL` | `postgres://u:p@h/db` |\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/errors/1/bundle?save=1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"incidentId\":1,\"markdown\":\"# Bug report: fatal error: the widget exploded\\n\\n**Service:** `errorer` · **Level:** error · seen ×1 · first 2026-08-31T06:04:00.905Z · last 2026-08-31T06:04:00.905Z\\n\\n## Error\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Last 1 log lines\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Service state\\n- **State:** stopped\\n- **Kind:** local\\n- **PID:** 65207\\n- **Started:** 2026-08-31T06:04:00.884Z\\n- **Exited:** 2026-08-31T06:04:02.907Z\\n\\n## Environment (`.env`, secrets masked)\\n\\n| Key | Value |\\n| --- | --- |\\n| `API_KEY` | •••••• |\\n| `PORT` | `3000` |\\n| `DATABASE_URL` | `postgres://u:p@h/db` |\",\"savedPath\":\"/private%%WORKSPACE%%/.nomoreide/repros/2026-08-31T06-04-03-437Z-incident-1.md\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/errors/1/bundle?save=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"incidentId\":1,\"markdown\":\"# Bug report: fatal error: the widget exploded\\n\\n**Service:** `errorer` · **Level:** error · seen ×1 · first 2026-08-31T06:04:00.905Z · last 2026-08-31T06:04:00.905Z\\n\\n## Error\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Last 1 log lines\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Service state\\n- **State:** stopped\\n- **Kind:** local\\n- **PID:** 65207\\n- **Started:** 2026-08-31T06:04:00.884Z\\n- **Exited:** 2026-08-31T06:04:02.907Z\\n\\n## Environment (`.env`, secrets masked)\\n\\n| Key | Value |\\n| --- | --- |\\n| `API_KEY` | •••••• |\\n| `PORT` | `3000` |\\n| `DATABASE_URL` | `postgres://u:p@h/db` |\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/errors/1/bundle?save=true",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"incidentId\":1,\"markdown\":\"# Bug report: fatal error: the widget exploded\\n\\n**Service:** `errorer` · **Level:** error · seen ×1 · first 2026-08-31T06:04:00.905Z · last 2026-08-31T06:04:00.905Z\\n\\n## Error\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Last 1 log lines\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Service state\\n- **State:** stopped\\n- **Kind:** local\\n- **PID:** 65207\\n- **Started:** 2026-08-31T06:04:00.884Z\\n- **Exited:** 2026-08-31T06:04:02.907Z\\n\\n## Environment (`.env`, secrets masked)\\n\\n| Key | Value |\\n| --- | --- |\\n| `API_KEY` | •••••• |\\n| `PORT` | `3000` |\\n| `DATABASE_URL` | `postgres://u:p@h/db` |\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/errors/99/bundle",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Incident not found\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/errors/1/bundle",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/errors/abc/bundle",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/errors/1/fix",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessionId\":\"s-mtgu23uk-95qgzy\",\"prompt\":\"A bug was detected in this workspace. Below is an automatically assembled repro bundle: the error, the affected file's diff, recent logs, the service's runtime state, and its environment with secrets masked.\\n\\nInvestigate the root cause and apply the smallest change that resolves it. When you are done, briefly summarize what you changed and why. Your edits are snapshotted, so they can be reviewed and reverted as a single change-set.\\n\\n---\\n\\n# Bug report: fatal error: the widget exploded\\n\\n**Service:** `errorer` · **Level:** error · seen ×1 · first 2026-08-31T06:04:00.905Z · last 2026-08-31T06:04:00.905Z\\n\\n## Error\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Last 1 log lines\\n```\\nfatal error: the widget exploded\\n```\\n\\n## Service state\\n- **State:** stopped\\n- **Kind:** local\\n- **PID:** 65207\\n- **Started:** 2026-08-31T06:04:00.884Z\\n- **Exited:** 2026-08-31T06:04:02.907Z\\n\\n## Environment (`.env`, secrets masked)\\n\\n| Key | Value |\\n| --- | --- |\\n| `API_KEY` | •••••• |\\n| `PORT` | `3000` |\\n| `DATABASE_URL` | `postgres://u:p@h/db` |\",\"repoPath\":\"/private%%WORKSPACE%%\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/errors/99/fix",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Incident not found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/errors/1/fix",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    }
+  ],
+  "entries": []
+}

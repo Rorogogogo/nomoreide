@@ -1,0 +1,640 @@
+//! Vercel seen through the vendor-neutral deploy contract.
+//!
+//! The Rust half of `src/core/vercel-provider.ts`. Everything here is a
+//! translation of Vercel's own records into the shapes in `providers::deploy` —
+//! no request is built and no policy is decided, so a change to what Vercel
+//! returns is absorbed here rather than reaching a caller.
+//!
+//! **This is a second normalization, not a replacement for the first.**
+//! `vercel_manager`'s `normalize_project` / `normalize_deployment` serve the
+//! desktop app's frontend and have always had that shape. This one serves the
+//! dashboard, the daemon, and the MCP tools. They differ where it matters: the
+//! desktop shape reports every project setting as `null` when it is missing,
+//! which cannot tell a setting the user *cleared* from one Vercel never had.
+
+use serde_json::Value;
+
+use crate::providers::api_base::provider_api_host;
+use crate::providers::deploy::{
+    present, truthy, Deployment, DeploymentDetail, DeploymentMeta, DomainVerification, LogRequest,
+    ProjectLink, ProjectSetting, ProviderDomain, ProviderEnvVar, ProviderLogLine, ProviderProject,
+};
+use crate::providers::project_resolution::LinkFile;
+use crate::vercel_manager::{repo_url, VercelApiError, VercelManager};
+
+pub const VERCEL_PROVIDER_ID: &str = "vercel";
+
+/// `vercel link` writes this, and it is the same file the CLI itself trusts.
+pub const VERCEL_LINK_FILE: LinkFile = LinkFile {
+    path: &[".vercel", "project.json"],
+    field: "projectId",
+};
+
+/// The build settings a project reports, in the order the dashboard shows them.
+///
+/// A fixed list with fixed labels rather than whatever keys the vendor happens
+/// to send: these are the settings a person changes, and a list that reordered
+/// itself per project would be unreadable.
+const SETTINGS: [(&str, &str); 6] = [
+    ("buildCommand", "Build command"),
+    ("devCommand", "Dev command"),
+    ("installCommand", "Install command"),
+    ("outputDirectory", "Output directory"),
+    ("rootDirectory", "Root directory"),
+    ("nodeVersion", "Node version"),
+];
+
+/// Vercel's own words for a deployment state, collapsed to the five a person
+/// acts on. `INITIALIZING` is "building" because there is nothing else a
+/// caller would do about it, and an unrecognized state is "queued" rather than
+/// an error — `rawState` carries Vercel's word alongside either way.
+fn state_of(raw: &str) -> &'static str {
+    match raw {
+        "READY" => "ready",
+        "ERROR" => "error",
+        "CANCELED" => "canceled",
+        "DELETED" => "deleted",
+        "BUILDING" | "INITIALIZING" => "building",
+        _ => "queued",
+    }
+}
+
+pub fn project_from_raw(raw: &Value) -> ProviderProject {
+    ProviderProject {
+        id: raw.get("id").cloned(),
+        name: raw.get("name").cloned(),
+        framework: raw.get("framework").cloned().unwrap_or(Value::Null),
+        updated_at: raw.get("updatedAt").cloned(),
+        link: link_from_raw(raw.get("link")),
+        settings: SETTINGS
+            .iter()
+            // Present-but-null is a setting the user cleared; absent is one
+            // Vercel does not carry for this project, and the two read
+            // differently in the dashboard.
+            .filter_map(|(key, label)| {
+                raw.get(key).map(|value| ProjectSetting {
+                    key,
+                    label,
+                    value: value.clone(),
+                })
+            })
+            .collect(),
+    }
+}
+
+/// A link is reported only when it names a host. Vercel sends `link: {}` for a
+/// project imported without one, and a link with no type tells a caller nothing
+/// it can act on.
+fn link_from_raw(raw: Option<&Value>) -> Option<ProjectLink> {
+    let link = raw?;
+    let kind = link
+        .get("type")
+        .and_then(Value::as_str)
+        .filter(|kind| !kind.is_empty())?;
+    Some(ProjectLink {
+        kind: kind.to_string(),
+        org: link.get("org").cloned(),
+        repo: link.get("repo").cloned(),
+        production_branch: link.get("productionBranch").cloned(),
+    })
+}
+
+pub fn deployment_from_raw(raw: &Value) -> Deployment {
+    let vendor_state = raw
+        .get("readyState")
+        .or_else(|| raw.get("state"))
+        .and_then(Value::as_str)
+        .unwrap_or("QUEUED");
+    let target = raw.get("target").cloned().unwrap_or(Value::Null);
+    // `PROMOTED`/`ROLLING` mark the deployment currently aliased to production;
+    // `STAGED` means built for production but not serving it.
+    let staged = raw.get("readySubstate").and_then(Value::as_str) == Some("STAGED");
+
+    Deployment {
+        id: raw
+            .get("uid")
+            .or_else(|| raw.get("id"))
+            .cloned()
+            .unwrap_or(Value::String(String::new())),
+        name: raw.get("name").cloned(),
+        url: raw.get("url").cloned(),
+        state: state_of(vendor_state).to_string(),
+        raw_state: vendor_state.to_string(),
+        is_current_production: target.as_str() == Some("production") && !staged,
+        target,
+        created_at: raw.get("createdAt").or_else(|| raw.get("created")).cloned(),
+        ready_at: raw.get("readyAt").or_else(|| raw.get("ready")).cloned(),
+        creator: raw.get("creator").cloned(),
+        meta: meta_from_raw(raw.get("meta")),
+        inspector_url: raw.get("inspectorUrl").cloned(),
+    }
+}
+
+/// The commit, whichever git host it came from. Each field falls back
+/// independently: a deployment carrying a GitHub sha and a GitLab ref is not a
+/// real Vercel record, but reading it field by field means one odd key cannot
+/// hide the three good ones.
+fn meta_from_raw(raw: Option<&Value>) -> DeploymentMeta {
+    let pick = |keys: [&str; 3]| -> Option<Value> {
+        keys.iter()
+            .find_map(|key| raw.and_then(|meta| meta.get(*key)).cloned())
+    };
+    DeploymentMeta {
+        branch: pick(["githubCommitRef", "gitlabCommitRef", "bitbucketCommitRef"]),
+        sha: pick(["githubCommitSha", "gitlabCommitSha", "bitbucketCommitSha"]),
+        commit_message: pick([
+            "githubCommitMessage",
+            "gitlabCommitMessage",
+            "bitbucketCommitMessage",
+        ]),
+        commit_author: pick([
+            "githubCommitAuthorName",
+            "gitlabCommitAuthorName",
+            "bitbucketCommitAuthorName",
+        ]),
+    }
+}
+
+pub fn detail_from_raw(raw: &Value) -> DeploymentDetail {
+    DeploymentDetail {
+        deployment: deployment_from_raw(raw),
+        aliases: raw.get("alias").cloned().unwrap_or(Value::Array(vec![])),
+        building_at: raw.get("buildingAt").cloned(),
+        // An explicit null is "this build did not fail", which is not a message.
+        error_message: raw
+            .get("errorMessage")
+            .filter(|value| !value.is_null())
+            .cloned(),
+    }
+}
+
+/// One variable, in the neutral shape.
+///
+/// `id` falls back to the key because Vercel's *own* normalization does, and a
+/// variable with neither is reported with no id at all rather than an empty
+/// one — the reveal route addresses a variable by whatever this says.
+pub fn env_from_raw(raw: &Value) -> ProviderEnvVar {
+    let environments = match raw.get("target") {
+        Some(Value::Array(items)) => items.clone(),
+        // Vercel has sent a bare string here for single-environment variables.
+        Some(Value::String(single)) => vec![Value::String(single.clone())],
+        _ => Vec::new(),
+    };
+    ProviderEnvVar {
+        id: present(raw.get("id")).or_else(|| raw.get("key").cloned()),
+        key: raw.get("key").cloned(),
+        environments,
+        // "Sensitive" is the safe default for a variable whose type Vercel did
+        // not say: it means the value does not read back.
+        kind: present(raw.get("type")).unwrap_or_else(|| Value::String("encrypted".into())),
+        // Reported even when there is none. Absent would read as "not asked",
+        // and the dialog distinguishes the two.
+        git_branch: Some(raw.get("gitBranch").cloned().unwrap_or(Value::Null)),
+        comment: Some(raw.get("comment").cloned().unwrap_or(Value::Null)),
+        // Timestamps are passed through: a key Vercel did not send is absent
+        // rather than null, because it was never asked about.
+        created_at: raw.get("createdAt").cloned(),
+        updated_at: raw.get("updatedAt").cloned(),
+    }
+}
+
+pub fn domain_from_raw(raw: &Value) -> ProviderDomain {
+    ProviderDomain {
+        name: raw.get("name").cloned(),
+        apex_name: raw.get("apexName").cloned(),
+        verified: raw
+            .get("verified")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        redirect: Some(raw.get("redirect").cloned().unwrap_or(Value::Null)),
+        git_branch: Some(raw.get("gitBranch").cloned().unwrap_or(Value::Null)),
+        created_at: raw.get("createdAt").cloned(),
+        updated_at: raw.get("updatedAt").cloned(),
+        verification: verification_from_raw(raw.get("verification")),
+    }
+}
+
+/// The DNS records still outstanding, dropping any entry that does not name
+/// both a record and its value — half a record is not something a user can act
+/// on, and rendering one as a row to copy would be worse than omitting it.
+fn verification_from_raw(raw: Option<&Value>) -> Vec<DomainVerification> {
+    raw.and_then(Value::as_array)
+        .map(|entries| {
+            entries
+                .iter()
+                .filter(|entry| {
+                    entry.get("domain").and_then(Value::as_str).is_some()
+                        && entry.get("value").and_then(Value::as_str).is_some()
+                })
+                .map(|entry| DomainVerification {
+                    kind: present(entry.get("type")).unwrap_or_else(|| Value::String("TXT".into())),
+                    domain: entry.get("domain").cloned().unwrap_or(Value::Null),
+                    value: entry.get("value").cloned().unwrap_or(Value::Null),
+                    reason: entry.get("reason").cloned(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// A connected Vercel client answering in the vendor-neutral shapes.
+pub struct VercelDeployProvider {
+    manager: VercelManager,
+}
+
+impl VercelDeployProvider {
+    pub fn new(manager: VercelManager) -> Self {
+        Self { manager }
+    }
+
+    /// The signed-in account, exactly as Vercel described it. Not normalized:
+    /// the one caller reads two of its fields, and narrowing it here would
+    /// invent answers for the rest.
+    pub async fn viewer(&self) -> Result<Value, VercelApiError> {
+        self.manager.viewer().await
+    }
+
+    /// The teams this credential can act as. Vercel's own list is already the
+    /// neutral `{ id, slug, name }`.
+    pub async fn list_scopes(&self) -> Result<Vec<Value>, VercelApiError> {
+        self.manager.list_teams().await
+    }
+
+    pub async fn list_projects(
+        &self,
+        search: Option<&str>,
+    ) -> Result<Vec<ProviderProject>, VercelApiError> {
+        Ok(self
+            .manager
+            .list_projects_raw(search, None, None)
+            .await?
+            .iter()
+            .map(project_from_raw)
+            .collect())
+    }
+
+    pub async fn get_project(&self, id: &str) -> Result<ProviderProject, VercelApiError> {
+        Ok(project_from_raw(&self.manager.get_project_raw(id).await?))
+    }
+
+    /// The project Vercel has imported from this git remote, if any.
+    pub async fn find_by_repo_url(
+        &self,
+        repo_url: &str,
+    ) -> Result<Option<ProviderProject>, VercelApiError> {
+        Ok(self
+            .manager
+            .list_projects_raw(None, Some(repo_url), Some(2))
+            .await?
+            .first()
+            .map(project_from_raw))
+    }
+
+    pub async fn list_deployments(
+        &self,
+        project_id: &str,
+        target: Option<&str>,
+        limit: u32,
+    ) -> Result<Vec<Deployment>, VercelApiError> {
+        Ok(self
+            .manager
+            .list_deployments_raw(project_id, target, Some(limit))
+            .await?
+            .iter()
+            .map(deployment_from_raw)
+            .collect())
+    }
+
+    pub async fn get_deployment(&self, id: &str) -> Result<DeploymentDetail, VercelApiError> {
+        Ok(detail_from_raw(&self.manager.get_deployment_raw(id).await?))
+    }
+
+    /// The project's variables, keys and environments only, sorted by key.
+    ///
+    /// The sort is the vendor-neutral layer's, not Vercel's: the list endpoint
+    /// answers in an order nothing documents, and a variable that moved rows
+    /// between reloads reads as a bug.
+    pub async fn list_env(&self, project_id: &str) -> Result<Vec<ProviderEnvVar>, VercelApiError> {
+        let mut envs: Vec<ProviderEnvVar> = self
+            .manager
+            .list_env_raw(project_id)
+            .await?
+            .iter()
+            .map(env_from_raw)
+            .collect();
+        envs.sort_by(|left, right| sort_key(&left.key).cmp(sort_key(&right.key)));
+        Ok(envs)
+    }
+
+    pub async fn get_env_value(
+        &self,
+        project_id: &str,
+        env_id: &str,
+    ) -> Result<String, VercelApiError> {
+        self.manager.env_value(project_id, env_id).await
+    }
+
+    pub async fn list_domains(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<ProviderDomain>, VercelApiError> {
+        Ok(self
+            .manager
+            .list_domains_raw(project_id)
+            .await?
+            .iter()
+            .map(domain_from_raw)
+            .collect())
+    }
+
+    pub async fn build_logs(
+        &self,
+        id: &str,
+        limit: u32,
+    ) -> Result<Vec<ProviderLogLine>, VercelApiError> {
+        Ok(self
+            .manager
+            .deployment_build_logs(id, Some(limit))
+            .await?
+            .iter()
+            .map(|line| {
+                ProviderLogLine::build(
+                    text_of(line, "id"),
+                    line.get("createdAt").and_then(Value::as_i64).unwrap_or(0),
+                    text_of(line, "type"),
+                    text_of(line, "text"),
+                )
+            })
+            .collect())
+    }
+
+    /// Why a *deployed* request failed, which is a different question from why
+    /// a build did.
+    ///
+    /// The manager already answers with an empty list rather than an error for
+    /// the accounts whose plan does not serve these, so there is nothing to
+    /// catch here.
+    pub async fn runtime_logs(
+        &self,
+        id: &str,
+        limit: u32,
+    ) -> Result<Vec<ProviderLogLine>, VercelApiError> {
+        Ok(self
+            .manager
+            .deployment_runtime_logs(id, Some(limit))
+            .await?
+            .iter()
+            .map(runtime_log_from_raw)
+            .collect())
+    }
+}
+
+/// A string field of a normalized line, or the empty string.
+fn text_of(line: &Value, key: &str) -> String {
+    line.get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
+}
+
+/// One runtime line, with its request badge attached only when the vendor said
+/// something about the request.
+///
+/// A status code of zero still counts: the reference tests `statusCode` for
+/// *presence* while testing the two strings for truthiness, so an empty method
+/// is no method and a zero status is a status.
+fn runtime_log_from_raw(line: &Value) -> ProviderLogLine {
+    // `Value::cloned`, not `present` — see `parse_runtime_log_events`: these
+    // four travel by presence, so an explicit null is a value here.
+    let field = |key: &str| line.get(key).cloned();
+    let method = field("requestMethod");
+    let path = field("requestPath");
+    let status_code = field("statusCode");
+    let named = method.as_ref().is_some_and(truthy)
+        || path.as_ref().is_some_and(truthy)
+        || status_code.is_some();
+    ProviderLogLine {
+        id: text_of(line, "id"),
+        created_at: line.get("createdAt").and_then(Value::as_i64).unwrap_or(0),
+        kind: "runtime",
+        level: text_of(line, "level"),
+        text: text_of(line, "message"),
+        source: field("source"),
+        request: named.then(|| LogRequest {
+            method,
+            path,
+            status_code,
+        }),
+    }
+}
+
+/// What a variable sorts under. A key the vendor did not send sorts first,
+/// which is where `String(undefined)` would not put it — but a variable with
+/// no key at all is not a row anyone can act on, and its position is not a
+/// contract worth reproducing.
+fn sort_key(key: &Option<Value>) -> &str {
+    key.as_ref().and_then(Value::as_str).unwrap_or("")
+}
+
+/// The URL Vercel keys an imported project by, derived from a git remote.
+pub fn vercel_repo_url(remote: &str) -> Option<String> {
+    repo_url(remote)
+}
+
+/// The manifest the dashboard renders a tab from, and the egress allowlist
+/// `createProviderFetch` enforces.
+///
+/// Data rather than a struct: every field of it is sent verbatim to a client
+/// that renders it, including the translated action labels, so a struct would
+/// only add a second spelling of the same document to keep in step.
+pub fn manifest() -> Value {
+    serde_json::json!({
+        "id": "vercel",
+        "name": "Vercel",
+        "kind": "deploy",
+        "strings": {
+            "en": {
+                "scope.label": "Vercel scope",
+                "action.redeploy": "Redeploy",
+                "action.redeploy.done": "Redeploy started.",
+                "action.cancel": "Cancel build",
+                "action.cancel.done": "Build canceled.",
+                "action.promote": "Promote",
+                "action.promote.done": "Promoted to production.",
+                "action.promote.confirmTitle": "Promote to production?",
+                "action.promote.confirm": "Production traffic switches to this deployment immediately.",
+                "action.rollback": "Roll back",
+                "action.rollback.done": "Rolled back production.",
+                "action.rollback.confirmTitle": "Roll production back?",
+                "action.rollback.confirm": "Production traffic switches back to this older deployment immediately."
+            },
+            "zh": {
+                "scope.label": "Vercel 范围",
+                "action.redeploy": "重新部署",
+                "action.redeploy.done": "已开始重新部署。",
+                "action.cancel": "取消构建",
+                "action.cancel.done": "已取消构建。",
+                "action.promote": "提升至生产",
+                "action.promote.done": "已提升至生产环境。",
+                "action.promote.confirmTitle": "提升至生产环境？",
+                "action.promote.confirm": "生产流量将立即切换到该部署。",
+                "action.rollback": "回滚",
+                "action.rollback.done": "已回滚生产环境。",
+                "action.rollback.confirmTitle": "回滚生产环境？",
+                "action.rollback.confirm": "生产流量将立即切回这个较旧的部署。"
+            }
+        },
+        "authSources": [
+            "cli",
+            "stored",
+            "oauth"
+        ],
+        "capabilities": [
+            "projects",
+            "deployments",
+            "buildLogs",
+            "runtimeLogs",
+            "env",
+            "domains"
+        ],
+        "actions": [
+            "redeploy",
+            "cancel",
+            "promote",
+            "rollback"
+        ],
+        "productionAffecting": [
+            "promote",
+            "rollback"
+        ],
+        // One host: the REST API and the OIDC userinfo endpoint a browser
+        // sign-in uses are both on it. Notably *not* `vercel.com` — that is
+        // where the dashboard links point, and a link is not a request.
+        //
+        // Derived from the base URL rather than written out, so the allowlist
+        // and the place requests actually go cannot drift apart — including
+        // when `NOMOREIDE_VERCEL_API_BASE` points them at a loopback stub.
+        "api": {
+            "hosts": [
+                provider_api_host(&crate::vercel_manager::api_base())
+            ]
+        }
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn value(project: &ProviderProject) -> Value {
+        serde_json::to_value(project).unwrap()
+    }
+
+    #[test]
+    fn a_setting_is_reported_only_when_the_project_carries_the_key() {
+        let project = project_from_raw(&json!({
+            "id": "prj", "name": "app", "buildCommand": "make", "devCommand": Value::Null
+        }));
+        assert_eq!(
+            project.settings,
+            vec![
+                ProjectSetting {
+                    key: "buildCommand",
+                    label: "Build command",
+                    value: json!("make")
+                },
+                ProjectSetting {
+                    key: "devCommand",
+                    label: "Dev command",
+                    value: Value::Null
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn framework_is_always_reported_and_a_missing_id_is_not() {
+        let project = value(&project_from_raw(&json!({ "name": "app" })));
+        assert_eq!(project["framework"], Value::Null);
+        assert!(project.get("id").is_none());
+        assert_eq!(project["settings"], json!([]));
+    }
+
+    /// Vercel sends `link: {}` for a project imported without a git host, and
+    /// a link that names none tells a caller nothing.
+    #[test]
+    fn a_link_without_a_type_is_not_a_link() {
+        for raw in [
+            json!({"link": {}}),
+            json!({"link": Value::Null}),
+            json!({"link": "github"}),
+        ] {
+            assert!(project_from_raw(&raw).link.is_none(), "{raw}");
+        }
+        assert_eq!(
+            project_from_raw(&json!({"link": {"type": "github", "org": "acme", "repo": "app"}}))
+                .link
+                .map(|link| link.kind),
+            Some("github".to_string())
+        );
+    }
+
+    #[test]
+    fn ready_state_wins_over_state_and_an_unknown_one_is_queued() {
+        for (raw, state, vendor) in [
+            (
+                json!({"readyState": "READY", "state": "BUILDING"}),
+                "ready",
+                "READY",
+            ),
+            (json!({"state": "CANCELED"}), "canceled", "CANCELED"),
+            (
+                json!({"readyState": "INITIALIZING"}),
+                "building",
+                "INITIALIZING",
+            ),
+            (
+                json!({"readyState": "SOMETHING_NEW"}),
+                "queued",
+                "SOMETHING_NEW",
+            ),
+            (json!({}), "queued", "QUEUED"),
+        ] {
+            let deployment = deployment_from_raw(&raw);
+            assert_eq!(deployment.state, state, "{raw}");
+            assert_eq!(deployment.raw_state, vendor, "{raw}");
+        }
+    }
+
+    /// A production deployment that is built but not serving is not current.
+    #[test]
+    fn a_staged_production_deployment_is_not_the_current_one() {
+        let staged = json!({"target": "production", "readySubstate": "STAGED"});
+        assert!(!deployment_from_raw(&staged).is_current_production);
+        let promoted = json!({"target": "production", "readySubstate": "PROMOTED"});
+        assert!(deployment_from_raw(&promoted).is_current_production);
+        assert!(deployment_from_raw(&json!({"target": "production"})).is_current_production);
+        assert!(!deployment_from_raw(&json!({"target": "preview"})).is_current_production);
+    }
+
+    #[test]
+    fn each_commit_field_falls_back_across_git_hosts_on_its_own() {
+        let meta = deployment_from_raw(&json!({"meta": {
+            "gitlabCommitRef": "gl", "githubCommitSha": "gh", "bitbucketCommitMessage": "bb"
+        }}))
+        .meta;
+        assert_eq!(meta.branch, Some(json!("gl")));
+        assert_eq!(meta.sha, Some(json!("gh")));
+        assert_eq!(meta.commit_message, Some(json!("bb")));
+        assert_eq!(meta.commit_author, None);
+    }
+
+    #[test]
+    fn a_detail_reports_aliases_even_when_there_are_none() {
+        let detail = detail_from_raw(&json!({"uid": "dpl", "errorMessage": Value::Null}));
+        assert_eq!(detail.aliases, json!([]));
+        assert_eq!(detail.error_message, None);
+        assert_eq!(detail.building_at, None);
+    }
+}

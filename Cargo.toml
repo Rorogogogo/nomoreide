@@ -1,0 +1,57 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.103"
+edition = "2021"
+rust-version = "1.77.2"
+license = "AGPL-3.0-only"
+
+[workspace.dependencies]
+anyhow = "1"
+axum = "0.7"
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5"
+# A profile exports as a `.tar.gz`, which is the interchange format the
+# reference already writes — so these read and write someone else's archives,
+# not just our own.
+flate2 = "1"
+tar = "0.4"
+futures-util = "0.3"
+regex = "1"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+# `preserve_order` because a JSON object's keys are sometimes the user's own
+# data — the MCP servers in a profile, say — and the reference preserves the
+# order they were written in. Without this, parsing a request would sort them
+# before any tool saw them, and the order could never be recovered.
+serde_json = { version = "1", features = ["preserve_order"] }
+portable-pty = "0.8"
+serde_yaml = "0.9"
+sha2 = "0.10"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "mysql", "sqlite", "json"] }
+subtle = "2.6"
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-process = "2"
+tauri-plugin-shell = "2"
+thiserror = "2"
+# `preserve_order` because an agent config reports its MCP servers in file
+# order, which a sorted table would lose.
+toml = { version = "0.8", features = ["preserve_order"] }
+# Edits Codex's config in place, so its comments and layout survive a write.
+toml_edit = "0.20"
+tokio = { version = "1", features = ["full"] }
+url = "2"
+urlencoding = "2"
+uuid = { version = "1", features = ["v4"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

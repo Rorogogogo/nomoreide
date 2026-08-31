@@ -1,0 +1,1845 @@
+{
+  "version": 1,
+  "gate": "github-template",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- First change\\n- Second change\\n\\n## Changed files\\n- modified src/app.ts\\n- added src/new.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":2,\"headSha\":\"c2\",\"commits\":[{\"sha\":\"c1\",\"message\":\"First change\"},{\"sha\":\"c2\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"src/app.ts\",\"status\":\"modified\",\"additions\":3,\"deletions\":1,\"changes\":4},{\"path\":\"src/new.ts\",\"status\":\"added\",\"additions\":9,\"deletions\":0,\"changes\":9}],\"ciStatus\":{\"sha\":\"c2\",\"state\":\"success\",\"totalCount\":1,\"runs\":[{\"id\":1,\"name\":\"build\",\"status\":\"completed\",\"conclusion\":\"success\"}]}},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"The newest one\",\"body\":\"## Commits\\n- The older one\\n- The newest one\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":2,\"headSha\":\"c9\",\"commits\":[{\"sha\":\"c8\",\"message\":\"The older one\"},{\"sha\":\"c9\",\"message\":\"The newest one\"}],\"files\":[],\"ciStatus\":{\"sha\":\"c9\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Feature\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"No files reported\",\"body\":\"## Commits\\n- No files reported\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"c3\",\"commits\":[{\"sha\":\"c3\",\"message\":\"No files reported\"}],\"files\":[],\"ciStatus\":{\"sha\":\"c3\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Commit number 11\",\"body\":\"## Commits\\n- Commit number 2\\n- Commit number 3\\n- Commit number 4\\n- Commit number 5\\n- Commit number 6\\n- Commit number 7\\n- Commit number 8\\n- Commit number 9\\n- Commit number 10\\n- Commit number 11\\n\\n## Changed files\\n- modified src/file-0.ts\\n- modified src/file-1.ts\\n- modified src/file-2.ts\\n- modified src/file-3.ts\\n- modified src/file-4.ts\\n- modified src/file-5.ts\\n- modified src/file-6.ts\\n- modified src/file-7.ts\\n- modified src/file-8.ts\\n- modified src/file-9.ts\\n- modified src/file-10.ts\\n- modified src/file-11.ts\\n- modified src/file-12.ts\\n- modified src/file-13.ts\\n- modified src/file-14.ts\\n- modified src/file-15.ts\\n- modified src/file-16.ts\\n- modified src/file-17.ts\\n- modified src/file-18.ts\\n- modified src/file-19.ts\\n- 3 more files\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":12,\"headSha\":\"s11\",\"commits\":[{\"sha\":\"s0\",\"message\":\"Commit number 0\"},{\"sha\":\"s1\",\"message\":\"Commit number 1\"},{\"sha\":\"s2\",\"message\":\"Commit number 2\"},{\"sha\":\"s3\",\"message\":\"Commit number 3\"},{\"sha\":\"s4\",\"message\":\"Commit number 4\"},{\"sha\":\"s5\",\"message\":\"Commit number 5\"},{\"sha\":\"s6\",\"message\":\"Commit number 6\"},{\"sha\":\"s7\",\"message\":\"Commit number 7\"},{\"sha\":\"s8\",\"message\":\"Commit number 8\"},{\"sha\":\"s9\",\"message\":\"Commit number 9\"},{\"sha\":\"s10\",\"message\":\"Commit number 10\"},{\"sha\":\"s11\",\"message\":\"Commit number 11\"}],\"files\":[{\"path\":\"src/file-0.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-1.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-2.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-3.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-4.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-5.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-6.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-7.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-8.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-9.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-10.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-11.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-12.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-13.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-14.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-15.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-16.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-17.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-18.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-19.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-20.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-21.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1},{\"path\":\"src/file-22.ts\",\"status\":\"modified\",\"additions\":1,\"deletions\":0,\"changes\":1}],\"ciStatus\":{\"sha\":\"s11\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"No count reported\",\"body\":\"## Commits\\n- No count reported\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"headSha\":\"c4\",\"commits\":[{\"sha\":\"c4\",\"message\":\"No count reported\"}],\"files\":[],\"ciStatus\":{\"sha\":\"c4\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\\n\\n## Changed files\\n- A app.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"app.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Feature\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\",\"Could not compare local branch with main: fatal: ambiguous argument 'origin/main..HEAD': unknown revision or path not in the working tree.\\nUse '--' to separate paths from revisions, like this:\\n'git <command> [<revision>...] -- [<file>...]'\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\\n\\n## Changed files\\n- A app.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"app.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":null,\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\\n\\n## Changed files\\n- A app.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"app.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not read GitHub repository metadata: Server Error\",\"Could not compare pushed GitHub branches: Not Found\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"main\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"main\",\"title\":\"Main\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"main\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[\"The current branch matches the base branch. Choose a feature branch before creating a PR.\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"\"},\"currentBranch\":\"main\",\"suggestedBase\":\"\",\"base\":\"\",\"head\":\"main\",\"title\":\"Main\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"\",\"head\":\"main\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Rename and add\",\"body\":\"## Commits\\n- Second change\\n- Rename and add\\n\\n## Changed files\\n- R README.md\\n- A app.ts\\n- A extra.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":2,\"headSha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"},{\"sha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"message\":\"Rename and add\"}],\"files\":[{\"path\":\"README.md\",\"status\":\"R\"},{\"path\":\"app.ts\",\"status\":\"A\"},{\"path\":\"extra.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"c2\",\"commits\":[{\"sha\":\"c2\",\"message\":\"Second change\"}],\"files\":[]},\"warnings\":[\"Could not read head CI status: Server Error\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Feature\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feat/add_the-thing\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feat/add_the-thing\",\"title\":\"Add the thing\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feat/add_the-thing\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"123-fix\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"123-fix\",\"title\":\"123 fix\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"123-fix\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"+odd-name\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"+odd-name\",\"title\":\"+odd name\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"+odd-name\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"émeraude-work\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"émeraude-work\",\"title\":\"émeraude work\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"émeraude-work\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":null,\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Rename and add\",\"body\":\"## Commits\\n- Second change\\n- Rename and add\\n\\n## Changed files\\n- R README.md\\n- A app.ts\\n- A extra.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":2,\"headSha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"},{\"sha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"message\":\"Rename and add\"}],\"files\":[{\"path\":\"README.md\",\"status\":\"R\"},{\"path\":\"app.ts\",\"status\":\"A\"},{\"path\":\"extra.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not read GitHub repository metadata: Bad credentials\",\"Could not compare pushed GitHub branches: Bad credentials\"]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/github/pr-template",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"main\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"main\",\"title\":\"Main\",\"body\":\"\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"main\",\"aheadBy\":0,\"headSha\":null,\"commits\":[],\"files\":[]},\"warnings\":[\"The current branch matches the base branch. Choose a feature branch before creating a PR.\"]}}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "template/compared-by-github",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Second change",
+              "body": "## Commits\n- First change\n- Second change\n\n## Changed files\n- modified src/app.ts\n- added src/new.ts",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 2,
+                "headSha": "c2",
+                "commits": [
+                  {
+                    "sha": "c1",
+                    "message": "First change"
+                  },
+                  {
+                    "sha": "c2",
+                    "message": "Second change"
+                  }
+                ],
+                "files": [
+                  {
+                    "path": "src/app.ts",
+                    "status": "modified",
+                    "additions": 3,
+                    "deletions": 1,
+                    "changes": 4
+                  },
+                  {
+                    "path": "src/new.ts",
+                    "status": "added",
+                    "additions": 9,
+                    "deletions": 0,
+                    "changes": 9
+                  }
+                ],
+                "ciStatus": {
+                  "sha": "c2",
+                  "state": "success",
+                  "totalCount": 1,
+                  "runs": [
+                    {
+                      "id": 1,
+                      "name": "build",
+                      "status": "completed",
+                      "conclusion": "success"
+                    }
+                  ]
+                }
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/c2/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/title-from-the-last-commit",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "The newest one",
+              "body": "## Commits\n- The older one\n- The newest one",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 2,
+                "headSha": "c9",
+                "commits": [
+                  {
+                    "sha": "c8",
+                    "message": "The older one"
+                  },
+                  {
+                    "sha": "c9",
+                    "message": "The newest one"
+                  }
+                ],
+                "files": [],
+                "ciStatus": {
+                  "sha": "c9",
+                  "state": "unknown",
+                  "totalCount": 0,
+                  "runs": []
+                }
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/c9/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/title-from-the-branch-name",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Feature",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/compare-without-a-files-key",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "No files reported",
+              "body": "## Commits\n- No files reported",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 1,
+                "headSha": "c3",
+                "commits": [
+                  {
+                    "sha": "c3",
+                    "message": "No files reported"
+                  }
+                ],
+                "files": [],
+                "ciStatus": {
+                  "sha": "c3",
+                  "state": "unknown",
+                  "totalCount": 0,
+                  "runs": []
+                }
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/c3/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/more-than-the-body-lists",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Commit number 11",
+              "body": "## Commits\n- Commit number 2\n- Commit number 3\n- Commit number 4\n- Commit number 5\n- Commit number 6\n- Commit number 7\n- Commit number 8\n- Commit number 9\n- Commit number 10\n- Commit number 11\n\n## Changed files\n- modified src/file-0.ts\n- modified src/file-1.ts\n- modified src/file-2.ts\n- modified src/file-3.ts\n- modified src/file-4.ts\n- modified src/file-5.ts\n- modified src/file-6.ts\n- modified src/file-7.ts\n- modified src/file-8.ts\n- modified src/file-9.ts\n- modified src/file-10.ts\n- modified src/file-11.ts\n- modified src/file-12.ts\n- modified src/file-13.ts\n- modified src/file-14.ts\n- modified src/file-15.ts\n- modified src/file-16.ts\n- modified src/file-17.ts\n- modified src/file-18.ts\n- modified src/file-19.ts\n- 3 more files",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 12,
+                "headSha": "s11",
+                "commits": [
+                  {
+                    "sha": "s0",
+                    "message": "Commit number 0"
+                  },
+                  {
+                    "sha": "s1",
+                    "message": "Commit number 1"
+                  },
+                  {
+                    "sha": "s2",
+                    "message": "Commit number 2"
+                  },
+                  {
+                    "sha": "s3",
+                    "message": "Commit number 3"
+                  },
+                  {
+                    "sha": "s4",
+                    "message": "Commit number 4"
+                  },
+                  {
+                    "sha": "s5",
+                    "message": "Commit number 5"
+                  },
+                  {
+                    "sha": "s6",
+                    "message": "Commit number 6"
+                  },
+                  {
+                    "sha": "s7",
+                    "message": "Commit number 7"
+                  },
+                  {
+                    "sha": "s8",
+                    "message": "Commit number 8"
+                  },
+                  {
+                    "sha": "s9",
+                    "message": "Commit number 9"
+                  },
+                  {
+                    "sha": "s10",
+                    "message": "Commit number 10"
+                  },
+                  {
+                    "sha": "s11",
+                    "message": "Commit number 11"
+                  }
+                ],
+                "files": [
+                  {
+                    "path": "src/file-0.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-1.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-2.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-3.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-4.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-5.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-6.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-7.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-8.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-9.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-10.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-11.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-12.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-13.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-14.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-15.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-16.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-17.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-18.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-19.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-20.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-21.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  },
+                  {
+                    "path": "src/file-22.ts",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "changes": 1
+                  }
+                ],
+                "ciStatus": {
+                  "sha": "s11",
+                  "state": "unknown",
+                  "totalCount": 0,
+                  "runs": []
+                }
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/s11/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/compare-without-an-ahead-count",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "No count reported",
+              "body": "## Commits\n- No count reported",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "headSha": "c4",
+                "commits": [
+                  {
+                    "sha": "c4",
+                    "message": "No count reported"
+                  }
+                ],
+                "files": [],
+                "ciStatus": {
+                  "sha": "c4",
+                  "state": "unknown",
+                  "totalCount": 0,
+                  "runs": []
+                }
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/c4/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/github-cannot-compare",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Second change",
+              "body": "## Commits\n- Second change\n\n## Changed files\n- A app.ts",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 1,
+                "headSha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                "commits": [
+                  {
+                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "message": "Second change"
+                  }
+                ],
+                "files": [
+                  {
+                    "path": "app.ts",
+                    "status": "A"
+                  }
+                ],
+                "ciStatus": {
+                  "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                  "state": "unknown",
+                  "totalCount": 0,
+                  "runs": []
+                }
+              },
+              "warnings": [
+                "Could not compare pushed GitHub branches: Not Found"
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/7b25465354df924e722d4ab933e7ed53c903c1c9/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/nothing-can-compare",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Feature",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": [
+                "Could not compare pushed GitHub branches: Not Found",
+                "Could not compare local branch with main: fatal: ambiguous argument 'origin/main..HEAD': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'"
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/base-from-the-upstream",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Second change",
+              "body": "## Commits\n- Second change\n\n## Changed files\n- A app.ts",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 1,
+                "headSha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                "commits": [
+                  {
+                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "message": "Second change"
+                  }
+                ],
+                "files": [
+                  {
+                    "path": "app.ts",
+                    "status": "A"
+                  }
+                ],
+                "ciStatus": {
+                  "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                  "state": "unknown",
+                  "totalCount": 0,
+                  "runs": []
+                }
+              },
+              "warnings": [
+                "Could not compare pushed GitHub branches: Not Found"
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/7b25465354df924e722d4ab933e7ed53c903c1c9/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/base-defaults-to-main",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": null,
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Second change",
+              "body": "## Commits\n- Second change\n\n## Changed files\n- A app.ts",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 1,
+                "headSha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                "commits": [
+                  {
+                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "message": "Second change"
+                  }
+                ],
+                "files": [
+                  {
+                    "path": "app.ts",
+                    "status": "A"
+                  }
+                ],
+                "ciStatus": {
+                  "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                  "state": "unknown",
+                  "totalCount": 0,
+                  "runs": []
+                }
+              },
+              "warnings": [
+                "Could not read GitHub repository metadata: Server Error",
+                "Could not compare pushed GitHub branches: Not Found"
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/7b25465354df924e722d4ab933e7ed53c903c1c9/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/head-is-the-base",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "main",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "main",
+              "title": "Main",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "main",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": [
+                "The current branch matches the base branch. Choose a feature branch before creating a PR."
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/empty-default-branch",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": ""
+              },
+              "currentBranch": "main",
+              "suggestedBase": "",
+              "base": "",
+              "head": "main",
+              "title": "Main",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "",
+                "head": "main",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/local-compare-with-a-rename",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Rename and add",
+              "body": "## Commits\n- Second change\n- Rename and add\n\n## Changed files\n- R README.md\n- A app.ts\n- A extra.ts",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 2,
+                "headSha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                "commits": [
+                  {
+                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "message": "Second change"
+                  },
+                  {
+                    "sha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                    "message": "Rename and add"
+                  }
+                ],
+                "files": [
+                  {
+                    "path": "README.md",
+                    "status": "R"
+                  },
+                  {
+                    "path": "app.ts",
+                    "status": "A"
+                  },
+                  {
+                    "path": "extra.ts",
+                    "status": "A"
+                  }
+                ],
+                "ciStatus": {
+                  "sha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                  "state": "unknown",
+                  "totalCount": 0,
+                  "runs": []
+                }
+              },
+              "warnings": [
+                "Could not compare pushed GitHub branches: Not Found"
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/3ce48bf697d06f06463e2999e2ec00d011df4637/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/head-ci-unavailable",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Second change",
+              "body": "## Commits\n- Second change",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 1,
+                "headSha": "c2",
+                "commits": [
+                  {
+                    "sha": "c2",
+                    "message": "Second change"
+                  }
+                ],
+                "files": []
+              },
+              "warnings": [
+                "Could not read head CI status: Server Error"
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/c2/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/no-head-sha-means-no-ci-call",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Feature",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/branch-name-with-separators",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "feat/add_the-thing",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feat/add_the-thing",
+              "title": "Add the thing",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feat/add_the-thing",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feat%2Fadd_the-thing",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/branch-name-starting-with-a-digit",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "123-fix",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "123-fix",
+              "title": "123 fix",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "123-fix",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...123-fix",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/branch-name-starting-with-punctuation",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "+odd-name",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "+odd-name",
+              "title": "+odd name",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "+odd-name",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...%2Bodd-name",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/branch-name-starting-outside-ascii",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "émeraude-work",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "émeraude-work",
+              "title": "émeraude work",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "émeraude-work",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...%C3%A9meraude-work",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/github-repository-unreadable",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": null,
+              "currentBranch": "feature",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "feature",
+              "title": "Rename and add",
+              "body": "## Commits\n- Second change\n- Rename and add\n\n## Changed files\n- R README.md\n- A app.ts\n- A extra.ts",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "feature",
+                "aheadBy": 2,
+                "headSha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                "commits": [
+                  {
+                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "message": "Second change"
+                  },
+                  {
+                    "sha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                    "message": "Rename and add"
+                  }
+                ],
+                "files": [
+                  {
+                    "path": "README.md",
+                    "status": "R"
+                  },
+                  {
+                    "path": "app.ts",
+                    "status": "A"
+                  },
+                  {
+                    "path": "extra.ts",
+                    "status": "A"
+                  }
+                ],
+                "ciStatus": {
+                  "sha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                  "state": "unknown",
+                  "totalCount": 0,
+                  "runs": []
+                }
+              },
+              "warnings": [
+                "Could not read GitHub repository metadata: Bad credentials",
+                "Could not compare pushed GitHub branches: Bad credentials"
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/compare/main...feature",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets/commits/3ce48bf697d06f06463e2999e2ec00d011df4637/check-runs?per_page=100",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "template/repository-with-no-commits",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "template": {
+              "repository": {
+                "full_name": "acme/widgets",
+                "default_branch": "main"
+              },
+              "currentBranch": "main",
+              "suggestedBase": "main",
+              "base": "main",
+              "head": "main",
+              "title": "Main",
+              "body": "",
+              "draft": false,
+              "compare": {
+                "base": "main",
+                "head": "main",
+                "aheadBy": 0,
+                "headSha": null,
+                "commits": [],
+                "files": []
+              },
+              "warnings": [
+                "The current branch matches the base branch. Choose a feature branch before creating a PR."
+              ]
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/repos/acme/widgets",
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer tok-fixture",
+            "contentType": null,
+            "apiVersion": "2022-11-28",
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    }
+  ]
+}

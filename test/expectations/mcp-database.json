@@ -1,0 +1,1910 @@
+{
+  "version": 1,
+  "gate": "mcp-database",
+  "http": [],
+  "entries": [
+    {
+      "key": "register-empty-listing",
+      "value": {
+        "isError": false,
+        "payload": []
+      }
+    },
+    {
+      "key": "register-sqlite",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "demo",
+          "engine": "sqlite",
+          "url": "<db:demo>",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "register-with-project",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "scoped",
+          "engine": "sqlite",
+          "url": "<db:demo>",
+          "writeUnlocked": false,
+          "projectPath": "/workspace/app"
+        }
+      }
+    },
+    {
+      "key": "register-duplicate",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_register_database' execution failed: Database connection \"demo\" already exists. Set replace=true to replace it."
+      }
+    },
+    {
+      "key": "register-replace",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "scoped",
+          "engine": "sqlite",
+          "url": "<db:empty>",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "register-unreachable-sqlite",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_register_database' execution failed: unable to open database file"
+      }
+    },
+    {
+      "key": "register-unchecked",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "broken",
+          "engine": "sqlite",
+          "url": "<home>/no-such-directory/x.db",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-00",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask0",
+          "engine": "postgres",
+          "url": "postgres://bob:****@localhost:5999/app",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-01",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask1",
+          "engine": "postgres",
+          "url": "postgres://bob@localhost:5999/app",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-02",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask2",
+          "engine": "postgres",
+          "url": "postgres://bob@localhost:5999/app",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-03",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask3",
+          "engine": "postgres",
+          "url": "postgres://Bob:****@H.EXAMPLE.COM:5999/app?sslmode=require",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-04",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask4",
+          "engine": "postgres",
+          "url": "postgres://u%3Ax:****@h/d#frag",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-05",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask5",
+          "engine": "postgres",
+          "url": "just****ring",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-06",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask6",
+          "engine": "postgres",
+          "url": "****",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-07",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask7",
+          "engine": "postgres",
+          "url": "abcd****fghi",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-08",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask8",
+          "engine": "postgres",
+          "url": "****",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "mask-09",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "mask9",
+          "engine": "postgres",
+          "url": "foo:bar",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "register-mysql-unchecked",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "my",
+          "engine": "mysql",
+          "url": "mysql://root:****@127.0.0.1:3999/app",
+          "writeUnlocked": false
+        }
+      }
+    },
+    {
+      "key": "list-after-registration",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "name": "demo",
+            "engine": "sqlite",
+            "url": "<db:demo>",
+            "writeUnlocked": false
+          },
+          {
+            "name": "scoped",
+            "engine": "sqlite",
+            "url": "<db:empty>",
+            "writeUnlocked": false
+          },
+          {
+            "name": "broken",
+            "engine": "sqlite",
+            "url": "<home>/no-such-directory/x.db",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask0",
+            "engine": "postgres",
+            "url": "postgres://bob:****@localhost:5999/app",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask1",
+            "engine": "postgres",
+            "url": "postgres://bob@localhost:5999/app",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask2",
+            "engine": "postgres",
+            "url": "postgres://bob@localhost:5999/app",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask3",
+            "engine": "postgres",
+            "url": "postgres://Bob:****@H.EXAMPLE.COM:5999/app?sslmode=require",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask4",
+            "engine": "postgres",
+            "url": "postgres://u%3Ax:****@h/d#frag",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask5",
+            "engine": "postgres",
+            "url": "just****ring",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask6",
+            "engine": "postgres",
+            "url": "****",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask7",
+            "engine": "postgres",
+            "url": "abcd****fghi",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask8",
+            "engine": "postgres",
+            "url": "****",
+            "writeUnlocked": false
+          },
+          {
+            "name": "mask9",
+            "engine": "postgres",
+            "url": "foo:bar",
+            "writeUnlocked": false
+          },
+          {
+            "name": "my",
+            "engine": "mysql",
+            "url": "mysql://root:****@127.0.0.1:3999/app",
+            "writeUnlocked": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "reject-missing-connection",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_check_database' parameter validation failed: connection: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-empty-connection",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_check_database' parameter validation failed: connection: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-missing-schema",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_db_objects' parameter validation failed: connection: Required, schema: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-missing-key",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_db_object_details' parameter validation failed: key: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-missing-table",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_db_sample' parameter validation failed: table: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-missing-sql",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_db_query' parameter validation failed: sql: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-bad-engine",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_register_database' parameter validation failed: engine: Invalid enum value. Expected 'postgres' | 'mysql' | 'sqlite', received 'oracle'. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-empty-name",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_register_database' parameter validation failed: name: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-missing-url",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_register_database' parameter validation failed: url: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-missing-engine",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_register_database' parameter validation failed: engine: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-nothing-at-all",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_register_database' parameter validation failed: name: Required, engine: Required, url: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-registration-types",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_register_database' parameter validation failed: name: Expected string, received number, engine: Expected 'postgres' | 'mysql' | 'sqlite', received number, url: Expected string, received boolean, projectPath: Expected string, received number, check: Expected boolean, received string, replace: Expected boolean, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-limit-zero",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_db_query' parameter validation failed: limit: Number must be greater than 0. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-limit-max",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_db_sample' parameter validation failed: limit: Number must be less than or equal to 1000. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-limit-float",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_db_query' parameter validation failed: limit: Expected integer, received float. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reject-limit-type",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_db_sample' parameter validation failed: limit: Expected number, received string. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "unknown-connection-check",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_check_database' execution failed: Database connection \"nope\" is not registered."
+      }
+    },
+    {
+      "key": "unknown-connection-schemas",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_schemas' execution failed: Database connection \"nope\" is not registered."
+      }
+    },
+    {
+      "key": "unknown-connection-tables",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_tables' execution failed: Database connection \"nope\" is not registered."
+      }
+    },
+    {
+      "key": "unknown-connection-objects",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_objects' execution failed: Database connection \"nope\" is not registered."
+      }
+    },
+    {
+      "key": "unknown-connection-details",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_object_details' execution failed: Database connection \"nope\" is not registered."
+      }
+    },
+    {
+      "key": "unknown-connection-sample",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_sample' execution failed: Database connection \"nope\" is not registered."
+      }
+    },
+    {
+      "key": "unknown-connection-query",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: Database connection \"nope\" is not registered."
+      }
+    },
+    {
+      "key": "check-reachable",
+      "value": {
+        "isError": false,
+        "payload": {
+          "ok": true,
+          "connection": {
+            "name": "demo",
+            "engine": "sqlite",
+            "url": "<db:demo>",
+            "writeUnlocked": false
+          }
+        }
+      }
+    },
+    {
+      "key": "schemas",
+      "value": {
+        "isError": false,
+        "payload": {
+          "schemas": [
+            {
+              "name": "main"
+            }
+          ],
+          "capabilities": {
+            "objectKinds": [
+              "table",
+              "view"
+            ],
+            "tableDetails": [
+              "columns",
+              "indexes",
+              "constraints",
+              "triggers"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "key": "objects-main",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "schema": "main",
+            "name": "authors",
+            "kind": "table",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImF1dGhvcnMiLCJraW5kIjoidGFibGUifQ",
+            "qualifiedName": "authors"
+          },
+          {
+            "schema": "main",
+            "name": "books",
+            "kind": "table",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0",
+            "qualifiedName": "books"
+          },
+          {
+            "schema": "main",
+            "name": "cells",
+            "kind": "table",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImNlbGxzIiwia2luZCI6InRhYmxlIn0",
+            "qualifiedName": "cells"
+          },
+          {
+            "schema": "main",
+            "name": "users",
+            "kind": "table",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InVzZXJzIiwia2luZCI6InRhYmxlIn0",
+            "qualifiedName": "users"
+          },
+          {
+            "schema": "main",
+            "name": "weird name",
+            "kind": "table",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ",
+            "qualifiedName": "weird name"
+          },
+          {
+            "schema": "main",
+            "name": "v_books",
+            "kind": "view",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9",
+            "qualifiedName": "v_books"
+          }
+        ]
+      }
+    },
+    {
+      "key": "objects-unknown-schema",
+      "value": {
+        "isError": false,
+        "payload": []
+      }
+    },
+    {
+      "key": "tables",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "name": "authors",
+            "qualifiedName": "authors"
+          },
+          {
+            "name": "books",
+            "qualifiedName": "books"
+          },
+          {
+            "name": "cells",
+            "qualifiedName": "cells"
+          },
+          {
+            "name": "users",
+            "qualifiedName": "users"
+          },
+          {
+            "name": "v_books",
+            "qualifiedName": "v_books"
+          },
+          {
+            "name": "weird name",
+            "qualifiedName": "weird name"
+          }
+        ]
+      }
+    },
+    {
+      "key": "tables-single",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "name": "only",
+            "qualifiedName": "only"
+          }
+        ]
+      }
+    },
+    {
+      "key": "details-books",
+      "value": {
+        "isError": false,
+        "payload": {
+          "object": {
+            "schema": "main",
+            "name": "books",
+            "kind": "table",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0",
+            "qualifiedName": "books"
+          },
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": true
+            },
+            {
+              "name": "author_id",
+              "dataType": "INTEGER",
+              "nullable": false,
+              "primaryKey": false
+            },
+            {
+              "name": "isbn",
+              "dataType": "TEXT",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "pages",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "title",
+              "dataType": "TEXT",
+              "nullable": false,
+              "primaryKey": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "books_author_idx",
+              "unique": false,
+              "definition": "CREATE INDEX books_author_idx ON books(author_id, pages DESC)"
+            },
+            {
+              "name": "books_isbn_idx",
+              "unique": true,
+              "definition": "CREATE UNIQUE INDEX books_isbn_idx ON books(isbn) WHERE isbn IS NOT NULL"
+            },
+            {
+              "name": "sqlite_autoindex_books_1",
+              "unique": true,
+              "definition": ""
+            }
+          ],
+          "constraints": [
+            {
+              "name": "pk_books",
+              "type": "PRIMARY KEY",
+              "definition": "PRIMARY KEY (id)"
+            },
+            {
+              "name": "fk_books_0",
+              "type": "FOREIGN KEY",
+              "definition": "FOREIGN KEY (author_id) REFERENCES authors (id)"
+            }
+          ],
+          "triggers": [
+            {
+              "name": "books_ins",
+              "definition": "CREATE TRIGGER books_ins BEFORE INSERT ON books FOR EACH ROW BEGIN SELECT 2; END"
+            },
+            {
+              "name": "books_touch",
+              "definition": "CREATE TRIGGER books_touch AFTER UPDATE ON books BEGIN SELECT 1; END"
+            }
+          ],
+          "definition": "CREATE TABLE books (id INTEGER PRIMARY KEY AUTOINCREMENT, author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE, isbn TEXT UNIQUE, pages INTEGER CHECK (pages > 0), title TEXT NOT NULL DEFAULT 'untitled')",
+          "createScript": "CREATE TABLE books (id INTEGER PRIMARY KEY AUTOINCREMENT, author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE, isbn TEXT UNIQUE, pages INTEGER CHECK (pages > 0), title TEXT NOT NULL DEFAULT 'untitled');\n\nCREATE INDEX books_author_idx ON books(author_id, pages DESC);\n\nCREATE UNIQUE INDEX books_isbn_idx ON books(isbn) WHERE isbn IS NOT NULL;\n\nCREATE TRIGGER books_ins BEFORE INSERT ON books FOR EACH ROW BEGIN SELECT 2; END;\n\nCREATE TRIGGER books_touch AFTER UPDATE ON books BEGIN SELECT 1; END;"
+        }
+      }
+    },
+    {
+      "key": "details-authors",
+      "value": {
+        "isError": false,
+        "payload": {
+          "object": {
+            "schema": "main",
+            "name": "authors",
+            "kind": "table",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImF1dGhvcnMiLCJraW5kIjoidGFibGUifQ",
+            "qualifiedName": "authors"
+          },
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "INTEGER",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "tenant",
+              "dataType": "TEXT",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "name",
+              "dataType": "TEXT",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "sqlite_autoindex_authors_2",
+              "unique": true,
+              "definition": ""
+            },
+            {
+              "name": "sqlite_autoindex_authors_1",
+              "unique": true,
+              "definition": ""
+            }
+          ],
+          "constraints": [
+            {
+              "name": "pk_authors",
+              "type": "PRIMARY KEY",
+              "definition": "PRIMARY KEY (id, tenant)"
+            }
+          ],
+          "triggers": [],
+          "definition": "CREATE TABLE authors (id INTEGER NOT NULL, tenant TEXT NOT NULL, name TEXT, PRIMARY KEY (id, tenant), UNIQUE (id))",
+          "createScript": "CREATE TABLE authors (id INTEGER NOT NULL, tenant TEXT NOT NULL, name TEXT, PRIMARY KEY (id, tenant), UNIQUE (id));"
+        }
+      }
+    },
+    {
+      "key": "details-v_books",
+      "value": {
+        "isError": false,
+        "payload": {
+          "object": {
+            "schema": "main",
+            "name": "v_books",
+            "kind": "view",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9",
+            "qualifiedName": "v_books"
+          },
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "title",
+              "dataType": "TEXT",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "indexes": [],
+          "constraints": [],
+          "triggers": [],
+          "definition": "CREATE VIEW v_books AS SELECT id, title FROM books",
+          "createScript": "CREATE VIEW v_books AS SELECT id, title FROM books;"
+        }
+      }
+    },
+    {
+      "key": "details-weird",
+      "value": {
+        "isError": false,
+        "payload": {
+          "object": {
+            "schema": "main",
+            "name": "weird name",
+            "kind": "table",
+            "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ",
+            "qualifiedName": "weird name"
+          },
+          "columns": [
+            {
+              "name": "a",
+              "dataType": "INT",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "indexes": [],
+          "constraints": [],
+          "triggers": [],
+          "definition": "CREATE TABLE \"weird name\" (a INT)",
+          "createScript": "CREATE TABLE \"weird name\" (a INT);"
+        }
+      }
+    },
+    {
+      "key": "details-reordered",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_object_details' execution failed: Database object was not found in the live catalog."
+      }
+    },
+    {
+      "key": "details-wrong-kind",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_object_details' execution failed: Database object was not found in the live catalog."
+      }
+    },
+    {
+      "key": "details-gone",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_object_details' execution failed: Database object was not found in the live catalog."
+      }
+    },
+    {
+      "key": "details-not-base64",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_object_details' execution failed: Database object was not found in the live catalog."
+      }
+    },
+    {
+      "key": "details-not-json",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_object_details' execution failed: Database object was not found in the live catalog."
+      }
+    },
+    {
+      "key": "sample-default-limit",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "table": {
+            "name": "users",
+            "qualifiedName": "users"
+          },
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": true
+            },
+            {
+              "name": "email",
+              "dataType": "TEXT",
+              "nullable": false,
+              "primaryKey": false
+            },
+            {
+              "name": "password_hash",
+              "dataType": "TEXT",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "api_token",
+              "dataType": "TEXT",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "age",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1,
+              "email": "a@b.c",
+              "password_hash": "hunter2",
+              "api_token": "tok",
+              "age": 30
+            },
+            {
+              "id": 2,
+              "email": "d@e.f",
+              "password_hash": null,
+              "api_token": null,
+              "age": 17
+            },
+            {
+              "id": 3,
+              "email": "g@h.i",
+              "password_hash": "x",
+              "api_token": "y",
+              "age": 40
+            }
+          ],
+          "rowCount": 3,
+          "limit": 100,
+          "offset": 0
+        }
+      }
+    },
+    {
+      "key": "sample-capped",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "table": {
+            "name": "books",
+            "qualifiedName": "books"
+          },
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": true
+            },
+            {
+              "name": "author_id",
+              "dataType": "INTEGER",
+              "nullable": false,
+              "primaryKey": false
+            },
+            {
+              "name": "isbn",
+              "dataType": "TEXT",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "pages",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "title",
+              "dataType": "TEXT",
+              "nullable": false,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1,
+              "author_id": 1,
+              "isbn": "x",
+              "pages": 10,
+              "title": "First"
+            },
+            {
+              "id": 2,
+              "author_id": 2,
+              "isbn": "y",
+              "pages": 20,
+              "title": "Second"
+            }
+          ],
+          "rowCount": 2,
+          "limit": 2,
+          "offset": 0
+        }
+      }
+    },
+    {
+      "key": "sample-view",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "table": {
+            "name": "v_books",
+            "qualifiedName": "v_books"
+          },
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "title",
+              "dataType": "TEXT",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1,
+              "title": "First"
+            },
+            {
+              "id": 2,
+              "title": "Second"
+            },
+            {
+              "id": 3,
+              "title": "Third"
+            }
+          ],
+          "rowCount": 3,
+          "limit": 100,
+          "offset": 0
+        }
+      }
+    },
+    {
+      "key": "sample-empty-table",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "table": {
+            "name": "weird name",
+            "qualifiedName": "weird name"
+          },
+          "columns": [
+            {
+              "name": "a",
+              "dataType": "INT",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [],
+          "rowCount": 0,
+          "limit": 100,
+          "offset": 0
+        }
+      }
+    },
+    {
+      "key": "sample-cell-types",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "table": {
+            "name": "cells",
+            "qualifiedName": "cells"
+          },
+          "columns": [
+            {
+              "name": "i",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "r",
+              "dataType": "REAL",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "t",
+              "dataType": "TEXT",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "b",
+              "dataType": "BLOB",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "n",
+              "dataType": "INTEGER",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "i": 42,
+              "r": 1.5,
+              "t": "hi",
+              "b": {
+                "0": 0,
+                "1": 255,
+                "2": 16
+              },
+              "n": null
+            }
+          ],
+          "rowCount": 1,
+          "limit": 100,
+          "offset": 0
+        }
+      }
+    },
+    {
+      "key": "sample-unknown-table",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_sample' execution failed: Table \"nope\" not found."
+      }
+    },
+    {
+      "key": "sample-qualified-spelling",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_sample' execution failed: Table \"main.books\" not found."
+      }
+    },
+    {
+      "key": "sample-case",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_sample' execution failed: Table \"BOOKS\" not found."
+      }
+    },
+    {
+      "key": "sample-padded",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_sample' execution failed: Table \" books\" not found."
+      }
+    },
+    {
+      "key": "query-rows",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "title",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1,
+              "title": "First"
+            },
+            {
+              "id": 2,
+              "title": "Second"
+            },
+            {
+              "id": 3,
+              "title": "Third"
+            }
+          ],
+          "rowCount": 3,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-cells",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "i",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "r",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "t",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "b",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "n",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "i": 42,
+              "r": 1.5,
+              "t": "hi",
+              "b": {
+                "0": 0,
+                "1": 255,
+                "2": 16
+              },
+              "n": null
+            }
+          ],
+          "rowCount": 1,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-no-rows",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [],
+          "rows": [],
+          "rowCount": 0,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-duplicate-columns",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "d",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "d:1",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "d:2",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "e",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "d": 1,
+              "d:1": 2,
+              "d:2": 3,
+              "e": 4
+            }
+          ],
+          "rowCount": 1,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-duplicate-collision",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "d:1",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "d",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "d:2",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "d:1": 1,
+              "d": 2,
+              "d:2": 3
+            }
+          ],
+          "rowCount": 1,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-json-unrepresentable",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "f",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "z",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "inf",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "f": 1,
+              "z": 0,
+              "inf": null
+            }
+          ],
+          "rowCount": 1,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-truncation-1",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1
+            }
+          ],
+          "rowCount": 1,
+          "truncated": true
+        }
+      }
+    },
+    {
+      "key": "query-truncation-2",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1
+            },
+            {
+              "id": 2
+            }
+          ],
+          "rowCount": 2,
+          "truncated": true
+        }
+      }
+    },
+    {
+      "key": "query-truncation-3",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1
+            },
+            {
+              "id": 2
+            },
+            {
+              "id": 3
+            }
+          ],
+          "rowCount": 3,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-truncation-4",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1
+            },
+            {
+              "id": 2
+            },
+            {
+              "id": 3
+            }
+          ],
+          "rowCount": 3,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-inner-limit",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1
+            }
+          ],
+          "rowCount": 1,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-cte",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "title",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1,
+              "title": "First"
+            },
+            {
+              "id": 2,
+              "title": "Second"
+            },
+            {
+              "id": 3,
+              "title": "Third"
+            }
+          ],
+          "rowCount": 3,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-values",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "column1",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "column1": 1
+            }
+          ],
+          "rowCount": 1,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-parenthesised",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "1",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "1": 1
+            }
+          ],
+          "rowCount": 1,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-unknown-table",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: no such table: missing"
+      }
+    },
+    {
+      "key": "query-syntax-error",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: near \"zz\": syntax error"
+      }
+    },
+    {
+      "key": "refusal-update",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-insert",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-delete",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-create",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-drop",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-alter",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-attach",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-vacuum",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-begin",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-cte-write",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-lowercase",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-blank",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-not-a-keyword",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-quoted-keyword",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-table-statement",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-values-trailing",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "refusal-names-connection",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `scoped`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "driver-error-pragma",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: no such table: PRAGMA"
+      }
+    },
+    {
+      "key": "driver-error-explain",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: near \"SELECT\": syntax error"
+      }
+    },
+    {
+      "key": "driver-error-show",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: no such table: SHOW"
+      }
+    },
+    {
+      "key": "driver-error-describe",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: no such table: DESCRIBE"
+      }
+    },
+    {
+      "key": "driver-error-multi-statement",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: near \";\": syntax error"
+      }
+    },
+    {
+      "key": "driver-error-trailing-comment",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: incomplete input"
+      }
+    },
+    {
+      "key": "string-literal-write",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "a",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            },
+            {
+              "name": "b",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "a": "delete from books",
+              "b": "drop table"
+            }
+          ],
+          "rowCount": 1,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "key": "query-closes-the-wrapper",
+      "value": {
+        "isError": false,
+        "payload": {
+          "engine": "sqlite",
+          "columns": [
+            {
+              "name": "id",
+              "dataType": "",
+              "nullable": true,
+              "primaryKey": false
+            }
+          ],
+          "rows": [
+            {
+              "id": 1
+            },
+            {
+              "id": 2
+            }
+          ],
+          "rowCount": 2,
+          "truncated": true
+        }
+      }
+    },
+    {
+      "key": "classify-with-comment",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "classify-values-comment",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "classify-paren-comment",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "classify-select-comment",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: incomplete input"
+      }
+    },
+    {
+      "key": "classify-pragma-comment",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: incomplete input"
+      }
+    },
+    {
+      "key": "classify-desc-prefix",
+      "value": {
+        "isError": false,
+        "payload": "This connection is read-only, so that statement was NOT executed.\nProvide the exact SQL statement for the user to review in a standard SQL\nfenced block, and identify the target connection as `demo`:\n\n```sql\nUPDATE … SET … WHERE …;\n```\n\nDirect the user to stage and run it through NoMoreIDE's locked SQL console,\nwhere they explicitly unlock writes and review an affected-rows preview\nbefore committing. Emit exactly one statement, and always scope\nUPDATE/DELETE with a WHERE clause."
+      }
+    },
+    {
+      "key": "classify-desc",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: no such table: DESC"
+      }
+    },
+    {
+      "key": "classify-explain-lowercase",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_db_query' execution failed: near \"select\": syntax error"
+      }
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import {
   buildAgentWorkflowPrompt,
   buildPrBranchRecoveryPrompt,
   buildWorkflowStepDebugPrompt,
-} from "../src/web/client/src/features/workflows/workflow-prompts.js";
+} from "../apps/dashboard/src/features/workflows/workflow-prompts.js";
 
 describe("workflow prompt capabilities", () => {
   test("adds selected capabilities as execution guidance", () => {

@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
-import { SettingsProjectSync } from "../src/web/client/src/app";
+import { SettingsProjectSync } from "../apps/dashboard/src/app";
 
 afterEach(() => {
   document.body.replaceChildren();

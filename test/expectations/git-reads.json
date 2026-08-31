@@ -1,0 +1,385 @@
+{
+  "version": 1,
+  "gate": "git-reads",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"feature\",\"ahead\":0,\"behind\":0,\"files\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/overview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"repos\":[{\"name\":\"repo\",\"path\":\"%%HOME%%/wt-feature\",\"branch\":\"feature\",\"ahead\":0,\"behind\":0,\"files\":[]},{\"name\":\"second\",\"path\":\"%%HOME%%/second-repo\",\"branch\":\"trunk\",\"ahead\":0,\"behind\":0,\"files\":[{\"index\":\" \",\"workingTree\":\"M\",\"path\":\"app.ts\"},{\"index\":\"?\",\"workingTree\":\"?\",\"path\":\"scratch.log\"}]},{\"name\":\"broken\",\"path\":\"%%HOME%%/not-a-repo\",\"branch\":\"\",\"ahead\":0,\"behind\":0,\"files\":[],\"error\":\"fatal: not a git repository (or any of the parent directories): .git\"},{\"name\":\"missing\",\"path\":\"%%HOME%%/no-such-directory\",\"branch\":\"\",\"ahead\":0,\"behind\":0,\"files\":[],\"error\":\"spawn git ENOENT\"},{\"name\":\"beta\",\"path\":\"%%HOME%%/beta-repo\",\"branch\":\"main\",\"ahead\":0,\"behind\":0,\"files\":[]},{\"name\":\"detached\",\"path\":\"%%HOME%%/beta-repo\",\"branch\":\"\",\"ahead\":0,\"behind\":0,\"files\":[],\"error\":\"spawn git ENOENT\"}],\"board\":[\"repo\",\"second\",\"broken\",\"missing\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[\"both.txt\",\"image.bin\",\"src/main.rs\",\"src/nested/deep.txt\",\"staged-only.txt\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/file-sizes",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[{\"path\":\"src/main.rs\",\"lines\":1,\"bytes\":30,\"truncated\":false},{\"path\":\"src/nested/deep.txt\",\"lines\":1,\"bytes\":15,\"truncated\":false},{\"path\":\"both.txt\",\"lines\":1,\"bytes\":10,\"truncated\":false},{\"path\":\"staged-only.txt\",\"lines\":1,\"bytes\":10,\"truncated\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/file?path=src/main.rs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"content\":\"fn main() { println!(\\\"hi\\\"); }\\n\",\"truncated\":false,\"binary\":false,\"size\":30}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/file?path=src/nested/deep.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"content\":\"nested content\\n\",\"truncated\":false,\"binary\":false,\"size\":15}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/file?path=untracked.txt",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"file is not tracked by git\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/file?path=..%2Fescape.txt",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"file is not tracked by git\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/file",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"path is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/file?path=image.bin",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"content\":\"\",\"truncated\":false,\"binary\":true,\"size\":4}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/commit",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"hash is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/commit/files",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"hash is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/commit?hash=not-hex",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"invalid commit hash\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/commit?hash=abc",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"invalid commit hash\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"branches\":[{\"name\":\"feature\",\"current\":true,\"remote\":false},{\"name\":\"master\",\"current\":false,\"remote\":false}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/identity",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"selected\":null,\"machine\":{\"name\":\"Gate\",\"email\":\"gate@example.com\"},\"diverged\":false,\"reason\":\"No GitHub account is selected for this repository.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/identity?repo=repo",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"selected\":null,\"machine\":{\"name\":\"Gate\",\"email\":\"gate@example.com\"},\"diverged\":false,\"reason\":\"No GitHub account is selected for this repository.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/identity?repo=nope",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown repository: nope\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff?file=untracked.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff?file=src/main.rs",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff?file=staged-only.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff?file=both.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff?file=src/nested/deep.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"file is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff?file=a.txt&repo=nope",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown repository: nope\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff?file=no-newline.txt",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/graph",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"commits\":[{\"hash\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"parents\":[\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\"],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"second\",\"refs\":[{\"name\":\"HEAD\",\"kind\":\"head\"},{\"name\":\"feature\",\"kind\":\"branch\"},{\"name\":\"master\",\"kind\":\"branch\"}],\"lane\":0,\"laneCount\":1,\"edges\":[{\"fromLane\":0,\"toLane\":0,\"parentHash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"kind\":\"straight\"}],\"throughLanes\":[]},{\"hash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"parents\":[],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"first\",\"refs\":[],\"lane\":0,\"laneCount\":1,\"edges\":[],\"throughLanes\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/graph?limit=2",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"commits\":[{\"hash\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"parents\":[\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\"],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"second\",\"refs\":[{\"name\":\"HEAD\",\"kind\":\"head\"},{\"name\":\"feature\",\"kind\":\"branch\"},{\"name\":\"master\",\"kind\":\"branch\"}],\"lane\":0,\"laneCount\":1,\"edges\":[{\"fromLane\":0,\"toLane\":0,\"parentHash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"kind\":\"straight\"}],\"throughLanes\":[]},{\"hash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"parents\":[],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"first\",\"refs\":[],\"lane\":0,\"laneCount\":1,\"edges\":[],\"throughLanes\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/graph?limit=not-a-number",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"commits\":[{\"hash\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"parents\":[\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\"],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"second\",\"refs\":[{\"name\":\"HEAD\",\"kind\":\"head\"},{\"name\":\"feature\",\"kind\":\"branch\"},{\"name\":\"master\",\"kind\":\"branch\"}],\"lane\":0,\"laneCount\":1,\"edges\":[{\"fromLane\":0,\"toLane\":0,\"parentHash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"kind\":\"straight\"}],\"throughLanes\":[]},{\"hash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"parents\":[],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"first\",\"refs\":[],\"lane\":0,\"laneCount\":1,\"edges\":[],\"throughLanes\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/graph?limit=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"commits\":[{\"hash\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"parents\":[\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\"],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"second\",\"refs\":[{\"name\":\"HEAD\",\"kind\":\"head\"},{\"name\":\"feature\",\"kind\":\"branch\"},{\"name\":\"master\",\"kind\":\"branch\"}],\"lane\":0,\"laneCount\":1,\"edges\":[{\"fromLane\":0,\"toLane\":0,\"parentHash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"kind\":\"straight\"}],\"throughLanes\":[]},{\"hash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"parents\":[],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"first\",\"refs\":[],\"lane\":0,\"laneCount\":1,\"edges\":[],\"throughLanes\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/graph?limit=2.9",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"commits\":[{\"hash\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"parents\":[\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\"],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"second\",\"refs\":[{\"name\":\"HEAD\",\"kind\":\"head\"},{\"name\":\"feature\",\"kind\":\"branch\"},{\"name\":\"master\",\"kind\":\"branch\"}],\"lane\":0,\"laneCount\":1,\"edges\":[{\"fromLane\":0,\"toLane\":0,\"parentHash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"kind\":\"straight\"}],\"throughLanes\":[]},{\"hash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"parents\":[],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"first\",\"refs\":[],\"lane\":0,\"laneCount\":1,\"edges\":[],\"throughLanes\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/graph?limit=99999",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"commits\":[{\"hash\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"parents\":[\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\"],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"second\",\"refs\":[{\"name\":\"HEAD\",\"kind\":\"head\"},{\"name\":\"feature\",\"kind\":\"branch\"},{\"name\":\"master\",\"kind\":\"branch\"}],\"lane\":0,\"laneCount\":1,\"edges\":[{\"fromLane\":0,\"toLane\":0,\"parentHash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"kind\":\"straight\"}],\"throughLanes\":[]},{\"hash\":\"1310e42e3cf3d6bc79c4a34683a6ccbd669be7f7\",\"parents\":[],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1767323045,\"subject\":\"first\",\"refs\":[],\"lane\":0,\"laneCount\":1,\"edges\":[],\"throughLanes\":[]}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/worktrees",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156250020.8752,\"primary\":true,\"dirty\":true},{\"path\":\"/private%%HOME%%/wt-feature\",\"head\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"branch\":\"feature\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156250079.5847,\"primary\":false,\"dirty\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/select",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[],\"bundles\":[],\"gitRepositories\":[{\"name\":\"repo\",\"path\":\"%%WORKSPACE%%\",\"activeWorktreePath\":\"%%HOME%%/wt-feature\"},{\"name\":\"second\",\"path\":\"%%HOME%%/second-repo\"},{\"name\":\"broken\",\"path\":\"%%HOME%%/not-a-repo\"},{\"name\":\"missing\",\"path\":\"%%HOME%%/no-such-directory\"},{\"name\":\"beta\",\"path\":\"%%HOME%%/beta-repo\"},{\"name\":\"detached\",\"path\":\"%%HOME%%/beta-repo\",\"activeWorktreePath\":\"%%HOME%%/gone-worktree\"}],\"selectedGitRepository\":\"detached\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"branch\":\"main\",\"ahead\":0,\"behind\":0,\"files\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/files",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[\"beta.txt\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"branches\":[{\"name\":\"main\",\"current\":true,\"remote\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/select",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[],\"bundles\":[],\"gitRepositories\":[{\"name\":\"repo\",\"path\":\"%%WORKSPACE%%\",\"activeWorktreePath\":\"%%HOME%%/wt-feature\"},{\"name\":\"second\",\"path\":\"%%HOME%%/second-repo\"},{\"name\":\"broken\",\"path\":\"%%HOME%%/not-a-repo\"},{\"name\":\"missing\",\"path\":\"%%HOME%%/no-such-directory\"},{\"name\":\"beta\",\"path\":\"%%HOME%%/beta-repo\"},{\"name\":\"detached\",\"path\":\"%%HOME%%/beta-repo\",\"activeWorktreePath\":\"%%HOME%%/gone-worktree\"}],\"selectedGitRepository\":\"repo\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/commit?hash=ad681f55acefb2be40eb52928e8abb5c64ef9663",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "diff --git a/both.txt b/both.txt\nnew file mode 100644\nindex 0000000..d0fe822\n--- /dev/null\n+++ b/both.txt\n@@ -0,0 +1 @@\n+committed\ndiff --git a/src/main.rs b/src/main.rs\nindex f328e4d..7b16f1f 100644\n--- a/src/main.rs\n+++ b/src/main.rs\n@@ -1 +1 @@\n-fn main() {}\n+fn main() { println!(\"hi\"); }\ndiff --git a/staged-only.txt b/staged-only.txt\nnew file mode 100644\nindex 0000000..d0fe822\n--- /dev/null\n+++ b/staged-only.txt\n@@ -0,0 +1 @@\n+committed\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/commit?hash=ad681f55acefb2be40eb52928e8abb5c64ef9663&file=src/main.rs",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "diff --git a/src/main.rs b/src/main.rs\nindex f328e4d..7b16f1f 100644\n--- a/src/main.rs\n+++ b/src/main.rs\n@@ -1 +1 @@\n-fn main() {}\n+fn main() { println!(\"hi\"); }\n"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/commit/files?hash=ad681f55acefb2be40eb52928e8abb5c64ef9663",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"files\":[{\"path\":\"both.txt\",\"index\":\"A\",\"workingTree\":\" \"},{\"path\":\"src/main.rs\",\"index\":\"M\",\"workingTree\":\" \"},{\"path\":\"staged-only.txt\",\"index\":\"A\",\"workingTree\":\" \"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/overview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"repos\":[{\"name\":\"repo\",\"path\":\"%%HOME%%/wt-feature\",\"branch\":\"feature\",\"ahead\":0,\"behind\":0,\"files\":[]},{\"name\":\"second\",\"path\":\"%%HOME%%/second-repo\",\"branch\":\"trunk\",\"ahead\":0,\"behind\":0,\"files\":[{\"index\":\" \",\"workingTree\":\"M\",\"path\":\"app.ts\"},{\"index\":\"?\",\"workingTree\":\"?\",\"path\":\"scratch.log\"}]},{\"name\":\"broken\",\"path\":\"%%HOME%%/not-a-repo\",\"branch\":\"\",\"ahead\":0,\"behind\":0,\"files\":[],\"error\":\"fatal: not a git repository (or any of the parent directories): .git\"},{\"name\":\"missing\",\"path\":\"%%HOME%%/no-such-directory\",\"branch\":\"\",\"ahead\":0,\"behind\":0,\"files\":[],\"error\":\"spawn git ENOENT\"},{\"name\":\"beta\",\"path\":\"%%HOME%%/beta-repo\",\"branch\":\"main\",\"ahead\":0,\"behind\":0,\"files\":[]},{\"name\":\"detached\",\"path\":\"%%HOME%%/beta-repo\",\"branch\":\"\",\"ahead\":0,\"behind\":0,\"files\":[],\"error\":\"spawn git ENOENT\"}],\"board\":[\"beta\",\"repo\"]}"
+    }
+  ],
+  "entries": []
+}

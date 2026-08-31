@@ -3,8 +3,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { BranchBreadcrumb } from "../src/web/client/src/features/git/branch-breadcrumb";
-import type { GitBranch } from "../src/web/client/src/lib/api";
+import { BranchBreadcrumb } from "../apps/dashboard/src/features/git/branch-breadcrumb";
+import type { GitBranch } from "../apps/dashboard/src/lib/api";
 
 const mocks = vi.hoisted(() => ({
   gitCreateBranch: vi.fn(),

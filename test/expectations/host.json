@@ -1,0 +1,883 @@
+{
+  "version": 1,
+  "gate": "host",
+  "http": [],
+  "entries": [
+    {
+      "key": "connected/status/connected",
+      "value": {
+        "reported": {
+          "ok": true,
+          "status": {
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "cliAvailable": false,
+            "cliError": "No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.",
+            "connection": {
+              "source": "stored"
+            },
+            "account": {
+              "id": "ops@acme.test",
+              "username": "ops@acme.test",
+              "name": "Acme Ops",
+              "email": "ops@acme.test"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/account",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/instances/all",
+      "value": {
+        "reported": {
+          "ok": true,
+          "instances": [
+            {
+              "id": "inst_running",
+              "label": "label-inst_running",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_running.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_stopped",
+              "label": "label-inst_stopped",
+              "state": "stopped",
+              "rawState": "stopped",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_stopped.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_installing",
+              "label": "label-inst_installing",
+              "state": "provisioning",
+              "rawState": "installing",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_installing.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_locked",
+              "label": "label-inst_locked",
+              "state": "provisioning",
+              "rawState": "locked",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_locked.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_pending",
+              "label": "label-inst_pending",
+              "state": "provisioning",
+              "rawState": "pending",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_pending.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_suspended",
+              "label": "label-inst_suspended",
+              "state": "error",
+              "rawState": "suspended",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_suspended.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_resizing",
+              "label": "label-inst_resizing",
+              "state": "provisioning",
+              "rawState": "resizing",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_resizing.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_status_new",
+              "label": "label-inst_status_new",
+              "state": "unknown",
+              "rawState": "something_new",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_status_new.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_power_new",
+              "label": "label-inst_power_new",
+              "state": "unknown",
+              "rawState": "something_new",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_power_new.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_no_hostname",
+              "label": "label-inst_no_hostname",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_bare",
+              "label": "inst_bare",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_dual_stack",
+              "label": "label-inst_dual_stack",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "ipv6": "2001:db8::10",
+              "hostname": "inst_dual_stack.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_v6_only",
+              "label": "label-inst_v6_only",
+              "state": "running",
+              "rawState": "running",
+              "ipv6": "2001:db8::20",
+              "hostname": "inst_v6_only.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_limited_user",
+              "label": "label-inst_limited_user",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_limited_user.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "linuxuser"
+            },
+            {
+              "id": "inst_unspecified",
+              "label": "label-inst_unspecified",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_unspecified.example.test",
+              "specs": {},
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_v6_unassigned",
+              "label": "label-inst_v6_unassigned",
+              "state": "running",
+              "rawState": "running",
+              "hostname": "inst_v6_unassigned.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst space",
+              "label": "inst space.example.test",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst space.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_no_ip",
+              "label": "label-inst_no_ip",
+              "state": "running",
+              "rawState": "running",
+              "hostname": "inst_no_ip.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_tagless",
+              "label": "label-inst_tagless",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_tagless.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_server_none",
+              "label": "label-inst_server_none",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_server_none.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_server_new",
+              "label": "label-inst_server_new",
+              "state": "running",
+              "rawState": "running",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_server_new.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            },
+            {
+              "id": "inst_server_ok_stopped",
+              "label": "label-inst_server_ok_stopped",
+              "state": "stopped",
+              "rawState": "stopped",
+              "ipv4": "203.0.113.10",
+              "hostname": "inst_server_ok_stopped.example.test",
+              "region": "ewr",
+              "plan": "vc2-1c-2gb",
+              "os": "Ubuntu 24.04 LTS",
+              "specs": {
+                "vcpus": 1,
+                "memoryMb": 2048,
+                "diskGb": 55
+              },
+              "tags": [
+                "web"
+              ],
+              "createdAt": 1767225600000,
+              "defaultUser": "root"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances?per_page=500",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/instances?per_page=500&cursor=CURSOR2",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/instance/one",
+      "value": {
+        "reported": {
+          "ok": true,
+          "instance": {
+            "id": "inst_running",
+            "label": "label-inst_running",
+            "state": "running",
+            "rawState": "running",
+            "ipv4": "203.0.113.10",
+            "hostname": "inst_running.example.test",
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "os": "Ubuntu 24.04 LTS",
+            "specs": {
+              "vcpus": 1,
+              "memoryMb": 2048,
+              "diskGb": 55
+            },
+            "tags": [
+              "web"
+            ],
+            "createdAt": 1767225600000,
+            "defaultUser": "root"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst_running",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/instance/id-with-a-space",
+      "value": {
+        "reported": {
+          "ok": true,
+          "instance": {
+            "id": "inst space",
+            "label": "inst space.example.test",
+            "state": "running",
+            "rawState": "running",
+            "ipv4": "203.0.113.10",
+            "hostname": "inst space.example.test",
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "os": "Ubuntu 24.04 LTS",
+            "specs": {
+              "vcpus": 1,
+              "memoryMb": 2048,
+              "diskGb": 55
+            },
+            "tags": [
+              "web"
+            ],
+            "createdAt": 1767225600000,
+            "defaultUser": "root"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst%20space",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/instance/missing",
+      "value": {
+        "reported": {
+          "ok": false,
+          "error": "Instance not found"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst_missing",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/instance/no-message-in-the-body",
+      "value": {
+        "reported": {
+          "ok": false,
+          "error": "Vultr returned 500 for /instances/inst_unhelpful"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst_unhelpful",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/instance/id-that-changes-the-url",
+      "value": {
+        "reported": {
+          "ok": true,
+          "instance": {
+            "id": "inst#1",
+            "label": "label-inst#1",
+            "state": "running",
+            "rawState": "running",
+            "ipv4": "203.0.113.10",
+            "hostname": "odd.example.test",
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "os": "Ubuntu 24.04 LTS",
+            "specs": {
+              "vcpus": 1,
+              "memoryMb": 2048,
+              "diskGb": 55
+            },
+            "tags": [
+              "web"
+            ],
+            "createdAt": 1767225600000,
+            "defaultUser": "root"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/instances/inst%231",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/action/reboot",
+      "value": {
+        "reported": {
+          "ok": true
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/instances/inst_running/reboot",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/action/halt",
+      "value": {
+        "reported": {
+          "ok": true
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/instances/inst_running/halt",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/action/start",
+      "value": {
+        "reported": {
+          "ok": true
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/instances/inst_running/start",
+            "accept": "application/json",
+            "authorization": "Bearer vultr-test-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "connected/action/unknown-name",
+      "value": {
+        "reported": {
+          "ok": false,
+          "error": "Vultr does not support the action \"destroy\"."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "disconnected/disconnected/status",
+      "value": {
+        "reported": {
+          "ok": true,
+          "status": {
+            "provider": {
+              "id": "vultr",
+              "name": "Vultr",
+              "kind": "host",
+              "strings": {
+                "en": {
+                  "action.start": "Start",
+                  "action.start.done": "Instance starting.",
+                  "action.halt": "Stop",
+                  "action.halt.done": "Instance stopping.",
+                  "action.halt.confirmTitle": "Stop this instance?",
+                  "action.halt.confirm": "The machine powers off immediately. Anything running on it stops.",
+                  "action.reboot": "Reboot",
+                  "action.reboot.done": "Instance rebooting.",
+                  "action.reboot.confirmTitle": "Reboot this instance?",
+                  "action.reboot.confirm": "The machine restarts immediately. Anything running on it stops."
+                },
+                "zh": {
+                  "action.start": "启动",
+                  "action.start.done": "实例正在启动。",
+                  "action.halt": "停止",
+                  "action.halt.done": "实例正在停止。",
+                  "action.halt.confirmTitle": "停止该实例？",
+                  "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+                  "action.reboot": "重启",
+                  "action.reboot.done": "实例正在重启。",
+                  "action.reboot.confirmTitle": "重启该实例？",
+                  "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。"
+                }
+              },
+              "actions": [
+                "start",
+                "halt",
+                "reboot"
+              ],
+              "productionAffecting": [
+                "halt",
+                "reboot"
+              ],
+              "api": {
+                "hosts": [
+                  "127.0.0.1"
+                ]
+              }
+            },
+            "cliAvailable": false,
+            "cliError": "No VULTR_API_KEY in the environment. Export one, or paste a Vultr API key instead.",
+            "account": {
+              "error": "Vultr is not connected. Add a Vultr API key, or export VULTR_API_KEY."
+            }
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "disconnected/disconnected/instances",
+      "value": {
+        "reported": {
+          "ok": false,
+          "error": "Vultr is not connected. Add a Vultr API key, or export VULTR_API_KEY."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "disconnected/disconnected/action",
+      "value": {
+        "reported": {
+          "ok": false,
+          "error": "Vultr is not connected. Add a Vultr API key, or export VULTR_API_KEY."
+        },
+        "requests": []
+      }
+    }
+  ]
+}

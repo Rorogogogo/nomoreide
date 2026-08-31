@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { httpDatabaseApi } from "../src/web/client/src/lib/api/database-http";
+import { httpDatabaseApi } from "../apps/dashboard/src/lib/api/database-http";
 
 afterEach(() => {
   vi.unstubAllGlobals();

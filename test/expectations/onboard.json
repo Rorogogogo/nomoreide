@@ -1,0 +1,601 @@
+{
+  "version": 1,
+  "gate": "onboard",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"url is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"url is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"url is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"url is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"url is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"url is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unrecognized repository URL: just some text\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unsupported repository URL scheme: ftp:\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Repository URL has no path: https://github.com\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Could not derive a service name from URL: https://github.com/owner/---.git\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git clone --depth 1 git@github.com:owner/nothing-here.git %%HOME%%/.nomoreide/repos/nothing-here\\nCloning into '%%HOME%%/.nomoreide/repos/nothing-here'...\\ngit@github.com: Permission denied (publickey).\\r\\nfatal: Could not read from remote repository.\\n\\nPlease make sure you have the correct access rights\\nand the repository exists.\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git clone --depth 1 file://%%VOLATILE-0%%/not-a-repo %%HOME%%/.nomoreide/repos/not-a-repo\\nCloning into '%%HOME%%/.nomoreide/repos/not-a-repo'...\\nfatal: '%%VOLATILE-0%%/not-a-repo' does not appear to be a git repository\\nfatal: Could not read from remote repository.\\n\\nPlease make sure you have the correct access rights\\nand the repository exists.\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git clone --depth 1 file://%%VOLATILE-0%%/no-such-thing %%HOME%%/.nomoreide/repos/no-such-thing\\nCloning into '%%HOME%%/.nomoreide/repos/no-such-thing'...\\nfatal: '%%VOLATILE-0%%/no-such-thing' does not appear to be a git repository\\nfatal: Could not read from remote repository.\\n\\nPlease make sure you have the correct access rights\\nand the repository exists.\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"demo-app\",\"clonePath\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"languages\":[\"node\",\"python\",\"docker\"],\"node\":{\"packageManager\":\"pnpm\",\"scripts\":{\"dev\":\"node server.js\",\"build\":\"echo build\",\"start\":\"node server.js\",\"lint\":7},\"hasDevScript\":true,\"hasStartScript\":true},\"python\":{\"hasRequirements\":true,\"hasPyproject\":false,\"hasManagePy\":false,\"framework\":\"flask\"},\"docker\":{\"hasDockerfile\":true,\"composeFile\":\"docker-compose.yml\",\"composeServices\":[\"web\",\"db\",\"cache\"],\"services\":[{\"name\":\"web\",\"ports\":[\"8080:8080\"],\"environment\":{\"NODE_ENV\":\"production\",\"PORT\":\"8080\"}},{\"name\":\"db\",\"image\":\"postgres:16\",\"ports\":[\"5432:5432\"],\"environment\":{\"POSTGRES_PASSWORD\":\"secret\",\"POSTGRES_DB\":\"app\"}},{\"name\":\"cache\",\"image\":\"redis:7\",\"ports\":[],\"environment\":{}}]},\"envKeys\":[\"DATABASE_URL\",\"API_KEY\"],\"readmeExcerpt\":\"# Demo App\\n\\nBody text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on. Body text that runs on and on.\"},\"proposals\":[{\"name\":\"demo-app\",\"kind\":\"docker-compose\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\",\"port\":8080,\"confidence\":\"high\",\"reason\":\"docker-compose service \\\"web\\\"\"},{\"name\":\"demo-app-db\",\"kind\":\"docker-compose\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"db\",\"port\":5432,\"confidence\":\"low\",\"reason\":\"docker-compose service \\\"db\\\"\"},{\"name\":\"demo-app-cache\",\"kind\":\"docker-compose\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"cache\",\"confidence\":\"low\",\"reason\":\"docker-compose service \\\"cache\\\"\"}],\"databases\":[{\"name\":\"demo-app-db\",\"engine\":\"postgres\",\"url\":\"postgres://postgres:secret@127.0.0.1:5432/app\",\"composeService\":\"db\",\"confidence\":\"high\",\"reason\":\"postgres database from compose service \\\"db\\\" (postgres:16)\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Destination already exists and is not empty: %%HOME%%/.nomoreide/repos/demo-app. Remove it or pick another repo.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Destination already exists and is not empty: %%HOME%%/.nomoreide/repos/demo-app. Remove it or pick another repo.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/scan",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"plain-repo\",\"clonePath\":\"%%HOME%%/.nomoreide/repos/plain-repo\",\"languages\":[],\"envKeys\":[]},\"proposals\":[],\"databases\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboard/scan",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name and an onboarded cwd are required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required for a local service.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required for a local service.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required for a local service.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required for a local service.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 1,\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"String must contain at least 1 character(s)\\\",\\n    \\\"path\\\": [\\n      \\\"name\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[],\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"composeService is required for a docker-compose service.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"composeService is required for a docker-compose service.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"command is required for a local service.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_big\\\",\\n    \\\"maximum\\\": 65535,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be less than or equal to 65535\\\",\\n    \\\"path\\\": [\\n      \\\"port\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"integer\\\",\\n    \\\"received\\\": \\\"float\\\",\\n    \\\"message\\\": \\\"Expected integer, received float\\\",\\n    \\\"path\\\": [\\n      \\\"port\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 0,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": false,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be greater than 0\\\",\\n    \\\"path\\\": [\\n      \\\"port\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 0,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": false,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be greater than 0\\\",\\n    \\\"path\\\": [\\n      \\\"port\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"integer\\\",\\n    \\\"received\\\": \\\"float\\\",\\n    \\\"message\\\": \\\"Expected integer, received float\\\",\\n    \\\"path\\\": [\\n      \\\"port\\\"\\n    ]\\n  },\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 0,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": false,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be greater than 0\\\",\\n    \\\"path\\\": [\\n      \\\"port\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_union\\\",\\n    \\\"unionErrors\\\": [\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"number\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"PORT\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received number\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"docker-compose\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"docker-compose\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"composeService\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"ssh\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"ssh\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"host\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"number\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"PORT\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received number\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      }\\n    ],\\n    \\\"path\\\": [],\\n    \\\"message\\\": \\\"Invalid input\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_union\\\",\\n    \\\"unionErrors\\\": [\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"null\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"PORT\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received null\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"docker-compose\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"docker-compose\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"composeService\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"ssh\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"ssh\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"host\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"null\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"PORT\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received null\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      }\\n    ],\\n    \\\"path\\\": [],\\n    \\\"message\\\": \\\"Invalid input\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_union\\\",\\n    \\\"unionErrors\\\": [\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"number\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"A\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received number\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"boolean\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"B\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received boolean\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"docker-compose\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"docker-compose\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"composeService\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"ssh\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"ssh\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"host\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"number\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"A\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received number\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"boolean\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"B\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received boolean\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      }\\n    ],\\n    \\\"path\\\": [],\\n    \\\"message\\\": \\\"Invalid input\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"custom\\\",\\n    \\\"message\\\": \\\"Environment variable names must use letters, numbers, and underscores.\\\",\\n    \\\"path\\\": [\\n      \\\"env\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_union\\\",\\n    \\\"unionErrors\\\": [\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"number\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"a-b\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received number\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"docker-compose\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"docker-compose\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"composeService\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      },\\n      {\\n        \\\"issues\\\": [\\n          {\\n            \\\"code\\\": \\\"invalid_literal\\\",\\n            \\\"expected\\\": \\\"ssh\\\",\\n            \\\"path\\\": [\\n              \\\"kind\\\"\\n            ],\\n            \\\"message\\\": \\\"Invalid literal value, expected \\\\\\\"ssh\\\\\\\"\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"undefined\\\",\\n            \\\"path\\\": [\\n              \\\"host\\\"\\n            ],\\n            \\\"message\\\": \\\"Required\\\"\\n          },\\n          {\\n            \\\"code\\\": \\\"invalid_type\\\",\\n            \\\"expected\\\": \\\"string\\\",\\n            \\\"received\\\": \\\"number\\\",\\n            \\\"path\\\": [\\n              \\\"env\\\",\\n              \\\"a-b\\\"\\n            ],\\n            \\\"message\\\": \\\"Expected string, received number\\\"\\n          }\\n        ],\\n        \\\"name\\\": \\\"ZodError\\\"\\n      }\\n    ],\\n    \\\"path\\\": [],\\n    \\\"message\\\": \\\"Invalid input\\\"\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"[\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 1,\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"inclusive\\\": true,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"String must contain at least 1 character(s)\\\",\\n    \\\"path\\\": [\\n      \\\"name\\\"\\n    ]\\n  },\\n  {\\n    \\\"code\\\": \\\"too_small\\\",\\n    \\\"minimum\\\": 0,\\n    \\\"type\\\": \\\"number\\\",\\n    \\\"inclusive\\\": false,\\n    \\\"exact\\\": false,\\n    \\\"message\\\": \\\"Number must be greater than 0\\\",\\n    \\\"path\\\": [\\n      \\\"port\\\"\\n    ]\\n  }\\n]\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"port\":4598,\"description\":\"a spaced description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"   \",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"port\":4598,\"description\":\"a spaced description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"api\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"port\":4598,\"description\":\"a spaced description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"string-port\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"port\":4598,\"description\":\"a spaced description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"blank-description\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"port\":4598,\"description\":\"a spaced description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"array-env\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"port\":4598,\"description\":\"a spaced description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"with-env\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"port\":4598,\"description\":\"a spaced description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"},{\"name\":\"remote\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"web\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"},{\"name\":\"remote\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"command\":\"node -e 0\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"remote\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"remote\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"},{\"name\":\"remote\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"command\":\"node -e 0\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"remote\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"api\",\"databases\":[],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"},{\"name\":\"remote\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"command\":\"node -e 0\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"remote\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"with-db\",\"databases\":[{\"name\":\"appdb\",\"engine\":\"postgres\",\"url\":\"postgres://localhost/app\"}],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"},{\"name\":\"remote\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"command\":\"node -e 0\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"no-url\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"remote\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"bad-engine\",\"databases\":[{\"name\":\"appdb\",\"engine\":\"postgres\",\"url\":\"postgres://localhost/app\"}],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"},{\"name\":\"remote\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"command\":\"node -e 0\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"no-url\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"remote\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"no-url\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"no-url\",\"databases\":[{\"name\":\"appdb\",\"engine\":\"postgres\",\"url\":\"postgres://localhost/app\"}],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"},{\"name\":\"remote\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"command\":\"node -e 0\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"no-url\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"remote\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"no-url\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"string-db\",\"databases\":[{\"name\":\"appdb\",\"engine\":\"postgres\",\"url\":\"postgres://localhost/app\"}],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"},{\"name\":\"remote\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"command\":\"node -e 0\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"no-url\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"not-started\",\"command\":\"sleep 30\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"remote\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"no-url\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"array-db\",\"databases\":[{\"name\":\"appdb\",\"engine\":\"postgres\",\"url\":\"postgres://localhost/app\"}],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"config\":{\"version\":1,\"services\":[{\"name\":\"   \",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"kind\":\"docker-compose\",\"port\":8081,\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\",\"composeFile\":\"docker-compose.yml\",\"composeService\":\"web\"},{\"name\":\"remote\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"command\":\"node -e 0\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"no-url\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-db\",\"command\":\"node -v\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"not-started\",\"command\":\"sleep 30\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"started\",\"command\":\"sleep 30\",\"cwd\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"bundles\":[],\"gitRepositories\":[{\"name\":\"   \",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-port\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"blank-description\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-env\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"web\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"remote\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"api\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"with-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"bad-engine\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"no-url\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"string-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"array-db\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"},{\"name\":\"not-started\",\"path\":\"%%HOME%%/.nomoreide/repos/demo-app\"}],\"selectedGitRepository\":\"not-started\",\"databases\":[{\"name\":\"appdb\",\"engine\":\"postgres\",\"url\":\"postgres://localhost/app\"}],\"logSources\":[],\"sshServers\":[],\"githubTokens\":[],\"githubIdentities\":[],\"connections\":{},\"workflows\":[],\"workflowTriggers\":[]},\"started\":{\"name\":\"started\",\"state\":\"running\",\"kind\":\"local\",\"pid\":55986,\"startedAt\":\"2026-08-31T06:12:07.190Z\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"services\":{\"started\":{\"name\":\"started\",\"state\":\"running\",\"kind\":\"local\",\"pid\":55986,\"startedAt\":\"2026-08-31T06:12:07.190Z\"}}}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboard/register",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Port 4590 is already in use for conflicting (held by pid %%PID%% — node --import tsx scripts/check-onboard-parity.ts %%REPO%%/target/debug/nomoreide).\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboard/register",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

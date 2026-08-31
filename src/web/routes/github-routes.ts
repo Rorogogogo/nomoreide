@@ -1,14 +1,14 @@
 import { getSelectedGitRepository, selectedGitCwd } from "../dashboard.js";
 import { GitManager, type GitCompareSummary } from "../../core/git-manager.js";
-import { GitHubApiError, GitHubManager } from "../../core/github-manager.js";
+import { GitHubApiError, GitHubManager, githubOAuthBase } from "../../core/github-manager.js";
 import { GitHubCliAuth } from "../../core/github-auth.js";
 import type { GitHubCredentialSelection } from "../../core/types.js";
 import { readForm, readJson, requiredFormValue, sendJson, sendText } from "../http-utils.js";
 import { errorMessage, patternRoute, route, type Route } from "./context.js";
 import { requireGitHubContext, optionalGitHubContext } from "./github-context.js";
 
-const GITHUB_DEVICE_CODE_URL = "https://github.com/login/device/code";
-const GITHUB_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token";
+const DEVICE_CODE_PATH = "/login/device/code";
+const ACCESS_TOKEN_PATH = "/login/oauth/access_token";
 const GITHUB_SCOPES = "repo workflow read:org";
 const DEFAULT_GITHUB_CLIENT_ID = "Ov23litfv3LE0LevxlT2";
 
@@ -394,7 +394,7 @@ export const githubRoutes: Route[] = [
       return;
     }
     try {
-      const res = await fetch(GITHUB_DEVICE_CODE_URL, {
+      const res = await fetch(`${githubOAuthBase()}${DEVICE_CODE_PATH}`, {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({ client_id: clientId, scope: GITHUB_SCOPES }),
@@ -440,7 +440,7 @@ export const githubRoutes: Route[] = [
         sendJson(response, { ok: false, error: "device_code is required" }, 400);
         return;
       }
-      const res = await fetch(GITHUB_ACCESS_TOKEN_URL, {
+      const res = await fetch(`${githubOAuthBase()}${ACCESS_TOKEN_PATH}`, {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({

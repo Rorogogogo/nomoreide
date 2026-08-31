@@ -3,11 +3,11 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
-import { ServicesView } from "../src/web/client/src/features/services/services-view";
-import type { DashboardData } from "../src/web/client/src/lib/api";
+import { OperationProvider } from "../apps/dashboard/src/components/operations/operation-context";
+import { ServicesView } from "../apps/dashboard/src/features/services/services-view";
+import type { DashboardData } from "../apps/dashboard/src/lib/api";
 
-vi.mock("../src/web/client/src/features/agent/chat/agent-context", () => ({
+vi.mock("../apps/dashboard/src/features/agent/chat/agent-context", () => ({
   useAgentDock: () => ({
     sendToAgent: vi.fn(),
     startOnboard: vi.fn(),

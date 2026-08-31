@@ -8,7 +8,7 @@
  * `register-github` paths with a 405.
  *
  * `GET /api/agent-env/auth/status` is read-on-mount — it has a matching
- * handler in `website/src/mock-api.ts`.
+ * handler in `apps/website/src/mock-api.ts`.
  */
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
@@ -122,6 +122,21 @@ function installStatus(message: string): number {
   return upstreamStatus(message);
 }
 
+/**
+ * One of the messages rendered below arrives as a query parameter on
+ * `auth/finish` — a URL anything can point a browser at — and the page is
+ * served from the daemon's own origin, the same one the dashboard runs on. So
+ * the message is escaped rather than trusted.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function authResultHtml(kind: "ok" | "error", message: string): string {
   const tone = kind === "ok" ? "#16a34a" : "#dc2626";
   const title = kind === "ok" ? "Signed in" : "Sign-in failed";
@@ -129,7 +144,7 @@ function authResultHtml(kind: "ok" | "error", message: string): string {
 <body style="font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0">
 <div style="text-align:center;max-width:28rem;padding:1rem">
 <h1 style="color:${tone};font-size:1.25rem">${title}</h1>
-<p style="color:#555">${message}</p>
+<p style="color:#555">${escapeHtml(message)}</p>
 </div></body></html>`;
 }
 

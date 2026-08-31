@@ -5,7 +5,7 @@ import {
   installWebsiteMockApi,
   getWebsiteMockDatabaseRows,
   getWebsiteMockDatabaseTables,
-} from "../website/src/mock-api";
+} from "../apps/website/src/mock-api";
 
 describe("website mock database", () => {
   test("exposes a richer set of demo tables", () => {

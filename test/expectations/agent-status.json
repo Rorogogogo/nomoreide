@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "gate": "agent-status",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/agent/claude-settings",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"coAuthorWithClaude\":false}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent/claude-settings",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/claude-settings",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"coAuthorWithClaude\":true}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/claude-settings",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"coAuthorWithClaude\":true}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/claude-settings",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"coAuthorWithClaude\":false}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/claude-settings",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"coAuthorWithClaude\":false}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/claude-settings",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"settings\":{\"coAuthorWithClaude\":false}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/claude-settings",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"coAuthorWithClaude must be boolean\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/claude-settings",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"coAuthorWithClaude must be boolean\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/claude-settings",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"coAuthorWithClaude must be boolean\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/claude-settings",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"coAuthorWithClaude must be boolean\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/claude-settings",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"coAuthorWithClaude must be boolean\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/claude-settings",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"coAuthorWithClaude must be boolean\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/mcp-status",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"linear\",\"state\":\"needs-auth\"},{\"name\":\"context7\",\"state\":\"connected\"},{\"name\":\"broken\",\"state\":\"failed\"},{\"name\":\"angry\",\"state\":\"failed\"},{\"name\":\"pending\",\"state\":\"unknown\"},{\"name\":\"weird\",\"state\":\"connected\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/mcp-status?agent=codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"local-fs\",\"state\":\"no-auth\"},{\"name\":\"no-auth-needed\",\"state\":\"no-auth\"},{\"name\":\"none-at-all\",\"state\":\"no-auth\"},{\"name\":\"blank\",\"state\":\"no-auth\"},{\"name\":\"absent\",\"state\":\"no-auth\"},{\"name\":\"not-logged-in\",\"state\":\"needs-auth\"},{\"name\":\"logged-out\",\"state\":\"needs-auth\"},{\"name\":\"expired\",\"state\":\"needs-auth\"},{\"name\":\"needs-login\",\"state\":\"needs-auth\"},{\"name\":\"required\",\"state\":\"needs-auth\"},{\"name\":\"logged-in\",\"state\":\"connected\"},{\"name\":\"authed\",\"state\":\"connected\"},{\"name\":\"authorized\",\"state\":\"connected\"},{\"name\":\"ok\",\"state\":\"connected\"},{\"name\":\"connected\",\"state\":\"connected\"},{\"name\":\"who-knows\",\"state\":\"unknown\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/mcp-status?agent=claude-code",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"linear\",\"state\":\"needs-auth\"},{\"name\":\"context7\",\"state\":\"connected\"},{\"name\":\"broken\",\"state\":\"failed\"},{\"name\":\"angry\",\"state\":\"failed\"},{\"name\":\"pending\",\"state\":\"unknown\"},{\"name\":\"weird\",\"state\":\"connected\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/mcp-status?agent=claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"linear\",\"state\":\"needs-auth\"},{\"name\":\"context7\",\"state\":\"connected\"},{\"name\":\"broken\",\"state\":\"failed\"},{\"name\":\"angry\",\"state\":\"failed\"},{\"name\":\"pending\",\"state\":\"unknown\"},{\"name\":\"weird\",\"state\":\"connected\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/mcp-status?agent=gemini",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"linear\",\"state\":\"needs-auth\"},{\"name\":\"context7\",\"state\":\"connected\"},{\"name\":\"broken\",\"state\":\"failed\"},{\"name\":\"angry\",\"state\":\"failed\"},{\"name\":\"pending\",\"state\":\"unknown\"},{\"name\":\"weird\",\"state\":\"connected\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/mcp-status?agent=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"linear\",\"state\":\"needs-auth\"},{\"name\":\"context7\",\"state\":\"connected\"},{\"name\":\"broken\",\"state\":\"failed\"},{\"name\":\"angry\",\"state\":\"failed\"},{\"name\":\"pending\",\"state\":\"unknown\"},{\"name\":\"weird\",\"state\":\"connected\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/mcp-status?agent=Codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"linear\",\"state\":\"needs-auth\"},{\"name\":\"context7\",\"state\":\"connected\"},{\"name\":\"broken\",\"state\":\"failed\"},{\"name\":\"angry\",\"state\":\"failed\"},{\"name\":\"pending\",\"state\":\"unknown\"},{\"name\":\"weird\",\"state\":\"connected\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/mcp-status?agent=codex&agent=claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"local-fs\",\"state\":\"no-auth\"},{\"name\":\"no-auth-needed\",\"state\":\"no-auth\"},{\"name\":\"none-at-all\",\"state\":\"no-auth\"},{\"name\":\"blank\",\"state\":\"no-auth\"},{\"name\":\"absent\",\"state\":\"no-auth\"},{\"name\":\"not-logged-in\",\"state\":\"needs-auth\"},{\"name\":\"logged-out\",\"state\":\"needs-auth\"},{\"name\":\"expired\",\"state\":\"needs-auth\"},{\"name\":\"needs-login\",\"state\":\"needs-auth\"},{\"name\":\"required\",\"state\":\"needs-auth\"},{\"name\":\"logged-in\",\"state\":\"connected\"},{\"name\":\"authed\",\"state\":\"connected\"},{\"name\":\"authorized\",\"state\":\"connected\"},{\"name\":\"ok\",\"state\":\"connected\"},{\"name\":\"connected\",\"state\":\"connected\"},{\"name\":\"who-knows\",\"state\":\"unknown\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/mcp-status",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/tool-calls",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"records\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/tool-calls?limit=5",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"records\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/tool-calls?limit=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"records\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/tool-calls?limit=-1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"records\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/tool-calls?limit=99999",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"records\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/tool-calls?limit=abc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"records\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/tool-calls",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/nope",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/tool-calls/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/mcp-status/extra",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

@@ -4,15 +4,15 @@ import {
   beginApiRequest,
   isApiBusy,
   subscribeToApiActivity,
-} from "../src/web/client/src/lib/api-activity";
-import { requestJson } from "../src/web/client/src/lib/api/client";
+} from "../apps/dashboard/src/lib/api-activity";
+import { requestJson } from "../apps/dashboard/src/lib/api/client";
 import {
   getRuntimeConnectionSnapshot,
   resetRuntimeConnectionForTests,
-} from "../src/web/client/src/lib/runtime-connection";
+} from "../apps/dashboard/src/lib/runtime-connection";
 
 const buttonSource = readFileSync(
-  "src/web/client/src/components/header-refresh-button.tsx",
+  "apps/dashboard/src/components/header-refresh-button.tsx",
   "utf8",
 );
 

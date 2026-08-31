@@ -15,7 +15,7 @@ vi.mock("@/features/agent/chat/agent-context", () => ({
 import {
   AgentCapabilityBadges,
   AgentCapabilityStrip,
-} from "../src/web/client/src/features/agent/terminal/agent-capability-strip";
+} from "../apps/dashboard/src/features/agent/terminal/agent-capability-strip";
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;

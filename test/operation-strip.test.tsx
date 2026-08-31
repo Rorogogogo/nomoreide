@@ -7,8 +7,8 @@ import {
   OperationProvider,
   useOperations,
   type OperationContextValue,
-} from "../src/web/client/src/components/operations/operation-context";
-import { OperationStrip } from "../src/web/client/src/components/operations/operation-strip";
+} from "../apps/dashboard/src/components/operations/operation-context";
+import { OperationStrip } from "../apps/dashboard/src/components/operations/operation-strip";
 
 vi.mock("@/components/ui/toast", () => ({
   useToasts: () => ({ error: vi.fn(), success: vi.fn() }),

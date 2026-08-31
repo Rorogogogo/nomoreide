@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { YamlTree } from "../src/web/client/src/features/git/visualizers/yaml-tree";
+import { YamlTree } from "../apps/dashboard/src/features/git/visualizers/yaml-tree";
 
 describe("YamlTree", () => {
   test("renders every nested container expanded by default", () => {

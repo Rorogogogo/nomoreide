@@ -12,6 +12,7 @@
  * docs describe.
  */
 
+import { providerApiBase } from "./providers/api-base.js";
 import type { ProviderFetch } from "./providers/egress.js";
 
 /** Vultr's `status` — the account-level lifecycle of the machine. */
@@ -70,10 +71,21 @@ const PER_PAGE = 500;
 /** A hard stop on cursor following, so a pathological account cannot hang a request. */
 const MAX_PAGES = 10;
 
+/**
+ * Vultr's API root, overridable onto loopback so a parity gate can stand in for
+ * the vendor. Loopback-only, and for the same reason as the other providers:
+ * every request carries a bearer token, and an override free to name any host
+ * would turn one environment variable into a way to post the user's credential
+ * somewhere else.
+ */
+export function vultrApiBase(): string {
+  return providerApiBase("NOMOREIDE_VULTR_API_BASE", "https://api.vultr.com/v2");
+}
+
 export class VultrManager {
   constructor(
     private readonly token: string,
-    private readonly baseUrl = "https://api.vultr.com/v2",
+    private readonly baseUrl = vultrApiBase(),
     /** The provider's scoped `fetch`; global `fetch` when built outside the registry. */
     private readonly fetchImpl?: ProviderFetch,
   ) {}
@@ -157,7 +169,7 @@ export async function vultrRequest<T>(
   path: string,
   opts?: { method?: string; body?: unknown },
 ): Promise<T> {
-  const url = path.startsWith("http") ? path : `${auth.baseUrl ?? "https://api.vultr.com/v2"}${path}`;
+  const url = path.startsWith("http") ? path : `${auth.baseUrl ?? vultrApiBase()}${path}`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${auth.token}`,
     Accept: "application/json",

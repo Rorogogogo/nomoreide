@@ -1,0 +1,1654 @@
+{
+  "version": 1,
+  "gate": "mcp-git",
+  "http": [],
+  "entries": [
+    {
+      "key": "register/first",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>"
+            }
+          ],
+          "selectedGitRepository": "demo",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "register/second-supersedes-selection",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>"
+            },
+            {
+              "name": "second",
+              "path": "<repo:second>"
+            }
+          ],
+          "selectedGitRepository": "second",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "select/back-to-first",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>"
+            },
+            {
+              "name": "second",
+              "path": "<repo:second>"
+            }
+          ],
+          "selectedGitRepository": "demo",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "register/re-register-existing",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>"
+            },
+            {
+              "name": "second",
+              "path": "<repo:second>"
+            }
+          ],
+          "selectedGitRepository": "second",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "error/relative-path",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_register_repository' execution failed: Please add an absolute path. Paths beginning with ~ are not expanded here."
+      }
+    },
+    {
+      "key": "error/not-a-worktree",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_register_repository' execution failed: Not a Git repository. Choose a folder inside a Git worktree."
+      }
+    },
+    {
+      "key": "error/missing-directory",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_register_repository' execution failed: Not a Git repository. Choose a folder inside a Git worktree."
+      }
+    },
+    {
+      "key": "error/select-unregistered",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_select_repository' execution failed: Git repository \"never-registered\" is not registered."
+      }
+    },
+    {
+      "key": "invalid/register-no-arguments",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_register_repository' parameter validation failed: name: Required, path: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/register-missing-path",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_register_repository' parameter validation failed: path: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/register-missing-name",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_register_repository' parameter validation failed: name: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/register-empty-strings",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_register_repository' parameter validation failed: name: String must contain at least 1 character(s), path: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/register-wrong-types",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_register_repository' parameter validation failed: name: Expected string, received number, path: Expected string, received boolean. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/register-array-path",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_register_repository' parameter validation failed: path: Expected string, received array. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/select-no-arguments",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_select_repository' parameter validation failed: name: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/select-wrong-type",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_select_repository' parameter validation failed: name: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "reads/status-diverged",
+      "value": {
+        "isError": false,
+        "payload": {
+          "branch": "main",
+          "upstream": "origin/main",
+          "ahead": 2,
+          "behind": 1,
+          "files": [
+            {
+              "index": " ",
+              "workingTree": "D",
+              "path": "README.md"
+            },
+            {
+              "index": " ",
+              "workingTree": "M",
+              "path": "keep.txt"
+            },
+            {
+              "index": "A",
+              "workingTree": " ",
+              "path": "staged.txt"
+            },
+            {
+              "index": "?",
+              "workingTree": "?",
+              "path": "\"untracked file.txt\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "reads/status-without-upstream",
+      "value": {
+        "isError": false,
+        "payload": {
+          "branch": "trunk",
+          "ahead": 0,
+          "behind": 0,
+          "files": []
+        }
+      }
+    },
+    {
+      "key": "reads/status-unborn-branch",
+      "value": {
+        "isError": false,
+        "payload": {
+          "branch": "main",
+          "ahead": 0,
+          "behind": 0,
+          "files": []
+        }
+      }
+    },
+    {
+      "key": "reads/status-detached-head",
+      "value": {
+        "isError": false,
+        "payload": {
+          "branch": "",
+          "ahead": 0,
+          "behind": 0,
+          "files": []
+        }
+      }
+    },
+    {
+      "key": "reads/branches",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "name": "feature/x",
+            "current": false,
+            "remote": false
+          },
+          {
+            "name": "main",
+            "current": true,
+            "remote": false,
+            "upstream": "origin/main"
+          },
+          {
+            "name": "origin/main",
+            "current": false,
+            "remote": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "reads/branches-unborn",
+      "value": {
+        "isError": false,
+        "payload": []
+      }
+    },
+    {
+      "key": "reads/diff",
+      "value": {
+        "isError": false,
+        "payload": "diff --git a/README.md b/README.md\ndeleted file mode 100644\nindex 1549b67..0000000\n--- a/README.md\n+++ /dev/null\n@@ -1 +0,0 @@\n-demo\ndiff --git a/keep.txt b/keep.txt\nindex 4cb29ea..f384549 100644\n--- a/keep.txt\n+++ b/keep.txt\n@@ -1,3 +1,4 @@\n one\n two\n three\n+four\n"
+      }
+    },
+    {
+      "key": "reads/diff-one-path",
+      "value": {
+        "isError": false,
+        "payload": "diff --git a/keep.txt b/keep.txt\nindex 4cb29ea..f384549 100644\n--- a/keep.txt\n+++ b/keep.txt\n@@ -1,3 +1,4 @@\n one\n two\n three\n+four\n"
+      }
+    },
+    {
+      "key": "reads/diff-path-with-nothing-to-show",
+      "value": {
+        "isError": false,
+        "payload": ""
+      }
+    },
+    {
+      "key": "reads/staged-diff",
+      "value": {
+        "isError": false,
+        "payload": "diff --git a/staged.txt b/staged.txt\nnew file mode 100644\nindex 0000000..19d9cc8\n--- /dev/null\n+++ b/staged.txt\n@@ -0,0 +1 @@\n+staged\n"
+      }
+    },
+    {
+      "key": "reads/staged-diff-one-path",
+      "value": {
+        "isError": false,
+        "payload": "diff --git a/staged.txt b/staged.txt\nnew file mode 100644\nindex 0000000..19d9cc8\n--- /dev/null\n+++ b/staged.txt\n@@ -0,0 +1 @@\n+staged\n"
+      }
+    },
+    {
+      "key": "reads/log-default-limit",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "hash": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+            "subject": "diverge further"
+          },
+          {
+            "hash": "c7ff07033cb7fa5e3638e13c0c56d343b61250e2",
+            "subject": "diverge from origin"
+          },
+          {
+            "hash": "2969fd61ff8117604b2dc18d4bf5fa4183323b3a",
+            "subject": "add keep"
+          },
+          {
+            "hash": "5c5059d0917d9ec6397fe671ffe5238c4eeb707a",
+            "subject": "initial commit"
+          }
+        ]
+      }
+    },
+    {
+      "key": "reads/log-limited",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "hash": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+            "subject": "diverge further"
+          },
+          {
+            "hash": "c7ff07033cb7fa5e3638e13c0c56d343b61250e2",
+            "subject": "diverge from origin"
+          }
+        ]
+      }
+    },
+    {
+      "key": "reads/log-unborn-branch",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_log' execution failed: fatal: your current branch 'main' does not have any commits yet"
+      }
+    },
+    {
+      "key": "error/status-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_status' execution failed: fatal: not a git repository (or any of the parent directories): .git"
+      }
+    },
+    {
+      "key": "error/branches-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_branches' execution failed: fatal: not a git repository (or any of the parent directories): .git"
+      }
+    },
+    {
+      "key": "error/log-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_log' execution failed: fatal: not a git repository (or any of the parent directories): .git"
+      }
+    },
+    {
+      "key": "error/diff-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_diff' execution failed: warning: Not a git repository. Use --no-index to compare two paths outside a working tree\nusage: git diff --no-index [<options>] <path> <path>\n\nDiff output format options\n    -p, --patch           generate patch\n    -s, --no-patch        suppress diff output\n    -u                    generate patch\n    -U, --unified[=<n>]   generate diffs with <n> lines context\n    -W, --[no-]function-context\n                          generate diffs with <n> lines context\n    --raw                 generate the diff in raw format\n    --patch-with-raw      synonym for '-p --raw'\n    --patch-with-stat     synonym for '-p --stat'\n    --numstat             machine friendly --stat\n    --shortstat           output only the last line of --stat\n    -X, --dirstat[=<param1>,<param2>...]\n                          output the distribution of relative amount of changes for each sub-directory\n    --cumulative          synonym for --dirstat=cumulative\n    --dirstat-by-file[=<param1>,<param2>...]\n                          synonym for --dirstat=files,<param1>,<param2>...\n    --check               warn if changes introduce conflict markers or whitespace errors\n    --summary             condensed summary such as creations, renames and mode changes\n    --name-only           show only names of changed files\n    --name-status         show only names and status of changed files\n    --stat[=<width>[,<name-width>[,<count>]]]\n                          generate diffstat\n    --stat-width <width>  generate diffstat with a given width\n    --stat-name-width <width>\n                          generate diffstat with a given name width\n    --stat-graph-width <width>\n                          generate diffstat with a given graph width\n    --stat-count <count>  generate diffstat with limited lines\n    --[no-]compact-summary\n                          generate compact summary in diffstat\n    --binary              output a binary diff that can be applied\n    --[no-]full-index     show full pre- and post-image object names on the \"index\" lines\n    --[no-]color[=<when>] show colored diff\n    --ws-error-highlight <kind>\n                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff\n    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat\n    --[no-]abbrev[=<n>]   use <n> digits to display object names\n    --src-prefix <prefix> show the given source prefix instead of \"a/\"\n    --dst-prefix <prefix> show the given destination prefix instead of \"b/\"\n    --line-prefix <prefix>\n                          prepend an additional prefix to every line of output\n    --no-prefix           do not show any source or destination prefix\n    --default-prefix      use default prefixes a/ and b/\n    --inter-hunk-context <n>\n                          show context between diff hunks up to the specified number of lines\n    --output-indicator-new <char>\n                          specify the character to indicate a new line instead of '+'\n    --output-indicator-old <char>\n                          specify the character to indicate an old line instead of '-'\n    --output-indicator-context <char>\n                          specify the character to indicate a context instead of ' '\n\nDiff rename options\n    -B, --break-rewrites[=<n>[/<m>]]\n                          break complete rewrite changes into pairs of delete and create\n    -M, --find-renames[=<n>]\n                          detect renames\n    -D, --irreversible-delete\n                          omit the preimage for deletes\n    -C, --find-copies[=<n>]\n                          detect copies\n    --[no-]find-copies-harder\n                          use unmodified files as source to find copies\n    --no-renames          disable rename detection\n    --[no-]rename-empty   use empty blobs as rename source\n    --[no-]follow         continue listing the history of a file beyond renames\n    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit\n\nDiff algorithm options\n    --minimal             produce the smallest possible diff\n    -w, --ignore-all-space\n                          ignore whitespace when comparing lines\n    -b, --ignore-space-change\n                          ignore changes in amount of whitespace\n    --ignore-space-at-eol ignore changes in whitespace at EOL\n    --ignore-cr-at-eol    ignore carrier-return at the end of line\n    --ignore-blank-lines  ignore changes whose lines are all blank\n    -I, --[no-]ignore-matching-lines <regex>\n                          ignore changes whose all lines match <regex>\n    --[no-]indent-heuristic\n                          heuristic to shift diff hunk boundaries for easy reading\n    --patience            generate diff using the \"patience diff\" algorithm\n    --histogram           generate diff using the \"histogram diff\" algorithm\n    --diff-algorithm <algorithm>\n                          choose a diff algorithm\n    --anchored <text>     generate diff using the \"anchored diff\" algorithm\n    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words\n    --word-diff-regex <regex>\n                          use <regex> to decide what a word is\n    --color-words[=<regex>]\n                          equivalent to --word-diff=color --word-diff-regex=<regex>\n    --[no-]color-moved[=<mode>]\n                          moved lines of code are colored differently\n    --[no-]color-moved-ws <mode>\n                          how white spaces are ignored in --color-moved\n\nOther diff options\n    --[no-]relative[=<prefix>]\n                          when run from subdir, exclude changes outside and show relative paths\n    -a, --[no-]text       treat all files as text\n    -R                    swap two inputs, reverse the diff\n    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise\n    --[no-]quiet          disable all output of the program\n    --[no-]ext-diff       allow an external diff helper to be executed\n    --[no-]textconv       run external text conversion filters when comparing binary files\n    --ignore-submodules[=<when>]\n                          ignore changes to submodules in the diff generation\n    --submodule[=<format>]\n                          specify how differences in submodules are shown\n    --ita-invisible-in-index\n                          hide 'git add -N' entries from the index\n    --ita-visible-in-index\n                          treat 'git add -N' entries as real in the index\n    -S <string>           look for differences that change the number of occurrences of the specified string\n    -G <regex>            look for differences that change the number of occurrences of the specified regex\n    --pickaxe-all         show all changes in the changeset with -S or -G\n    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression\n    -O <file>             control the order in which files appear in the output\n    --rotate-to <path>    show the change in the specified path first\n    --skip-to <path>      skip the output to the specified path\n    --find-object <object-id>\n                          look for differences that change the number of occurrences of the specified object\n    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]\n                          select files by diff type\n    --output <file>       output to a specific file"
+      }
+    },
+    {
+      "key": "error/staged-diff-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_staged_diff' execution failed: error: unknown option `cached'\nusage: git diff --no-index [<options>] <path> <path>\n\nDiff output format options\n    -p, --patch           generate patch\n    -s, --no-patch        suppress diff output\n    -u                    generate patch\n    -U, --unified[=<n>]   generate diffs with <n> lines context\n    -W, --[no-]function-context\n                          generate diffs with <n> lines context\n    --raw                 generate the diff in raw format\n    --patch-with-raw      synonym for '-p --raw'\n    --patch-with-stat     synonym for '-p --stat'\n    --numstat             machine friendly --stat\n    --shortstat           output only the last line of --stat\n    -X, --dirstat[=<param1>,<param2>...]\n                          output the distribution of relative amount of changes for each sub-directory\n    --cumulative          synonym for --dirstat=cumulative\n    --dirstat-by-file[=<param1>,<param2>...]\n                          synonym for --dirstat=files,<param1>,<param2>...\n    --check               warn if changes introduce conflict markers or whitespace errors\n    --summary             condensed summary such as creations, renames and mode changes\n    --name-only           show only names of changed files\n    --name-status         show only names and status of changed files\n    --stat[=<width>[,<name-width>[,<count>]]]\n                          generate diffstat\n    --stat-width <width>  generate diffstat with a given width\n    --stat-name-width <width>\n                          generate diffstat with a given name width\n    --stat-graph-width <width>\n                          generate diffstat with a given graph width\n    --stat-count <count>  generate diffstat with limited lines\n    --[no-]compact-summary\n                          generate compact summary in diffstat\n    --binary              output a binary diff that can be applied\n    --[no-]full-index     show full pre- and post-image object names on the \"index\" lines\n    --[no-]color[=<when>] show colored diff\n    --ws-error-highlight <kind>\n                          highlight whitespace errors in the 'context', 'old' or 'new' lines in the diff\n    -z                    do not munge pathnames and use NULs as output field terminators in --raw or --numstat\n    --[no-]abbrev[=<n>]   use <n> digits to display object names\n    --src-prefix <prefix> show the given source prefix instead of \"a/\"\n    --dst-prefix <prefix> show the given destination prefix instead of \"b/\"\n    --line-prefix <prefix>\n                          prepend an additional prefix to every line of output\n    --no-prefix           do not show any source or destination prefix\n    --default-prefix      use default prefixes a/ and b/\n    --inter-hunk-context <n>\n                          show context between diff hunks up to the specified number of lines\n    --output-indicator-new <char>\n                          specify the character to indicate a new line instead of '+'\n    --output-indicator-old <char>\n                          specify the character to indicate an old line instead of '-'\n    --output-indicator-context <char>\n                          specify the character to indicate a context instead of ' '\n\nDiff rename options\n    -B, --break-rewrites[=<n>[/<m>]]\n                          break complete rewrite changes into pairs of delete and create\n    -M, --find-renames[=<n>]\n                          detect renames\n    -D, --irreversible-delete\n                          omit the preimage for deletes\n    -C, --find-copies[=<n>]\n                          detect copies\n    --[no-]find-copies-harder\n                          use unmodified files as source to find copies\n    --no-renames          disable rename detection\n    --[no-]rename-empty   use empty blobs as rename source\n    --[no-]follow         continue listing the history of a file beyond renames\n    -l <n>                prevent rename/copy detection if the number of rename/copy targets exceeds given limit\n\nDiff algorithm options\n    --minimal             produce the smallest possible diff\n    -w, --ignore-all-space\n                          ignore whitespace when comparing lines\n    -b, --ignore-space-change\n                          ignore changes in amount of whitespace\n    --ignore-space-at-eol ignore changes in whitespace at EOL\n    --ignore-cr-at-eol    ignore carrier-return at the end of line\n    --ignore-blank-lines  ignore changes whose lines are all blank\n    -I, --[no-]ignore-matching-lines <regex>\n                          ignore changes whose all lines match <regex>\n    --[no-]indent-heuristic\n                          heuristic to shift diff hunk boundaries for easy reading\n    --patience            generate diff using the \"patience diff\" algorithm\n    --histogram           generate diff using the \"histogram diff\" algorithm\n    --diff-algorithm <algorithm>\n                          choose a diff algorithm\n    --anchored <text>     generate diff using the \"anchored diff\" algorithm\n    --word-diff[=<mode>]  show word diff, using <mode> to delimit changed words\n    --word-diff-regex <regex>\n                          use <regex> to decide what a word is\n    --color-words[=<regex>]\n                          equivalent to --word-diff=color --word-diff-regex=<regex>\n    --[no-]color-moved[=<mode>]\n                          moved lines of code are colored differently\n    --[no-]color-moved-ws <mode>\n                          how white spaces are ignored in --color-moved\n\nOther diff options\n    --[no-]relative[=<prefix>]\n                          when run from subdir, exclude changes outside and show relative paths\n    -a, --[no-]text       treat all files as text\n    -R                    swap two inputs, reverse the diff\n    --[no-]exit-code      exit with 1 if there were differences, 0 otherwise\n    --[no-]quiet          disable all output of the program\n    --[no-]ext-diff       allow an external diff helper to be executed\n    --[no-]textconv       run external text conversion filters when comparing binary files\n    --ignore-submodules[=<when>]\n                          ignore changes to submodules in the diff generation\n    --submodule[=<format>]\n                          specify how differences in submodules are shown\n    --ita-invisible-in-index\n                          hide 'git add -N' entries from the index\n    --ita-visible-in-index\n                          treat 'git add -N' entries as real in the index\n    -S <string>           look for differences that change the number of occurrences of the specified string\n    -G <regex>            look for differences that change the number of occurrences of the specified regex\n    --pickaxe-all         show all changes in the changeset with -S or -G\n    --pickaxe-regex       treat <string> in -S as extended POSIX regular expression\n    -O <file>             control the order in which files appear in the output\n    --rotate-to <path>    show the change in the specified path first\n    --skip-to <path>      skip the output to the specified path\n    --find-object <object-id>\n                          look for differences that change the number of occurrences of the specified object\n    --diff-filter [(A|C|D|M|R|T|U|X|B)...[*]]\n                          select files by diff type\n    --output <file>       output to a specific file"
+      }
+    },
+    {
+      "key": "error/status-in-a-missing-directory",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_status' execution failed: spawn git ENOENT"
+      }
+    },
+    {
+      "key": "invalid/status-empty-cwd",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_status' parameter validation failed: cwd: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/branches-wrong-type-cwd",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_branches' parameter validation failed: cwd: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/diff-empty-path",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_diff' parameter validation failed: path: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/diff-both-arguments-bad",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_staged_diff' parameter validation failed: cwd: String must contain at least 1 character(s), path: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/log-zero-commits",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_log' parameter validation failed: limit: Number must be greater than 0. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/log-past-the-cap",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_log' parameter validation failed: limit: Number must be less than or equal to 50. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/log-fractional-limit",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_log' parameter validation failed: limit: Expected integer, received float. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/log-wrong-type-limit",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_log' parameter validation failed: limit: Expected number, received string. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "worktrees/only-the-primary",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "path": "<repo:second>",
+            "head": "58c3c5a57c7ce525930882452fc5fe5319a1db2a",
+            "branch": "trunk",
+            "bare": false,
+            "detached": false,
+            "locked": false,
+            "prunable": false,
+            "createdAt": "<epoch-ms>",
+            "primary": true,
+            "dirty": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "worktrees/create-new-branch",
+      "value": {
+        "isError": false,
+        "payload": {
+          "path": "<worktrees>/demo/feature-new",
+          "head": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+          "branch": "feature/new",
+          "bare": false,
+          "detached": false,
+          "locked": false,
+          "prunable": false,
+          "createdAt": "<epoch-ms>",
+          "primary": false,
+          "dirty": false
+        }
+      }
+    },
+    {
+      "key": "worktrees/create-existing-branch",
+      "value": {
+        "isError": false,
+        "payload": {
+          "path": "<worktrees>/demo/feature-x",
+          "head": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+          "branch": "feature/x",
+          "bare": false,
+          "detached": false,
+          "locked": false,
+          "prunable": false,
+          "createdAt": "<epoch-ms>",
+          "primary": false,
+          "dirty": false
+        }
+      }
+    },
+    {
+      "key": "worktrees/create-with-project-name",
+      "value": {
+        "isError": false,
+        "payload": {
+          "path": "<worktrees>/My-Project/named",
+          "head": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+          "branch": "named",
+          "bare": false,
+          "detached": false,
+          "locked": false,
+          "prunable": false,
+          "createdAt": "<epoch-ms>",
+          "primary": false,
+          "dirty": false
+        }
+      }
+    },
+    {
+      "key": "worktrees/create-from-base-ref",
+      "value": {
+        "isError": false,
+        "payload": {
+          "path": "<worktrees>/demo/from-base",
+          "head": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+          "branch": "from-base",
+          "bare": false,
+          "detached": false,
+          "locked": false,
+          "prunable": false,
+          "createdAt": "<epoch-ms>",
+          "primary": false,
+          "dirty": false
+        }
+      }
+    },
+    {
+      "key": "worktrees/list-after-creating",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "path": "<repo:demo>",
+            "head": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+            "branch": "main",
+            "bare": false,
+            "detached": false,
+            "locked": false,
+            "prunable": false,
+            "createdAt": "<epoch-ms>",
+            "primary": true,
+            "dirty": true
+          },
+          {
+            "path": "<worktrees>/demo/feature-new",
+            "head": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+            "branch": "feature/new",
+            "bare": false,
+            "detached": false,
+            "locked": false,
+            "prunable": false,
+            "createdAt": "<epoch-ms>",
+            "primary": false,
+            "dirty": false
+          },
+          {
+            "path": "<worktrees>/demo/feature-x",
+            "head": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+            "branch": "feature/x",
+            "bare": false,
+            "detached": false,
+            "locked": false,
+            "prunable": false,
+            "createdAt": "<epoch-ms>",
+            "primary": false,
+            "dirty": false
+          },
+          {
+            "path": "<worktrees>/demo/from-base",
+            "head": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+            "branch": "from-base",
+            "bare": false,
+            "detached": false,
+            "locked": false,
+            "prunable": false,
+            "createdAt": "<epoch-ms>",
+            "primary": false,
+            "dirty": false
+          },
+          {
+            "path": "<worktrees>/My-Project/named",
+            "head": "9f8c11e0a18e1e14a83f06bed390afc435f82eba",
+            "branch": "named",
+            "bare": false,
+            "detached": false,
+            "locked": false,
+            "prunable": false,
+            "createdAt": "<epoch-ms>",
+            "primary": false,
+            "dirty": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "error/create-branch-that-exists",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_worktree' execution failed: Command failed: git worktree add -b feature/new <worktrees>/demo/feature-new HEAD\nPreparing worktree (new branch 'feature/new')\nfatal: a branch named 'feature/new' already exists\n"
+      }
+    },
+    {
+      "key": "error/create-from-a-branch-that-does-not-exist",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_worktree' execution failed: Command failed: git worktree add <worktrees>/demo/ghost ghost\nfatal: invalid reference: ghost\n"
+      }
+    },
+    {
+      "key": "error/create-from-a-base-that-does-not-exist",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_worktree' execution failed: Command failed: git worktree add -b no-base <worktrees>/demo/no-base no-such-ref\nfatal: invalid reference: no-such-ref\n"
+      }
+    },
+    {
+      "key": "error/create-with-a-blank-branch",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_worktree' execution failed: A valid branch name is required."
+      }
+    },
+    {
+      "key": "error/create-with-a-branch-that-looks-like-an-option",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_worktree' execution failed: A valid branch name is required."
+      }
+    },
+    {
+      "key": "error/create-with-an-unusable-project-name",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_worktree' execution failed: Could not derive a safe worktree folder name."
+      }
+    },
+    {
+      "key": "error/create-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_worktree' execution failed: Command failed: git worktree add -b nowhere <worktrees>/not-a-repo/nowhere HEAD\nfatal: not a git repository (or any of the parent directories): .git\n"
+      }
+    },
+    {
+      "key": "error/worktrees-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_worktrees' execution failed: Command failed: git worktree list --porcelain -z\nfatal: not a git repository (or any of the parent directories): .git\n"
+      }
+    },
+    {
+      "key": "error/worktrees-in-a-missing-directory",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_worktrees' execution failed: spawn git ENOENT"
+      }
+    },
+    {
+      "key": "worktrees/select-a-linked-one",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>",
+              "activeWorktreePath": "<worktrees>/demo/feature-new"
+            },
+            {
+              "name": "second",
+              "path": "<repo:second>"
+            }
+          ],
+          "selectedGitRepository": "second",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "worktrees/select-the-primary-one-back",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>",
+              "activeWorktreePath": "<repo:demo>"
+            },
+            {
+              "name": "second",
+              "path": "<repo:second>"
+            }
+          ],
+          "selectedGitRepository": "second",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "error/select-a-folder-that-is-not-a-worktree",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_select_worktree' execution failed: The selected folder is not a worktree of this project."
+      }
+    },
+    {
+      "key": "error/select-another-projects-worktree",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_select_worktree' execution failed: The selected folder is not a worktree of this project."
+      }
+    },
+    {
+      "key": "error/select-a-relative-path",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_select_worktree' execution failed: Please add an absolute path. Paths beginning with ~ are not expanded here."
+      }
+    },
+    {
+      "key": "error/select-for-an-unregistered-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_select_worktree' execution failed: Git repository \"never-registered\" is not registered."
+      }
+    },
+    {
+      "key": "worktrees/prune",
+      "value": {
+        "isError": false,
+        "payload": {
+          "pruned": true
+        }
+      }
+    },
+    {
+      "key": "error/prune-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_prune_worktrees' execution failed: Command failed: git worktree prune\nfatal: not a git repository (or any of the parent directories): .git\n"
+      }
+    },
+    {
+      "key": "invalid/create-with-no-arguments",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_create_worktree' parameter validation failed: branch: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/create-with-every-argument-wrong",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_create_worktree' parameter validation failed: cwd: String must contain at least 1 character(s), branch: Expected string, received number, createBranch: Expected boolean, received string, baseRef: String must contain at least 1 character(s), projectName: Expected string, received array. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/select-with-no-arguments",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_select_worktree' parameter validation failed: repository: Required, path: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/select-with-wrong-types",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_select_worktree' parameter validation failed: repository: Expected string, received number, path: Expected string, received boolean. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/worktrees-empty-cwd",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_worktrees' parameter validation failed: cwd: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/prune-wrong-type-cwd",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_prune_worktrees' parameter validation failed: cwd: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "writes/stage-one-path",
+      "value": {
+        "isError": false,
+        "payload": ""
+      }
+    },
+    {
+      "key": "writes/stage-shows-in-status",
+      "value": {
+        "isError": false,
+        "payload": {
+          "branch": "main",
+          "upstream": "origin/main",
+          "ahead": 0,
+          "behind": 0,
+          "files": [
+            {
+              "index": "A",
+              "workingTree": " ",
+              "path": "added.txt"
+            },
+            {
+              "index": " ",
+              "workingTree": "M",
+              "path": "kept.txt"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "writes/stage-several-paths",
+      "value": {
+        "isError": false,
+        "payload": ""
+      }
+    },
+    {
+      "key": "writes/unstage-one-back",
+      "value": {
+        "isError": false,
+        "payload": ""
+      }
+    },
+    {
+      "key": "writes/status-after-unstaging",
+      "value": {
+        "isError": false,
+        "payload": {
+          "branch": "main",
+          "upstream": "origin/main",
+          "ahead": 0,
+          "behind": 0,
+          "files": [
+            {
+              "index": "A",
+              "workingTree": " ",
+              "path": "added.txt"
+            },
+            {
+              "index": " ",
+              "workingTree": "M",
+              "path": "kept.txt"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "error/stage-a-path-that-does-not-exist",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_stage' execution failed: fatal: pathspec 'nowhere.txt' did not match any files"
+      }
+    },
+    {
+      "key": "error/unstage-a-path-git-never-knew",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_unstage' execution failed: error: pathspec 'never-tracked.txt' did not match any file(s) known to git"
+      }
+    },
+    {
+      "key": "error/stage-a-path-that-is-only-spaces",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_stage' execution failed: at least one file path is required"
+      }
+    },
+    {
+      "key": "writes/commit-in-an-unregistered-repository",
+      "value": {
+        "isError": false,
+        "payload": "[main 9262d49] add a file\n 1 file changed, 1 insertion(+)\n create mode 100644 added.txt\n"
+      }
+    },
+    {
+      "key": "error/commit-with-nothing-staged",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_commit' execution failed: On branch main\nYour branch is ahead of 'origin/main' by 1 commit.\n  (use \"git push\" to publish your local commits)\n\nChanges not staged for commit:\n  (use \"git add <file>...\" to update what will be committed)\n  (use \"git restore <file>...\" to discard changes in working directory)\n\tmodified:   kept.txt\n\nno changes added to commit (use \"git add\" and/or \"git commit -a\")"
+      }
+    },
+    {
+      "key": "error/commit-with-a-blank-message",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_commit' execution failed: commit message is required"
+      }
+    },
+    {
+      "key": "writes/register-then-commit",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>",
+              "activeWorktreePath": "<repo:demo>"
+            },
+            {
+              "name": "second",
+              "path": "<repo:second>"
+            },
+            {
+              "name": "writes",
+              "path": "<repo:writes>"
+            }
+          ],
+          "selectedGitRepository": "writes",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "writes/stage-for-the-registered-commit",
+      "value": {
+        "isError": false,
+        "payload": ""
+      }
+    },
+    {
+      "key": "writes/commit-in-a-registered-repository",
+      "value": {
+        "isError": false,
+        "payload": "[main 8f4b8d1] second commit\n 1 file changed, 1 insertion(+)\n"
+      }
+    },
+    {
+      "key": "writes/create-branch",
+      "value": {
+        "isError": false,
+        "payload": "Switched to a new branch 'feature/y'\n"
+      }
+    },
+    {
+      "key": "error/create-a-branch-that-exists",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_branch' execution failed: fatal: a branch named 'feature/y' already exists"
+      }
+    },
+    {
+      "key": "error/create-a-branch-git-rejects",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_branch' execution failed: fatal: 'bad name' is not a valid branch name"
+      }
+    },
+    {
+      "key": "error/create-a-branch-that-looks-like-an-option",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_branch' execution failed: branch is invalid"
+      }
+    },
+    {
+      "key": "error/create-a-branch-named-only-spaces",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_create_branch' execution failed: branch is required"
+      }
+    },
+    {
+      "key": "writes/switch-back-to-main",
+      "value": {
+        "isError": false,
+        "payload": "Your branch is ahead of 'origin/main' by 2 commits.\n  (use \"git push\" to publish your local commits)\n"
+      }
+    },
+    {
+      "key": "writes/switch-to-a-remote-branch",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_switch_branch' execution failed: fatal: a branch named 'main' already exists"
+      }
+    },
+    {
+      "key": "error/switch-to-a-branch-that-does-not-exist",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_switch_branch' execution failed: fatal: invalid reference: ghost"
+      }
+    },
+    {
+      "key": "error/switch-to-a-branch-named-only-spaces",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_switch_branch' execution failed: branch is required"
+      }
+    },
+    {
+      "key": "writes/fetch",
+      "value": {
+        "isError": false,
+        "payload": ""
+      }
+    },
+    {
+      "key": "error/fetch-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_fetch' execution failed: fatal: not a git repository (or any of the parent directories): .git"
+      }
+    },
+    {
+      "key": "error/stage-outside-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_stage' execution failed: fatal: not a git repository (or any of the parent directories): .git"
+      }
+    },
+    {
+      "key": "writes/log-after-the-commits",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "hash": "8f4b8d1526c7e2e81626a6795fe9a127c8f2efd6",
+            "subject": "second commit"
+          },
+          {
+            "hash": "9262d4941d1106bcc8f451d2d3b58a514bd3a1b2",
+            "subject": "add a file"
+          },
+          {
+            "hash": "d7f1a5e21c78cd645bb34b9e3f250d111fb4c7e4",
+            "subject": "initial commit"
+          }
+        ]
+      }
+    },
+    {
+      "key": "invalid/stage-no-paths",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_stage' parameter validation failed: paths: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/stage-empty-array",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_stage' parameter validation failed: paths: Array must contain at least 1 element(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/unstage-empty-member",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_unstage' parameter validation failed: paths.1: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/stage-wrong-types",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_stage' parameter validation failed: cwd: Expected string, received number, paths: Expected array, received string. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/stage-non-string-member",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_stage' parameter validation failed: paths.0: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/commit-no-message",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_commit' parameter validation failed: message: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/commit-wrong-type-message",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_commit' parameter validation failed: message: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/create-branch-no-name",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_create_branch' parameter validation failed: name: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/switch-branch-wrong-type-name",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_switch_branch' parameter validation failed: name: Expected string, received array. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/fetch-empty-cwd",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_fetch' parameter validation failed: cwd: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "push/ahead-of-origin",
+      "value": {
+        "isError": false,
+        "payload": {
+          "output": "To <remotes>/pushes.git\n   d7e27bf..24481fc  main -> main\n",
+          "branch": "main",
+          "setUpstream": false
+        }
+      }
+    },
+    {
+      "key": "push/nothing-left",
+      "value": {
+        "isError": false,
+        "payload": {
+          "output": "Everything up-to-date\n",
+          "branch": "main",
+          "setUpstream": false
+        }
+      }
+    },
+    {
+      "key": "push/switch-to-untracked-branch",
+      "value": {
+        "isError": false,
+        "payload": "Switched to branch 'feature'\n"
+      }
+    },
+    {
+      "key": "push/sets-upstream",
+      "value": {
+        "isError": false,
+        "payload": {
+          "output": "branch 'feature' set up to track 'origin/feature'.\n",
+          "branch": "feature",
+          "setUpstream": true
+        }
+      }
+    },
+    {
+      "key": "push/named-remote-is-ignored-once-upstream-exists",
+      "value": {
+        "isError": false,
+        "payload": {
+          "output": "Everything up-to-date\n",
+          "branch": "feature",
+          "setUpstream": false
+        }
+      }
+    },
+    {
+      "key": "push/detached-head",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_push' execution failed: cannot push in a detached HEAD state"
+      }
+    },
+    {
+      "key": "push/not-a-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_push' execution failed: fatal: not a git repository (or any of the parent directories): .git"
+      }
+    },
+    {
+      "key": "push/directory-that-does-not-exist",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_push' execution failed: spawn git ENOENT"
+      }
+    },
+    {
+      "key": "invalid/push-empty-remote",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_push' parameter validation failed: remote: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/push-wrong-type-cwd",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_push' parameter validation failed: cwd: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "clone/from-a-bare-origin",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "pushes",
+          "path": "<clones>/pushes"
+        }
+      }
+    },
+    {
+      "key": "clone/destination-taken",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_clone' execution failed: Destination already exists and is not empty: <clones>/pushes. Remove it or pick another repo."
+      }
+    },
+    {
+      "key": "clone/trailing-slash-is-the-same-repository",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_clone' execution failed: Destination already exists and is not empty: <clones>/pushes. Remove it or pick another repo."
+      }
+    },
+    {
+      "key": "clone/source-does-not-exist",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_clone' execution failed: Command failed: git clone --depth 1 file://<remotes>/nope.git <clones>/nope\nCloning into '<clones>/nope'...\nfatal: '<remotes>/nope.git' does not appear to be a git repository\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n"
+      }
+    },
+    {
+      "key": "clone/not-a-url",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_clone' execution failed: Unrecognized repository URL: not a url"
+      }
+    },
+    {
+      "key": "clone/unsupported-scheme",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_clone' execution failed: Unsupported repository URL scheme: ftp:"
+      }
+    },
+    {
+      "key": "clone/no-path",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_git_clone' execution failed: Repository URL has no path: https://example.com"
+      }
+    },
+    {
+      "key": "clone/name-is-derived-from-the-url",
+      "value": {
+        "isError": false,
+        "payload": {
+          "name": "odd-name",
+          "path": "<clones>/odd-name"
+        }
+      }
+    },
+    {
+      "key": "clone/registered-clone-is-selected",
+      "value": {
+        "isError": false,
+        "payload": {
+          "branch": "master",
+          "ahead": 0,
+          "behind": 0,
+          "files": []
+        }
+      }
+    },
+    {
+      "key": "invalid/clone-no-url",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_clone' parameter validation failed: url: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/clone-empty-url",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_git_clone' parameter validation failed: url: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "github/store-a-token",
+      "value": {
+        "isError": false,
+        "payload": "GitHub token stored for github.com."
+      }
+    },
+    {
+      "key": "github/token-lands-on-the-selected-repository",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>",
+              "activeWorktreePath": "<repo:demo>"
+            },
+            {
+              "name": "second",
+              "path": "<repo:second>"
+            },
+            {
+              "name": "writes",
+              "path": "<repo:writes>"
+            },
+            {
+              "name": "pushes",
+              "path": "<clones>/pushes"
+            },
+            {
+              "name": "odd-name",
+              "path": "<clones>/odd-name",
+              "githubCredential": {
+                "source": "stored",
+                "host": "github.com"
+              }
+            }
+          ],
+          "selectedGitRepository": "pushes",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [
+            {
+              "host": "github.com"
+            }
+          ],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "github/store-for-another-host",
+      "value": {
+        "isError": false,
+        "payload": "GitHub token stored for enterprise.example."
+      }
+    },
+    {
+      "key": "github/replacing-a-token-moves-it-to-the-end",
+      "value": {
+        "isError": false,
+        "payload": "GitHub token stored for github.com."
+      }
+    },
+    {
+      "key": "github/tokens-read-back",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>",
+              "activeWorktreePath": "<repo:demo>"
+            },
+            {
+              "name": "second",
+              "path": "<repo:second>"
+            },
+            {
+              "name": "writes",
+              "path": "<repo:writes>"
+            },
+            {
+              "name": "pushes",
+              "path": "<clones>/pushes",
+              "githubCredential": {
+                "source": "stored",
+                "host": "github.com"
+              }
+            },
+            {
+              "name": "odd-name",
+              "path": "<clones>/odd-name",
+              "githubCredential": {
+                "source": "stored",
+                "host": "github.com"
+              }
+            }
+          ],
+          "selectedGitRepository": "demo",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [
+            {
+              "host": "enterprise.example"
+            },
+            {
+              "host": "github.com"
+            }
+          ],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    },
+    {
+      "key": "invalid/set-token-no-token",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_github_set_token' parameter validation failed: token: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/set-token-empty-host",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_github_set_token' parameter validation failed: host: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "invalid/set-token-wrong-type",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_github_set_token' parameter validation failed: token: Expected string, received number, host: Expected string, received array. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "final/selection-survives",
+      "value": {
+        "isError": false,
+        "payload": {
+          "version": 1,
+          "services": [],
+          "bundles": [],
+          "gitRepositories": [
+            {
+              "name": "demo",
+              "path": "<repo:demo>",
+              "activeWorktreePath": "<repo:demo>"
+            },
+            {
+              "name": "second",
+              "path": "<repo:second>"
+            },
+            {
+              "name": "writes",
+              "path": "<repo:writes>"
+            },
+            {
+              "name": "pushes",
+              "path": "<clones>/pushes",
+              "githubCredential": {
+                "source": "stored",
+                "host": "github.com"
+              }
+            },
+            {
+              "name": "odd-name",
+              "path": "<clones>/odd-name",
+              "githubCredential": {
+                "source": "stored",
+                "host": "github.com"
+              }
+            }
+          ],
+          "selectedGitRepository": "demo",
+          "databases": [],
+          "logSources": [],
+          "sshServers": [],
+          "githubTokens": [
+            {
+              "host": "enterprise.example"
+            },
+            {
+              "host": "github.com"
+            }
+          ],
+          "githubIdentities": [],
+          "connections": {},
+          "workflows": [],
+          "workflowTriggers": []
+        }
+      }
+    }
+  ]
+}

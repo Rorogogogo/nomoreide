@@ -8,21 +8,21 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from "../src/web/client/src/components/ui/context-menu.js";
-import { AppContextMenu } from "../src/web/client/src/components/app-context-menu.js";
-import { GistPopover } from "../src/web/client/src/components/gist-popover.js";
+} from "../apps/dashboard/src/components/ui/context-menu.js";
+import { AppContextMenu } from "../apps/dashboard/src/components/app-context-menu.js";
+import { GistPopover } from "../apps/dashboard/src/components/gist-popover.js";
 import {
   AiContextMenuProvider,
   AiContextTarget,
-} from "../src/web/client/src/features/agent/context-menu/ai-context-menu.js";
+} from "../apps/dashboard/src/features/agent/context-menu/ai-context-menu.js";
 
 const { sendToAgentMock } = vi.hoisted(() => ({ sendToAgentMock: vi.fn() }));
 
 vi.mock(
-  "../src/web/client/src/features/agent/chat/agent-context.js",
+  "../apps/dashboard/src/features/agent/chat/agent-context.js",
   async (importOriginal) => ({
     ...(await importOriginal<
-      typeof import("../src/web/client/src/features/agent/chat/agent-context.js")
+      typeof import("../apps/dashboard/src/features/agent/chat/agent-context.js")
     >()),
     useAgentDock: () => ({ sendToAgent: sendToAgentMock }),
   }),

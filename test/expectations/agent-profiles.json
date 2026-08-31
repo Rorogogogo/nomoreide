@@ -1,0 +1,1231 @@
+{
+  "version": 1,
+  "gate": "agent-profiles",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"is-not-found-really\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:05.000Z\"},{\"name\":\"snapshot\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:03.000Z\"},{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:01.000Z\"},{\"name\":\"empty\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"is-not-found-really\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:05.000Z\"},{\"name\":\"snapshot\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:03.000Z\"},{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:01.000Z\"},{\"name\":\"empty\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/base",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcps\":{\"linear\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"local-tool\":{\"kind\":\"local\",\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/empty",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"empty\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/nothing-here",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"nothing-here\\\" not found.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/broken",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Expected property name or '}' in JSON at position 2 (line 1 column 3)\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/no-profile-file",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"no-profile-file\\\" not found.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"snapshot\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/is-not-found-really",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"is-not-found-really\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/%62ase",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcps\":{\"linear\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"local-tool\":{\"kind\":\"local\",\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/base%20",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"base \\\" not found.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/ba%zze",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"URI malformed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"made\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.583Z\"},{\"name\":\"is-not-found-really\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:05.000Z\"},{\"name\":\"snapshot\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:03.000Z\"},{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:01.000Z\"},{\"name\":\"empty\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"made\\\" already exists.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"described\",\"description\":\"why\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"a/b\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"..\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\".hidden\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"two words\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"a.b_c-d\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"padded\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"padded\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.601Z\"},{\"name\":\"a.b_c-d\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.599Z\"},{\"name\":\"described\",\"description\":\"why\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.588Z\"},{\"name\":\"made\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.583Z\"},{\"name\":\"is-not-found-really\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:05.000Z\"},{\"name\":\"snapshot\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:03.000Z\"},{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:01.000Z\"},{\"name\":\"empty\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"line\\nbreak\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"extra\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"extra\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.607Z\"},{\"name\":\"padded\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.601Z\"},{\"name\":\"a.b_c-d\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.599Z\"},{\"name\":\"described\",\"description\":\"why\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.588Z\"},{\"name\":\"made\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.583Z\"},{\"name\":\"is-not-found-really\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:05.000Z\"},{\"name\":\"snapshot\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:03.000Z\"},{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:01.000Z\"},{\"name\":\"empty\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"description\":\"now set\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"description\":\"now set\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"description\":\"now set\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile patch.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"description\":\"now set\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"description\":\"now set\",\"mcps\":{},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"description\":\"now set\",\"mcps\":{},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"description\":\"now set\",\"mcps\":{},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile patch.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile patch.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile patch.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/nothing-here",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"nothing-here\\\" not found.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/broken",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Expected property name or '}' in JSON at position 2 (line 1 column 3)\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"description\":\"now set\",\"mcps\":{},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"made\",\"description\":\"now set\",\"mcps\":{},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/profiles/made",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agent-env/profiles",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent-env/profiles",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agent-env/profiles",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"from-claude\",\"sourceAgent\":\"claude\",\"mcps\":{\"local-tool\":{\"kind\":\"local\",\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"linear\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/from-claude",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"from-claude\",\"sourceAgent\":\"claude\",\"mcps\":{\"local-tool\":{\"kind\":\"local\",\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"linear\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"from-codex\",\"sourceAgent\":\"codex\",\"mcps\":{\"docs\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"}},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/from-codex",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"from-codex\",\"sourceAgent\":\"codex\",\"mcps\":{\"docs\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"}},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"described-snap\",\"description\":\"d\",\"sourceAgent\":\"claude\",\"mcps\":{\"local-tool\":{\"kind\":\"local\",\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"linear\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"base\\\" already exists.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent and name are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent and name are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent and name are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent and name are required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"..\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"a/b\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"padded-snap\",\"sourceAgent\":\"claude\",\"mcps\":{\"local-tool\":{\"kind\":\"local\",\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"linear\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent and name are required.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/snapshot",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"snapshot\",\"mcps\":{},\"skills\":[],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"padded-snap\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.651Z\"},{\"name\":\"described-snap\",\"description\":\"d\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.643Z\"},{\"name\":\"from-codex\",\"sourceAgent\":\"codex\",\"mcpCount\":1,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.639Z\"},{\"name\":\"from-claude\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.636Z\"},{\"name\":\"made\",\"description\":\"now set\",\"mcpCount\":0,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.628Z\"},{\"name\":\"extra\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.607Z\"},{\"name\":\"padded\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.601Z\"},{\"name\":\"a.b_c-d\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.599Z\"},{\"name\":\"described\",\"description\":\"why\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.588Z\"},{\"name\":\"is-not-found-really\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:05.000Z\"},{\"name\":\"snapshot\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:03.000Z\"},{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:01.000Z\"},{\"name\":\"empty\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply-preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":\"base\",\"agent\":\"codex\",\"items\":[{\"category\":\"mcp\",\"name\":\"linear\",\"status\":\"add\",\"warnings\":[]},{\"category\":\"mcp\",\"name\":\"local-tool\",\"status\":\"add\",\"warnings\":[]},{\"category\":\"skill\",\"name\":\"summarise\",\"status\":\"add\",\"warnings\":[]}],\"unresolvedCredentials\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply-preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":\"base\",\"agent\":\"claude\",\"items\":[{\"category\":\"mcp\",\"name\":\"linear\",\"status\":\"identical\",\"warnings\":[]},{\"category\":\"mcp\",\"name\":\"local-tool\",\"status\":\"identical\",\"warnings\":[]},{\"category\":\"skill\",\"name\":\"summarise\",\"status\":\"conflict\",\"warnings\":[]}],\"unresolvedCredentials\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/empty/apply-preview",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":\"empty\",\"agent\":\"codex\",\"items\":[],\"unresolvedCredentials\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/nothing-here/apply-preview",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"nothing-here\\\" not found.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply-preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply-preview",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent is required.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/base/apply-preview",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":\"base\",\"agent\":\"codex\",\"mcpsApplied\":[\"linear\",\"local-tool\"],\"skillsApplied\":[\"summarise\"],\"pluginsApplied\":[],\"skipped\":[],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-160226\",\"%%HOME%%/.codex/config.toml.bak.20260831-160226-1\",\"%%HOME%%/.codex/config.toml.bak.20260831-160226-2\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/summarise\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":false,\"mcpServers\":{},\"remoteMcpServers\":{},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":\"base\",\"agent\":\"codex\",\"mcpsApplied\":[\"linear\",\"local-tool\"],\"skillsApplied\":[\"summarise\"],\"pluginsApplied\":[],\"skipped\":[],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-160226-3\",\"%%HOME%%/.codex/config.toml.bak.20260831-160226-4\",\"%%HOME%%/.codex/config.toml.bak.20260831-160226-5\",\"%%HOME%%/.config/nomoreide/agent-env-backups/summarise.20260831-160226\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":\"base\",\"agent\":\"antigravity\",\"mcpsApplied\":[\"local-tool\"],\"skillsApplied\":[\"summarise\"],\"pluginsApplied\":[],\"skipped\":[\"mcp \\\"linear\\\"\"],\"backups\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/live",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"configs\":[{\"agent\":\"claude\",\"configPath\":\"%%HOME%%/.claude.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"remoteMcpServers\":{\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.claude/skills/summarise\"},{\"name\":\"verify\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.claude/skills/verify\"}]},{\"agent\":\"codex\",\"configPath\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"remoteMcpServers\":{\"docs\":{\"transport\":\"http\",\"url\":\"https://docs.example.test/mcp\"},\"linear\":{\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.agents/skills/summarise\"},{\"name\":\"nomoreide-ui-polish\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"project\",\"installPath\":\"%%REPO%%/.agents/skills/nomoreide-ui-polish\"}]},{\"agent\":\"antigravity\",\"configPath\":\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json\",\"exists\":true,\"mcpServers\":{\"local-tool\":{\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}}},\"remoteMcpServers\":{},\"projectMcpServers\":{},\"projectRemoteMcpServers\":{},\"skills\":[{\"name\":\"summarise\",\"source\":\"local\",\"kind\":\"skill\",\"scope\":\"user\",\"installPath\":\"%%HOME%%/.gemini/skills/summarise\"}]}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":\"base\",\"agent\":\"codex\",\"mcpsApplied\":[\"linear\",\"local-tool\"],\"skillsApplied\":[\"summarise\"],\"pluginsApplied\":[],\"skipped\":[],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-160226-6\",\"%%HOME%%/.codex/config.toml.bak.20260831-160226-7\",\"%%HOME%%/.codex/config.toml.bak.20260831-160226-8\",\"%%HOME%%/.config/nomoreide/agent-env-backups/summarise.20260831-160226-1\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":\"base\",\"agent\":\"codex\",\"mcpsApplied\":[\"linear\",\"local-tool\"],\"skillsApplied\":[\"summarise\"],\"pluginsApplied\":[],\"skipped\":[],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-160226-9\",\"%%HOME%%/.config/nomoreide/agent-env-backups/summarise.20260831-160226-2\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/nothing-here/apply",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"nothing-here\\\" not found.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/broken/apply",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Expected property name or '}' in JSON at position 2 (line 1 column 3)\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/refresh",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcps\":{\"local-tool\":{\"kind\":\"local\",\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"linear\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/base",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcps\":{\"local-tool\":{\"kind\":\"local\",\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"linear\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/refresh",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/refresh",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"agent is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/nothing-here/refresh",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"nothing-here\\\" not found.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/refresh",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profile\":{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcps\":{\"local-tool\":{\"kind\":\"local\",\"command\":\"node\",\"args\":[\"server.js\"],\"env\":{\"TOKEN\":\"shh\"}},\"linear\":{\"kind\":\"remote\",\"transport\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"}},\"skills\":[{\"name\":\"summarise\"}],\"plugins\":[]}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/demolish",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/a/b/apply",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/a%2Fb/apply",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"a/b\\\" not found.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/%61pply",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/apply/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/base/registry-diff",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile is not linked to the registry.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/nothing-here/registry-diff",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile is not linked to the registry.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/registry-diff",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles/empty/registry-diff",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile is not linked to the registry.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/export",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"archivePath\":\"%%REPO%%/base.tar.gz\",\"credentials\":[{\"key\":\"token\",\"required\":true,\"description\":\"Environment variable TOKEN required for MCP access\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/export",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"archivePath\":\"%%REPO%%/base.tar.gz\",\"credentials\":[{\"key\":\"token\",\"required\":true,\"description\":\"Environment variable TOKEN required for MCP access\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/empty/export",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"archivePath\":\"%%REPO%%/empty.tar.gz\",\"credentials\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/nothing-here/export",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"nothing-here\\\" not found.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/export",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"archivePath\":\"%%REPO%%/base.tar.gz\",\"credentials\":[{\"key\":\"token\",\"required\":true,\"description\":\"Environment variable TOKEN required for MCP access\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/export",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"archivePath\":\"%%REPO%%/base.tar.gz\",\"credentials\":[{\"key\":\"token\",\"required\":true,\"description\":\"Environment variable TOKEN required for MCP access\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/export",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"archivePath\":\"%%REPO%%/base.tar.gz\",\"credentials\":[{\"key\":\"token\",\"required\":true,\"description\":\"Environment variable TOKEN required for MCP access\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/base/export",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"archivePath\":\"%%HOME%%/exports/named.tar.gz\",\"credentials\":[{\"key\":\"token\",\"required\":true,\"description\":\"Environment variable TOKEN required for MCP access\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"archivePath is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Archive not found: /nonexistent/x.tar.gz\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"archivePath is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"base\\\" already exists. Re-import with force to overwrite.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"base\\\" already exists. Re-import with force to overwrite.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"name\":\"base\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"missingCredentials\":[{\"key\":\"token\",\"required\":true,\"description\":\"Environment variable TOKEN required for MCP access\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"name\":\"imported-copy\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"missingCredentials\":[{\"key\":\"token\",\"required\":true,\"description\":\"Environment variable TOKEN required for MCP access\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"..\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"a/b\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"name\":\"padded-import\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"missingCredentials\":[{\"key\":\"token\",\"required\":true,\"description\":\"Environment variable TOKEN required for MCP access\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"padded-import\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.912Z\"},{\"name\":\"imported-copy\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.873Z\"},{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.861Z\"},{\"name\":\"padded-snap\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.651Z\"},{\"name\":\"described-snap\",\"description\":\"d\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.643Z\"},{\"name\":\"from-codex\",\"sourceAgent\":\"codex\",\"mcpCount\":1,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.639Z\"},{\"name\":\"from-claude\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.636Z\"},{\"name\":\"made\",\"description\":\"now set\",\"mcpCount\":0,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.628Z\"},{\"name\":\"extra\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.607Z\"},{\"name\":\"padded\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.601Z\"},{\"name\":\"a.b_c-d\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.599Z\"},{\"name\":\"described\",\"description\":\"why\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.588Z\"},{\"name\":\"is-not-found-really\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:05.000Z\"},{\"name\":\"snapshot\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:03.000Z\"},{\"name\":\"empty\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Empty upload.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Could not extract the archive — is it a .tar.gz profile export?\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent-env/profiles/made",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"padded-import\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.912Z\"},{\"name\":\"imported-copy\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.873Z\"},{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.861Z\"},{\"name\":\"padded-snap\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.651Z\"},{\"name\":\"described-snap\",\"description\":\"d\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.643Z\"},{\"name\":\"from-codex\",\"sourceAgent\":\"codex\",\"mcpCount\":1,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.639Z\"},{\"name\":\"from-claude\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.636Z\"},{\"name\":\"extra\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.607Z\"},{\"name\":\"padded\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.601Z\"},{\"name\":\"a.b_c-d\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.599Z\"},{\"name\":\"described\",\"description\":\"why\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.588Z\"},{\"name\":\"is-not-found-really\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:05.000Z\"},{\"name\":\"snapshot\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:03.000Z\"},{\"name\":\"empty\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent-env/profiles/made",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"made\\\" not found.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent-env/profiles/nothing-here",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Profile \\\"nothing-here\\\" not found.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent-env/profiles/broken",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agent-env/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent-env/profiles",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"padded-import\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.912Z\"},{\"name\":\"imported-copy\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.873Z\"},{\"name\":\"base\",\"description\":\"The one that carries things.\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.861Z\"},{\"name\":\"padded-snap\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.651Z\"},{\"name\":\"described-snap\",\"description\":\"d\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.643Z\"},{\"name\":\"from-codex\",\"sourceAgent\":\"codex\",\"mcpCount\":1,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.639Z\"},{\"name\":\"from-claude\",\"sourceAgent\":\"claude\",\"mcpCount\":2,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.636Z\"},{\"name\":\"extra\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.607Z\"},{\"name\":\"padded\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.601Z\"},{\"name\":\"a.b_c-d\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.599Z\"},{\"name\":\"described\",\"description\":\"why\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:26.588Z\"},{\"name\":\"is-not-found-really\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:05.000Z\"},{\"name\":\"snapshot\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:03.000Z\"},{\"name\":\"empty\",\"mcpCount\":0,\"skillCount\":0,\"pluginCount\":0,\"updatedAt\":\"2026-01-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent-env/profiles/import",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid profile name \\\"..\\\". Use letters, numbers, \\\".\\\", \\\"_\\\", or \\\"-\\\".\"}"
+    }
+  ],
+  "entries": []
+}

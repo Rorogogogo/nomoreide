@@ -3,8 +3,8 @@
 import { act, StrictMode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { useSqlGenerate } from "../src/web/client/src/features/database/use-sql-generate";
-import { useWorkflowRunner } from "../src/web/client/src/features/workflows/use-workflow-runner";
+import { useSqlGenerate } from "../apps/dashboard/src/features/database/use-sql-generate";
+import { useWorkflowRunner } from "../apps/dashboard/src/features/workflows/use-workflow-runner";
 
 const api = vi.hoisted(() => ({
   approveAgentTool: vi.fn(),
@@ -26,7 +26,7 @@ function deferred<T>() {
 }
 
 vi.mock("@/lib/api", () => api);
-vi.mock("../src/web/client/src/features/agent/chat/agent-context", () => ({
+vi.mock("../apps/dashboard/src/features/agent/chat/agent-context", () => ({
   useAgentDock: () => ({ provider: { id: "codex" } }),
 }));
 

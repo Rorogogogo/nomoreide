@@ -6,7 +6,7 @@ import {
   requiredStringKeys,
   type ProviderStrings,
 } from "../src/core/providers/strings.js";
-import { LANGUAGE_OPTIONS } from "../src/web/client/src/lib/language.js";
+import { LANGUAGE_OPTIONS } from "../apps/dashboard/src/lib/language.js";
 
 /**
  * The test §9 asks for, and the reason §11 gate item 2 could be paid at all.
@@ -133,7 +133,7 @@ describe("provider manifest strings", () => {
 
   /**
    * `PROVIDER_LOCALES` is re-declared in `src/core` because core must not
-   * import from `src/web/client`. This is what keeps the copy honest: adding a
+   * import from `apps/dashboard`. This is what keeps the copy honest: adding a
    * language to the dashboard fails here until every provider can speak it,
    * rather than silently leaving every plugin English-only in the new locale.
    */

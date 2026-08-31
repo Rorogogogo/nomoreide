@@ -31,7 +31,7 @@
  * `Language`, and no wider.
  *
  * Re-declared here rather than imported because `src/core` must not depend on
- * `src/web/client` (the client is excluded from the server tsconfig and built
+ * `apps/dashboard` (the client is excluded from the server tsconfig and built
  * separately). `test/provider-strings.test.ts` asserts the two lists agree, so
  * adding a third language to the client fails there rather than silently
  * leaving every provider unable to speak it.

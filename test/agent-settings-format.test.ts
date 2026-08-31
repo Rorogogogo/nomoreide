@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   formatAgentSettingsContent,
   validateAgentSettingsContent,
-} from "../src/web/client/src/features/agent-env/agent-settings-format";
+} from "../apps/dashboard/src/features/agent-env/agent-settings-format";
 
 describe("agent settings editor format and validation", () => {
   test("formats valid JSON and rejects invalid JSON before save", () => {

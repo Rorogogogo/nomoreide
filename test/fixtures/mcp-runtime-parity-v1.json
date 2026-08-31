@@ -1,0 +1,54 @@
+{
+  "fixtureVersion": 1,
+  "comment": "Service definitions for the Phase 2 black-box exit gate. {{workspace}} and {{node}} are rendered per runtime so each side runs identical programs from its own private home.",
+  "config": {
+    "version": 1,
+    "services": [
+      {
+        "name": "banner",
+        "kind": "local",
+        "command": "{{node}}",
+        "args": ["{{workspace}}/banner.js"],
+        "cwd": "{{workspace}}",
+        "description": "Long-lived service that announces a URL",
+        "env": { "PARITY_MODE": "banner" }
+      },
+      {
+        "name": "quitter",
+        "kind": "local",
+        "command": "{{node}}",
+        "args": ["{{workspace}}/quitter.js"],
+        "cwd": "{{workspace}}",
+        "description": "Exits with a known non-zero code"
+      },
+      {
+        "name": "idle",
+        "kind": "local",
+        "command": "{{node}}",
+        "args": ["{{workspace}}/banner.js"],
+        "cwd": "{{workspace}}",
+        "description": "Registered but never started"
+      },
+      {
+        "name": "remote",
+        "kind": "ssh",
+        "host": "parity-host",
+        "cwd": "/srv/app",
+        "command": "npm start",
+        "comment": "Two keys in deliberately non-alphabetical file order: the reference emits assignments in file order, the native runtime sorts them. Same environment, different argv text.",
+        "env": { "Z_LAST": "z value", "A_FIRST": "a value" }
+      },
+      {
+        "name": "composed",
+        "kind": "docker-compose",
+        "cwd": "{{workspace}}",
+        "composeFile": "compose.yml",
+        "composeService": "web"
+      }
+    ],
+    "bundles": [
+      { "name": "pair", "services": ["banner", "quitter"] },
+      { "name": "missing", "services": ["banner", "not-registered"] }
+    ]
+  }
+}

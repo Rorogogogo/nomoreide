@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { AgentProvider } from "../src/web/client/src/features/agent/chat/agent-context";
-import { HooksCard } from "../src/web/client/src/features/agent/tools/hooks-card";
-import type { AgentProfile } from "../src/web/client/src/lib/api";
+import { AgentProvider } from "../apps/dashboard/src/features/agent/chat/agent-context";
+import { HooksCard } from "../apps/dashboard/src/features/agent/tools/hooks-card";
+import type { AgentProfile } from "../apps/dashboard/src/lib/api";
 
 const emptyProfile: AgentProfile = {
   project: {

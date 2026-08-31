@@ -3,29 +3,29 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const root = resolve(__dirname, "..");
-const appSource = readFileSync(resolve(root, "src/web/client/src/app.tsx"), "utf8");
+const appSource = readFileSync(resolve(root, "apps/dashboard/src/app.tsx"), "utf8");
 const headerActionSource = readFileSync(
-  resolve(root, "src/web/client/src/components/header-action.tsx"),
+  resolve(root, "apps/dashboard/src/components/header-action.tsx"),
   "utf8",
 );
 const themeToggleSource = readFileSync(
-  resolve(root, "src/web/client/src/components/theme-toggle.tsx"),
+  resolve(root, "apps/dashboard/src/components/theme-toggle.tsx"),
   "utf8",
 );
 const refreshButtonSource = readFileSync(
-  resolve(root, "src/web/client/src/components/header-refresh-button.tsx"),
+  resolve(root, "apps/dashboard/src/components/header-refresh-button.tsx"),
   "utf8",
 );
 const aiContextSource = readFileSync(
-  resolve(root, "src/web/client/src/features/agent/ai-context-action.tsx"),
+  resolve(root, "apps/dashboard/src/features/agent/ai-context-action.tsx"),
   "utf8",
 );
 const appContextMenuSource = readFileSync(
-  resolve(root, "src/web/client/src/components/app-context-menu.tsx"),
+  resolve(root, "apps/dashboard/src/components/app-context-menu.tsx"),
   "utf8",
 );
 const aiContextMenuSource = readFileSync(
-  resolve(root, "src/web/client/src/features/agent/context-menu/ai-context-menu.tsx"),
+  resolve(root, "apps/dashboard/src/features/agent/context-menu/ai-context-menu.tsx"),
   "utf8",
 );
 const shellRoutesSource = readFileSync(
@@ -35,7 +35,7 @@ const shellRoutesSource = readFileSync(
 // UI copy now lives in the i18n catalog (t("...")), so rendered text is asserted
 // against en.ts rather than the component source.
 const catalog = readFileSync(
-  resolve(root, "src/web/client/src/lib/i18n/en.ts"),
+  resolve(root, "apps/dashboard/src/lib/i18n/en.ts"),
   "utf8",
 );
 

@@ -463,7 +463,7 @@ Web server:
 React dashboard:
 
 - Built with Vite, React, Tailwind CSS, Radix UI primitives, lucide-react, and related UI dependencies.
-- Feature modules live under `src/web/client/src/features/`.
+- Feature modules live under `apps/dashboard/src/features/`.
 
 CLI and TUI:
 

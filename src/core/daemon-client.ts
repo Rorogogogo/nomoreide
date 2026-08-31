@@ -1,3 +1,4 @@
+import type { ErrorIncident } from "./error-inbox.js";
 import type { NoMoreIdeStatus } from "./process-manager.js";
 import type { PortHolder } from "./port-utils.js";
 import type { TerminalSessionInfo } from "./terminal-manager.js";
@@ -40,6 +41,13 @@ export class DaemonPortConflictError extends Error {
     super(message);
     this.name = "DaemonPortConflictError";
   }
+}
+
+/** What `/api/errors/:id/prompt` answers with. */
+export interface ErrorPromptPayload {
+  incident: ErrorIncident;
+  file?: string;
+  prompt: string;
 }
 
 export interface StartOptions {
@@ -99,6 +107,33 @@ export class DaemonClient {
       `/api/timeline?limit=${limit}`,
     );
     return body.timeline;
+  }
+
+  /** Deduped incidents the daemon's inbox is holding, most recently active first. */
+  async listErrors(limit = 100): Promise<ErrorIncident[]> {
+    const body = await this.request<{ incidents: ErrorIncident[] }>(
+      "GET",
+      `/api/errors?limit=${limit}`,
+    );
+    return body.incidents;
+  }
+
+  /**
+   * The debugging prompt for one incident, or null when the daemon holds no
+   * such incident. A 404 here is an answer, not a transport failure.
+   */
+  async errorPrompt(id: number): Promise<ErrorPromptPayload | null> {
+    try {
+      return await this.request<ErrorPromptPayload>(
+        "GET",
+        `/api/errors/${encodeURIComponent(String(id))}/prompt`,
+      );
+    } catch (error) {
+      if (error instanceof DaemonRequestError && error.httpStatus === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async startService(name: string, options: StartOptions = {}): Promise<ServiceStatus> {

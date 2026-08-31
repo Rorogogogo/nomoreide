@@ -3,7 +3,7 @@ import { join, relative, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const root = resolve(__dirname, "..");
-const clientSrc = resolve(root, "src/web/client/src");
+const clientSrc = resolve(root, "apps/dashboard/src");
 const enPath = resolve(clientSrc, "lib/i18n/en.ts");
 
 /**

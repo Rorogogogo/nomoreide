@@ -3,20 +3,20 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const gitReviewSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/features/git/git-review-view.tsx"),
+  resolve(__dirname, "../apps/dashboard/src/features/git/git-review-view.tsx"),
   "utf8",
 );
 const agentContextSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/features/agent/chat/agent-context.tsx"),
+  resolve(__dirname, "../apps/dashboard/src/features/agent/chat/agent-context.tsx"),
   "utf8",
 );
 const agentComposerSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/features/agent/terminal/agent-terminal-composer.tsx"),
+  resolve(__dirname, "../apps/dashboard/src/features/agent/terminal/agent-terminal-composer.tsx"),
   "utf8",
 );
 // UI copy now lives in the i18n catalog (t("...")).
 const catalog = readFileSync(
-  resolve(__dirname, "../src/web/client/src/lib/i18n/en.ts"),
+  resolve(__dirname, "../apps/dashboard/src/lib/i18n/en.ts"),
   "utf8",
 );
 

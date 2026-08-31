@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { ChangedFilesList } from "../src/web/client/src/features/git/changed-files-list";
+import { ChangedFilesList } from "../apps/dashboard/src/features/git/changed-files-list";
 
 describe("ChangedFilesList", () => {
   test("renders changed files as a compact flat list instead of tree rows", () => {

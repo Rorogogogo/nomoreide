@@ -1,0 +1,557 @@
+{
+  "version": 1,
+  "gate": "service-inspector",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"web\\\" is not running.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/nothing-here/inspector",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Service \\\"nothing-here\\\" is not running.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/services/web/inspector",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\",\"inspector\":{\"enabled\":true,\"port\":49216,\"upstreamPort\":49213}}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\",\"inspector\":{\"enabled\":true,\"port\":49216,\"upstreamPort\":49213}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/timeline?limit=50",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"timeline\":[{\"id\":\"44016c13-3fa3-4799-8397-91c2e5f3b2eb\",\"timestamp\":\"2026-08-31T06:12:17.758Z\",\"kind\":\"service.lifecycle\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web started\",\"data\":{\"pid\":57944}},{\"id\":\"b37798a2-fdd1-4554-b29f-bbfd6e644a30\",\"timestamp\":\"2026-08-31T06:12:17.781Z\",\"kind\":\"service.port\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web reported http://127.0.0.1:49213/\",\"detail\":\"http://127.0.0.1:49213/\"},{\"id\":\"bf043d1d-07a6-4a40-8748-fe5cb62a13f7\",\"timestamp\":\"2026-08-31T06:12:17.781Z\",\"kind\":\"service.log\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web stdout\",\"detail\":\"ready on http://127.0.0.1:49213/\"},{\"id\":\"95173bb1-cc2c-4c87-bd52-e05be66c36a3\",\"timestamp\":\"2026-08-31T06:12:19.277Z\",\"kind\":\"service.lifecycle\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web HTTP inspector on :49216\",\"detail\":\"Proxying to upstream :49213\"},{\"id\":\"943b593d-f880-4e6a-a253-1be003608b58\",\"timestamp\":\"2026-08-31T06:12:19.280Z\",\"kind\":\"service.http\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"GET /hello?x=1 → 200\",\"detail\":\"5.2 ms\",\"data\":{\"id\":\"eb2ba87e-993f-41ea-9680-6e50ba381479\",\"method\":\"GET\",\"path\":\"/hello?x=1\",\"status\":200,\"durationMs\":5.2,\"reqBytes\":0,\"resBytes\":61}},{\"id\":\"feb58698-e0e8-4f9b-a30a-2ec544edf9ee\",\"timestamp\":\"2026-08-31T06:12:19.293Z\",\"kind\":\"service.http\",\"service\":\"web\",\"severity\":\"error\",\"title\":\"GET /refuse → 503\",\"detail\":\"1.5 ms\",\"data\":{\"id\":\"17e2a1da-983f-46b6-b6c8-086f5218f3e7\",\"method\":\"GET\",\"path\":\"/refuse\",\"status\":503,\"durationMs\":1.5,\"reqBytes\":0,\"resBytes\":58}},{\"id\":\"eb6e8509-5715-4b7b-95f7-863b019ac855\",\"timestamp\":\"2026-08-31T06:12:19.296Z\",\"kind\":\"service.http\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"POST /submit → 200\",\"detail\":\"0.7 ms\",\"data\":{\"id\":\"3d74a490-d57b-4e3d-811c-2c2b5b932f6e\",\"method\":\"POST\",\"path\":\"/submit\",\"status\":200,\"durationMs\":0.7,\"reqBytes\":11,\"resBytes\":59}}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\",\"inspector\":{\"enabled\":true,\"port\":49229,\"upstreamPort\":49213}}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/quiet/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"running\",\"kind\":\"local\",\"pid\":58117,\"startedAt\":\"2026-08-31T06:12:19.826Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/quiet/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"running\",\"kind\":\"local\",\"pid\":58117,\"startedAt\":\"2026-08-31T06:12:19.826Z\",\"inspector\":{\"enabled\":true}}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/quiet/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"running\",\"kind\":\"local\",\"pid\":58117,\"startedAt\":\"2026-08-31T06:12:19.826Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/we%62/inspector",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/web/stop",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\",\"exitedAt\":\"2026-08-31T06:12:20.645Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/quiet/stop",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":58117,\"startedAt\":\"2026-08-31T06:12:19.826Z\",\"exitedAt\":\"2026-08-31T06:12:20.649Z\",\"exitCode\":0,\"signal\":null}}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "inspector/a-service-that-is-not-running",
+      "value": {
+        "status": 500,
+        "body": {
+          "ok": false,
+          "error": "Service \"web\" is not running."
+        }
+      }
+    },
+    {
+      "key": "inspector/a-service-nobody-registered",
+      "value": {
+        "status": 500,
+        "body": {
+          "ok": false,
+          "error": "Service \"nothing-here\" is not running."
+        }
+      }
+    },
+    {
+      "key": "inspector/wrong-method",
+      "value": {
+        "status": 405,
+        "body": {
+          "ok": false,
+          "error": "Method not allowed"
+        }
+      }
+    },
+    {
+      "key": "setup/start-the-service",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z"
+          }
+        }
+      }
+    },
+    {
+      "key": "inspector/enable",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/",
+            "inspector": {
+              "enabled": true,
+              "port": 49216,
+              "upstreamPort": 49213
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "inspector/enable-again",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/",
+            "inspector": {
+              "enabled": true,
+              "port": 49216,
+              "upstreamPort": 49213
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "proxy/a-request-passes-through",
+      "value": {
+        "status": 200,
+        "fromUpstream": "upstream",
+        "body": "{\"path\":\"/hello?x=1\",\"method\":\"GET\",\"host\":\"127.0.0.1:49213\"}"
+      }
+    },
+    {
+      "key": "proxy/an-upstream-failure-passes-through",
+      "value": {
+        "status": 503,
+        "body": "{\"path\":\"/refuse\",\"method\":\"GET\",\"host\":\"127.0.0.1:49213\"}"
+      }
+    },
+    {
+      "key": "proxy/a-post-with-a-body",
+      "value": {
+        "status": 200,
+        "body": "{\"path\":\"/submit\",\"method\":\"POST\",\"host\":\"127.0.0.1:49213\"}"
+      }
+    },
+    {
+      "key": "timeline/the-requests-were-recorded",
+      "value": [
+        {
+          "id": "943b593d-f880-4e6a-a253-1be003608b58",
+          "timestamp": "2026-08-31T06:12:19.280Z",
+          "kind": "service.http",
+          "service": "web",
+          "severity": "info",
+          "title": "GET /hello?x=1 → 200",
+          "detail": "5.2 ms",
+          "data": {
+            "id": "eb2ba87e-993f-41ea-9680-6e50ba381479",
+            "method": "GET",
+            "path": "/hello?x=1",
+            "status": 200,
+            "durationMs": 5.2,
+            "reqBytes": 0,
+            "resBytes": 61
+          }
+        },
+        {
+          "id": "feb58698-e0e8-4f9b-a30a-2ec544edf9ee",
+          "timestamp": "2026-08-31T06:12:19.293Z",
+          "kind": "service.http",
+          "service": "web",
+          "severity": "error",
+          "title": "GET /refuse → 503",
+          "detail": "1.5 ms",
+          "data": {
+            "id": "17e2a1da-983f-46b6-b6c8-086f5218f3e7",
+            "method": "GET",
+            "path": "/refuse",
+            "status": 503,
+            "durationMs": 1.5,
+            "reqBytes": 0,
+            "resBytes": 58
+          }
+        },
+        {
+          "id": "eb6e8509-5715-4b7b-95f7-863b019ac855",
+          "timestamp": "2026-08-31T06:12:19.296Z",
+          "kind": "service.http",
+          "service": "web",
+          "severity": "info",
+          "title": "POST /submit → 200",
+          "detail": "0.7 ms",
+          "data": {
+            "id": "3d74a490-d57b-4e3d-811c-2c2b5b932f6e",
+            "method": "POST",
+            "path": "/submit",
+            "status": 200,
+            "durationMs": 0.7,
+            "reqBytes": 11,
+            "resBytes": 59
+          }
+        }
+      ]
+    },
+    {
+      "key": "inspector/disable",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/"
+          }
+        }
+      }
+    },
+    {
+      "key": "proxy/the-port-is-gone",
+      "value": {
+        "reached": false
+      }
+    },
+    {
+      "key": "enabled/the-string-one",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/",
+            "inspector": {
+              "enabled": true,
+              "port": 49229,
+              "upstreamPort": 49213
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "enabled/the-string-zero",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/"
+          }
+        }
+      }
+    },
+    {
+      "key": "enabled/yes-is-not-true",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/"
+          }
+        }
+      }
+    },
+    {
+      "key": "enabled/an-absent-field",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/"
+          }
+        }
+      }
+    },
+    {
+      "key": "enabled/capitalised-true",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/"
+          }
+        }
+      }
+    },
+    {
+      "key": "enabled/a-json-body-is-not-a-form",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/"
+          }
+        }
+      }
+    },
+    {
+      "key": "setup/start-the-quiet-one",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "quiet",
+            "state": "running",
+            "kind": "local",
+            "pid": 58117,
+            "startedAt": "2026-08-31T06:12:19.826Z"
+          }
+        }
+      }
+    },
+    {
+      "key": "inspector/a-service-with-no-url",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "quiet",
+            "state": "running",
+            "kind": "local",
+            "pid": 58117,
+            "startedAt": "2026-08-31T06:12:19.826Z",
+            "inspector": {
+              "enabled": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "inspector/turning-that-one-off-again",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "quiet",
+            "state": "running",
+            "kind": "local",
+            "pid": 58117,
+            "startedAt": "2026-08-31T06:12:19.826Z"
+          }
+        }
+      }
+    },
+    {
+      "key": "inspector/a-name-with-an-escape",
+      "value": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "status": {
+            "name": "web",
+            "state": "running",
+            "kind": "local",
+            "pid": 57944,
+            "startedAt": "2026-08-31T06:12:17.757Z",
+            "url": "http://127.0.0.1:49213/"
+          }
+        }
+      }
+    }
+  ]
+}

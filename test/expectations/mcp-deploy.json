@@ -1,0 +1,4879 @@
+{
+  "version": 1,
+  "gate": "mcp-deploy",
+  "http": [],
+  "entries": [
+    {
+      "key": "projects/all",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "prj_app",
+            "projects": [
+              {
+                "id": "prj_app",
+                "name": "app",
+                "framework": "nextjs",
+                "updatedAt": 1700000001000,
+                "link": {
+                  "type": "github",
+                  "org": "acme",
+                  "repo": "app",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "devCommand",
+                    "label": "Dev command",
+                    "value": null
+                  },
+                  {
+                    "key": "installCommand",
+                    "label": "Install command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": ".next"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "apps/web"
+                  },
+                  {
+                    "key": "nodeVersion",
+                    "label": "Node version",
+                    "value": "20.x"
+                  }
+                ]
+              },
+              {
+                "id": "prj_docs",
+                "name": "docs",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_empty",
+                "name": "link-empty",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_null",
+                "name": "link-null",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_text",
+                "name": "link-text",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_gitlab",
+                "name": "link-gitlab",
+                "framework": null,
+                "link": {
+                  "type": "gitlab",
+                  "productionBranch": "trunk"
+                },
+                "settings": []
+              },
+              {
+                "id": "prj_updated_null",
+                "name": "updated-null",
+                "framework": null,
+                "updatedAt": null,
+                "settings": []
+              },
+              {
+                "name": "no-id",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_name_null",
+                "name": null,
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_framework_number",
+                "name": "framework-number",
+                "framework": 7,
+                "settings": []
+              },
+              {
+                "id": "prj_cleared",
+                "name": "cleared",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v2/teams?limit=100",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/search",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "prj_app",
+            "projects": [
+              {
+                "id": "prj_docs",
+                "name": "docs",
+                "framework": null,
+                "settings": []
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&search=doc&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/search-only-spaces",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_list_projects' execution failed: Vercel returned 404 Not Found for /v10/projects?limit=50&search=++"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&search=++&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/search-needs-encoding",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_list_projects' execution failed: Vercel returned 404 Not Found for /v10/projects?limit=50&search=a+b%21"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&search=a+b%21&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": false
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/from-a-link-file",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "prj_linkfile",
+            "projects": [
+              {
+                "id": "prj_app",
+                "name": "app",
+                "framework": "nextjs",
+                "updatedAt": 1700000001000,
+                "link": {
+                  "type": "github",
+                  "org": "acme",
+                  "repo": "app",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "devCommand",
+                    "label": "Dev command",
+                    "value": null
+                  },
+                  {
+                    "key": "installCommand",
+                    "label": "Install command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": ".next"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "apps/web"
+                  },
+                  {
+                    "key": "nodeVersion",
+                    "label": "Node version",
+                    "value": "20.x"
+                  }
+                ]
+              },
+              {
+                "id": "prj_docs",
+                "name": "docs",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_empty",
+                "name": "link-empty",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_null",
+                "name": "link-null",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_text",
+                "name": "link-text",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_gitlab",
+                "name": "link-gitlab",
+                "framework": null,
+                "link": {
+                  "type": "gitlab",
+                  "productionBranch": "trunk"
+                },
+                "settings": []
+              },
+              {
+                "id": "prj_updated_null",
+                "name": "updated-null",
+                "framework": null,
+                "updatedAt": null,
+                "settings": []
+              },
+              {
+                "name": "no-id",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_name_null",
+                "name": null,
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_framework_number",
+                "name": "framework-number",
+                "framework": 7,
+                "settings": []
+              },
+              {
+                "id": "prj_cleared",
+                "name": "cleared",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_linkfile?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/from-a-pin",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "prj_pinned",
+            "projects": [
+              {
+                "id": "prj_app",
+                "name": "app",
+                "framework": "nextjs",
+                "updatedAt": 1700000001000,
+                "link": {
+                  "type": "github",
+                  "org": "acme",
+                  "repo": "app",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "devCommand",
+                    "label": "Dev command",
+                    "value": null
+                  },
+                  {
+                    "key": "installCommand",
+                    "label": "Install command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": ".next"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "apps/web"
+                  },
+                  {
+                    "key": "nodeVersion",
+                    "label": "Node version",
+                    "value": "20.x"
+                  }
+                ]
+              },
+              {
+                "id": "prj_docs",
+                "name": "docs",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_empty",
+                "name": "link-empty",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_null",
+                "name": "link-null",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_text",
+                "name": "link-text",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_gitlab",
+                "name": "link-gitlab",
+                "framework": null,
+                "link": {
+                  "type": "gitlab",
+                  "productionBranch": "trunk"
+                },
+                "settings": []
+              },
+              {
+                "id": "prj_updated_null",
+                "name": "updated-null",
+                "framework": null,
+                "updatedAt": null,
+                "settings": []
+              },
+              {
+                "name": "no-id",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_name_null",
+                "name": null,
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_framework_number",
+                "name": "framework-number",
+                "framework": 7,
+                "settings": []
+              },
+              {
+                "id": "prj_cleared",
+                "name": "cleared",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_pinned?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/from-a-pin-that-is-gone",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "prj_docs",
+            "projects": [
+              {
+                "id": "prj_app",
+                "name": "app",
+                "framework": "nextjs",
+                "updatedAt": 1700000001000,
+                "link": {
+                  "type": "github",
+                  "org": "acme",
+                  "repo": "app",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "devCommand",
+                    "label": "Dev command",
+                    "value": null
+                  },
+                  {
+                    "key": "installCommand",
+                    "label": "Install command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": ".next"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "apps/web"
+                  },
+                  {
+                    "key": "nodeVersion",
+                    "label": "Node version",
+                    "value": "20.x"
+                  }
+                ]
+              },
+              {
+                "id": "prj_docs",
+                "name": "docs",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_empty",
+                "name": "link-empty",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_null",
+                "name": "link-null",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_text",
+                "name": "link-text",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_gitlab",
+                "name": "link-gitlab",
+                "framework": null,
+                "link": {
+                  "type": "gitlab",
+                  "productionBranch": "trunk"
+                },
+                "settings": []
+              },
+              {
+                "id": "prj_updated_null",
+                "name": "updated-null",
+                "framework": null,
+                "updatedAt": null,
+                "settings": []
+              },
+              {
+                "name": "no-id",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_name_null",
+                "name": null,
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_framework_number",
+                "name": "framework-number",
+                "framework": 7,
+                "settings": []
+              },
+              {
+                "id": "prj_cleared",
+                "name": "cleared",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_gone?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fstale&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/no-remote-at-all",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": null,
+            "projects": [
+              {
+                "id": "prj_app",
+                "name": "app",
+                "framework": "nextjs",
+                "updatedAt": 1700000001000,
+                "link": {
+                  "type": "github",
+                  "org": "acme",
+                  "repo": "app",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "devCommand",
+                    "label": "Dev command",
+                    "value": null
+                  },
+                  {
+                    "key": "installCommand",
+                    "label": "Install command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": ".next"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "apps/web"
+                  },
+                  {
+                    "key": "nodeVersion",
+                    "label": "Node version",
+                    "value": "20.x"
+                  }
+                ]
+              },
+              {
+                "id": "prj_docs",
+                "name": "docs",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_empty",
+                "name": "link-empty",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_null",
+                "name": "link-null",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_text",
+                "name": "link-text",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_gitlab",
+                "name": "link-gitlab",
+                "framework": null,
+                "link": {
+                  "type": "gitlab",
+                  "productionBranch": "trunk"
+                },
+                "settings": []
+              },
+              {
+                "id": "prj_updated_null",
+                "name": "updated-null",
+                "framework": null,
+                "updatedAt": null,
+                "settings": []
+              },
+              {
+                "name": "no-id",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_name_null",
+                "name": null,
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_framework_number",
+                "name": "framework-number",
+                "framework": 7,
+                "settings": []
+              },
+              {
+                "id": "prj_cleared",
+                "name": "cleared",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/not-a-repository",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": null,
+            "projects": [
+              {
+                "id": "prj_app",
+                "name": "app",
+                "framework": "nextjs",
+                "updatedAt": 1700000001000,
+                "link": {
+                  "type": "github",
+                  "org": "acme",
+                  "repo": "app",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "devCommand",
+                    "label": "Dev command",
+                    "value": null
+                  },
+                  {
+                    "key": "installCommand",
+                    "label": "Install command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": ".next"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "apps/web"
+                  },
+                  {
+                    "key": "nodeVersion",
+                    "label": "Node version",
+                    "value": "20.x"
+                  }
+                ]
+              },
+              {
+                "id": "prj_docs",
+                "name": "docs",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_empty",
+                "name": "link-empty",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_null",
+                "name": "link-null",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_text",
+                "name": "link-text",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_gitlab",
+                "name": "link-gitlab",
+                "framework": null,
+                "link": {
+                  "type": "gitlab",
+                  "productionBranch": "trunk"
+                },
+                "settings": []
+              },
+              {
+                "id": "prj_updated_null",
+                "name": "updated-null",
+                "framework": null,
+                "updatedAt": null,
+                "settings": []
+              },
+              {
+                "name": "no-id",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_name_null",
+                "name": null,
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_framework_number",
+                "name": "framework-number",
+                "framework": 7,
+                "settings": []
+              },
+              {
+                "id": "prj_cleared",
+                "name": "cleared",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/unknown-provider",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_list_projects' execution failed: Unknown provider \"heroku\"."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "projects/named-provider",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "prj_app",
+            "projects": [
+              {
+                "id": "prj_app",
+                "name": "app",
+                "framework": "nextjs",
+                "updatedAt": 1700000001000,
+                "link": {
+                  "type": "github",
+                  "org": "acme",
+                  "repo": "app",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "devCommand",
+                    "label": "Dev command",
+                    "value": null
+                  },
+                  {
+                    "key": "installCommand",
+                    "label": "Install command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": ".next"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "apps/web"
+                  },
+                  {
+                    "key": "nodeVersion",
+                    "label": "Node version",
+                    "value": "20.x"
+                  }
+                ]
+              },
+              {
+                "id": "prj_docs",
+                "name": "docs",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_empty",
+                "name": "link-empty",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_null",
+                "name": "link-null",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_text",
+                "name": "link-text",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_gitlab",
+                "name": "link-gitlab",
+                "framework": null,
+                "link": {
+                  "type": "gitlab",
+                  "productionBranch": "trunk"
+                },
+                "settings": []
+              },
+              {
+                "id": "prj_updated_null",
+                "name": "updated-null",
+                "framework": null,
+                "updatedAt": null,
+                "settings": []
+              },
+              {
+                "name": "no-id",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_name_null",
+                "name": null,
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_framework_number",
+                "name": "framework-number",
+                "framework": 7,
+                "settings": []
+              },
+              {
+                "id": "prj_cleared",
+                "name": "cleared",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "projects/an-unknown-key-is-ignored",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "prj_app",
+            "projects": [
+              {
+                "id": "prj_app",
+                "name": "app",
+                "framework": "nextjs",
+                "updatedAt": 1700000001000,
+                "link": {
+                  "type": "github",
+                  "org": "acme",
+                  "repo": "app",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "devCommand",
+                    "label": "Dev command",
+                    "value": null
+                  },
+                  {
+                    "key": "installCommand",
+                    "label": "Install command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": ".next"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "apps/web"
+                  },
+                  {
+                    "key": "nodeVersion",
+                    "label": "Node version",
+                    "value": "20.x"
+                  }
+                ]
+              },
+              {
+                "id": "prj_docs",
+                "name": "docs",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_empty",
+                "name": "link-empty",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_null",
+                "name": "link-null",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_text",
+                "name": "link-text",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_link_gitlab",
+                "name": "link-gitlab",
+                "framework": null,
+                "link": {
+                  "type": "gitlab",
+                  "productionBranch": "trunk"
+                },
+                "settings": []
+              },
+              {
+                "id": "prj_updated_null",
+                "name": "updated-null",
+                "framework": null,
+                "updatedAt": null,
+                "settings": []
+              },
+              {
+                "name": "no-id",
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_name_null",
+                "name": null,
+                "framework": null,
+                "settings": []
+              },
+              {
+                "id": "prj_framework_number",
+                "name": "framework-number",
+                "framework": 7,
+                "settings": []
+              },
+              {
+                "id": "prj_cleared",
+                "name": "cleared",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=50&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "deployments/default",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": "dpl_ready",
+              "name": "app",
+              "url": "app-ready.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000500000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": true,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {
+                "branch": "main",
+                "sha": "0123456789abcdef0123456789abcdef01234567",
+                "commitMessage": "feat: ship it",
+                "commitAuthor": "Robert"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_failed",
+              "name": "app",
+              "url": "app-failed.vercel.app",
+              "state": "error",
+              "rawState": "ERROR",
+              "target": "preview",
+              "createdAt": 1700000400000,
+              "readyAt": null,
+              "isCurrentProduction": false,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {
+                "branch": "feature/x",
+                "sha": "89abcdef",
+                "commitMessage": "wip: break the build"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_staged",
+              "name": "app",
+              "url": "app-staged.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000300000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": false,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {},
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_promoted",
+              "name": "app",
+              "url": "app-promoted.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000200000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": true,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {},
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_state_0",
+              "state": "queued",
+              "rawState": "QUEUED",
+              "target": "preview",
+              "createdAt": 1700000100000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_1",
+              "state": "building",
+              "rawState": "BUILDING",
+              "target": "preview",
+              "createdAt": 1700000100001,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_2",
+              "state": "building",
+              "rawState": "INITIALIZING",
+              "target": "preview",
+              "createdAt": 1700000100002,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_3",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000100003,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_4",
+              "state": "error",
+              "rawState": "ERROR",
+              "target": "preview",
+              "createdAt": 1700000100004,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_5",
+              "state": "canceled",
+              "rawState": "CANCELED",
+              "target": "preview",
+              "createdAt": 1700000100005,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_6",
+              "state": "deleted",
+              "rawState": "DELETED",
+              "target": "preview",
+              "createdAt": 1700000100006,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_7",
+              "state": "queued",
+              "rawState": "SOMETHING_NEW",
+              "target": "preview",
+              "createdAt": 1700000100007,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_pair",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000090000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_only",
+              "state": "canceled",
+              "rawState": "CANCELED",
+              "target": "preview",
+              "createdAt": 1700000089000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_by_id",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000088000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_target_null",
+              "state": "ready",
+              "rawState": "READY",
+              "target": null,
+              "createdAt": 1700000087000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_target_absent",
+              "state": "ready",
+              "rawState": "READY",
+              "target": null,
+              "createdAt": 1700000086000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_target_other",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "staging",
+              "createdAt": 1700000085000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_created_only",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000084000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_created_both",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000083000,
+              "isCurrentProduction": false,
+              "meta": {}
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v7/deployments?projectId=prj_app&limit=20&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "deployments/limit-at-the-bound",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": "dpl_ready",
+              "name": "app",
+              "url": "app-ready.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000500000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": true,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {
+                "branch": "main",
+                "sha": "0123456789abcdef0123456789abcdef01234567",
+                "commitMessage": "feat: ship it",
+                "commitAuthor": "Robert"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_failed",
+              "name": "app",
+              "url": "app-failed.vercel.app",
+              "state": "error",
+              "rawState": "ERROR",
+              "target": "preview",
+              "createdAt": 1700000400000,
+              "readyAt": null,
+              "isCurrentProduction": false,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {
+                "branch": "feature/x",
+                "sha": "89abcdef",
+                "commitMessage": "wip: break the build"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_staged",
+              "name": "app",
+              "url": "app-staged.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000300000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": false,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {},
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_promoted",
+              "name": "app",
+              "url": "app-promoted.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000200000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": true,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {},
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_state_0",
+              "state": "queued",
+              "rawState": "QUEUED",
+              "target": "preview",
+              "createdAt": 1700000100000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_1",
+              "state": "building",
+              "rawState": "BUILDING",
+              "target": "preview",
+              "createdAt": 1700000100001,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_2",
+              "state": "building",
+              "rawState": "INITIALIZING",
+              "target": "preview",
+              "createdAt": 1700000100002,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_3",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000100003,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_4",
+              "state": "error",
+              "rawState": "ERROR",
+              "target": "preview",
+              "createdAt": 1700000100004,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_5",
+              "state": "canceled",
+              "rawState": "CANCELED",
+              "target": "preview",
+              "createdAt": 1700000100005,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_6",
+              "state": "deleted",
+              "rawState": "DELETED",
+              "target": "preview",
+              "createdAt": 1700000100006,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_7",
+              "state": "queued",
+              "rawState": "SOMETHING_NEW",
+              "target": "preview",
+              "createdAt": 1700000100007,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_pair",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000090000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_only",
+              "state": "canceled",
+              "rawState": "CANCELED",
+              "target": "preview",
+              "createdAt": 1700000089000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_by_id",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000088000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_target_null",
+              "state": "ready",
+              "rawState": "READY",
+              "target": null,
+              "createdAt": 1700000087000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_target_absent",
+              "state": "ready",
+              "rawState": "READY",
+              "target": null,
+              "createdAt": 1700000086000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_target_other",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "staging",
+              "createdAt": 1700000085000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_created_only",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000084000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_created_both",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000083000,
+              "isCurrentProduction": false,
+              "meta": {}
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v7/deployments?projectId=prj_app&limit=100&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "deployments/limit-one",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": "dpl_ready",
+              "name": "app",
+              "url": "app-ready.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000500000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": true,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {
+                "branch": "main",
+                "sha": "0123456789abcdef0123456789abcdef01234567",
+                "commitMessage": "feat: ship it",
+                "commitAuthor": "Robert"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v7/deployments?projectId=prj_app&limit=1&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "deployments/production",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": "dpl_ready",
+              "name": "app",
+              "url": "app-ready.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000500000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": true,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {
+                "branch": "main",
+                "sha": "0123456789abcdef0123456789abcdef01234567",
+                "commitMessage": "feat: ship it",
+                "commitAuthor": "Robert"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_staged",
+              "name": "app",
+              "url": "app-staged.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000300000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": false,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {},
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_promoted",
+              "name": "app",
+              "url": "app-promoted.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000200000,
+              "readyAt": 1700000560000,
+              "isCurrentProduction": true,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {},
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v7/deployments?projectId=prj_app&limit=3&target=production&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "deployments/preview",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": "dpl_failed",
+              "name": "app",
+              "url": "app-failed.vercel.app",
+              "state": "error",
+              "rawState": "ERROR",
+              "target": "preview",
+              "createdAt": 1700000400000,
+              "readyAt": null,
+              "isCurrentProduction": false,
+              "creator": {
+                "uid": "usr_1",
+                "username": "robert",
+                "email": "robert@acme.test"
+              },
+              "meta": {
+                "branch": "feature/x",
+                "sha": "89abcdef",
+                "commitMessage": "wip: break the build"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/ready"
+            },
+            {
+              "id": "dpl_state_0",
+              "state": "queued",
+              "rawState": "QUEUED",
+              "target": "preview",
+              "createdAt": 1700000100000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_1",
+              "state": "building",
+              "rawState": "BUILDING",
+              "target": "preview",
+              "createdAt": 1700000100001,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_2",
+              "state": "building",
+              "rawState": "INITIALIZING",
+              "target": "preview",
+              "createdAt": 1700000100002,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_3",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000100003,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_4",
+              "state": "error",
+              "rawState": "ERROR",
+              "target": "preview",
+              "createdAt": 1700000100004,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_5",
+              "state": "canceled",
+              "rawState": "CANCELED",
+              "target": "preview",
+              "createdAt": 1700000100005,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_6",
+              "state": "deleted",
+              "rawState": "DELETED",
+              "target": "preview",
+              "createdAt": 1700000100006,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_7",
+              "state": "queued",
+              "rawState": "SOMETHING_NEW",
+              "target": "preview",
+              "createdAt": 1700000100007,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_pair",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000090000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_state_only",
+              "state": "canceled",
+              "rawState": "CANCELED",
+              "target": "preview",
+              "createdAt": 1700000089000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_by_id",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000088000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_target_null",
+              "state": "ready",
+              "rawState": "READY",
+              "target": null,
+              "createdAt": 1700000087000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_target_absent",
+              "state": "ready",
+              "rawState": "READY",
+              "target": null,
+              "createdAt": 1700000086000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_target_other",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "staging",
+              "createdAt": 1700000085000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_created_only",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000084000,
+              "isCurrentProduction": false,
+              "meta": {}
+            },
+            {
+              "id": "dpl_created_both",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "preview",
+              "createdAt": 1700000083000,
+              "isCurrentProduction": false,
+              "meta": {}
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v7/deployments?projectId=prj_app&limit=20&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "deployments/no-project-linked",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_list_deployments' execution failed: No project is linked to this repository. Link it with the provider's CLI, or pick one in the NoMoreIDE deploy tab."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "get/ready",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "id": "dpl_ready",
+            "name": "app",
+            "url": "app-ready.vercel.app",
+            "state": "ready",
+            "rawState": "READY",
+            "target": "production",
+            "createdAt": 1700000500000,
+            "readyAt": 1700000560000,
+            "isCurrentProduction": true,
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {
+              "branch": "main",
+              "sha": "0123456789abcdef0123456789abcdef01234567",
+              "commitMessage": "feat: ship it",
+              "commitAuthor": "Robert"
+            },
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "aliases": [
+              "app.vercel.app",
+              "www.acme.test"
+            ],
+            "buildingAt": 1700000505000
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_ready?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "get/failed",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "id": "dpl_failed",
+            "name": "app",
+            "url": "app-failed.vercel.app",
+            "state": "error",
+            "rawState": "ERROR",
+            "target": "preview",
+            "createdAt": 1700000400000,
+            "readyAt": null,
+            "isCurrentProduction": false,
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {
+              "branch": "feature/x",
+              "sha": "89abcdef",
+              "commitMessage": "wip: break the build"
+            },
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "aliases": [],
+            "buildingAt": 1700000505000,
+            "errorMessage": "Command \"npm run build\" exited with 1"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_failed?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "get/bare",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "id": "dpl_bare",
+            "state": "ready",
+            "rawState": "READY",
+            "target": null,
+            "createdAt": 1,
+            "isCurrentProduction": false,
+            "meta": {},
+            "aliases": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_bare?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "get/by-hostname",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "id": "dpl_ready",
+            "name": "app",
+            "url": "app-ready.vercel.app",
+            "state": "ready",
+            "rawState": "READY",
+            "target": "production",
+            "createdAt": 1700000500000,
+            "readyAt": 1700000560000,
+            "isCurrentProduction": true,
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {
+              "branch": "main",
+              "sha": "0123456789abcdef0123456789abcdef01234567",
+              "commitMessage": "feat: ship it",
+              "commitAuthor": "Robert"
+            },
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "aliases": [
+              "app.vercel.app",
+              "www.acme.test"
+            ],
+            "buildingAt": 1700000505000
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/app-ready.vercel.app?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "get/id-with-a-space",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "id": "dpl space",
+            "state": "ready",
+            "rawState": "READY",
+            "target": null,
+            "createdAt": 2,
+            "isCurrentProduction": false,
+            "meta": {},
+            "aliases": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl%20space?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "get/not-found",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_get_deployment' execution failed: Deployment not found"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_missing?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "get/no-message-in-the-body",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_get_deployment' execution failed: Vercel returned 500 Internal Server Error for /v13/deployments/dpl_unhelpful?withGitRepoInfo=true"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_unhelpful?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "get/both-ids-and-a-null-message",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "id": "dpl_dual_uid",
+            "name": "app",
+            "url": "app-dual.vercel.app",
+            "state": "error",
+            "rawState": "ERROR",
+            "target": "preview",
+            "createdAt": 1700000100000,
+            "readyAt": null,
+            "isCurrentProduction": false,
+            "meta": {},
+            "aliases": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_dual?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "logs/default",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "dated, never created\nfirst by created\n  padded both sides\ndate beats created\nthird by created, first in body\ngreen text\na delimiter is still a line\nerr line"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_ready/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "logs/limit",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "first by created\n  padded both sides\nthird by created, first in body"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_ready/events?builds=1&direction=backward&limit=7&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "logs/empty",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "No build logs available for this deployment."
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_empty/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "logs/wrapped-in-an-object",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "No build logs available for this deployment."
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_wrapped/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "logs/newline-delimited",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "ndjson one\nndjson two"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_ndjson/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "refuse/blank-provider",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_deploy_list_projects' parameter validation failed: provider: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "refuse/every-field-at-once",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_deploy_list_deployments' parameter validation failed: provider: String must contain at least 1 character(s), cwd: String must contain at least 1 character(s), target: Invalid enum value. Expected 'production' | 'preview', received 'staging', limit: Number must be greater than 0. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "refuse/wrong-types",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_deploy_logs' parameter validation failed: provider: Expected string, received boolean, cwd: Expected string, received number, deployment: Required, limit: Number must be less than or equal to 2000. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "refuse/limit-past-the-bound",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_deploy_list_deployments' parameter validation failed: limit: Number must be less than or equal to 100. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "refuse/limit-is-a-float",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_deploy_list_deployments' parameter validation failed: limit: Expected integer, received float. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "refuse/log-limit-past-the-bound",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_deploy_logs' parameter validation failed: limit: Number must be less than or equal to 2000. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "refuse/deployment-is-required",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_deploy_get_deployment' parameter validation failed: deployment: Required. Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "refuse/deployment-is-blank",
+      "value": {
+        "reported": {
+          "error": {
+            "code": -32602,
+            "message": "MCP error -32602: Tool 'nomoreide_deploy_get_deployment' parameter validation failed: deployment: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cloudflare/projects",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "app",
+            "projects": [
+              {
+                "id": "app",
+                "name": "app",
+                "framework": null,
+                "updatedAt": 1767225600000,
+                "link": {
+                  "type": "github",
+                  "org": "Acme",
+                  "repo": "App",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": "dist"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "web"
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": "main"
+                  }
+                ]
+              },
+              {
+                "id": "docs",
+                "name": "docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "no-source-config",
+                "name": "no-source-config",
+                "framework": null,
+                "link": {
+                  "type": "github"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "source-without-type",
+                "name": "source-without-type",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "empty-build-config",
+                "name": "empty-build-config",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "created-on-nonsense",
+                "name": "created-on-nonsense",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "API-Docs",
+                "name": "API-Docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts?per_page=50",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/search-is-case-insensitive",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "app",
+            "projects": [
+              {
+                "id": "docs",
+                "name": "docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "API-Docs",
+                "name": "API-Docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/search-matches-nothing",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "app",
+            "projects": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/from-a-pin-that-is-gone",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": null,
+            "projects": [
+              {
+                "id": "app",
+                "name": "app",
+                "framework": null,
+                "updatedAt": 1767225600000,
+                "link": {
+                  "type": "github",
+                  "org": "Acme",
+                  "repo": "App",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": "dist"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "web"
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": "main"
+                  }
+                ]
+              },
+              {
+                "id": "docs",
+                "name": "docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "no-source-config",
+                "name": "no-source-config",
+                "framework": null,
+                "link": {
+                  "type": "github"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "source-without-type",
+                "name": "source-without-type",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "empty-build-config",
+                "name": "empty-build-config",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "created-on-nonsense",
+                "name": "created-on-nonsense",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "API-Docs",
+                "name": "API-Docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/no-remote-at-all",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": null,
+            "projects": [
+              {
+                "id": "app",
+                "name": "app",
+                "framework": null,
+                "updatedAt": 1767225600000,
+                "link": {
+                  "type": "github",
+                  "org": "Acme",
+                  "repo": "App",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": "dist"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "web"
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": "main"
+                  }
+                ]
+              },
+              {
+                "id": "docs",
+                "name": "docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "no-source-config",
+                "name": "no-source-config",
+                "framework": null,
+                "link": {
+                  "type": "github"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "source-without-type",
+                "name": "source-without-type",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "empty-build-config",
+                "name": "empty-build-config",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "created-on-nonsense",
+                "name": "created-on-nonsense",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "API-Docs",
+                "name": "API-Docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/deployments",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": "cf_canonical",
+              "name": "app",
+              "url": "cf_canonical.app.pages.dev",
+              "state": "ready",
+              "rawState": "deploy:success",
+              "target": "production",
+              "createdAt": 1769940000000,
+              "readyAt": 1769940300000,
+              "isCurrentProduction": true,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_canonical"
+            },
+            {
+              "id": "cf_failed",
+              "name": "app",
+              "url": "cf_failed.app.pages.dev",
+              "state": "error",
+              "rawState": "deploy:failure",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_failed"
+            },
+            {
+              "id": "cf_state_0",
+              "name": "app",
+              "url": "cf_state_0.app.pages.dev",
+              "state": "canceled",
+              "rawState": "deploy:canceled",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_0"
+            },
+            {
+              "id": "cf_state_1",
+              "name": "app",
+              "url": "cf_state_1.app.pages.dev",
+              "state": "building",
+              "rawState": "deploy:skipped",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_1"
+            },
+            {
+              "id": "cf_state_2",
+              "name": "app",
+              "url": "cf_state_2.app.pages.dev",
+              "state": "building",
+              "rawState": "deploy:active",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_2"
+            },
+            {
+              "id": "cf_state_3",
+              "name": "app",
+              "url": "cf_state_3.app.pages.dev",
+              "state": "building",
+              "rawState": "deploy:idle",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_3"
+            },
+            {
+              "id": "cf_state_4",
+              "name": "app",
+              "url": "cf_state_4.app.pages.dev",
+              "state": "building",
+              "rawState": "deploy:building",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_4"
+            },
+            {
+              "id": "cf_state_5",
+              "name": "app",
+              "url": "cf_state_5.app.pages.dev",
+              "state": "building",
+              "rawState": "deploy:queued",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_5"
+            },
+            {
+              "id": "cf_state_6",
+              "name": "app",
+              "url": "cf_state_6.app.pages.dev",
+              "state": "building",
+              "rawState": "deploy:something_new",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_6"
+            },
+            {
+              "id": "cf_skipped",
+              "name": "app",
+              "url": "cf_skipped.app.pages.dev",
+              "state": "canceled",
+              "rawState": "skipped",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_skipped"
+            },
+            {
+              "id": "cf_no_stage",
+              "name": "app",
+              "url": "cf_no_stage.app.pages.dev",
+              "state": "queued",
+              "rawState": "queued:idle",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_no_stage"
+            },
+            {
+              "id": "cf_no_url",
+              "name": "app",
+              "url": null,
+              "state": "ready",
+              "rawState": "deploy:success",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "readyAt": 1769940300000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_no_url"
+            },
+            {
+              "id": "cf_no_trigger",
+              "name": "app",
+              "url": "cf_no_trigger.app.pages.dev",
+              "state": "ready",
+              "rawState": "deploy:success",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "readyAt": 1769940300000,
+              "isCurrentProduction": false,
+              "meta": {},
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_no_trigger"
+            },
+            {
+              "id": "cf_env_null",
+              "name": "app",
+              "url": "cf_env_null.app.pages.dev",
+              "state": "ready",
+              "rawState": "deploy:success",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "readyAt": 1769940300000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_env_null"
+            },
+            {
+              "id": "cf_env_absent",
+              "name": "app",
+              "url": "cf_no_stage.app.pages.dev",
+              "state": "queued",
+              "rawState": "queued:idle",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_env_absent"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments?per_page=10&page=2",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/deployments-truncated",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": "cf_canonical",
+              "name": "app",
+              "url": "cf_canonical.app.pages.dev",
+              "state": "ready",
+              "rawState": "deploy:success",
+              "target": "production",
+              "createdAt": 1769940000000,
+              "readyAt": 1769940300000,
+              "isCurrentProduction": true,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_canonical"
+            },
+            {
+              "id": "cf_failed",
+              "name": "app",
+              "url": "cf_failed.app.pages.dev",
+              "state": "error",
+              "rawState": "deploy:failure",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_failed"
+            },
+            {
+              "id": "cf_state_0",
+              "name": "app",
+              "url": "cf_state_0.app.pages.dev",
+              "state": "canceled",
+              "rawState": "deploy:canceled",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_0"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/production",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": "cf_canonical",
+              "name": "app",
+              "url": "cf_canonical.app.pages.dev",
+              "state": "ready",
+              "rawState": "deploy:success",
+              "target": "production",
+              "createdAt": 1769940000000,
+              "readyAt": 1769940300000,
+              "isCurrentProduction": true,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_canonical"
+            },
+            {
+              "id": "cf_rolled_forward",
+              "name": "app",
+              "url": "cf_rolled_forward.app.pages.dev",
+              "state": "ready",
+              "rawState": "deploy:success",
+              "target": "production",
+              "createdAt": 1770026400000,
+              "readyAt": 1770026700000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "def456",
+                "commitMessage": "feat: newer"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_rolled_forward"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments?env=production&per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/preview",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": [
+            {
+              "id": "cf_failed",
+              "name": "app",
+              "url": "cf_failed.app.pages.dev",
+              "state": "error",
+              "rawState": "deploy:failure",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_failed"
+            },
+            {
+              "id": "cf_state_0",
+              "name": "app",
+              "url": "cf_state_0.app.pages.dev",
+              "state": "canceled",
+              "rawState": "deploy:canceled",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_0"
+            },
+            {
+              "id": "cf_state_1",
+              "name": "app",
+              "url": "cf_state_1.app.pages.dev",
+              "state": "building",
+              "rawState": "deploy:skipped",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_1"
+            },
+            {
+              "id": "cf_state_2",
+              "name": "app",
+              "url": "cf_state_2.app.pages.dev",
+              "state": "building",
+              "rawState": "deploy:active",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_2"
+            },
+            {
+              "id": "cf_state_3",
+              "name": "app",
+              "url": "cf_state_3.app.pages.dev",
+              "state": "building",
+              "rawState": "deploy:idle",
+              "target": "preview",
+              "createdAt": 1769940000000,
+              "isCurrentProduction": false,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "feat: ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_state_3"
+            }
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments?env=preview&per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/no-project-linked",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_list_deployments' execution failed: No project is linked to this repository. Link it with the provider's CLI, or pick one in the NoMoreIDE deploy tab."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cloudflare/get-canonical",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "id": "cf_canonical",
+            "name": "app",
+            "url": "cf_canonical.app.pages.dev",
+            "state": "ready",
+            "rawState": "deploy:success",
+            "target": "production",
+            "createdAt": 1769940000000,
+            "readyAt": 1769940300000,
+            "isCurrentProduction": true,
+            "meta": {
+              "branch": "main",
+              "sha": "abc123",
+              "commitMessage": "feat: ship it"
+            },
+            "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_canonical",
+            "aliases": [
+              "main.app.pages.dev",
+              "app.pages.dev"
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_canonical",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/get-failed",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "id": "cf_failed",
+            "name": "app",
+            "url": "cf_failed.app.pages.dev",
+            "state": "error",
+            "rawState": "deploy:failure",
+            "target": "preview",
+            "createdAt": 1769940000000,
+            "isCurrentProduction": false,
+            "meta": {
+              "branch": "main",
+              "sha": "abc123",
+              "commitMessage": "feat: ship it"
+            },
+            "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf_failed",
+            "aliases": [],
+            "errorMessage": "The deploy stage failed."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_failed",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/get-id-with-a-space",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "id": "cf space",
+            "name": "app",
+            "url": "cf space.app.pages.dev",
+            "state": "ready",
+            "rawState": "deploy:success",
+            "target": "preview",
+            "createdAt": 1769940000000,
+            "readyAt": 1769940300000,
+            "isCurrentProduction": false,
+            "meta": {
+              "branch": "main",
+              "sha": "abc123",
+              "commitMessage": "feat: ship it"
+            },
+            "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cf%20space",
+            "aliases": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cf%20space",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/get-not-found",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_get_deployment' execution failed: Deployment not found."
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_missing",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/get-no-message-in-the-body",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_get_deployment' execution failed: Cloudflare returned 500 for /accounts/acc_acme/pages/projects/app/deployments/cf_unhelpful"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_unhelpful",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/get-without-a-project",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_get_deployment' execution failed: Cloudflare addresses deployments within a project. Link this repository to a Pages project first."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cloudflare/logs",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "Cloning repository...\n  indented and kept\nno timestamp\nBuild failed"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_canonical/history/logs",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/logs-truncated",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "no timestamp\nBuild failed"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_canonical/history/logs",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/logs-empty",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": "No build logs available for this deployment."
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_empty/history/logs",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/logs-without-a-project",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_logs' execution failed: Cloudflare addresses deployments within a project. Link this repository to a Pages project first."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cloudflare/from-a-mixed-case-remote",
+      "value": {
+        "reported": {
+          "isError": false,
+          "payload": {
+            "linkedProjectId": "app",
+            "projects": [
+              {
+                "id": "app",
+                "name": "app",
+                "framework": null,
+                "updatedAt": 1767225600000,
+                "link": {
+                  "type": "github",
+                  "org": "Acme",
+                  "repo": "App",
+                  "productionBranch": "main"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": "npm run build"
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": "dist"
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": "web"
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": "main"
+                  }
+                ]
+              },
+              {
+                "id": "docs",
+                "name": "docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "no-source-config",
+                "name": "no-source-config",
+                "framework": null,
+                "link": {
+                  "type": "github"
+                },
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "source-without-type",
+                "name": "source-without-type",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "empty-build-config",
+                "name": "empty-build-config",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "created-on-nonsense",
+                "name": "created-on-nonsense",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "id": "API-Docs",
+                "name": "API-Docs",
+                "framework": null,
+                "settings": [
+                  {
+                    "key": "buildCommand",
+                    "label": "Build command",
+                    "value": null
+                  },
+                  {
+                    "key": "outputDirectory",
+                    "label": "Output directory",
+                    "value": null
+                  },
+                  {
+                    "key": "rootDirectory",
+                    "label": "Root directory",
+                    "value": null
+                  },
+                  {
+                    "key": "productionBranch",
+                    "label": "Production branch",
+                    "value": null
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "disconnected/vercel",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_list_projects' execution failed: Vercel is not connected. Sign in to Vercel, run `vercel login`, or add a Vercel token."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "disconnected/deployments",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_list_deployments' execution failed: Vercel is not connected. Sign in to Vercel, run `vercel login`, or add a Vercel token."
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "disconnected/cloudflare",
+      "value": {
+        "reported": {
+          "isError": true,
+          "payload": "Tool 'nomoreide_deploy_list_projects' execution failed: Cloudflare is not connected. Run `wrangler login`, or add a Cloudflare API token."
+        },
+        "requests": []
+      }
+    }
+  ]
+}

@@ -3,9 +3,9 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { TerminalPane } from "../src/web/client/src/features/terminal/terminal-pane";
-import { TerminalViewport, type TerminalViewportHandle } from "../src/web/client/src/features/terminal/terminal-viewport";
-import { TerminalView } from "../src/web/client/src/features/terminal/terminal-view";
+import { TerminalPane } from "../apps/dashboard/src/features/terminal/terminal-pane";
+import { TerminalViewport, type TerminalViewportHandle } from "../apps/dashboard/src/features/terminal/terminal-viewport";
+import { TerminalView } from "../apps/dashboard/src/features/terminal/terminal-view";
 
 const mocks = vi.hoisted(() => ({
   closeSession: vi.fn(),
@@ -35,11 +35,11 @@ const mocks = vi.hoisted(() => ({
   }>,
 }));
 
-vi.mock("../src/web/client/src/lib/theme", () => ({
+vi.mock("../apps/dashboard/src/lib/theme", () => ({
   useResolvedTheme: () => mocks.resolvedTheme,
 }));
 
-vi.mock("../src/web/client/src/features/settings/settings-context", () => ({
+vi.mock("../apps/dashboard/src/features/settings/settings-context", () => ({
   useSettings: () => ({
     confirmedGlobal: {
       version: 1,
@@ -48,7 +48,7 @@ vi.mock("../src/web/client/src/features/settings/settings-context", () => ({
   }),
 }));
 
-vi.mock("../src/web/client/src/lib/api", () => ({
+vi.mock("../apps/dashboard/src/lib/api", () => ({
   closeTerminalSession: mocks.closeSession,
   createTerminalSession: mocks.createSession,
   listTerminalSessions: mocks.listSessions,

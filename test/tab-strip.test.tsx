@@ -3,7 +3,7 @@
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { TabStrip } from "../src/web/client/src/components/ui/tab-strip";
+import { TabStrip } from "../apps/dashboard/src/components/ui/tab-strip";
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;

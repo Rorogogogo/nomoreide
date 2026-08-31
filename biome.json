@@ -6,7 +6,12 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["src/**/*.ts", "src/**/*.tsx"]
+    "includes": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "apps/dashboard/src/**/*.ts",
+      "apps/dashboard/src/**/*.tsx"
+    ]
   },
   "formatter": {
     "enabled": false

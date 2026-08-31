@@ -7,7 +7,7 @@ import {
   recordRuntimeReachable,
   resetRuntimeConnectionForTests,
   sanitizeRuntimeEndpoint,
-} from "../src/web/client/src/lib/runtime-connection";
+} from "../apps/dashboard/src/lib/runtime-connection";
 
 function healthResponse(
   body: unknown = { ok: true, app: "nomoreide", version: "1.2.3", pid: 42 },

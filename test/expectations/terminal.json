@@ -1,0 +1,790 @@
+{
+  "version": 1,
+  "gate": "terminal",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/terminal/capabilities",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"externalTerminal\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/capabilities",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/transcripts",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"transcripts\":[{\"id\":\"ssss-7777\",\"provider\":\"claude\",\"cwd\":\"%%HOME%%/stale-worktree\",\"title\":\"a stale worktree session\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-06T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/transcripts?scope=all",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"transcripts\":[{\"id\":\"codex-1111\",\"provider\":\"codex\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"a codex prompt\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-09T00:00:00.000Z\"},{\"id\":\"eeee-9999\",\"provider\":\"claude\",\"cwd\":\"/elsewhere/project\",\"title\":\"another project entirely\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-08T00:00:00.000Z\"},{\"id\":\"tttt-8888\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"a body that disagrees with its directory\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-07T00:00:00.000Z\"},{\"id\":\"ssss-7777\",\"provider\":\"claude\",\"cwd\":\"%%HOME%%/stale-worktree\",\"title\":\"a stale worktree session\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-06T00:00:00.000Z\"},{\"id\":\"dddd-4444\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"the newer copy\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-05T00:00:00.000Z\"},{\"id\":\"bbbb-2222\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"a real prompt\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-02T00:00:00.000Z\"},{\"id\":\"aaaa-1111\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"the oldest workspace session\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/transcripts?scope=ALL",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"transcripts\":[{\"id\":\"ssss-7777\",\"provider\":\"claude\",\"cwd\":\"%%HOME%%/stale-worktree\",\"title\":\"a stale worktree session\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-06T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/transcripts?scope=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"transcripts\":[{\"id\":\"ssss-7777\",\"provider\":\"claude\",\"cwd\":\"%%HOME%%/stale-worktree\",\"title\":\"a stale worktree session\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-06T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/transcripts?scope=all&scope=mine",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"transcripts\":[{\"id\":\"codex-1111\",\"provider\":\"codex\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"a codex prompt\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-09T00:00:00.000Z\"},{\"id\":\"eeee-9999\",\"provider\":\"claude\",\"cwd\":\"/elsewhere/project\",\"title\":\"another project entirely\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-08T00:00:00.000Z\"},{\"id\":\"tttt-8888\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"a body that disagrees with its directory\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-07T00:00:00.000Z\"},{\"id\":\"ssss-7777\",\"provider\":\"claude\",\"cwd\":\"%%HOME%%/stale-worktree\",\"title\":\"a stale worktree session\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-06T00:00:00.000Z\"},{\"id\":\"dddd-4444\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"the newer copy\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-05T00:00:00.000Z\"},{\"id\":\"bbbb-2222\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"a real prompt\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-02T00:00:00.000Z\"},{\"id\":\"aaaa-1111\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"the oldest workspace session\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/transcripts?limit=1&scope=all",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"transcripts\":[{\"id\":\"codex-1111\",\"provider\":\"codex\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"a codex prompt\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-09T00:00:00.000Z\"},{\"id\":\"eeee-9999\",\"provider\":\"claude\",\"cwd\":\"/elsewhere/project\",\"title\":\"another project entirely\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-08T00:00:00.000Z\"},{\"id\":\"tttt-8888\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"a body that disagrees with its directory\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-07T00:00:00.000Z\"},{\"id\":\"ssss-7777\",\"provider\":\"claude\",\"cwd\":\"%%HOME%%/stale-worktree\",\"title\":\"a stale worktree session\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-06T00:00:00.000Z\"},{\"id\":\"dddd-4444\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"the newer copy\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-05T00:00:00.000Z\"},{\"id\":\"bbbb-2222\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"a real prompt\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-02T00:00:00.000Z\"},{\"id\":\"aaaa-1111\",\"provider\":\"claude\",\"cwd\":\"%%WORKSPACE%%\",\"title\":\"the oldest workspace session\",\"startedAt\":\"2026-07-01T09:00:00.000Z\",\"updatedAt\":\"2026-08-01T00:00:00.000Z\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/transcripts",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent provider must be codex or claude.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent resume id is invalid.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent provider must be codex or claude.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid agent session request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid agent session request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid agent session request.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid agent session request.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal session label must be 1–60 characters.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal session label must be 1–60 characters.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"renamed\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal session label must be 1–60 characters.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal session label must be 1–60 characters.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/term_999",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown terminal session: term_999\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/a%2Fb",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown terminal session: a/b\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/a%01b",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid terminal session id.\"}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/terminal/sessions/a%zzb",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid terminal session id.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/terminal/sessions/term_999",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_999/insert-prompt",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal control header is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_999/insert-prompt",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal control header is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_999/insert-prompt",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal control header is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/a%2Fb/insert-prompt",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal control header is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_999/insert-prompt",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown terminal session: term_999\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A non-empty agent prompt is required.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A non-empty agent prompt is required.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A non-empty agent prompt is required.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A non-empty agent prompt is required.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A non-empty agent prompt is required.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent prompt contains unsupported terminal control characters.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Only agent sessions can receive a prompt.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 413,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent prompt is too large.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 413,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent prompt is too large.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 413,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent prompt is too large.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 413,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Agent prompt is too large.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/insert-prompt",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Only agent sessions can receive a prompt.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/a%2Fb/insert-prompt",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid terminal session id.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/a%zzb/insert-prompt",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Invalid terminal session id.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions/term_999/insert-prompt",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_999/reclaim-dock",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal control header is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_999/reclaim-dock",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown terminal session: term_999\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_1/reclaim-dock",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/terminal/sessions/term_999/reclaim-dock",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions/term_999/open-system-terminal",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_999/open-system-terminal",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Terminal control header is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_999/open-system-terminal",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown terminal session: term_999\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions/term_999/detonate",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/terminal/sessions/term_999",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"label\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/terminal/sessions/term_1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terminal/sessions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"term_2\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_3\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_4\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"},{\"id\":\"term_5\",\"cols\":80,\"cwd\":\"%%WORKSPACE%%\",\"kind\":\"agent\",\"label\":\"Codex task\",\"provider\":\"codex\",\"rows\":24,\"shell\":\"codex\",\"state\":\"running\",\"presentation\":\"dock\"}]}"
+    }
+  ],
+  "entries": []
+}

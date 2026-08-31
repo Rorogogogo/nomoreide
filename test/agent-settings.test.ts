@@ -10,7 +10,7 @@ import {
 import {
   maskSecrets,
   SECRET_MASK,
-} from "../src/web/client/src/features/agent-env/mask-secrets.js";
+} from "../apps/dashboard/src/features/agent-env/mask-secrets.js";
 
 describe("agent settings", () => {
   let homeDir: string;

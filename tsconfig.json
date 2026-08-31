@@ -15,5 +15,5 @@
     "sourceMap": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "test", "src/web/client"]
+  "exclude": ["dist", "node_modules", "test", "apps/dashboard"]
 }

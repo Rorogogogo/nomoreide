@@ -1,0 +1,412 @@
+{
+  "version": 1,
+  "gate": "git-branch",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to branch 'merged'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Already on 'merged'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to branch 'main'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to branch 'feature/slashed'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"branch 'remote-only' set up to track 'origin/remote-only'.\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"fatal: a branch named 'remote-only' already exists\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to branch 'main'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"fatal: invalid reference: ghost\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"error: option `orphan' requires a value\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"fatal: invalid reference: has space\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"fatal: invalid reference: main; touch pwned\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to branch 'merged'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/switch",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to branch 'main'\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/branches/switch",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to a new branch 'fresh'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"fatal: a branch named 'fresh' already exists\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to a new branch 'from-main'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to a new branch 'blank-start'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"fatal: invalid reference: ghost\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to a new branch 'feature/new'\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"branch is invalid\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"fatal: 'x; touch pwned' is not a valid branch name\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"start point is invalid\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Switched to a new branch 'elsewhere'\\n\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/branches",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Deleted branch merged (was 2c9426f).\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"error: branch 'merged' not found\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"error: the branch 'unmerged' is not fully merged\\nhint: If you are sure you want to delete it, run 'git branch -D unmerged'\\nhint: Disable this message with \\\"git config advice.forceDeleteBranch false\\\"\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Deleted branch main (was 2c9426f).\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"error: branch 'ghost' not found\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"name is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"branch is invalid\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"fatal: 'x; touch pwned' is not a valid branch name\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"error: branch 'origin/remote-only' not found.\\nDid you forget --remote?\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Deleted branch spare (was 2c9426f).\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown repository: nope\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown repository: nope\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Deleted branch feature/slashed (was 2c9426f).\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/branches/delete",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"output\":\"Deleted branch leftover (was 2c9426f).\\n\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/branches/delete",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

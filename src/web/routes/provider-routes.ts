@@ -35,7 +35,7 @@ import { errorMessage, patternRoute, route, type Route } from "./context.js";
  * write boundary has exactly one door.
  *
  * `status`, `projects`, and `deployments` are read on mount — they are
- * mirrored in `website/src/mock-api.ts`.
+ * mirrored in `apps/website/src/mock-api.ts`.
  */
 
 /**

@@ -3,11 +3,11 @@
 import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
-import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
+import { OperationProvider } from "../apps/dashboard/src/components/operations/operation-context";
 import {
   ManagementRow,
   SettingNumberInput,
-} from "../src/web/client/src/features/settings/setting-controls";
+} from "../apps/dashboard/src/features/settings/setting-controls";
 
 function withOperations(node: ReactNode) {
   return <OperationProvider>{node}</OperationProvider>;

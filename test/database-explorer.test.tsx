@@ -3,10 +3,10 @@
 import { act, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { AppContextMenu } from "../src/web/client/src/components/app-context-menu";
-import { AiContextMenuProvider } from "../src/web/client/src/features/agent/context-menu/ai-context-menu";
-import { DatabaseExplorer } from "../src/web/client/src/features/database/database-explorer";
-import type { DatabaseConnection } from "../src/web/client/src/lib/api";
+import { AppContextMenu } from "../apps/dashboard/src/components/app-context-menu";
+import { AiContextMenuProvider } from "../apps/dashboard/src/features/agent/context-menu/ai-context-menu";
+import { DatabaseExplorer } from "../apps/dashboard/src/features/database/database-explorer";
+import type { DatabaseConnection } from "../apps/dashboard/src/lib/api";
 
 const mocks = vi.hoisted(() => ({
   getCapabilities: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock("@/lib/api", () => ({
   getDatabaseSchemas: mocks.getSchemas,
 }));
 
-vi.mock("../src/web/client/src/features/database/table-grid", () => ({
+vi.mock("../apps/dashboard/src/features/database/table-grid", () => ({
   TableGrid: ({ sample }: { sample: { rowCount: number } }) => (
     <div data-testid="rows">{sample.rowCount}</div>
   ),

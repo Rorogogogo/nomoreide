@@ -1,0 +1,367 @@
+{
+  "version": 1,
+  "gate": "git-worktrees",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A valid branch name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A valid branch name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"A valid branch name is required.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git worktree add -b from-nowhere %%HOME%%/.nomoreide/worktrees/repo/from-nowhere no-such-ref\\nfatal: invalid reference: no-such-ref\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git worktree add %%HOME%%/.nomoreide/worktrees/repo/never-made never-made\\nfatal: invalid reference: never-made\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/worktrees",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/worktrees",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git worktree add %%HOME%%/.nomoreide/worktrees/repo/wt-one wt-one\\nPreparing worktree (checking out 'wt-one')\\nfatal: '%%HOME%%/.nomoreide/worktrees/repo/wt-one' already exists\\n\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Command failed: git worktree add %%HOME%%/.nomoreide/worktrees/repo/wt-three wt-three\\nfatal: invalid reference: wt-three\\n\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/worktrees/active",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Please add an absolute path. Paths beginning with ~ are not expanded here.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/worktrees/active",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Please add an absolute path. Paths beginning with ~ are not expanded here.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/worktrees/active",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The selected folder is not a worktree of this project.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/worktrees/active",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"%%WORKSPACE%%\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/worktrees",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"/private%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}]}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown worktree.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown worktree.\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"The primary worktree cannot be removed.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/worktrees/active",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/sessions",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/worktrees/active",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"%%WORKSPACE%%\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/worktrees",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Close terminals using this worktree before removing it.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/sleeper/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"sleeper\",\"state\":\"running\",\"kind\":\"local\",\"pid\":73677,\"startedAt\":\"2026-08-31T06:04:15.669Z\"}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/worktrees",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Stop service \\\"sleeper\\\" before removing this worktree.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-three\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257128.2747,\"primary\":false,\"dirty\":false}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-four\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257175.3862,\"primary\":false,\"dirty\":false}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees",
+      "status": 201,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four-extra\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-four-extra\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257211.414,\"primary\":false,\"dirty\":false}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/neighbour/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"neighbour\",\"state\":\"running\",\"kind\":\"local\",\"pid\":73916,\"startedAt\":\"2026-08-31T06:04:17.238Z\"}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/worktrees/active",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/worktrees",
+      "status": 409,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Switch to another worktree before removing this one.\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/git/worktrees/active",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"%%WORKSPACE%%\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/worktrees",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Commit, stash, or discard this worktree's changes before removing it.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/idle/start",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"idle\",\"state\":\"running\",\"kind\":\"local\",\"pid\":74507,\"startedAt\":\"2026-08-31T06:04:19.006Z\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/services/idle/stop",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"status\":{\"name\":\"idle\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":74507,\"startedAt\":\"2026-08-31T06:04:19.006Z\",\"exitedAt\":\"2026-08-31T06:04:19.712Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/git/worktrees",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/worktrees",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"/private%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four-extra\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-four-extra\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257211.414,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-three\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257128.2747,\"primary\":false,\"dirty\":true},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees/prune",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/worktrees",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"activePath\":\"/private%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four-extra\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-four-extra\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257211.414,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-three\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257128.2747,\"primary\":false,\"dirty\":true},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/worktrees/prune",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"spawn git ENOENT\"}"
+    }
+  ],
+  "entries": []
+}

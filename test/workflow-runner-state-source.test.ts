@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const runnerSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/features/workflows/use-workflow-runner.ts"),
+  resolve(__dirname, "../apps/dashboard/src/features/workflows/use-workflow-runner.ts"),
   "utf8",
 );
 

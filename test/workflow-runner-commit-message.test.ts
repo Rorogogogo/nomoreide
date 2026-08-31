@@ -3,7 +3,7 @@ import {
   assertPullRequestBranch,
   messageForCommitAction,
   pathsToStageForCommitAction,
-} from "../src/web/client/src/features/workflows/use-workflow-runner.js";
+} from "../apps/dashboard/src/features/workflows/use-workflow-runner.js";
 
 describe("workflow commit message selection", () => {
   test("uses the previous agent output for commit actions", () => {

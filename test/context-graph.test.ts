@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { layoutContextNodes } from "../src/web/client/src/features/context/context-graph";
-import type { ContextGraph, ContextItem } from "../src/web/client/src/lib/api/context-api";
+import { layoutContextNodes } from "../apps/dashboard/src/features/context/context-graph";
+import type { ContextGraph, ContextItem } from "../apps/dashboard/src/lib/api/context-api";
 
 const items: ContextItem[] = [
   {

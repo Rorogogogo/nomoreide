@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { nextChangeDecision } from "../src/web/client/src/features/git/review-navigation";
+import { nextChangeDecision } from "../apps/dashboard/src/features/git/review-navigation";
 
 describe("nextChangeDecision", () => {
   test("moves to the next hunk inside the current file", () => {

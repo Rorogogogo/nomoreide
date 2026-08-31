@@ -3,11 +3,11 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { DatabaseView } from "../src/web/client/src/features/database/database-view";
+import { DatabaseView } from "../apps/dashboard/src/features/database/database-view";
 
 const refresh = vi.hoisted(() => vi.fn());
 
-vi.mock("../src/web/client/src/features/database/use-databases", () => ({
+vi.mock("../apps/dashboard/src/features/database/use-databases", () => ({
   useDatabases: () => ({
     connections: [
       { name: "primary", engine: "postgres", url: "postgres://masked", writeUnlocked: false },
@@ -18,17 +18,17 @@ vi.mock("../src/web/client/src/features/database/use-databases", () => ({
   }),
 }));
 
-vi.mock("../src/web/client/src/features/agent/chat/agent-context", () => ({
+vi.mock("../apps/dashboard/src/features/agent/chat/agent-context", () => ({
   useAgentDock: () => ({ sendToAgent: vi.fn() }),
 }));
 
-vi.mock("../src/web/client/src/features/database/database-explorer", () => ({
+vi.mock("../apps/dashboard/src/features/database/database-explorer", () => ({
   DatabaseExplorer: ({ sidebarOnly }: { sidebarOnly?: boolean }) => (
     <div data-testid={sidebarOnly ? "sql-explorer" : "browse-explorer"} />
   ),
 }));
 
-vi.mock("../src/web/client/src/features/database/sql-console", () => ({
+vi.mock("../apps/dashboard/src/features/database/sql-console", () => ({
   SqlConsole: () => <div data-testid="sql-console" />,
 }));
 

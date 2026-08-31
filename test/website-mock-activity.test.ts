@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, test, vi } from "vitest";
-import { installWebsiteMockApi } from "../website/src/mock-api";
+import { installWebsiteMockApi } from "../apps/website/src/mock-api";
 
 describe("website Activity Monitor mock", () => {
   test("returns machine history and managed-service usage", async () => {

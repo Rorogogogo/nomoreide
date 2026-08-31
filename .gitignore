@@ -12,5 +12,5 @@ video/
 .claude/
 .worktrees/
 
-# Tauri / Rust build artifacts
-src-tauri/target/
+# Rust workspace build artifacts
+target/

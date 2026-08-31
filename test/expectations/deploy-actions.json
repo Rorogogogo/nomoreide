@@ -1,0 +1,2205 @@
+{
+  "version": 1,
+  "gate": "deploy-actions",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"deployment\":{\"id\":\"dpl_one\",\"name\":\"app\",\"url\":\"app-one.vercel.app\",\"state\":\"ready\",\"rawState\":\"READY\",\"target\":\"production\",\"createdAt\":1700000000000,\"readyAt\":1700000030000,\"isCurrentProduction\":true,\"creator\":{\"username\":\"acme-dev\"},\"meta\":{\"branch\":\"main\",\"sha\":\"abc123\",\"commitMessage\":\"ship it\",\"commitAuthor\":\"Acme Dev\"},\"inspectorUrl\":\"https://vercel.com/acme/app/dpl_one\",\"aliases\":[],\"buildingAt\":1700000005000}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl%20one",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"deployment\":{\"id\":\"dpl one\",\"name\":\"app\",\"url\":\"app-one.vercel.app\",\"state\":\"ready\",\"rawState\":\"READY\",\"target\":\"production\",\"createdAt\":1700000000000,\"readyAt\":1700000030000,\"isCurrentProduction\":true,\"creator\":{\"username\":\"acme-dev\"},\"meta\":{\"branch\":\"main\",\"sha\":\"abc123\",\"commitMessage\":\"ship it\",\"commitAuthor\":\"Acme Dev\"},\"inspectorUrl\":\"https://vercel.com/acme/app/dpl_one\",\"aliases\":[],\"buildingAt\":1700000005000}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl%zz",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"URI malformed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/nowhere/deployments/dpl_one",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_missing",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Deployment not found.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/logs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"log_a\",\"createdAt\":1700000001000,\"kind\":\"build\",\"level\":\"command\",\"text\":\"$ npm run build\"},{\"id\":\"1700000003000-2\",\"createdAt\":1700000003000,\"kind\":\"build\",\"level\":\"stderr\",\"text\":\"Error: build failed\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/logs?limit=2",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"log_a\",\"createdAt\":1700000001000,\"kind\":\"build\",\"level\":\"command\",\"text\":\"$ npm run build\"},{\"id\":\"1700000003000-2\",\"createdAt\":1700000003000,\"kind\":\"build\",\"level\":\"stderr\",\"text\":\"Error: build failed\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/logs?limit=2abc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"log_a\",\"createdAt\":1700000001000,\"kind\":\"build\",\"level\":\"command\",\"text\":\"$ npm run build\"},{\"id\":\"1700000003000-2\",\"createdAt\":1700000003000,\"kind\":\"build\",\"level\":\"stderr\",\"text\":\"Error: build failed\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/logs?limit=abc",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"log_a\",\"createdAt\":1700000001000,\"kind\":\"build\",\"level\":\"command\",\"text\":\"$ npm run build\"},{\"id\":\"1700000003000-2\",\"createdAt\":1700000003000,\"kind\":\"build\",\"level\":\"stderr\",\"text\":\"Error: build failed\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/logs?limit=0",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"log_a\",\"createdAt\":1700000001000,\"kind\":\"build\",\"level\":\"command\",\"text\":\"$ npm run build\"},{\"id\":\"1700000003000-2\",\"createdAt\":1700000003000,\"kind\":\"build\",\"level\":\"stderr\",\"text\":\"Error: build failed\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/logs?limit=99999",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"log_a\",\"createdAt\":1700000001000,\"kind\":\"build\",\"level\":\"command\",\"text\":\"$ npm run build\"},{\"id\":\"1700000003000-2\",\"createdAt\":1700000003000,\"kind\":\"build\",\"level\":\"stderr\",\"text\":\"Error: build failed\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/logs",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/nowhere/deployments/dpl_one/logs",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/runtime-logs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"row_a\",\"createdAt\":1700000100000,\"kind\":\"runtime\",\"level\":\"error\",\"text\":\"500 on /api/checkout\",\"source\":\"lambda\",\"request\":{\"method\":\"POST\",\"path\":\"/api/checkout\",\"statusCode\":500}},{\"id\":\"req_b\",\"createdAt\":1700000101000,\"kind\":\"runtime\",\"level\":\"info\",\"text\":\"slow response\",\"request\":{\"statusCode\":null}},{\"id\":\"2-2\",\"createdAt\":1700000102000,\"kind\":\"runtime\",\"level\":\"warning\",\"text\":\"cold start\"},{\"id\":\"1700000103000-3\",\"createdAt\":1700000103000,\"kind\":\"runtime\",\"level\":\"info\",\"text\":\"plain line\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/runtime-logs?limit=8000",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"row_a\",\"createdAt\":1700000100000,\"kind\":\"runtime\",\"level\":\"error\",\"text\":\"500 on /api/checkout\",\"source\":\"lambda\",\"request\":{\"method\":\"POST\",\"path\":\"/api/checkout\",\"statusCode\":500}},{\"id\":\"req_b\",\"createdAt\":1700000101000,\"kind\":\"runtime\",\"level\":\"info\",\"text\":\"slow response\",\"request\":{\"statusCode\":null}},{\"id\":\"2-2\",\"createdAt\":1700000102000,\"kind\":\"runtime\",\"level\":\"warning\",\"text\":\"cold start\"},{\"id\":\"1700000103000-3\",\"createdAt\":1700000103000,\"kind\":\"runtime\",\"level\":\"info\",\"text\":\"plain line\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/runtime-logs",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/redeploy",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"deployment\":{\"id\":\"dpl_new\",\"url\":\"app-new.vercel.app\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_preview/redeploy",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"deployment\":{\"id\":\"dpl_new\",\"url\":\"app-new.vercel.app\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/cancel",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/promote",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/rollback",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl%20one/cancel",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl%zz/cancel",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"URI malformed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_missing/cancel",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_missing/redeploy",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"This action requires \\\"name\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/publish",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vercel has no action \\\"publish\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/red%65ploy",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Vercel has no action \\\"red%65ploy\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/redeploy",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/nowhere/deployments/dpl_one/redeploy",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Unknown provider \\\"nowhere\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/nowhere/deployments/dpl_one/redeploy",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Method not allowed\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/deployments/cfd_one",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"deployment\":{\"id\":\"cfd_one\",\"name\":\"\",\"url\":\"cfd-one.app.pages.dev\",\"state\":\"ready\",\"rawState\":\"deploy:success\",\"target\":\"production\",\"createdAt\":1700000000000,\"isCurrentProduction\":true,\"meta\":{\"branch\":\"main\",\"sha\":\"abc123\",\"commitMessage\":\"ship it\"},\"inspectorUrl\":\"https://dash.cloudflare.com/acc_acme/pages/view/app/cfd_one\",\"aliases\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/deployments/cfd_one/logs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"2023-11-14T22:13:20Z-0\",\"createdAt\":1700000000000,\"kind\":\"build\",\"level\":\"stdout\",\"text\":\"Cloning repository...\"},{\"id\":\"2-2\",\"createdAt\":0,\"kind\":\"build\",\"level\":\"stdout\",\"text\":\"Build failed\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/deployments/cfd_one/runtime-logs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/deployments/cfd_one/redeploy",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"deployment\":{\"id\":\"cfd_new\",\"url\":\"https://cfd-new.app.pages.dev\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/deployments/cfd_one/rollback",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"deployment\":{\"id\":\"cfd_one\",\"url\":null}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/deployments/cfd_one/cancel",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cloudflare has no action \\\"cancel\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/deployments/cfd_one/promote",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cloudflare has no action \\\"promote\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"deployment\":{\"id\":\"dpl_one\",\"name\":\"app\",\"url\":\"app-one.vercel.app\",\"state\":\"ready\",\"rawState\":\"READY\",\"target\":\"production\",\"createdAt\":1700000000000,\"readyAt\":1700000030000,\"isCurrentProduction\":true,\"creator\":{\"username\":\"acme-dev\"},\"meta\":{\"branch\":\"main\",\"sha\":\"abc123\",\"commitMessage\":\"ship it\",\"commitAuthor\":\"Acme Dev\"},\"inspectorUrl\":\"https://vercel.com/acme/app/dpl_one\",\"aliases\":[],\"buildingAt\":1700000005000}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/logs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[{\"id\":\"log_a\",\"createdAt\":1700000001000,\"kind\":\"build\",\"level\":\"command\",\"text\":\"$ npm run build\"},{\"id\":\"1700000003000-2\",\"createdAt\":1700000003000,\"kind\":\"build\",\"level\":\"stderr\",\"text\":\"Error: build failed\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/redeploy",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"deployment\":{\"id\":\"dpl_new\",\"url\":\"app-new.vercel.app\"}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/cancel",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/promote",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"This action requires \\\"projectId\\\".\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/rollback",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"This action requires \\\"projectId\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/deployments/cfd_one",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cloudflare addresses deployments within a project. Link this repository to a Pages project first.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/cloudflare/deployments/cfd_one/logs",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Cloudflare addresses deployments within a project. Link this repository to a Pages project first.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/cloudflare/deployments/cfd_one/redeploy",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"This action requires \\\"projectId\\\".\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/runtime-logs",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"logs\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/vercel/deployments/dpl_one/logs",
+      "status": 500,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Build logs unavailable.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/vercel/deployments/dpl_one/redeploy",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":false,\"error\":\"Deployment quota exceeded.\"}"
+    }
+  ],
+  "entries": [
+    {
+      "key": "vercel/deployment/read",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "deployment": {
+              "id": "dpl_one",
+              "name": "app",
+              "url": "app-one.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000000000,
+              "readyAt": 1700000030000,
+              "isCurrentProduction": true,
+              "creator": {
+                "username": "acme-dev"
+              },
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "ship it",
+                "commitAuthor": "Acme Dev"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/dpl_one",
+              "aliases": [],
+              "buildingAt": 1700000005000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/deployment/an-encoded-id",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "deployment": {
+              "id": "dpl one",
+              "name": "app",
+              "url": "app-one.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000000000,
+              "readyAt": 1700000030000,
+              "isCurrentProduction": true,
+              "creator": {
+                "username": "acme-dev"
+              },
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "ship it",
+                "commitAuthor": "Acme Dev"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/dpl_one",
+              "aliases": [],
+              "buildingAt": 1700000005000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl%20one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/deployment/a-broken-escape",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "URI malformed"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/deployment/a-post-is-not-a-read",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/deployment/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Unknown provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/deployment/one-that-does-not-read",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Deployment not found."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_missing?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/logs/build",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "log_a",
+                "createdAt": 1700000001000,
+                "kind": "build",
+                "level": "command",
+                "text": "$ npm run build"
+              },
+              {
+                "id": "1700000003000-2",
+                "createdAt": 1700000003000,
+                "kind": "build",
+                "level": "stderr",
+                "text": "Error: build failed"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_one/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/logs/build-with-a-limit",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "log_a",
+                "createdAt": 1700000001000,
+                "kind": "build",
+                "level": "command",
+                "text": "$ npm run build"
+              },
+              {
+                "id": "1700000003000-2",
+                "createdAt": 1700000003000,
+                "kind": "build",
+                "level": "stderr",
+                "text": "Error: build failed"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_one/events?builds=1&direction=backward&limit=2&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/logs/build-with-trailing-text",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "log_a",
+                "createdAt": 1700000001000,
+                "kind": "build",
+                "level": "command",
+                "text": "$ npm run build"
+              },
+              {
+                "id": "1700000003000-2",
+                "createdAt": 1700000003000,
+                "kind": "build",
+                "level": "stderr",
+                "text": "Error: build failed"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_one/events?builds=1&direction=backward&limit=2&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/logs/build-with-a-limit-that-is-not-a-number",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "log_a",
+                "createdAt": 1700000001000,
+                "kind": "build",
+                "level": "command",
+                "text": "$ npm run build"
+              },
+              {
+                "id": "1700000003000-2",
+                "createdAt": 1700000003000,
+                "kind": "build",
+                "level": "stderr",
+                "text": "Error: build failed"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_one/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/logs/build-with-a-zero-limit",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "log_a",
+                "createdAt": 1700000001000,
+                "kind": "build",
+                "level": "command",
+                "text": "$ npm run build"
+              },
+              {
+                "id": "1700000003000-2",
+                "createdAt": 1700000003000,
+                "kind": "build",
+                "level": "stderr",
+                "text": "Error: build failed"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_one/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/logs/build-over-the-cap",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "log_a",
+                "createdAt": 1700000001000,
+                "kind": "build",
+                "level": "command",
+                "text": "$ npm run build"
+              },
+              {
+                "id": "1700000003000-2",
+                "createdAt": 1700000003000,
+                "kind": "build",
+                "level": "stderr",
+                "text": "Error: build failed"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_one/events?builds=1&direction=backward&limit=2000&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/logs/build-a-post-is-not-a-read",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/logs/build-an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Unknown provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/logs/runtime",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "row_a",
+                "createdAt": 1700000100000,
+                "kind": "runtime",
+                "level": "error",
+                "text": "500 on /api/checkout",
+                "source": "lambda",
+                "request": {
+                  "method": "POST",
+                  "path": "/api/checkout",
+                  "statusCode": 500
+                }
+              },
+              {
+                "id": "req_b",
+                "createdAt": 1700000101000,
+                "kind": "runtime",
+                "level": "info",
+                "text": "slow response",
+                "request": {
+                  "statusCode": null
+                }
+              },
+              {
+                "id": "2-2",
+                "createdAt": 1700000102000,
+                "kind": "runtime",
+                "level": "warning",
+                "text": "cold start"
+              },
+              {
+                "id": "1700000103000-3",
+                "createdAt": 1700000103000,
+                "kind": "runtime",
+                "level": "info",
+                "text": "plain line"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v1/deployments/dpl_one/runtime-logs?limit=200&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/logs/runtime-over-the-cap",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "row_a",
+                "createdAt": 1700000100000,
+                "kind": "runtime",
+                "level": "error",
+                "text": "500 on /api/checkout",
+                "source": "lambda",
+                "request": {
+                  "method": "POST",
+                  "path": "/api/checkout",
+                  "statusCode": 500
+                }
+              },
+              {
+                "id": "req_b",
+                "createdAt": 1700000101000,
+                "kind": "runtime",
+                "level": "info",
+                "text": "slow response",
+                "request": {
+                  "statusCode": null
+                }
+              },
+              {
+                "id": "2-2",
+                "createdAt": 1700000102000,
+                "kind": "runtime",
+                "level": "warning",
+                "text": "cold start"
+              },
+              {
+                "id": "1700000103000-3",
+                "createdAt": 1700000103000,
+                "kind": "runtime",
+                "level": "info",
+                "text": "plain line"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v1/deployments/dpl_one/runtime-logs?limit=1000&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/logs/runtime-a-post-is-not-a-read",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/action/redeploy",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "deployment": {
+              "id": "dpl_new",
+              "url": "app-new.vercel.app"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v13/deployments?forceNew=1&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "deploymentId": "dpl_one",
+              "name": "app",
+              "target": "production"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/action/redeploy-a-preview",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "deployment": {
+              "id": "dpl_new",
+              "url": "app-new.vercel.app"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_preview?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v13/deployments?forceNew=1&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "deploymentId": "dpl_preview",
+              "name": "app"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/action/cancel",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/v12/deployments/dpl_one/cancel?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/action/promote",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v10/projects/prj_app/promote/dpl_one?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/action/rollback",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v1/projects/prj_app/rollback/dpl_one?description=rollback+from+NoMoreIDE&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/action/an-encoded-id",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl%20one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/v12/deployments/dpl%20one/cancel?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/action/a-broken-escape",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "URI malformed"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/action/cancel-one-that-does-not-read",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_missing?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/v12/deployments/dpl_missing/cancel?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/action/redeploy-one-that-does-not-read",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "This action requires \"name\"."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_missing?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "vercel/action/an-unknown-action",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": {
+            "ok": false,
+            "error": "Vercel has no action \"publish\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/action/an-escaped-action-name",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": {
+            "ok": false,
+            "error": "Vercel has no action \"red%65ploy\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/action/a-get-is-not-a-write",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/action/an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Unknown provider \"nowhere\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "vercel/action/a-get-on-an-unknown-provider",
+      "value": {
+        "answer": {
+          "status": 405,
+          "body": {
+            "ok": false,
+            "error": "Method not allowed"
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cloudflare/deployment/read",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "deployment": {
+              "id": "cfd_one",
+              "name": "",
+              "url": "cfd-one.app.pages.dev",
+              "state": "ready",
+              "rawState": "deploy:success",
+              "target": "production",
+              "createdAt": 1700000000000,
+              "isCurrentProduction": true,
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "ship it"
+              },
+              "inspectorUrl": "https://dash.cloudflare.com/acc_acme/pages/view/app/cfd_one",
+              "aliases": []
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cfd_one",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/logs/build",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "2023-11-14T22:13:20Z-0",
+                "createdAt": 1700000000000,
+                "kind": "build",
+                "level": "stdout",
+                "text": "Cloning repository..."
+              },
+              {
+                "id": "2-2",
+                "createdAt": 0,
+                "kind": "build",
+                "level": "stdout",
+                "text": "Build failed"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cfd_one/history/logs",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/logs/runtime-is-not-a-capability",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/action/redeploy",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "deployment": {
+              "id": "cfd_new",
+              "url": "https://cfd-new.app.pages.dev"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cfd_one",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cfd_one/retry",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/action/rollback",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "deployment": {
+              "id": "cfd_one",
+              "url": null
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cfd_one",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/accounts/acc_acme/pages/projects/app/deployments/cfd_one/rollback",
+            "accept": "application/json",
+            "authorization": "Bearer cloudflare-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "cloudflare/action/cancel-is-not-a-pages-action",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": {
+            "ok": false,
+            "error": "Cloudflare has no action \"cancel\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "cloudflare/action/promote-is-not-a-pages-action",
+      "value": {
+        "answer": {
+          "status": 404,
+          "body": {
+            "ok": false,
+            "error": "Cloudflare has no action \"promote\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "unpinned/vercel/deployment",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "deployment": {
+              "id": "dpl_one",
+              "name": "app",
+              "url": "app-one.vercel.app",
+              "state": "ready",
+              "rawState": "READY",
+              "target": "production",
+              "createdAt": 1700000000000,
+              "readyAt": 1700000030000,
+              "isCurrentProduction": true,
+              "creator": {
+                "username": "acme-dev"
+              },
+              "meta": {
+                "branch": "main",
+                "sha": "abc123",
+                "commitMessage": "ship it",
+                "commitAuthor": "Acme Dev"
+              },
+              "inspectorUrl": "https://vercel.com/acme/app/dpl_one",
+              "aliases": [],
+              "buildingAt": 1700000005000
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "unpinned/vercel/logs",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": [
+              {
+                "id": "log_a",
+                "createdAt": 1700000001000,
+                "kind": "build",
+                "level": "command",
+                "text": "$ npm run build"
+              },
+              {
+                "id": "1700000003000-2",
+                "createdAt": 1700000003000,
+                "kind": "build",
+                "level": "stderr",
+                "text": "Error: build failed"
+              }
+            ]
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_one/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "unpinned/vercel/redeploy",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "deployment": {
+              "id": "dpl_new",
+              "url": "app-new.vercel.app"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v13/deployments?forceNew=1&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "deploymentId": "dpl_one",
+              "name": "app",
+              "target": "production"
+            },
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "unpinned/vercel/cancel",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "PATCH",
+            "path": "/v12/deployments/dpl_one/cancel?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "unpinned/vercel/promote",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "This action requires \"projectId\"."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "unpinned/vercel/rollback",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "This action requires \"projectId\"."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "unpinned/cloudflare/deployment",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Cloudflare addresses deployments within a project. Link this repository to a Pages project first."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "unpinned/cloudflare/logs",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Cloudflare addresses deployments within a project. Link this repository to a Pages project first."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "unpinned/cloudflare/redeploy",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "This action requires \"projectId\"."
+          }
+        },
+        "requests": []
+      }
+    },
+    {
+      "key": "degraded/runtime-logs-are-not-entitled",
+      "value": {
+        "answer": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "logs": []
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v1/deployments/dpl_one/runtime-logs?limit=200&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "degraded/build-logs-refused",
+      "value": {
+        "answer": {
+          "status": 500,
+          "body": {
+            "ok": false,
+            "error": "Build logs unavailable."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v3/deployments/dpl_one/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+            "accept": "text/plain",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "degraded/redeploy-refused",
+      "value": {
+        "answer": {
+          "status": 400,
+          "body": {
+            "ok": false,
+            "error": "Deployment quota exceeded."
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v9/projects/prj_app?teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "GET",
+            "path": "/v13/deployments/dpl_one?withGitRepoInfo=true&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": null,
+            "apiVersion": null,
+            "body": null,
+            "matched": true
+          },
+          {
+            "method": "POST",
+            "path": "/v13/deployments?forceNew=1&teamId=team_acme",
+            "accept": "application/json",
+            "authorization": "Bearer vercel-parity-token",
+            "contentType": "application/json",
+            "apiVersion": null,
+            "body": {
+              "deploymentId": "dpl_one",
+              "name": "app",
+              "target": "production"
+            },
+            "matched": true
+          }
+        ]
+      }
+    }
+  ]
+}

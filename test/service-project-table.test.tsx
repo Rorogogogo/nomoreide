@@ -3,8 +3,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ServiceProjectTable } from "../src/web/client/src/features/services/service-project-table";
-import type { DashboardData } from "../src/web/client/src/lib/api";
+import { ServiceProjectTable } from "../apps/dashboard/src/features/services/service-project-table";
+import type { DashboardData } from "../apps/dashboard/src/lib/api";
 
 const api = vi.hoisted(() => ({ setServiceProject: vi.fn() }));
 

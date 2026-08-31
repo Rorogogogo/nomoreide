@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { DashboardData } from "../src/web/client/src/lib/api";
+import type { DashboardData } from "../apps/dashboard/src/lib/api";
 
 const api = vi.hoisted(() => ({
   getAgentInfo: vi.fn(),
@@ -13,7 +13,7 @@ const api = vi.hoisted(() => ({
 
 vi.mock("@/lib/api", () => api);
 
-import { agentWidget } from "../src/web/client/src/features/agent/widget";
+import { agentWidget } from "../apps/dashboard/src/features/agent/widget";
 
 let host: HTMLDivElement;
 let root: Root;

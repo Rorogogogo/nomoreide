@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { httpSkillsApi } from "../src/web/client/src/lib/api/skills-http.js";
+import { httpSkillsApi } from "../apps/dashboard/src/lib/api/skills-http.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();

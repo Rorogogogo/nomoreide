@@ -1,0 +1,367 @@
+{
+  "version": 1,
+  "gate": "usage",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}},\"codex\":{\"timestamp\":\"2026-08-25T12:00:00.000Z\",\"inputTokens\":200,\"cachedInputTokens\":0,\"outputTokens\":60,\"reasoningOutputTokens\":0,\"totalTokens\":260,\"lastInputTokens\":0,\"lastCachedInputTokens\":0,\"lastOutputTokens\":0,\"lastReasoningOutputTokens\":0,\"lastTotalTokens\":0,\"primary\":{\"usedPercent\":40,\"resetsAtUnix\":1893456999}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[{\"at\":\"2026-08-20T09:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":10,\"outputTokens\":5,\"totalTokens\":15,\"costUSD\":0.5,\"models\":[\"opus\"]},{\"at\":\"2026-08-20T17:30:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":40,\"outputTokens\":20,\"totalTokens\":60,\"costUSD\":2,\"models\":[\"opus\",\"haiku\"]},{\"at\":\"2026-08-20T18:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":41,\"outputTokens\":21,\"totalTokens\":62,\"costUSD\":2},{\"at\":\"2026-08-21T11:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s2\",\"inputTokens\":7,\"outputTokens\":3,\"totalTokens\":10,\"costUSD\":0.25},{\"at\":\"2026-08-21T12:00:00.000Z\",\"source\":\"claude\",\"inputTokens\":1,\"outputTokens\":1,\"totalTokens\":2,\"costUSD\":0.1},{\"at\":\"2026-08-21T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-21T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":900,\"costUSD\":0},{\"at\":\"2026-08-22T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-22T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":400,\"costUSD\":0},{\"at\":\"2026-08-23T08:00:00.000Z\",\"source\":\"gemini\",\"inputTokens\":3,\"outputTokens\":4,\"totalTokens\":7,\"costUSD\":9,\"extra\":{\"kept\":true}},17],\"summary\":{\"runs\":3,\"totalCostUSD\":2.35,\"totalInputTokens\":49,\"totalOutputTokens\":25,\"totalTokens\":74,\"firstAt\":\"2026-08-20T09:00:00.000Z\",\"byDay\":[{\"date\":\"2026-08-20\",\"costUSD\":2,\"runs\":1,\"totalTokens\":62},{\"date\":\"2026-08-21\",\"costUSD\":0.35,\"runs\":2,\"totalTokens\":12}],\"codexTotalTokens\":900}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history?since=2026-08-21T11:00:00.000Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[{\"at\":\"2026-08-21T11:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s2\",\"inputTokens\":7,\"outputTokens\":3,\"totalTokens\":10,\"costUSD\":0.25},{\"at\":\"2026-08-21T12:00:00.000Z\",\"source\":\"claude\",\"inputTokens\":1,\"outputTokens\":1,\"totalTokens\":2,\"costUSD\":0.1},{\"at\":\"2026-08-21T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-21T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":900,\"costUSD\":0},{\"at\":\"2026-08-22T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-22T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":400,\"costUSD\":0},{\"at\":\"2026-08-23T08:00:00.000Z\",\"source\":\"gemini\",\"inputTokens\":3,\"outputTokens\":4,\"totalTokens\":7,\"costUSD\":9,\"extra\":{\"kept\":true}}],\"summary\":{\"runs\":2,\"totalCostUSD\":0.35,\"totalInputTokens\":8,\"totalOutputTokens\":4,\"totalTokens\":12,\"firstAt\":\"2026-08-21T11:00:00.000Z\",\"lastAt\":\"2026-08-23T08:00:00.000Z\",\"byDay\":[{\"date\":\"2026-08-21\",\"costUSD\":0.35,\"runs\":2,\"totalTokens\":12}],\"codexTotalTokens\":900}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history?since=2026-08-21T11:00:00.001Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[{\"at\":\"2026-08-21T12:00:00.000Z\",\"source\":\"claude\",\"inputTokens\":1,\"outputTokens\":1,\"totalTokens\":2,\"costUSD\":0.1},{\"at\":\"2026-08-21T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-21T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":900,\"costUSD\":0},{\"at\":\"2026-08-22T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-22T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":400,\"costUSD\":0},{\"at\":\"2026-08-23T08:00:00.000Z\",\"source\":\"gemini\",\"inputTokens\":3,\"outputTokens\":4,\"totalTokens\":7,\"costUSD\":9,\"extra\":{\"kept\":true}}],\"summary\":{\"runs\":1,\"totalCostUSD\":0.1,\"totalInputTokens\":1,\"totalOutputTokens\":1,\"totalTokens\":2,\"firstAt\":\"2026-08-21T12:00:00.000Z\",\"lastAt\":\"2026-08-23T08:00:00.000Z\",\"byDay\":[{\"date\":\"2026-08-21\",\"costUSD\":0.1,\"runs\":1,\"totalTokens\":2}],\"codexTotalTokens\":900}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history?since=2026-08-2",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[{\"at\":\"2026-08-20T09:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":10,\"outputTokens\":5,\"totalTokens\":15,\"costUSD\":0.5,\"models\":[\"opus\"]},{\"at\":\"2026-08-20T17:30:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":40,\"outputTokens\":20,\"totalTokens\":60,\"costUSD\":2,\"models\":[\"opus\",\"haiku\"]},{\"at\":\"2026-08-20T18:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":41,\"outputTokens\":21,\"totalTokens\":62,\"costUSD\":2},{\"at\":\"2026-08-21T11:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s2\",\"inputTokens\":7,\"outputTokens\":3,\"totalTokens\":10,\"costUSD\":0.25},{\"at\":\"2026-08-21T12:00:00.000Z\",\"source\":\"claude\",\"inputTokens\":1,\"outputTokens\":1,\"totalTokens\":2,\"costUSD\":0.1},{\"at\":\"2026-08-21T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-21T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":900,\"costUSD\":0},{\"at\":\"2026-08-22T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-22T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":400,\"costUSD\":0},{\"at\":\"2026-08-23T08:00:00.000Z\",\"source\":\"gemini\",\"inputTokens\":3,\"outputTokens\":4,\"totalTokens\":7,\"costUSD\":9,\"extra\":{\"kept\":true}}],\"summary\":{\"runs\":3,\"totalCostUSD\":2.35,\"totalInputTokens\":49,\"totalOutputTokens\":25,\"totalTokens\":74,\"firstAt\":\"2026-08-20T09:00:00.000Z\",\"lastAt\":\"2026-08-23T08:00:00.000Z\",\"byDay\":[{\"date\":\"2026-08-20\",\"costUSD\":2,\"runs\":1,\"totalTokens\":62},{\"date\":\"2026-08-21\",\"costUSD\":0.35,\"runs\":2,\"totalTokens\":12}],\"codexTotalTokens\":900}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history?since=2099",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[],\"summary\":{\"runs\":0,\"totalCostUSD\":0,\"totalInputTokens\":0,\"totalOutputTokens\":0,\"totalTokens\":0,\"byDay\":[],\"codexTotalTokens\":0}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history?since=",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[{\"at\":\"2026-08-20T09:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":10,\"outputTokens\":5,\"totalTokens\":15,\"costUSD\":0.5,\"models\":[\"opus\"]},{\"at\":\"2026-08-20T17:30:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":40,\"outputTokens\":20,\"totalTokens\":60,\"costUSD\":2,\"models\":[\"opus\",\"haiku\"]},{\"at\":\"2026-08-20T18:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":41,\"outputTokens\":21,\"totalTokens\":62,\"costUSD\":2},{\"at\":\"2026-08-21T11:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s2\",\"inputTokens\":7,\"outputTokens\":3,\"totalTokens\":10,\"costUSD\":0.25},{\"at\":\"2026-08-21T12:00:00.000Z\",\"source\":\"claude\",\"inputTokens\":1,\"outputTokens\":1,\"totalTokens\":2,\"costUSD\":0.1},{\"at\":\"2026-08-21T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-21T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":900,\"costUSD\":0},{\"at\":\"2026-08-22T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-22T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":400,\"costUSD\":0},{\"at\":\"2026-08-23T08:00:00.000Z\",\"source\":\"gemini\",\"inputTokens\":3,\"outputTokens\":4,\"totalTokens\":7,\"costUSD\":9,\"extra\":{\"kept\":true}},17],\"summary\":{\"runs\":3,\"totalCostUSD\":2.35,\"totalInputTokens\":49,\"totalOutputTokens\":25,\"totalTokens\":74,\"firstAt\":\"2026-08-20T09:00:00.000Z\",\"byDay\":[{\"date\":\"2026-08-20\",\"costUSD\":2,\"runs\":1,\"totalTokens\":62},{\"date\":\"2026-08-21\",\"costUSD\":0.35,\"runs\":2,\"totalTokens\":12}],\"codexTotalTokens\":900}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history?since=2099&since=2020",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[],\"summary\":{\"runs\":0,\"totalCostUSD\":0,\"totalInputTokens\":0,\"totalOutputTokens\":0,\"totalTokens\":0,\"byDay\":[],\"codexTotalTokens\":0}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history?since=2026-08-21T13%3A00%3A00.000Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[{\"at\":\"2026-08-21T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-21T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":900,\"costUSD\":0},{\"at\":\"2026-08-22T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-22T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":400,\"costUSD\":0},{\"at\":\"2026-08-23T08:00:00.000Z\",\"source\":\"gemini\",\"inputTokens\":3,\"outputTokens\":4,\"totalTokens\":7,\"costUSD\":9,\"extra\":{\"kept\":true}}],\"summary\":{\"runs\":0,\"totalCostUSD\":0,\"totalInputTokens\":0,\"totalOutputTokens\":0,\"totalTokens\":0,\"firstAt\":\"2026-08-21T13:00:00.000Z\",\"lastAt\":\"2026-08-23T08:00:00.000Z\",\"byDay\":[],\"codexTotalTokens\":900}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history?limit=1",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[{\"at\":\"2026-08-20T09:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":10,\"outputTokens\":5,\"totalTokens\":15,\"costUSD\":0.5,\"models\":[\"opus\"]},{\"at\":\"2026-08-20T17:30:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":40,\"outputTokens\":20,\"totalTokens\":60,\"costUSD\":2,\"models\":[\"opus\",\"haiku\"]},{\"at\":\"2026-08-20T18:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":41,\"outputTokens\":21,\"totalTokens\":62,\"costUSD\":2},{\"at\":\"2026-08-21T11:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s2\",\"inputTokens\":7,\"outputTokens\":3,\"totalTokens\":10,\"costUSD\":0.25},{\"at\":\"2026-08-21T12:00:00.000Z\",\"source\":\"claude\",\"inputTokens\":1,\"outputTokens\":1,\"totalTokens\":2,\"costUSD\":0.1},{\"at\":\"2026-08-21T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-21T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":900,\"costUSD\":0},{\"at\":\"2026-08-22T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-22T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":400,\"costUSD\":0},{\"at\":\"2026-08-23T08:00:00.000Z\",\"source\":\"gemini\",\"inputTokens\":3,\"outputTokens\":4,\"totalTokens\":7,\"costUSD\":9,\"extra\":{\"kept\":true}},17],\"summary\":{\"runs\":3,\"totalCostUSD\":2.35,\"totalInputTokens\":49,\"totalOutputTokens\":25,\"totalTokens\":74,\"firstAt\":\"2026-08-20T09:00:00.000Z\",\"byDay\":[{\"date\":\"2026-08-20\",\"costUSD\":2,\"runs\":1,\"totalTokens\":62},{\"date\":\"2026-08-21\",\"costUSD\":0.35,\"runs\":2,\"totalTokens\":12}],\"codexTotalTokens\":900}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}},\"codex\":{\"timestamp\":\"2026-01-02T03:04:05.000Z\",\"inputTokens\":11,\"cachedInputTokens\":0,\"outputTokens\":22,\"reasoningOutputTokens\":0,\"totalTokens\":33,\"lastInputTokens\":0,\"lastCachedInputTokens\":0,\"lastOutputTokens\":0,\"lastReasoningOutputTokens\":0,\"lastTotalTokens\":0}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}},\"codex\":{\"timestamp\":\"2030-06-06T06:06:06.000Z\",\"inputTokens\":1,\"cachedInputTokens\":2,\"outputTokens\":3,\"reasoningOutputTokens\":0,\"totalTokens\":6,\"lastInputTokens\":4,\"lastCachedInputTokens\":0,\"lastOutputTokens\":0,\"lastReasoningOutputTokens\":0,\"lastTotalTokens\":4,\"contextWindow\":128000,\"secondary\":{\"usedPercent\":5,\"resetsAtUnix\":5,\"windowMinutes\":10080}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}},\"codex\":{\"timestamp\":\"2030-06-06T06:06:06.000Z\",\"inputTokens\":1,\"cachedInputTokens\":2,\"outputTokens\":3,\"reasoningOutputTokens\":0,\"totalTokens\":6,\"lastInputTokens\":4,\"lastCachedInputTokens\":0,\"lastOutputTokens\":0,\"lastReasoningOutputTokens\":0,\"lastTotalTokens\":4,\"contextWindow\":128000,\"secondary\":{\"usedPercent\":5,\"resetsAtUnix\":5,\"windowMinutes\":10080}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}},\"codex\":{\"timestamp\":\"2020-01-01T00:00:00.000Z\",\"inputTokens\":222,\"cachedInputTokens\":0,\"outputTokens\":222,\"reasoningOutputTokens\":0,\"totalTokens\":444,\"lastInputTokens\":0,\"lastCachedInputTokens\":0,\"lastOutputTokens\":0,\"lastReasoningOutputTokens\":0,\"lastTotalTokens\":0}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}]}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":7.5,\"resetsAtUnix\":1893456000}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}]}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"costUSD\":0.25,\"durationMs\":0,\"apiDurationMs\":0,\"linesAdded\":0,\"linesRemoved\":0,\"inputTokens\":0,\"outputTokens\":0,\"cacheCreationInputTokens\":0,\"cacheReadInputTokens\":0,\"webSearchRequests\":0,\"models\":[{\"model\":\"1\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":3},{\"model\":\"0\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"costUSD\":1,\"durationMs\":0,\"apiDurationMs\":0,\"linesAdded\":0,\"linesRemoved\":0,\"inputTokens\":0,\"outputTokens\":0,\"cacheCreationInputTokens\":0,\"cacheReadInputTokens\":0,\"webSearchRequests\":0,\"models\":[],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"costUSD\":1,\"durationMs\":0,\"apiDurationMs\":0,\"linesAdded\":0,\"linesRemoved\":0,\"inputTokens\":0,\"outputTokens\":0,\"cacheCreationInputTokens\":0,\"cacheReadInputTokens\":0,\"webSearchRequests\":0,\"models\":[],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"costUSD\":0,\"durationMs\":0,\"apiDurationMs\":0,\"linesAdded\":0,\"linesRemoved\":0,\"inputTokens\":0,\"outputTokens\":0,\"cacheCreationInputTokens\":0,\"cacheReadInputTokens\":0,\"webSearchRequests\":0,\"models\":[],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[{\"at\":\"2026-08-24T08:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"d1\"},{\"at\":\"2026-08-24T09:00:00.000Z\",\"source\":\"codex\"}],\"summary\":{\"runs\":1,\"totalCostUSD\":null,\"totalInputTokens\":null,\"totalOutputTokens\":null,\"totalTokens\":null,\"firstAt\":\"2026-08-24T08:00:00.000Z\",\"lastAt\":\"2026-08-24T09:00:00.000Z\",\"byDay\":[{\"date\":\"2026-08-24\",\"costUSD\":null,\"runs\":1,\"totalTokens\":null}],\"codexTotalTokens\":null}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[],\"summary\":{\"runs\":0,\"totalCostUSD\":0,\"totalInputTokens\":0,\"totalOutputTokens\":0,\"totalTokens\":0,\"byDay\":[],\"codexTotalTokens\":0}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[],\"summary\":{\"runs\":0,\"totalCostUSD\":0,\"totalInputTokens\":0,\"totalOutputTokens\":0,\"totalTokens\":0,\"byDay\":[],\"codexTotalTokens\":0}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history?since=2026",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[],\"summary\":{\"runs\":0,\"totalCostUSD\":0,\"totalInputTokens\":0,\"totalOutputTokens\":0,\"totalTokens\":0,\"byDay\":[],\"codexTotalTokens\":0}}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/usage",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/usage/history",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history/extra",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"usage\":{\"claude\":{\"cwd\":\"/private%%WORKSPACE%%\",\"sessionId\":\"sess-alpha\",\"costUSD\":1.25,\"durationMs\":45000,\"apiDurationMs\":30000,\"linesAdded\":120,\"linesRemoved\":37,\"inputTokens\":1000,\"outputTokens\":250,\"cacheCreationInputTokens\":10,\"cacheReadInputTokens\":20,\"webSearchRequests\":3,\"models\":[{\"model\":\"claude-opus-5\",\"inputTokens\":10,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":2.5},{\"model\":\"tied-a\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"tied-b\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":1},{\"model\":\"claude-haiku-4-5\",\"inputTokens\":5,\"outputTokens\":6,\"cacheReadInputTokens\":7,\"cacheCreationInputTokens\":8,\"webSearchRequests\":1,\"costUSD\":0.5},{\"model\":\"junk-values\",\"inputTokens\":0,\"outputTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0}],\"fiveHour\":{\"usedPercent\":12.5,\"resetsAtUnix\":1893456000},\"weekly\":{\"usedPercent\":44,\"resetsAtUnix\":1894060800}}}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/usage/history",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"entries\":[{\"at\":\"2026-08-20T09:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":10,\"outputTokens\":5,\"totalTokens\":15,\"costUSD\":0.5,\"models\":[\"opus\"]},{\"at\":\"2026-08-20T17:30:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":40,\"outputTokens\":20,\"totalTokens\":60,\"costUSD\":2,\"models\":[\"opus\",\"haiku\"]},{\"at\":\"2026-08-20T18:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s1\",\"inputTokens\":41,\"outputTokens\":21,\"totalTokens\":62,\"costUSD\":2},{\"at\":\"2026-08-21T11:00:00.000Z\",\"source\":\"claude\",\"sessionId\":\"s2\",\"inputTokens\":7,\"outputTokens\":3,\"totalTokens\":10,\"costUSD\":0.25},{\"at\":\"2026-08-21T12:00:00.000Z\",\"source\":\"claude\",\"inputTokens\":1,\"outputTokens\":1,\"totalTokens\":2,\"costUSD\":0.1},{\"at\":\"2026-08-21T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-21T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":900,\"costUSD\":0},{\"at\":\"2026-08-22T13:00:00.000Z\",\"source\":\"codex\",\"sessionId\":\"2026-08-22T13:00:00.000Z\",\"inputTokens\":5,\"outputTokens\":6,\"totalTokens\":400,\"costUSD\":0},{\"at\":\"2026-08-23T08:00:00.000Z\",\"source\":\"gemini\",\"inputTokens\":3,\"outputTokens\":4,\"totalTokens\":7,\"costUSD\":9,\"extra\":{\"kept\":true}},17],\"summary\":{\"runs\":3,\"totalCostUSD\":2.35,\"totalInputTokens\":49,\"totalOutputTokens\":25,\"totalTokens\":74,\"firstAt\":\"2026-08-20T09:00:00.000Z\",\"byDay\":[{\"date\":\"2026-08-20\",\"costUSD\":2,\"runs\":1,\"totalTokens\":62},{\"date\":\"2026-08-21\",\"costUSD\":0.35,\"runs\":2,\"totalTokens\":12}],\"codexTotalTokens\":900}}"
+    }
+  ],
+  "entries": []
+}

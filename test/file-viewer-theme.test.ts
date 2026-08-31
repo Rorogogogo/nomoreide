@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const fileViewerSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/features/git/file-viewer.tsx"),
+  resolve(__dirname, "../apps/dashboard/src/features/git/file-viewer.tsx"),
   "utf8",
 );
 

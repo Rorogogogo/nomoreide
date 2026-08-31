@@ -5,7 +5,7 @@ import {
   consumeGlobalSearchFocus,
   requestGlobalSearchFocus,
   subscribeToGlobalSearchFocus,
-} from "../src/web/client/src/features/global-search/global-search-navigation";
+} from "../apps/dashboard/src/features/global-search/global-search-navigation";
 
 describe("global search focus navigation", () => {
   test("a mounted non-matching view cannot consume another page's intent", () => {

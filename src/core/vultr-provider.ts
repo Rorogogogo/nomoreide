@@ -12,7 +12,8 @@ import {
   type VultrActions,
 } from "./vultr-actions.js";
 import { VULTR_PROVIDER_ID } from "./vultr-auth.js";
-import type { VultrInstance, VultrManager } from "./vultr-manager.js";
+import { providerApiHost } from "./providers/api-base.js";
+import { vultrApiBase, type VultrInstance, type VultrManager } from "./vultr-manager.js";
 
 /**
  * Vultr as `HostProvider` implementation #1 — the provider that tests whether
@@ -81,7 +82,7 @@ export const VULTR_MANIFEST: HostProviderManifest = {
   // The API only. An adopted instance is reached over SSH by `ssh-servers.ts`,
   // which is the host's own transport and never goes through this fetch — so no
   // instance address belongs here.
-  api: { hosts: ["api.vultr.com"] },
+  api: { hosts: [providerApiHost(vultrApiBase())] },
 };
 
 /**

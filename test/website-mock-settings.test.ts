@@ -3,9 +3,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test, vi } from "vitest";
-import { installWebsiteMockApi } from "../website/src/mock-api";
+import { installWebsiteMockApi } from "../apps/website/src/mock-api";
 
-const source = readFileSync(resolve(__dirname, "../website/src/mock-api.ts"), "utf8");
+const source = readFileSync(resolve(__dirname, "../apps/website/src/mock-api.ts"), "utf8");
 
 describe("website settings mock", () => {
   test("returns complete global and project settings instead of the bare fallback", () => {

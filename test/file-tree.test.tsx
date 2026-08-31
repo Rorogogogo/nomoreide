@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { FileTree } from "../src/web/client/src/features/git/file-tree";
+import { FileTree } from "../apps/dashboard/src/features/git/file-tree";
 
 describe("FileTree", () => {
   test("can render every directory expanded by default", () => {

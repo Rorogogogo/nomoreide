@@ -11,6 +11,7 @@ import {
   type PendingLogin,
   type ProviderOAuthSpec,
 } from "./providers/oauth.js";
+import { providerApiBase } from "./providers/api-base.js";
 
 /**
  * Vercel's half of the shared browser sign-in — four constants and the
@@ -30,7 +31,12 @@ import {
  */
 export const VERCEL_OAUTH: ProviderOAuthSpec = {
   name: "Vercel",
-  issuer: "https://vercel.com",
+  // Overridable the same loopback-only way the API base is
+  // (`providers/api-base.ts`), so a sign-in can be driven end to end against a
+  // stub. Without it the token exchange and the connection it writes are the
+  // one part of this flow nothing can reach without a real Vercel account —
+  // and the same variable points the native runtime at the same stub.
+  issuer: providerApiBase("NOMOREIDE_VERCEL_OAUTH_ISSUER", "https://vercel.com"),
   scope: "offline_access",
   callbackPath: "/api/providers/vercel/oauth/callback",
 };

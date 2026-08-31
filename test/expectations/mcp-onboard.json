@@ -1,0 +1,2964 @@
+{
+  "version": 1,
+  "gate": "mcp-onboard",
+  "http": [],
+  "entries": [
+    {
+      "key": "snapshots/list-empty",
+      "value": {
+        "isError": false,
+        "payload": []
+      }
+    },
+    {
+      "key": "snapshots/create-first",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "7691c1017c36cdd4d8423dece3b661506b124603",
+          "ref": "refs/nomoreide/snapshots/<ms>-first-checkpoint",
+          "label": "first checkpoint",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-one",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-first-checkpoint",
+            "sha": "7691c1017c36cdd4d8423dece3b661506b124603",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "first checkpoint"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/create-second",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "e6e87f940fd04faf10421550583be2b94d995a35",
+          "ref": "refs/nomoreide/snapshots/<ms>-second",
+          "label": "second",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-two",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-second",
+            "sha": "e6e87f940fd04faf10421550583be2b94d995a35",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "second"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-first-checkpoint",
+            "sha": "7691c1017c36cdd4d8423dece3b661506b124603",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "first checkpoint"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/create-duplicate-label",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "e6e87f940fd04faf10421550583be2b94d995a35",
+          "ref": "refs/nomoreide/snapshots/<ms>-second",
+          "label": "second",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-three",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-second",
+            "sha": "e6e87f940fd04faf10421550583be2b94d995a35",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "second"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-second",
+            "sha": "e6e87f940fd04faf10421550583be2b94d995a35",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "second"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-first-checkpoint",
+            "sha": "7691c1017c36cdd4d8423dece3b661506b124603",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "first checkpoint"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/create-clean",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "94e9792b6156c203067be4bf8b2a5d80e9055dd5",
+          "ref": "refs/nomoreide/snapshots/<ms>-nothing-changed",
+          "label": "nothing changed",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-clean",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-nothing-changed",
+            "sha": "94e9792b6156c203067be4bf8b2a5d80e9055dd5",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "nothing changed"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/create-staged",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "05a20a46bdb0dc2a3e244fcb068b9794644721fb",
+          "ref": "refs/nomoreide/snapshots/<ms>-staged-work",
+          "label": "staged work",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-staged",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-staged-work",
+            "sha": "05a20a46bdb0dc2a3e244fcb068b9794644721fb",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "staged work"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/status-after-create-staged",
+      "value": {
+        "isError": false,
+        "payload": {
+          "branch": "main",
+          "ahead": 0,
+          "behind": 0,
+          "files": [
+            {
+              "index": "A",
+              "workingTree": " ",
+              "path": "added.txt"
+            },
+            {
+              "index": "M",
+              "workingTree": "M",
+              "path": "base.txt"
+            },
+            {
+              "index": "?",
+              "workingTree": "?",
+              "path": "loose.txt"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "snapshots/create-with-ignored-files",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "4bbda32f87b79d7daacd9b05da8077660be75ee8",
+          "ref": "refs/nomoreide/snapshots/<ms>-ignores-what-git-ignores",
+          "label": "ignores what git ignores",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/create-detached",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "2517d9d75794918aa6e90ad52fbad312ee9eadab",
+          "ref": "refs/nomoreide/snapshots/<ms>-detached",
+          "label": "detached",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-detached",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-detached",
+            "sha": "2517d9d75794918aa6e90ad52fbad312ee9eadab",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "detached"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/create-unborn",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "83c4d0bcacf2c4c13904743f2bf22f4aadbd9cfd",
+          "ref": "refs/nomoreide/snapshots/<ms>-no-commits-yet",
+          "label": "no commits yet",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-unborn",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-no-commits-yet",
+            "sha": "83c4d0bcacf2c4c13904743f2bf22f4aadbd9cfd",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "no commits yet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/create-unicode-label",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "391edf3fd518e6b7befeb5995c0b40e8c90d88a9",
+          "ref": "refs/nomoreide/snapshots/<ms>-snapshot",
+          "label": "üñî ✅ 快照",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/create-pathish-label",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "58475644a951d610f349ab5bdf2c23ab3271a450",
+          "ref": "refs/nomoreide/snapshots/<ms>-feature-branch-label-1",
+          "label": "feature/branch .. label~1",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/create-mixed-case-label",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "0ccd5fa5794353ba6fef5144f83a1c1a0b6c9829",
+          "ref": "refs/nomoreide/snapshots/<ms>-mixed-case-123-abc",
+          "label": "MiXeD Case 123 ABC",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/create-long-label",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "63697b14842b9317f9788c637960708c18814423",
+          "ref": "refs/nomoreide/snapshots/<ms>-a-checkpoint-whose-label-is-far-too-long",
+          "label": "a checkpoint whose label is far too long to fit inside one ref name",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/create-label-cut-at-a-separator",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "d2a075aa6a7bae2f30977426bfc4a8a84decd11d",
+          "ref": "refs/nomoreide/snapshots/<ms>-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-",
+          "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa tail",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-after-odd-labels",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-",
+            "sha": "d2a075aa6a7bae2f30977426bfc4a8a84decd11d",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa tail"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-a-checkpoint-whose-label-is-far-too-long",
+            "sha": "63697b14842b9317f9788c637960708c18814423",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "a checkpoint whose label is far too long to fit inside one ref name"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-mixed-case-123-abc",
+            "sha": "0ccd5fa5794353ba6fef5144f83a1c1a0b6c9829",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "MiXeD Case 123 ABC"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-feature-branch-label-1",
+            "sha": "58475644a951d610f349ab5bdf2c23ab3271a450",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "feature/branch .. label~1"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-snapshot",
+            "sha": "391edf3fd518e6b7befeb5995c0b40e8c90d88a9",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "üñî ✅ 快照"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-second",
+            "sha": "e6e87f940fd04faf10421550583be2b94d995a35",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "second"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-second",
+            "sha": "e6e87f940fd04faf10421550583be2b94d995a35",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "second"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-first-checkpoint",
+            "sha": "7691c1017c36cdd4d8423dece3b661506b124603",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "first checkpoint"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/list-many",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000054-seeded-054",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000053-seeded-053",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000052-seeded-052",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000051-seeded-051",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000050-seeded-050",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000049-seeded-049",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000048-seeded-048",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000047-seeded-047",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000046-seeded-046",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000045-seeded-045",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000044-seeded-044",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000043-seeded-043",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000042-seeded-042",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000041-seeded-041",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000040-seeded-040",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000039-seeded-039",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000038-seeded-038",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000037-seeded-037",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000036-seeded-036",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000035-seeded-035",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000034-seeded-034",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000033-seeded-033",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000032-seeded-032",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000031-seeded-031",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000030-seeded-030",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000029-seeded-029",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000028-seeded-028",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000027-seeded-027",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000026-seeded-026",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000025-seeded-025",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000024-seeded-024",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000023-seeded-023",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000022-seeded-022",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000021-seeded-021",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000020-seeded-020",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000019-seeded-019",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000018-seeded-018",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000017-seeded-017",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000016-seeded-016",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000015-seeded-015",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000014-seeded-014",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000013-seeded-013",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000012-seeded-012",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000011-seeded-011",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000010-seeded-010",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000009-seeded-009",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000008-seeded-008",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000007-seeded-007",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000006-seeded-006",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000005-seeded-005",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000004-seeded-004",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000003-seeded-003",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000002-seeded-002",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000001-seeded-001",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000000-seeded-000",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/create-past-the-prune-limit",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "45b75faa473024697b2fc9c8cb53d488021197f8",
+          "ref": "refs/nomoreide/snapshots/<ms>-the-one-that-triggers-pruning",
+          "label": "the one that triggers pruning",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-after-pruning",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-the-one-that-triggers-pruning",
+            "sha": "45b75faa473024697b2fc9c8cb53d488021197f8",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "the one that triggers pruning"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000054-seeded-054",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000053-seeded-053",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000052-seeded-052",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000051-seeded-051",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000050-seeded-050",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000049-seeded-049",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000048-seeded-048",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000047-seeded-047",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000046-seeded-046",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000045-seeded-045",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000044-seeded-044",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000043-seeded-043",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000042-seeded-042",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000041-seeded-041",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000040-seeded-040",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000039-seeded-039",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000038-seeded-038",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000037-seeded-037",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000036-seeded-036",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000035-seeded-035",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000034-seeded-034",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000033-seeded-033",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000032-seeded-032",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000031-seeded-031",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000030-seeded-030",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000029-seeded-029",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000028-seeded-028",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000027-seeded-027",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000026-seeded-026",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000025-seeded-025",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000024-seeded-024",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000023-seeded-023",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000022-seeded-022",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000021-seeded-021",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000020-seeded-020",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000019-seeded-019",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000018-seeded-018",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000017-seeded-017",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000016-seeded-016",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000015-seeded-015",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000014-seeded-014",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000013-seeded-013",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000012-seeded-012",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000011-seeded-011",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000010-seeded-010",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000009-seeded-009",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000008-seeded-008",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000007-seeded-007",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/1700000000006-seeded-006",
+            "sha": "c9627a7dd4729f241534cf8a678380709f977775",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "seed"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/list-plain-directory",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_snapshots_list' execution failed: Command failed: git for-each-ref --sort=-refname --format=%(refname)%09%(objectname)%09%(creatordate:iso-strict)%09%(subject) refs/nomoreide/snapshots\nfatal: not a git repository (or any of the parent directories): .git\n"
+      }
+    },
+    {
+      "key": "snapshots/create-plain-directory",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_snapshot_create' execution failed: Command failed: git read-tree --empty\nfatal: not a git repository (or any of the parent directories): .git\n"
+      }
+    },
+    {
+      "key": "snapshots/list-absent-directory",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_snapshots_list' execution failed: spawn git ENOENT"
+      }
+    },
+    {
+      "key": "snapshots/create-absent-directory",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_snapshot_create' execution failed: spawn git ENOENT"
+      }
+    },
+    {
+      "key": "snapshots/list-default-cwd",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_snapshots_list' execution failed: Command failed: git for-each-ref --sort=-refname --format=%(refname)%09%(objectname)%09%(creatordate:iso-strict)%09%(subject) refs/nomoreide/snapshots\nfatal: not a git repository (or any of the parent directories): .git\n"
+      }
+    },
+    {
+      "key": "snapshots/create-default-cwd",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "28958aa4a686f886b9a3312542551d19a2c2ace6",
+          "ref": "refs/nomoreide/snapshots/<ms>-from-the-process-directory",
+          "label": "from the process directory",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-from-subdirectory",
+      "value": {
+        "isError": false,
+        "payload": [
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-",
+            "sha": "d2a075aa6a7bae2f30977426bfc4a8a84decd11d",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa tail"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-a-checkpoint-whose-label-is-far-too-long",
+            "sha": "63697b14842b9317f9788c637960708c18814423",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "a checkpoint whose label is far too long to fit inside one ref name"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-mixed-case-123-abc",
+            "sha": "0ccd5fa5794353ba6fef5144f83a1c1a0b6c9829",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "MiXeD Case 123 ABC"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-feature-branch-label-1",
+            "sha": "58475644a951d610f349ab5bdf2c23ab3271a450",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "feature/branch .. label~1"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-snapshot",
+            "sha": "391edf3fd518e6b7befeb5995c0b40e8c90d88a9",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "üñî ✅ 快照"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-second",
+            "sha": "e6e87f940fd04faf10421550583be2b94d995a35",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "second"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-second",
+            "sha": "e6e87f940fd04faf10421550583be2b94d995a35",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "second"
+          },
+          {
+            "ref": "refs/nomoreide/snapshots/<ms>-first-checkpoint",
+            "sha": "7691c1017c36cdd4d8423dece3b661506b124603",
+            "createdAt": "2026-01-02T03:04:05+00:00",
+            "label": "first checkpoint"
+          }
+        ]
+      }
+    },
+    {
+      "key": "snapshots/create-from-subdirectory",
+      "value": {
+        "isError": false,
+        "payload": {
+          "sha": "d17975e7eceb382b7cb61a1c43aaee00f850d088",
+          "ref": "refs/nomoreide/snapshots/<ms>-taken-from-a-subdirectory",
+          "label": "taken from a subdirectory",
+          "createdAt": "<iso-instant>"
+        }
+      }
+    },
+    {
+      "key": "snapshots/create-empty-label",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_snapshot_create' parameter validation failed: label: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "snapshots/create-missing-label",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_snapshot_create' parameter validation failed: label: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "snapshots/list-empty-cwd",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_snapshots_list' parameter validation failed: cwd: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "snapshots/create-label-wrong-type",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_snapshot_create' parameter validation failed: label: Expected string, received number. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "onboard/node-pnpm",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-node-pnpm",
+            "clonePath": "<clones>/src-node-pnpm",
+            "languages": [
+              "node"
+            ],
+            "node": {
+              "packageManager": "pnpm",
+              "scripts": {
+                "dev": "vite --port 5173",
+                "build": "vite build",
+                "start": "node server.js"
+              },
+              "hasDevScript": true,
+              "hasStartScript": true
+            },
+            "envKeys": [
+              "DATABASE_URL",
+              "API_KEY",
+              "EMPTY",
+              "QUOTED"
+            ],
+            "readmeExcerpt": "## Getting Started\n\nInstall the dependencies and run the dev server:\n\n```\npnpm install\npnpm dev\n```\n\nIt listens on http://localhost:5173.\n\n## Licence\n\nMIT."
+          },
+          "proposals": [
+            {
+              "name": "src-node-pnpm",
+              "kind": "local",
+              "command": "pnpm dev",
+              "cwd": "<clones>/src-node-pnpm",
+              "port": 5173,
+              "installCommand": "pnpm install",
+              "confidence": "high",
+              "reason": "package.json \"dev\" script (pnpm)"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/node-yarn",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-node-yarn",
+            "clonePath": "<clones>/src-node-yarn",
+            "languages": [
+              "node"
+            ],
+            "node": {
+              "packageManager": "yarn",
+              "scripts": {
+                "start": "node index.js"
+              },
+              "hasDevScript": false,
+              "hasStartScript": true
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-node-yarn",
+              "kind": "local",
+              "command": "yarn start",
+              "cwd": "<clones>/src-node-yarn",
+              "installCommand": "yarn install",
+              "confidence": "medium",
+              "reason": "package.json \"start\" script (yarn)"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/node-bun",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-node-bun",
+            "clonePath": "<clones>/src-node-bun",
+            "languages": [
+              "node"
+            ],
+            "node": {
+              "packageManager": "bun",
+              "scripts": {
+                "dev": "bun run serve -p 4000",
+                "start": "bun index.ts"
+              },
+              "hasDevScript": true,
+              "hasStartScript": true
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-node-bun",
+              "kind": "local",
+              "command": "bun run dev",
+              "cwd": "<clones>/src-node-bun",
+              "port": 4000,
+              "installCommand": "bun install",
+              "confidence": "high",
+              "reason": "package.json \"dev\" script (bun)"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/node-bare",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-node-bare",
+            "clonePath": "<clones>/src-node-bare",
+            "languages": [
+              "node"
+            ],
+            "node": {
+              "packageManager": "npm",
+              "scripts": {},
+              "hasDevScript": false,
+              "hasStartScript": false
+            },
+            "envKeys": []
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/python-django",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-py-django",
+            "clonePath": "<clones>/src-py-django",
+            "languages": [
+              "python"
+            ],
+            "python": {
+              "hasRequirements": true,
+              "hasPyproject": false,
+              "hasManagePy": true,
+              "framework": "django"
+            },
+            "envKeys": [],
+            "readmeExcerpt": "## Setup\n\npython manage.py runserver"
+          },
+          "proposals": [
+            {
+              "name": "src-py-django",
+              "kind": "local",
+              "command": "python manage.py runserver",
+              "cwd": "<clones>/src-py-django",
+              "port": 8000,
+              "installCommand": "pip install -r requirements.txt",
+              "confidence": "medium",
+              "reason": "python django project"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/python-fastapi",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-py-fastapi",
+            "clonePath": "<clones>/src-py-fastapi",
+            "languages": [
+              "python"
+            ],
+            "python": {
+              "hasRequirements": false,
+              "hasPyproject": true,
+              "hasManagePy": false,
+              "framework": "fastapi"
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-py-fastapi",
+              "kind": "local",
+              "command": "uvicorn main:app --reload",
+              "cwd": "<clones>/src-py-fastapi",
+              "port": 8000,
+              "installCommand": "pip install .",
+              "confidence": "medium",
+              "reason": "python fastapi project"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/python-flask",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-py-flask",
+            "clonePath": "<clones>/src-py-flask",
+            "languages": [
+              "python"
+            ],
+            "python": {
+              "hasRequirements": true,
+              "hasPyproject": false,
+              "hasManagePy": false,
+              "framework": "flask"
+            },
+            "envKeys": [
+              "FLASK_ENV",
+              "SECRET_KEY"
+            ]
+          },
+          "proposals": [
+            {
+              "name": "src-py-flask",
+              "kind": "local",
+              "command": "flask run",
+              "cwd": "<clones>/src-py-flask",
+              "port": 5000,
+              "installCommand": "pip install -r requirements.txt",
+              "confidence": "medium",
+              "reason": "python flask project"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/compose",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-compose",
+            "clonePath": "<clones>/src-compose",
+            "languages": [
+              "node",
+              "docker"
+            ],
+            "node": {
+              "packageManager": "npm",
+              "scripts": {
+                "dev": "next dev"
+              },
+              "hasDevScript": true,
+              "hasStartScript": false
+            },
+            "docker": {
+              "hasDockerfile": true,
+              "composeFile": "docker-compose.yml",
+              "composeServices": [
+                "web",
+                "db",
+                "cache",
+                "legacy",
+                "defaults",
+                "unpublished",
+                "bare"
+              ],
+              "services": [
+                {
+                  "name": "web",
+                  "ports": [
+                    "3000:3000"
+                  ],
+                  "environment": {
+                    "NODE_ENV": "development",
+                    "API_URL": "http://localhost:9000"
+                  }
+                },
+                {
+                  "name": "db",
+                  "image": "postgres:16",
+                  "ports": [
+                    "5544:5432"
+                  ],
+                  "environment": {
+                    "POSTGRES_USER": "parity",
+                    "POSTGRES_PASSWORD": "s3cret",
+                    "POSTGRES_DB": "paritydb"
+                  }
+                },
+                {
+                  "name": "cache",
+                  "image": "redis:7",
+                  "ports": [
+                    "6379:6379"
+                  ],
+                  "environment": {}
+                },
+                {
+                  "name": "legacy",
+                  "image": "mysql:8.0",
+                  "ports": [
+                    "3307:3306"
+                  ],
+                  "environment": {
+                    "MYSQL_ROOT_PASSWORD": "rootpw",
+                    "MYSQL_DATABASE": "legacydb",
+                    "MYSQL_USER": "legacy",
+                    "MYSQL_PASSWORD": "legacypw"
+                  }
+                },
+                {
+                  "name": "defaults",
+                  "image": "postgres:15-alpine",
+                  "ports": [
+                    "6000:5432"
+                  ],
+                  "environment": {
+                    "POSTGRES_PASSWORD": "onlyapassword"
+                  }
+                },
+                {
+                  "name": "unpublished",
+                  "image": "postgres:16",
+                  "ports": [],
+                  "environment": {
+                    "POSTGRES_USER": "hidden",
+                    "POSTGRES_PASSWORD": "hidden"
+                  }
+                },
+                {
+                  "name": "bare",
+                  "image": "postgres",
+                  "ports": [
+                    "8080"
+                  ],
+                  "environment": {}
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-compose",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose",
+              "composeFile": "docker-compose.yml",
+              "composeService": "web",
+              "port": 3000,
+              "confidence": "high",
+              "reason": "docker-compose service \"web\""
+            },
+            {
+              "name": "src-compose-db",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose",
+              "composeFile": "docker-compose.yml",
+              "composeService": "db",
+              "port": 5544,
+              "confidence": "low",
+              "reason": "docker-compose service \"db\""
+            },
+            {
+              "name": "src-compose-cache",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose",
+              "composeFile": "docker-compose.yml",
+              "composeService": "cache",
+              "port": 6379,
+              "confidence": "low",
+              "reason": "docker-compose service \"cache\""
+            },
+            {
+              "name": "src-compose-legacy",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose",
+              "composeFile": "docker-compose.yml",
+              "composeService": "legacy",
+              "port": 3307,
+              "confidence": "low",
+              "reason": "docker-compose service \"legacy\""
+            },
+            {
+              "name": "src-compose-defaults",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose",
+              "composeFile": "docker-compose.yml",
+              "composeService": "defaults",
+              "port": 6000,
+              "confidence": "low",
+              "reason": "docker-compose service \"defaults\""
+            },
+            {
+              "name": "src-compose-unpublished",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose",
+              "composeFile": "docker-compose.yml",
+              "composeService": "unpublished",
+              "confidence": "low",
+              "reason": "docker-compose service \"unpublished\""
+            },
+            {
+              "name": "src-compose-bare",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose",
+              "composeFile": "docker-compose.yml",
+              "composeService": "bare",
+              "port": 8080,
+              "confidence": "low",
+              "reason": "docker-compose service \"bare\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-compose-db",
+              "engine": "postgres",
+              "url": "postgres://parity:s3cret@127.0.0.1:5544/paritydb",
+              "composeService": "db",
+              "confidence": "high",
+              "reason": "postgres database from compose service \"db\" (postgres:16)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/compose-unparseable",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-compose-bad",
+            "clonePath": "<clones>/src-compose-bad",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": true,
+              "composeFile": "compose.yaml",
+              "composeServices": [],
+              "services": []
+            },
+            "envKeys": []
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/compose-no-services",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-compose-empty",
+            "clonePath": "<clones>/src-compose-empty",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [],
+              "services": []
+            },
+            "envKeys": []
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/no-signals",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-plain",
+            "clonePath": "<clones>/src-plain",
+            "languages": [],
+            "envKeys": []
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/readme-without-heading",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-readme-only",
+            "clonePath": "<clones>/src-readme-only",
+            "languages": [],
+            "envKeys": [],
+            "readmeExcerpt": "# Plain\n\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28"
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/dockerfile-only",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-dockerfile-only",
+            "clonePath": "<clones>/src-dockerfile-only",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": true,
+              "composeServices": [],
+              "services": []
+            },
+            "envKeys": []
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/polyglot",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-polyglot",
+            "clonePath": "<clones>/src-polyglot",
+            "languages": [
+              "node",
+              "python"
+            ],
+            "node": {
+              "packageManager": "npm",
+              "scripts": {
+                "dev": "node server.js"
+              },
+              "hasDevScript": true,
+              "hasStartScript": false
+            },
+            "python": {
+              "hasRequirements": true,
+              "hasPyproject": false,
+              "hasManagePy": true,
+              "framework": "django"
+            },
+            "envKeys": [
+              "TEMPLATED_KEY"
+            ]
+          },
+          "proposals": [
+            {
+              "name": "src-polyglot",
+              "kind": "local",
+              "command": "npm run dev",
+              "cwd": "<clones>/src-polyglot",
+              "installCommand": "npm install",
+              "confidence": "high",
+              "reason": "package.json \"dev\" script (npm)"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/unreadable-manifest",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-bad-package-json",
+            "clonePath": "<clones>/src-bad-package-json",
+            "languages": [
+              "node"
+            ],
+            "node": {
+              "packageManager": "yarn",
+              "scripts": {},
+              "hasDevScript": false,
+              "hasStartScript": false
+            },
+            "envKeys": []
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/compose-services-not-a-map",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-compose-list",
+            "clonePath": "<clones>/src-compose-list",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yaml",
+              "composeServices": [
+                "0",
+                "1"
+              ],
+              "services": [
+                {
+                  "name": "0",
+                  "ports": [],
+                  "environment": {}
+                },
+                {
+                  "name": "1",
+                  "ports": [],
+                  "environment": {}
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-compose-list",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose-list",
+              "composeFile": "compose.yaml",
+              "composeService": "0",
+              "confidence": "high",
+              "reason": "docker-compose service \"0\""
+            },
+            {
+              "name": "src-compose-list-1",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose-list",
+              "composeFile": "compose.yaml",
+              "composeService": "1",
+              "confidence": "low",
+              "reason": "docker-compose service \"1\""
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/db-mysql",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-mysql",
+            "clonePath": "<clones>/src-db-mysql",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "mysql:8.0",
+                  "ports": [
+                    "3307:3306"
+                  ],
+                  "environment": {
+                    "MYSQL_ROOT_PASSWORD": "rootpw",
+                    "MYSQL_DATABASE": "storedb",
+                    "MYSQL_USER": "keeper",
+                    "MYSQL_PASSWORD": "keeperpw"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-mysql",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-mysql",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "port": 3307,
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-db-mysql-db",
+              "engine": "mysql",
+              "url": "mysql://keeper:keeperpw@127.0.0.1:3307/storedb",
+              "composeService": "store",
+              "confidence": "high",
+              "reason": "mysql database from compose service \"store\" (mysql:8.0)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/db-pg-minimal",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-pg-minimal",
+            "clonePath": "<clones>/src-db-pg-minimal",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "postgres:15-alpine",
+                  "ports": [
+                    "6000:5432"
+                  ],
+                  "environment": {
+                    "POSTGRES_PASSWORD": "onlyapassword"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-pg-minimal",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-pg-minimal",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "port": 6000,
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-db-pg-minimal-db",
+              "engine": "postgres",
+              "url": "postgres://postgres:onlyapassword@127.0.0.1:6000/postgres",
+              "composeService": "store",
+              "confidence": "high",
+              "reason": "postgres database from compose service \"store\" (postgres:15-alpine)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/db-pg-unpublished",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-pg-unpublished",
+            "clonePath": "<clones>/src-db-pg-unpublished",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "postgres:16",
+                  "ports": [],
+                  "environment": {
+                    "POSTGRES_USER": "hidden",
+                    "POSTGRES_PASSWORD": "hidden",
+                    "POSTGRES_DB": "hiddendb"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-pg-unpublished",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-pg-unpublished",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-db-pg-unpublished-db",
+              "engine": "postgres",
+              "url": "postgres://hidden:hidden@127.0.0.1:5432/hiddendb",
+              "composeService": "store",
+              "confidence": "high",
+              "reason": "postgres database from compose service \"store\" (postgres:16)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/env-edges",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-env-edges",
+            "clonePath": "<clones>/src-env-edges",
+            "languages": [],
+            "envKeys": [
+              "PLAIN",
+              "SPACED",
+              "EXPORTED",
+              "lower_case",
+              "NUMS123",
+              "DUP",
+              "DUP",
+              "TRAIL",
+              "QUOTED",
+              "DQ",
+              "MULTI",
+              "TABBED"
+            ]
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/env-fallthrough",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-env-fallthrough",
+            "clonePath": "<clones>/src-env-fallthrough",
+            "languages": [],
+            "envKeys": [
+              "FROM_SAMPLE"
+            ]
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/readme-long",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-readme-long",
+            "clonePath": "<clones>/src-readme-long",
+            "languages": [],
+            "envKeys": [],
+            "readmeExcerpt": "## Setup\nline 0 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 1 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 2 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 3 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 4 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 5 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 6 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 7 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 8 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 9 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 10 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 11 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 12 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 13 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 14 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 15 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 16 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 17 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 18 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 19 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 20 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 21 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 22 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 23 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 24 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 25 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 26 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 27 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nline 28 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/compose-odd",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-compose-odd",
+            "clonePath": "<clones>/src-compose-odd",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "a",
+                "b",
+                "c"
+              ],
+              "services": [
+                {
+                  "name": "a",
+                  "ports": [],
+                  "environment": {
+                    "NUM": "42",
+                    "BOOL": "true",
+                    "NIL": "",
+                    "EMPTY": ""
+                  }
+                },
+                {
+                  "name": "b",
+                  "ports": [
+                    "12"
+                  ],
+                  "environment": {
+                    "PAIR": "1"
+                  }
+                },
+                {
+                  "name": "c",
+                  "ports": [],
+                  "environment": {}
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-compose-odd",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose-odd",
+              "composeFile": "compose.yml",
+              "composeService": "a",
+              "confidence": "high",
+              "reason": "docker-compose service \"a\""
+            },
+            {
+              "name": "src-compose-odd-b",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose-odd",
+              "composeFile": "compose.yml",
+              "composeService": "b",
+              "port": 12,
+              "confidence": "low",
+              "reason": "docker-compose service \"b\""
+            },
+            {
+              "name": "src-compose-odd-c",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose-odd",
+              "composeFile": "compose.yml",
+              "composeService": "c",
+              "confidence": "low",
+              "reason": "docker-compose service \"c\""
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/port-word",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-port-word",
+            "clonePath": "<clones>/src-port-word",
+            "languages": [
+              "node"
+            ],
+            "node": {
+              "packageManager": "npm",
+              "scripts": {
+                "dev": "PORT=8080 node server.js"
+              },
+              "hasDevScript": true,
+              "hasStartScript": false
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-port-word",
+              "kind": "local",
+              "command": "npm run dev",
+              "cwd": "<clones>/src-port-word",
+              "port": 8080,
+              "installCommand": "npm install",
+              "confidence": "high",
+              "reason": "package.json \"dev\" script (npm)"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/port-out-of-range",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-port-out-of-range",
+            "clonePath": "<clones>/src-port-out-of-range",
+            "languages": [
+              "node"
+            ],
+            "node": {
+              "packageManager": "npm",
+              "scripts": {
+                "dev": "serve --port 99999"
+              },
+              "hasDevScript": true,
+              "hasStartScript": false
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-port-out-of-range",
+              "kind": "local",
+              "command": "npm run dev",
+              "cwd": "<clones>/src-port-out-of-range",
+              "installCommand": "npm install",
+              "confidence": "high",
+              "reason": "package.json \"dev\" script (npm)"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/py-unknown",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-py-unknown",
+            "clonePath": "<clones>/src-py-unknown",
+            "languages": [
+              "python"
+            ],
+            "python": {
+              "hasRequirements": true,
+              "hasPyproject": false,
+              "hasManagePy": false,
+              "framework": "unknown"
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-py-unknown",
+              "kind": "local",
+              "command": "python main.py",
+              "cwd": "<clones>/src-py-unknown",
+              "installCommand": "pip install -r requirements.txt",
+              "confidence": "low",
+              "reason": "python unknown project"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/db-mariadb",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-mariadb",
+            "clonePath": "<clones>/src-db-mariadb",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "mariadb:11",
+                  "ports": [
+                    "3310:3306"
+                  ],
+                  "environment": {
+                    "MYSQL_ROOT_PASSWORD": "rootpw"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-mariadb",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-mariadb",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "port": 3310,
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-db-mariadb-db",
+              "engine": "mysql",
+              "url": "mysql://root:rootpw@127.0.0.1:3310/",
+              "composeService": "store",
+              "confidence": "medium",
+              "reason": "mysql database from compose service \"store\" (mariadb:11)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/compose-db-first",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-compose-db-first",
+            "clonePath": "<clones>/src-compose-db-first",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "db",
+                "web"
+              ],
+              "services": [
+                {
+                  "name": "db",
+                  "image": "postgres:16",
+                  "ports": [
+                    "5432:5432"
+                  ],
+                  "environment": {
+                    "POSTGRES_PASSWORD": "p"
+                  }
+                },
+                {
+                  "name": "web",
+                  "ports": [
+                    "3000:3000"
+                  ],
+                  "environment": {}
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-compose-db-first",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose-db-first",
+              "composeFile": "compose.yml",
+              "composeService": "db",
+              "port": 5432,
+              "confidence": "high",
+              "reason": "docker-compose service \"db\""
+            },
+            {
+              "name": "src-compose-db-first-web",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose-db-first",
+              "composeFile": "compose.yml",
+              "composeService": "web",
+              "port": 3000,
+              "confidence": "low",
+              "reason": "docker-compose service \"web\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-compose-db-first-db",
+              "engine": "postgres",
+              "url": "postgres://postgres:p@127.0.0.1:5432/postgres",
+              "composeService": "db",
+              "confidence": "high",
+              "reason": "postgres database from compose service \"db\" (postgres:16)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/db-bare-port",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-bare-port",
+            "clonePath": "<clones>/src-db-bare-port",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "postgres:16",
+                  "ports": [
+                    "7777"
+                  ],
+                  "environment": {
+                    "POSTGRES_PASSWORD": "p"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-bare-port",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-bare-port",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "port": 7777,
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-db-bare-port-db",
+              "engine": "postgres",
+              "url": "postgres://postgres:p@127.0.0.1:7777/postgres",
+              "composeService": "store",
+              "confidence": "high",
+              "reason": "postgres database from compose service \"store\" (postgres:16)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/db-encoded",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-encoded",
+            "clonePath": "<clones>/src-db-encoded",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "postgres:16",
+                  "ports": [
+                    "5555:5432"
+                  ],
+                  "environment": {
+                    "POSTGRES_USER": "a b",
+                    "POSTGRES_PASSWORD": "p@ss:word/x",
+                    "POSTGRES_DB": "d b"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-encoded",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-encoded",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "port": 5555,
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-db-encoded-db",
+              "engine": "postgres",
+              "url": "postgres://a%20b:p%40ss%3Aword%2Fx@127.0.0.1:5555/d b",
+              "composeService": "store",
+              "confidence": "high",
+              "reason": "postgres database from compose service \"store\" (postgres:16)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/compose-file-precedence",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-compose-two-files",
+            "clonePath": "<clones>/src-compose-two-files",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "docker-compose.yml",
+              "composeServices": [
+                "chosen"
+              ],
+              "services": [
+                {
+                  "name": "chosen",
+                  "ports": [
+                    "4100:4100"
+                  ],
+                  "environment": {}
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-compose-two-files",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose-two-files",
+              "composeFile": "docker-compose.yml",
+              "composeService": "chosen",
+              "port": 4100,
+              "confidence": "high",
+              "reason": "docker-compose service \"chosen\""
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/readme-short-lines",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-readme-short-lines",
+            "clonePath": "<clones>/src-readme-short-lines",
+            "languages": [],
+            "envKeys": [],
+            "readmeExcerpt": "## Usage\nL0\nL1\nL2\nL3\nL4\nL5\nL6\nL7\nL8\nL9\nL10\nL11\nL12\nL13\nL14\nL15\nL16\nL17\nL18\nL19\nL20\nL21\nL22\nL23\nL24\nL25\nL26\nL27\nL28\nL29\nL30\nL31\nL32\nL33\nL34\nL35\nL36\nL37\nL38"
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/readme-deep-heading",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-readme-deep-heading",
+            "clonePath": "<clones>/src-readme-deep-heading",
+            "languages": [],
+            "envKeys": [],
+            "readmeExcerpt": "### quick start\nthis one\nand this"
+          },
+          "proposals": [],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/port-both-spellings",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-port-both-spellings",
+            "clonePath": "<clones>/src-port-both-spellings",
+            "languages": [
+              "node"
+            ],
+            "node": {
+              "packageManager": "npm",
+              "scripts": {
+                "dev": "PORT=3000 vite --port 5173"
+              },
+              "hasDevScript": true,
+              "hasStartScript": false
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-port-both-spellings",
+              "kind": "local",
+              "command": "npm run dev",
+              "cwd": "<clones>/src-port-both-spellings",
+              "port": 5173,
+              "installCommand": "npm install",
+              "confidence": "high",
+              "reason": "package.json \"dev\" script (npm)"
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/compose-env-equals",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-compose-env-equals",
+            "clonePath": "<clones>/src-compose-env-equals",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "web"
+              ],
+              "services": [
+                {
+                  "name": "web",
+                  "ports": [],
+                  "environment": {
+                    "DSN": "user=app host=db",
+                    "PLAIN": "1"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-compose-env-equals",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-compose-env-equals",
+              "composeFile": "compose.yml",
+              "composeService": "web",
+              "confidence": "high",
+              "reason": "docker-compose service \"web\""
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/db-ambiguous-image",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-ambiguous-image",
+            "clonePath": "<clones>/src-db-ambiguous-image",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "mysql-postgres:1",
+                  "ports": [
+                    "1234:5432"
+                  ],
+                  "environment": {
+                    "POSTGRES_PASSWORD": "p",
+                    "MYSQL_PASSWORD": "q"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-ambiguous-image",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-ambiguous-image",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "port": 1234,
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-db-ambiguous-image-db",
+              "engine": "postgres",
+              "url": "postgres://postgres:p@127.0.0.1:1234/postgres",
+              "composeService": "store",
+              "confidence": "high",
+              "reason": "postgres database from compose service \"store\" (mysql-postgres:1)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/db-not-a-database",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-not-a-database",
+            "clonePath": "<clones>/src-db-not-a-database",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "maria:11",
+                  "ports": [
+                    "3399:3306"
+                  ],
+                  "environment": {
+                    "MYSQL_ROOT_PASSWORD": "p"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-not-a-database",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-not-a-database",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "port": 3399,
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": []
+        }
+      }
+    },
+    {
+      "key": "onboard/db-user-no-database",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-user-no-database",
+            "clonePath": "<clones>/src-db-user-no-database",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "postgres:16",
+                  "ports": [
+                    "5599:5432"
+                  ],
+                  "environment": {
+                    "POSTGRES_USER": "appuser",
+                    "POSTGRES_PASSWORD": "p"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-user-no-database",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-user-no-database",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "port": 5599,
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-db-user-no-database-db",
+              "engine": "postgres",
+              "url": "postgres://appuser:p@127.0.0.1:5599/appuser",
+              "composeService": "store",
+              "confidence": "high",
+              "reason": "postgres database from compose service \"store\" (postgres:16)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/db-second-mapping",
+      "value": {
+        "isError": false,
+        "payload": {
+          "profile": {
+            "name": "src-db-second-mapping",
+            "clonePath": "<clones>/src-db-second-mapping",
+            "languages": [
+              "docker"
+            ],
+            "docker": {
+              "hasDockerfile": false,
+              "composeFile": "compose.yml",
+              "composeServices": [
+                "store"
+              ],
+              "services": [
+                {
+                  "name": "store",
+                  "image": "postgres:16",
+                  "ports": [
+                    "8080:80",
+                    "127.0.0.1:5401:5432"
+                  ],
+                  "environment": {
+                    "POSTGRES_PASSWORD": "p"
+                  }
+                }
+              ]
+            },
+            "envKeys": []
+          },
+          "proposals": [
+            {
+              "name": "src-db-second-mapping",
+              "kind": "docker-compose",
+              "cwd": "<clones>/src-db-second-mapping",
+              "composeFile": "compose.yml",
+              "composeService": "store",
+              "port": 8080,
+              "confidence": "high",
+              "reason": "docker-compose service \"store\""
+            }
+          ],
+          "databases": [
+            {
+              "name": "src-db-second-mapping-db",
+              "engine": "postgres",
+              "url": "postgres://postgres:p@127.0.0.1:5401/postgres",
+              "composeService": "store",
+              "confidence": "high",
+              "reason": "postgres database from compose service \"store\" (postgres:16)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "onboard/already-cloned",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_onboard_repo' execution failed: Destination already exists and is not empty: <clones>/src-node-yarn. Remove it or pick another repo."
+      }
+    },
+    {
+      "key": "onboard/refused-scheme",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_onboard_repo' execution failed: Unsupported repository URL scheme: wat:"
+      }
+    },
+    {
+      "key": "onboard/absent-source",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_onboard_repo' execution failed: Command failed: git clone --depth 1 file://<home>/absent.git <clones>/absent\nCloning into '<clones>/absent'...\nfatal: '<home>/absent.git' does not appear to be a git repository\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n"
+      }
+    },
+    {
+      "key": "onboard/source-not-a-repo",
+      "value": {
+        "isError": true,
+        "payload": "Tool 'nomoreide_onboard_repo' execution failed: Command failed: git clone --depth 1 file://<dir:not-a-repo> <clones>/not-a-repo\nCloning into '<clones>/not-a-repo'...\nfatal: '<dir:not-a-repo>' does not appear to be a git repository\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n"
+      }
+    },
+    {
+      "key": "onboard/empty-url",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_onboard_repo' parameter validation failed: url: String must contain at least 1 character(s). Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "onboard/missing-url",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_onboard_repo' parameter validation failed: url: Required. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    },
+    {
+      "key": "onboard/url-wrong-type",
+      "value": {
+        "error": {
+          "code": -32602,
+          "message": "MCP error -32602: Tool 'nomoreide_onboard_repo' parameter validation failed: url: Expected string, received boolean. Please check the parameter types and values according to the tool's schema."
+        }
+      }
+    }
+  ]
+}

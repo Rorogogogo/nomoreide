@@ -3,11 +3,11 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ActivityView } from "../src/web/client/src/features/activity/activity-view";
+import { ActivityView } from "../apps/dashboard/src/features/activity/activity-view";
 import type {
   ActivityMetrics,
   DashboardData,
-} from "../src/web/client/src/lib/api";
+} from "../apps/dashboard/src/lib/api";
 
 const api = vi.hoisted(() => ({
   getActivityMetrics: vi.fn(),

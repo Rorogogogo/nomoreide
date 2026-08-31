@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   registerService: vi.fn(),
 }));
 
-vi.mock("../src/web/client/src/lib/api/tauri-bridge", () => ({
+vi.mock("../apps/dashboard/src/lib/api/tauri-bridge", () => ({
   tauri_getDashboard: vi.fn(),
   tauri_getServiceDefinition: vi.fn(),
   tauri_startService: vi.fn(),
@@ -18,7 +18,7 @@ vi.mock("../src/web/client/src/lib/api/tauri-bridge", () => ({
   tauri_getServiceLogs: vi.fn(),
 }));
 
-import { tauriServicesApi } from "../src/web/client/src/lib/api/services-tauri";
+import { tauriServicesApi } from "../apps/dashboard/src/lib/api/services-tauri";
 
 beforeEach(() => {
   vi.clearAllMocks();

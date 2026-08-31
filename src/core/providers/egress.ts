@@ -122,6 +122,11 @@ function afterRedirect(init: RequestInit | undefined, status: number): RequestIn
   return { ...rest, method: "GET" };
 }
 
+/** Hosts that cannot leave the machine, and so need no transport encryption. */
+function isLoopback(hostname: string): boolean {
+  return hostname === "127.0.0.1" || hostname === "localhost" || hostname === "[::1]" || hostname === "::1";
+}
+
 /** The check itself. Throws before anything is sent, so a refused call leaks nothing. */
 function assertAllowed(providerId: string, allowed: Set<string>, input: string | URL): URL {
   let url: URL;
@@ -138,7 +143,12 @@ function assertAllowed(providerId: string, allowed: Set<string>, input: string |
   // Every provider API is HTTPS, and the schemes this rules out are the
   // interesting ones: `file:` reads the disk, `data:` smuggles a payload past a
   // host check, and `http:` puts a token on the wire in clear text.
-  if (url.protocol !== "https:") {
+  //
+  // The one exception is a loopback host, which is only ever reachable because
+  // `providerApiBase()` accepted an override naming one — and a request that
+  // never leaves the loopback interface is not on a wire to be read. Narrowing
+  // it to loopback is what keeps this from becoming a general `http:` opening.
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && isLoopback(url.hostname))) {
     throw new ProviderEgressError(
       `Provider "${providerId}" may only use https, not ${url.protocol.replace(":", "")}: ${url.href}`,
       providerId,

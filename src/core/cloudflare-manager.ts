@@ -16,6 +16,7 @@
  *    here takes the project name.
  */
 
+import { providerApiBase } from "./providers/api-base.js";
 import type { ProviderFetch } from "./providers/egress.js";
 
 /** Cloudflare wraps every response; `result` is the payload. */
@@ -166,11 +167,16 @@ export function cloudflareRepoUrl(remoteUrl: string): string | null {
   return parts.slice(-2).join("/").toLowerCase();
 }
 
+/** Cloudflare's API, or the loopback stand-in an environment override names. */
+export function cloudflareApiBase(): string {
+  return providerApiBase("NOMOREIDE_CLOUDFLARE_API_BASE", "https://api.cloudflare.com/client/v4");
+}
+
 export class CloudflareManager {
   constructor(
     private readonly token: string,
     private readonly accountId?: string,
-    private readonly baseUrl = "https://api.cloudflare.com/client/v4",
+    private readonly baseUrl = cloudflareApiBase(),
     /** The provider's scoped `fetch`; global `fetch` when built outside the registry. */
     private readonly fetchImpl?: ProviderFetch,
   ) {}
@@ -461,7 +467,7 @@ export async function cloudflareRequest<T>(
 ): Promise<T> {
   const url = path.startsWith("http")
     ? path
-    : `${auth.baseUrl ?? "https://api.cloudflare.com/client/v4"}${path}`;
+    : `${auth.baseUrl ?? cloudflareApiBase()}${path}`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${auth.token}`,
     Accept: "application/json",
