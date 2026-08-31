@@ -196,11 +196,21 @@ function run(gate: Gate, timeoutMs: number, mode: "live" | "record" | "replay"):
       const trimmed = output.trimEnd().split("\n");
       settle({
         gate,
-        verdict: timedOut ? "timed out" : code === 0 ? "passed" : "failed",
+        // Exit 3 is a gate saying "not here": something it drives is absent
+        // from this machine — Docker, in the one case that uses it — so it
+        // compared nothing rather than failing at something that is not a
+        // divergence. `--allow-skips` decides whether that fails the run.
+        verdict: timedOut
+          ? "timed out"
+          : code === 0
+            ? "passed"
+            : code === SKIPPED_EXIT
+              ? "skipped"
+              : "failed",
         seconds,
         detail: timedOut
           ? `no result within ${timeoutMs / 1000}s`
-          : code === 0
+          : code === 0 || code === SKIPPED_EXIT
             ? (trimmed.at(-1) ?? "").trim() || "passed"
             : complaint(trimmed, `exit ${code}`),
         output,
@@ -208,6 +218,9 @@ function run(gate: Gate, timeoutMs: number, mode: "live" | "record" | "replay"):
     });
   });
 }
+
+/** What a gate exits with to say it cannot run here. See {@link run}. */
+const SKIPPED_EXIT = 3;
 
 /** Reports rather than fails when a gate's probe binary was never built. */
 async function missingExample(gate: Gate): Promise<Result | null> {

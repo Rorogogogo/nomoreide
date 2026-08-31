@@ -193,6 +193,25 @@ const PLAN: Step[] = [
   },
 ];
 
+// One of the sessions below is a `docker-compose` service, and making a
+// terminal for it runs `docker`. A machine without Docker is not a machine
+// where the two runtimes disagree — the gate simply has nothing to compare —
+// so it says so and exits 3, which the runner reports as skipped. The whole
+// gate goes rather than the docker step alone: a recording is replayed step by
+// step, and a plan that changes with the host would replay out of step.
+if (!process.env.NOMOREIDE_PARITY_ALLOW_NO_DOCKER) {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const found = await promisify(execFile)("sh", ["-c", "command -v docker"]).then(
+    () => true,
+    () => false,
+  );
+  if (!found) {
+    console.log("skipped: this gate drives a docker-compose terminal and docker is not on PATH");
+    process.exit(3);
+  }
+}
+
 const argv = process.argv.slice(2);
 const dump = argv.includes("--dump");
 const candidateArgv = argv.filter((entry) => entry !== "--dump");

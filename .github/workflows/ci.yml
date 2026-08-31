@@ -121,13 +121,26 @@ jobs:
       # step, which meant it silently ran 13 of the 65 that existed: a gate is
       # only evidence if it runs, and one nobody remembered to add ran nowhere.
       # A new gate is now covered the moment its file is committed.
-      - name: Parity gates
-        run: npm run parity -- ./target/debug/nomoreide
-      # The same gates again, with the reference replaced by the answers it
-      # gave when `test/expectations/` was recorded — and pointed at a path
-      # that cannot exist, so a gate that still reaches for TypeScript dies
-      # naming itself. This is what says the suite survives deleting `src/`,
-      # which is Phase 8's whole point; it is cheap (no second runtime to
-      # start) and it fails on a recording that has gone stale.
+      # Replayed, not live — and the reason is the runner, not the port.
+      #
+      # A live gate starts the TypeScript reference beside the native binary.
+      # On a hosted macOS runner the reference cannot open a PTY at all:
+      # node-pty answers `posix_spawnp failed.` for `/bin/bash`, `ssh` and
+      # every other shell, so four terminal gates report a difference that is
+      # entirely the reference's inability to run here. The native side spawns
+      # them fine. Diffing against a runtime that is broken in this environment
+      # measures the environment.
+      #
+      # Replay has no such problem: the reference's answers come from
+      # `test/expectations/`, recorded where both runtimes work, and the
+      # candidate still runs for real against them. The reference is pointed at
+      # a path that cannot exist, so a gate that still reaches for TypeScript
+      # dies naming itself — which is also what says the suite survives
+      # deleting `src/`, Phase 8's whole point. Live remains the default for
+      # developers, and is what `npm run parity` does with no flag.
+      #
+      # `--allow-skips` covers a gate that needs something this runner does not
+      # have; `check-mcp-terminal-parity` drives a docker-compose terminal and
+      # there is no Docker here.
       - name: Parity gates (replayed, without the TypeScript reference)
-        run: npm run parity -- ./target/debug/nomoreide --replay
+        run: npm run parity -- ./target/debug/nomoreide --replay --allow-skips
