@@ -127,8 +127,11 @@ jobs:
               # No usable section: say so plainly rather than shipping a release
               # that silently looks like it contains nothing.
               echo "See the commit history for what changed in this release."
-              echo
             fi
+            # Blank line first: the note usually ends in a bullet, and Markdown
+            # lazy-continuation would otherwise fold the install note's opening
+            # line into that last list item.
+            echo
             cat .github/desktop-install-note.md
             echo "NOTES_EOF"
           } >> "$GITHUB_OUTPUT"
