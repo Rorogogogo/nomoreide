@@ -1,5 +1,13 @@
 //! Machine-global loopback daemon ownership and state boundary.
 
+// A route helper that fails hands back the response it wants sent — that is
+// axum's own idiom, and `axum::response::Response` is 128 bytes, exactly the
+// threshold `result_large_err` fires at. Boxing it would put a `Box<Response>`
+// and a `.map_err` in the signature of every helper on a path that is already
+// allocating an HTTP response, to save moving 128 bytes. The lint is right in
+// general and wrong here.
+#![allow(clippy::result_large_err)]
+
 mod runtime;
 mod server;
 mod service_discovery;

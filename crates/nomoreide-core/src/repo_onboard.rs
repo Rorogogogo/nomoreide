@@ -1056,8 +1056,7 @@ pub async fn scan_repo(clone_path: &str) -> Result<RepoProfile> {
 
     let leaf = clone_path
         .split(['\\', '/'])
-        .filter(|segment| !segment.is_empty())
-        .next_back()
+        .rfind(|segment| !segment.is_empty())
         .unwrap_or("service");
     Ok(RepoProfile {
         name: sanitize_name(leaf),

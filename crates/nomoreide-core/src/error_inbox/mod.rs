@@ -351,8 +351,7 @@ fn attach_continuation(
     let incident = inner
         .incidents
         .iter_mut()
-        .filter(|incident| incident.service == service)
-        .next_back()?;
+        .rfind(|incident| incident.service == service)?;
     incident.log_excerpt.push(text.to_string());
     incident.last_seen = at;
     if incident.file.is_none() {

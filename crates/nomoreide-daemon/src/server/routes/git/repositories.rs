@@ -181,8 +181,7 @@ async fn adopt(State(state): State<AppState>, body: Bytes) -> Response {
     // The last non-empty segment, so a trailing slash does not name the repo "".
     let name = root
         .split('/')
-        .filter(|segment| !segment.is_empty())
-        .next_back()
+        .rfind(|segment| !segment.is_empty())
         .unwrap_or(&root)
         .to_string();
     match state

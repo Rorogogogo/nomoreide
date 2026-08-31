@@ -66,7 +66,7 @@ async fn snapshot(
                         .is_some_and(|value| value.to_lowercase().contains(q))
             })
     });
-    items.sort_by(|left, right| left.title.to_lowercase().cmp(&right.title.to_lowercase()));
+    items.sort_by_key(|item| item.title.to_lowercase());
     Ok(ContextSnapshot {
         vault_path: library.vault_path(),
         items,

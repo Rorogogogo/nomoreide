@@ -244,8 +244,7 @@ fn suggest_title(head: &str, commits: &[Value]) -> String {
 fn branch_title(head: &str) -> String {
     let leaf = head
         .split('/')
-        .filter(|segment| !segment.is_empty())
-        .next_back()
+        .rfind(|segment| !segment.is_empty())
         .unwrap_or(head);
     let spaced: String = leaf
         .chars()

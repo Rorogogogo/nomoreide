@@ -737,7 +737,7 @@ fn propose_services(profile: &OnboardProfile) -> Vec<OnboardProposal> {
     let mut seen = HashSet::new();
     let mut result: Vec<OnboardProposal> = Vec::new();
     let mut sorted = proposals;
-    sorted.sort_by(|a, b| confidence_rank(&b.confidence).cmp(&confidence_rank(&a.confidence)));
+    sorted.sort_by_key(|entry| std::cmp::Reverse(confidence_rank(&entry.confidence)));
     for p in sorted {
         if seen.insert(p.name.clone()) {
             result.push(p);

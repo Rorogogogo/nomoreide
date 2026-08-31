@@ -1025,7 +1025,7 @@ impl ProcessManager {
     /// is confirmed before the owner exits.
     pub fn kill_all(&self) {
         let mut procs = self.processes.lock().unwrap();
-        for (_, proc) in procs.iter_mut() {
+        for proc in procs.values_mut() {
             #[cfg(unix)]
             if let Some(pgid) = proc.pgid.or(proc.pid) {
                 let _ = signal_process_group(pgid, libc::SIGTERM);
