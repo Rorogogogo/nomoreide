@@ -1,17 +1,8 @@
-/**
- * Services API entry point. Picks the backend implementation once at module load
- * (`isTauri()` → Rust core, else Node HTTP) and re-exports its methods as the
- * named functions the rest of the app already imports — never a per-function
- * `if (isTauri())` branch. The bundle-membership helpers below compose the
- * transport-agnostic `registerBundle` primitive so their array logic is not
- * duplicated across backends.
- */
-import { isTauri } from "./tauri-bridge.js";
+/** Services API entry point shared by browser and desktop. */
 import type { DashboardData, ServiceGraph, ServicesApi } from "./services-api.js";
 import { httpServicesApi } from "./services-http.js";
-import { tauriServicesApi } from "./services-tauri.js";
 
-const api: ServicesApi = isTauri() ? tauriServicesApi : httpServicesApi;
+const api: ServicesApi = httpServicesApi;
 
 export const {
   getDashboard,
