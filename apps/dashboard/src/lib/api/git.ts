@@ -1,16 +1,8 @@
-/**
- * Git API entry point. Picks the backend implementation once at module load
- * (`isTauri()` → Rust `invoke()`, else Node HTTP) and re-exports its methods as
- * the named functions the rest of the app already imports. Adding/altering a git
- * endpoint means editing the {@link GitApi} interface plus both implementations
- * — never a per-function `if (isTauri())` branch.
- */
-import { isTauri } from "./tauri-bridge.js";
+/** Git API entry point shared by browser and desktop. */
 import type { GitApi } from "./git-api.js";
 import { httpGitApi } from "./git-http.js";
-import { tauriGitApi } from "./git-tauri.js";
 
-const api: GitApi = isTauri() ? tauriGitApi : httpGitApi;
+const api: GitApi = httpGitApi;
 
 export const {
   getGitWorktrees,
