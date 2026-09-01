@@ -159,7 +159,7 @@ async fn refuse_empty_segments(
     if path.starts_with("/api/") && path.split('/').skip(1).any(str::is_empty) {
         let method = request.method().clone();
         let uri = request.uri().clone();
-        return shell::serve(method, uri).await;
+        return shell::serve_unauthenticated(method, uri).await;
     }
     next.run(request).await
 }

@@ -113,7 +113,9 @@ async fn accept(
     uri: &Uri,
 ) -> Result<Option<u64>, Response> {
     let Some(id) = incident_id(raw) else {
-        return Err(shell::serve(method.clone(), uri.clone()).await);
+        // `/api/errors/<bad id>`, which reaches the shell's 404 rather than the
+        // document — so there is no page here to hand a credential to.
+        return Err(shell::serve_unauthenticated(method.clone(), uri.clone()).await);
     };
     if method != allowed {
         return Err(error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed"));
