@@ -49,10 +49,65 @@ mod workflow_triggers;
 mod workflows;
 
 use crate::server::app::{require_credential, AppState};
-use axum::http::header::CONTENT_TYPE;
-use axum::http::HeaderValue;
-use axum::response::Response;
+use axum::http::header::{
+    ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_ORIGIN,
+    ACCESS_CONTROL_MAX_AGE, ACCESS_CONTROL_REQUEST_METHOD, CONTENT_TYPE, ORIGIN, VARY,
+};
+use axum::http::{HeaderValue, Method, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::{middleware, Router};
+
+const DESKTOP_ORIGINS: &[&str] = &[
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+    "http://127.0.0.1:5173",
+];
+
+/// Permit only the origins the bundled Tauri webview can actually use.
+///
+/// This is installed only on the embedded daemon. The bearer credential is
+/// still required; CORS merely lets the webview send it to its private port.
+pub(crate) async fn allow_desktop_origin(
+    request: axum::extract::Request,
+    next: middleware::Next,
+) -> Response {
+    let origin = request.headers().get(ORIGIN).cloned();
+    let allowed = origin.as_ref().is_some_and(|origin| {
+        DESKTOP_ORIGINS
+            .iter()
+            .any(|candidate| origin.as_bytes() == candidate.as_bytes())
+    });
+    let preflight = request.method() == Method::OPTIONS
+        && request
+            .headers()
+            .contains_key(ACCESS_CONTROL_REQUEST_METHOD);
+
+    if preflight && !allowed {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    let mut response = if preflight {
+        StatusCode::NO_CONTENT.into_response()
+    } else {
+        next.run(request).await
+    };
+    if allowed {
+        let headers = response.headers_mut();
+        headers.insert(ACCESS_CONTROL_ALLOW_ORIGIN, origin.expect("allowed origin"));
+        headers.insert(
+            ACCESS_CONTROL_ALLOW_METHODS,
+            HeaderValue::from_static("GET, POST, PUT, PATCH, DELETE, OPTIONS"),
+        );
+        headers.insert(
+            ACCESS_CONTROL_ALLOW_HEADERS,
+            HeaderValue::from_static("authorization, content-type, x-nomoreide-terminal-control"),
+        );
+        headers.insert(ACCESS_CONTROL_MAX_AGE, HeaderValue::from_static("600"));
+        headers.append(VARY, HeaderValue::from_static("Origin"));
+    }
+    response
+}
 
 pub(crate) fn router(state: AppState) -> Router {
     Router::new()

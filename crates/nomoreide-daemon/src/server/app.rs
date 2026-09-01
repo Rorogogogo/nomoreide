@@ -188,12 +188,45 @@ pub(crate) async fn require_credential(
 /// Compared in constant time: a credential that leaks its prefix through timing
 /// is guessable byte by byte.
 fn authorized(headers: &HeaderMap, credential: &str) -> bool {
-    let Some(candidate) = headers
+    let bearer = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.strip_prefix("Bearer "))
-    else {
-        return false;
-    };
-    bool::from(candidate.as_bytes().ct_eq(credential.as_bytes()))
+        .and_then(|value| value.strip_prefix("Bearer "));
+    let websocket = headers
+        .get(axum::http::header::SEC_WEBSOCKET_PROTOCOL)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .find_map(|protocol| protocol.strip_prefix("nomoreide-bearer."))
+        });
+    bearer
+        .into_iter()
+        .chain(websocket)
+        .any(|candidate| bool::from(candidate.as_bytes().ct_eq(credential.as_bytes())))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::authorized;
+    use axum::http::{header, HeaderMap, HeaderValue};
+
+    #[test]
+    fn accepts_bearer_headers_and_websocket_subprotocols() {
+        let mut bearer = HeaderMap::new();
+        bearer.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer secret"),
+        );
+        assert!(authorized(&bearer, "secret"));
+
+        let mut websocket = HeaderMap::new();
+        websocket.insert(
+            header::SEC_WEBSOCKET_PROTOCOL,
+            HeaderValue::from_static("nomoreide, nomoreide-bearer.secret"),
+        );
+        assert!(authorized(&websocket, "secret"));
+        assert!(!authorized(&websocket, "different"));
+    }
 }

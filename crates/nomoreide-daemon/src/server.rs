@@ -68,7 +68,56 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
 pub async fn run_with_listener(options: DaemonOptions, listener: TcpListener) -> Result<()> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     tokio::spawn(forward_shutdown_signals(shutdown_tx.clone()));
-    serve_on_listener(options, listener, shutdown_tx, shutdown_rx).await
+    serve_on_listener(
+        options,
+        listener,
+        RuntimePublication::Files,
+        shutdown_tx,
+        shutdown_rx,
+    )
+    .await
+}
+
+/// Run an app-private daemon whose connection details never reach disk.
+///
+/// The caller owns both the listener and credential, so it can hand the latter
+/// directly to its webview before loading the dashboard. Runtime logs and the
+/// crash-recovery registry still live under `runtime_paths`; only discovery
+/// state and the bearer credential remain in memory.
+pub async fn run_embedded(
+    options: DaemonOptions,
+    listener: TcpListener,
+    credential: String,
+) -> Result<()> {
+    let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
+    run_embedded_with_shutdown_requests(options, listener, credential, shutdown_tx, shutdown_rx)
+        .await
+}
+
+/// Run an app-private daemon with a shutdown channel owned by its host.
+///
+/// The desktop app uses the retained sender to drain every managed service
+/// before its process exits. HTTP shutdown requests use the same channel, so
+/// both paths have identical cleanup semantics.
+pub async fn run_embedded_with_shutdown_requests(
+    options: DaemonOptions,
+    listener: TcpListener,
+    credential: String,
+    shutdown_sender: mpsc::Sender<()>,
+    shutdown_requests: mpsc::Receiver<()>,
+) -> Result<()> {
+    anyhow::ensure!(
+        !credential.is_empty(),
+        "embedded daemon credential is empty"
+    );
+    serve_on_listener(
+        options,
+        listener,
+        RuntimePublication::Memory(credential),
+        shutdown_sender,
+        shutdown_requests,
+    )
+    .await
 }
 
 pub async fn serve_until<F>(options: DaemonOptions, shutdown: F) -> Result<()>
@@ -95,12 +144,25 @@ pub async fn serve_with_shutdown_requests(
     let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, options.port)))
         .await
         .context("failed to bind the daemon loopback listener")?;
-    serve_on_listener(options, listener, shutdown_sender, shutdown_requests).await
+    serve_on_listener(
+        options,
+        listener,
+        RuntimePublication::Files,
+        shutdown_sender,
+        shutdown_requests,
+    )
+    .await
+}
+
+enum RuntimePublication {
+    Files,
+    Memory(String),
 }
 
 async fn serve_on_listener(
     options: DaemonOptions,
     listener: TcpListener,
+    publication: RuntimePublication,
     shutdown_sender: mpsc::Sender<()>,
     shutdown_requests: mpsc::Receiver<()>,
 ) -> Result<()> {
@@ -150,9 +212,15 @@ async fn serve_on_listener(
         version: Some(env!("CARGO_PKG_VERSION").into()),
         started_at: Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
     };
-    ownership
-        .publish(&state)
-        .context("failed to publish daemon state")?;
+    let (credential, embedded) = match publication {
+        RuntimePublication::Files => {
+            ownership
+                .publish(&state)
+                .context("failed to publish daemon state")?;
+            (ownership.credential().to_string(), false)
+        }
+        RuntimePublication::Memory(credential) => (credential, true),
+    };
 
     // Token and cost history, beside the logs and the timeline in the same
     // state directory. The reference derives this path from its log directory
@@ -175,7 +243,7 @@ async fn serve_on_listener(
     // terminal stream is a subscriber rather than a change to the manager.
     let event_stream = tokio::sync::broadcast::Sender::<app::RuntimeEvent>::new(app::EVENT_BACKLOG);
     let app = routes::router(AppState {
-        credential: ownership.credential().to_string(),
+        credential,
         owner_id: ownership.owner_id().to_string(),
         config_store,
         runtime: runtime.clone(),
@@ -193,6 +261,11 @@ async fn serve_on_listener(
         registry_auth: AuthStates::new(),
         provider_logins: ProviderLogins::new(),
     });
+    let app = if embedded {
+        app.layer(axum::middleware::from_fn(routes::allow_desktop_origin))
+    } else {
+        app
+    };
 
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();
     let shutdown_coordinator = tokio::spawn(drain_before_shutdown(

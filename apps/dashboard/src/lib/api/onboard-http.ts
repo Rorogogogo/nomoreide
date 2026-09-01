@@ -1,5 +1,6 @@
 /** Node HTTP-server implementation of {@link OnboardApi} (the web/MCP backend). */
 import { requestJson } from "./client.js";
+import { apiFetch } from "./desktop-runtime.js";
 import type {
   InstallStreamHandlers,
   OnboardApi,
@@ -58,7 +59,7 @@ export const httpOnboardApi: OnboardApi = {
   },
 
   async streamInstall(params, handlers) {
-    const response = await fetch("/api/onboard/install/stream", {
+    const response = await apiFetch("/api/onboard/install/stream", {
       method: "POST",
       headers: JSON_HEADERS,
       body: JSON.stringify(params),

@@ -19,6 +19,10 @@ import {
   tauri_startTerminalStream,
   tauri_writeTerminalInput,
 } from "@/lib/api";
+import {
+  daemonWebSocketProtocols,
+  daemonWebSocketUrl,
+} from "@/lib/api/desktop-runtime";
 import { isTauri } from "@/lib/tauri";
 import { useResolvedTheme, type ResolvedTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -367,9 +371,16 @@ export function connectWebTerminal(options: {
   const location = options.location ?? window.location;
   const createSocket =
     options.createSocket ??
-    ((url: string) => new WebSocket(url) as unknown as TerminalSocketLike);
+    ((url: string) =>
+      new WebSocket(url, daemonWebSocketProtocols()) as unknown as TerminalSocketLike);
   options.reportStatus(options.initialStatus);
-  const socket = createSocket(terminalSocketUrl(options.sessionId, location));
+  const fallbackUrl = terminalSocketUrl(options.sessionId, location);
+  const socket = createSocket(
+    daemonWebSocketUrl(
+      `/api/terminal/socket?id=${encodeURIComponent(options.sessionId)}`,
+      fallbackUrl,
+    ),
+  );
   let disposed = false;
   let cancelInitialInput: (() => void) | undefined;
   const cancelStaggeredInputs: Array<() => void> = [];

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { runServiceTests, type TestRun, type TestRunEvent } from "@/lib/api";
+import { openApiEventSource } from "@/lib/api/api-event-source";
 
 export interface TestOutputLine {
   stream: "stdout" | "stderr";
@@ -24,7 +25,7 @@ export function useTestRunner(serviceName: string) {
     runIdRef.current = undefined;
     setRun(undefined);
     setLines([]);
-    const source = new EventSource(
+    const source = openApiEventSource(
       `/api/services/${encodeURIComponent(serviceName)}/test/stream`,
     );
     const onEvent = (event: MessageEvent) => {

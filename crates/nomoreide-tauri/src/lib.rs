@@ -7,6 +7,7 @@ pub fn run_terminal_attach(socket_path: &str, token: &str) -> Result<(), String>
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::time::{Duration, Instant};
 use tauri::{Manager, RunEvent, State, WebviewWindowBuilder, WindowEvent};
@@ -29,11 +30,14 @@ pub struct AppState {
     pub process_manager: ProcessManager,
     pub terminal_manager: TerminalManager,
     pub database_exports: Mutex<HashMap<String, Option<watch::Sender<bool>>>>,
-    daemon_task: StdMutex<Option<tauri::async_runtime::JoinHandle<anyhow::Result<()>>>>,
+    embedded_daemon: StdMutex<Option<EmbeddedDaemonTask>>,
+    shutdown_started: AtomicBool,
+    exit_ready: AtomicBool,
 }
 
 const DAEMON_STARTUP_TIMEOUT: Duration = Duration::from_secs(20);
 const DAEMON_STARTUP_POLL: Duration = Duration::from_millis(50);
+const DAEMON_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -57,7 +61,9 @@ pub fn run() {
         process_manager,
         terminal_manager: TerminalManager::new(),
         database_exports: Mutex::new(HashMap::new()),
-        daemon_task: StdMutex::new(None),
+        embedded_daemon: StdMutex::new(None),
+        shutdown_started: AtomicBool::new(false),
+        exit_ready: AtomicBool::new(false),
     };
 
     let mut context = tauri::generate_context!();
@@ -85,19 +91,24 @@ pub fn run() {
             let window_config = main_window.clone();
             tauri::async_runtime::spawn(async move {
                 match start_embedded_daemon(runtime_paths).await {
-                    Ok(daemon_task) => {
+                    Ok(daemon) => {
                         let state: State<AppState> = app_handle.state();
                         state
-                            .daemon_task
+                            .embedded_daemon
                             .lock()
                             .expect("embedded daemon task mutex poisoned")
-                            .replace(daemon_task);
+                            .replace(daemon.runtime);
 
                         let window_app = app_handle.clone();
                         let error_app = app_handle.clone();
+                        let initialization_script =
+                            desktop_initialization_script(&daemon.base_url, &daemon.credential);
                         if let Err(error) = app_handle.run_on_main_thread(move || {
                             if let Err(error) =
                                 WebviewWindowBuilder::from_config(&window_app, &window_config)
+                                    .map(|builder| {
+                                        builder.initialization_script(initialization_script)
+                                    })
                                     .and_then(WebviewWindowBuilder::build)
                             {
                                 show_startup_error(&window_app, &error.to_string());
@@ -287,33 +298,29 @@ pub fn run() {
                 if state.terminal_manager.has_external_presentations() {
                     let _ = window.hide();
                 } else {
-                    let app = window.app_handle().clone();
-                    tauri::async_runtime::spawn(async move {
-                        let state: State<AppState> = app.state();
-                        if let Err(error) = state.terminal_manager.close_all() {
-                            eprintln!("NoMoreIDE refused to exit: {error}");
-                            return;
-                        }
-                        match state.process_manager.shutdown_all().await {
-                            Ok(()) => app.exit(0),
-                            Err(error) => eprintln!("NoMoreIDE refused to exit: {error}"),
-                        }
-                    });
+                    begin_app_shutdown(window.app_handle().clone());
                 }
             }
         })
         .build(context)
         .expect("error building tauri application")
         .run(|app, event| match event {
+            RunEvent::ExitRequested { api, .. } => {
+                let state: State<AppState> = app.state();
+                if !state.exit_ready.load(Ordering::Acquire) {
+                    api.prevent_exit();
+                    begin_app_shutdown(app.clone());
+                }
+            }
             RunEvent::Exit => {
                 let state: State<AppState> = app.state();
-                if let Some(daemon_task) = state
-                    .daemon_task
+                if let Some(daemon) = state
+                    .embedded_daemon
                     .lock()
                     .expect("embedded daemon task mutex poisoned")
                     .take()
                 {
-                    daemon_task.abort();
+                    daemon.task.abort();
                 }
                 let _ = state.terminal_manager.close_all();
                 state.process_manager.kill_all();
@@ -330,7 +337,7 @@ pub fn run() {
 
 async fn start_embedded_daemon(
     runtime_paths: nomoreide_daemon_client::RuntimePaths,
-) -> Result<tauri::async_runtime::JoinHandle<anyhow::Result<()>>, String> {
+) -> Result<StartedEmbeddedDaemon, String> {
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .map_err(|error| format!("failed to reserve a private daemon port: {error}"))?;
@@ -343,11 +350,27 @@ async fn start_embedded_daemon(
         runtime_paths,
         config_path: ConfigStore::default_path(),
     };
+    let credential = format!(
+        "{}{}",
+        uuid::Uuid::new_v4().simple(),
+        uuid::Uuid::new_v4().simple()
+    );
+    let daemon_credential = credential.clone();
+    let (shutdown, shutdown_requests) = tokio::sync::mpsc::channel(1);
+    let daemon_shutdown = shutdown.clone();
     let mut daemon_task = tauri::async_runtime::spawn(async move {
-        nomoreide_daemon::run_with_listener(options, listener).await
+        nomoreide_daemon::run_embedded_with_shutdown_requests(
+            options,
+            listener,
+            daemon_credential,
+            daemon_shutdown,
+            shutdown_requests,
+        )
+        .await
     });
 
-    let health_url = format!("http://127.0.0.1:{port}/api/health");
+    let base_url = format!("http://127.0.0.1:{port}");
+    let health_url = format!("{base_url}/api/health");
     let http = reqwest::Client::builder()
         .timeout(Duration::from_millis(250))
         .build()
@@ -364,7 +387,14 @@ async fn start_embedded_daemon(
             }
             response = http.get(&health_url).send() => {
                 if response.is_ok_and(|response| response.status().is_success()) {
-                    return Ok(daemon_task);
+                    return Ok(StartedEmbeddedDaemon {
+                        base_url,
+                        credential,
+                        runtime: EmbeddedDaemonTask {
+                            shutdown,
+                            task: daemon_task,
+                        },
+                    });
                 }
             }
         }
@@ -378,6 +408,106 @@ async fn start_embedded_daemon(
         }
         tokio::time::sleep(DAEMON_STARTUP_POLL).await;
     }
+}
+
+struct StartedEmbeddedDaemon {
+    base_url: String,
+    credential: String,
+    runtime: EmbeddedDaemonTask,
+}
+
+struct EmbeddedDaemonTask {
+    shutdown: tokio::sync::mpsc::Sender<()>,
+    task: tauri::async_runtime::JoinHandle<anyhow::Result<()>>,
+}
+
+fn begin_app_shutdown(app: tauri::AppHandle) {
+    let state: State<AppState> = app.state();
+    if state.shutdown_started.swap(true, Ordering::AcqRel) {
+        return;
+    }
+
+    tauri::async_runtime::spawn(async move {
+        let state: State<AppState> = app.state();
+        if let Err(error) = state.terminal_manager.close_all() {
+            refuse_app_shutdown(&app, &format!("failed to close terminal sessions: {error}"));
+            return;
+        }
+        if let Err(error) = state.process_manager.shutdown_all().await {
+            refuse_app_shutdown(&app, &format!("failed to stop desktop services: {error}"));
+            return;
+        }
+
+        let daemon = state
+            .embedded_daemon
+            .lock()
+            .expect("embedded daemon task mutex poisoned")
+            .take();
+        if let Some(mut daemon) = daemon {
+            if daemon.shutdown.send(()).await.is_err() {
+                refuse_app_shutdown(&app, "the embedded daemon shutdown channel closed");
+                return;
+            }
+            match tokio::time::timeout(DAEMON_SHUTDOWN_TIMEOUT, &mut daemon.task).await {
+                Ok(Ok(Ok(()))) => {}
+                Ok(Ok(Err(error))) => {
+                    refuse_app_shutdown(
+                        &app,
+                        &format!("the embedded daemon failed while stopping: {error:#}"),
+                    );
+                    return;
+                }
+                Ok(Err(error)) => {
+                    refuse_app_shutdown(
+                        &app,
+                        &format!("the embedded daemon task failed while stopping: {error}"),
+                    );
+                    return;
+                }
+                Err(_) => {
+                    state
+                        .embedded_daemon
+                        .lock()
+                        .expect("embedded daemon task mutex poisoned")
+                        .replace(daemon);
+                    refuse_app_shutdown(
+                        &app,
+                        &format!(
+                            "the embedded daemon did not stop within {} seconds",
+                            DAEMON_SHUTDOWN_TIMEOUT.as_secs()
+                        ),
+                    );
+                    return;
+                }
+            }
+        }
+
+        state.exit_ready.store(true, Ordering::Release);
+        app.exit(0);
+    });
+}
+
+fn refuse_app_shutdown(app: &tauri::AppHandle, error: &str) {
+    let state: State<AppState> = app.state();
+    state.shutdown_started.store(false, Ordering::Release);
+    eprintln!("NoMoreIDE refused to exit: {error}");
+    app.dialog()
+        .message(format!(
+            "NoMoreIDE could not safely stop its local service. The app will remain open.\n\n{error}"
+        ))
+        .title("NoMoreIDE could not quit")
+        .kind(MessageDialogKind::Error)
+        .show(|_| {});
+}
+
+fn desktop_initialization_script(base_url: &str, credential: &str) -> String {
+    let runtime = serde_json::json!({
+        "apiBaseUrl": base_url,
+        "credential": credential,
+    });
+    format!(
+        "Object.defineProperty(window, '__NOMOREIDE_DESKTOP__', {{ value: Object.freeze({runtime}), enumerable: false, configurable: false, writable: false }});"
+    )
 }
 
 fn show_startup_error(app: &tauri::AppHandle, error: &str) {

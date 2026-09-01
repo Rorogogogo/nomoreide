@@ -1,5 +1,6 @@
 import { beginApiRequest } from "@/lib/api-activity";
 import { recordRuntimeApiFailure } from "@/lib/runtime-connection";
+import { apiFetch } from "./desktop-runtime.js";
 
 export interface PortConflictDetail {
   code: "PORT_IN_USE";
@@ -42,7 +43,7 @@ export async function requestJson<T>(url: string, init?: RequestInit): Promise<T
   try {
     let response: Response;
     try {
-      response = await fetch(url, init);
+      response = await apiFetch(url, init);
     } catch (caught) {
       recordRuntimeApiFailure(url, caught, init?.method);
       throw caught;

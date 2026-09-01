@@ -1,4 +1,4 @@
-use nomoreide_daemon::{serve_until, DaemonOptions};
+use nomoreide_daemon::{run_embedded, serve_until, DaemonOptions};
 use nomoreide_daemon_client::protocol::{ServiceRuntimeState, TimelineEventKind, TimelineSeverity};
 use nomoreide_daemon_client::{
     is_pid_alive, read_daemon_state, DaemonClient, DaemonClientError, RuntimePaths,
@@ -12,6 +12,125 @@ use uuid::Uuid;
 
 fn temp_dir() -> PathBuf {
     std::env::temp_dir().join(format!("nomoreide-daemon-http-{}", Uuid::new_v4()))
+}
+
+#[tokio::test]
+async fn embedded_daemon_keeps_auth_in_memory_and_allows_only_desktop_origins() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({ "version": 1, "services": [], "bundles": [] })).unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let credential = "desktop-test-credential".to_string();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        run_embedded(
+            DaemonOptions {
+                port,
+                runtime_paths: task_paths,
+                config_path,
+            },
+            listener,
+            credential,
+        )
+        .await
+    });
+    let base_url = format!("http://127.0.0.1:{port}");
+    let http = reqwest::Client::new();
+    for _ in 0..100 {
+        if http
+            .get(format!("{base_url}/api/health"))
+            .send()
+            .await
+            .is_ok_and(|response| response.status().is_success())
+        {
+            break;
+        }
+        assert!(
+            !server.is_finished(),
+            "embedded daemon stopped during startup"
+        );
+        sleep(Duration::from_millis(20)).await;
+    }
+
+    assert!(!runtime_paths.state.exists());
+    assert!(!runtime_paths.credential.exists());
+
+    let missing = http
+        .get(format!("{base_url}/api/terminal/capabilities"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(missing.status(), StatusCode::UNAUTHORIZED);
+    let wrong = http
+        .get(format!("{base_url}/api/terminal/capabilities"))
+        .header("origin", "tauri://localhost")
+        .bearer_auth("wrong-desktop-credential")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wrong.status(), StatusCode::UNAUTHORIZED);
+    let allowed = http
+        .get(format!("{base_url}/api/terminal/capabilities"))
+        .header("origin", "tauri://localhost")
+        .bearer_auth("desktop-test-credential")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(allowed.status(), StatusCode::OK);
+    assert_eq!(
+        allowed
+            .headers()
+            .get("access-control-allow-origin")
+            .unwrap(),
+        "tauri://localhost"
+    );
+
+    let preflight = http
+        .request(
+            reqwest::Method::OPTIONS,
+            format!("{base_url}/api/terminal/capabilities"),
+        )
+        .header("origin", "http://127.0.0.1:5173")
+        .header("access-control-request-method", "GET")
+        .header("access-control-request-headers", "authorization")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(preflight.status(), StatusCode::NO_CONTENT);
+    let refused = http
+        .request(
+            reqwest::Method::OPTIONS,
+            format!("{base_url}/api/terminal/capabilities"),
+        )
+        .header("origin", "https://example.com")
+        .header("access-control-request-method", "GET")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(refused.status(), StatusCode::FORBIDDEN);
+
+    let stopped = http
+        .post(format!("{base_url}/api/daemon/shutdown"))
+        .bearer_auth("desktop-test-credential")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(stopped.status(), StatusCode::OK);
+    tokio::time::timeout(Duration::from_secs(5), &mut server)
+        .await
+        .expect("embedded daemon did not stop")
+        .unwrap()
+        .unwrap();
+    let _ = tokio::fs::remove_dir_all(root).await;
 }
 
 #[tokio::test]
