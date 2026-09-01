@@ -6,8 +6,8 @@ const STEPS: Step[] = [
     title: "Add the MCP server",
     body: "Register NoMoreIDE with your agent. It runs locally over stdio through npx, so there is no separate daemon or account.",
     code: [
-      "claude mcp add --transport stdio nomoreide -- npx -y nomoreide",
-      "codex mcp add nomoreide -- npx -y nomoreide",
+      "nomoreide setup claude",
+      "nomoreide setup codex",
       'Gemini: add {"command":"npx","args":["-y","nomoreide"]} to mcpServers.nomoreide',
     ],
   },

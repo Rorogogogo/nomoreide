@@ -24,12 +24,27 @@ function GithubIcon({ className }: { className?: string }) {
 const PROMPT_LINES = [
   "Set up NoMoreIDE for me — an AI-native local dev workbench exposed as an MCP server.",
   "",
-  "1. Add it as a stdio MCP server that runs `npx -y nomoreide`, using whatever MCP config you support.",
-  "2. Restart yourself if required, then confirm the `nomoreide` tools are connected.",
+  "1. Install it: `curl -fsSL https://www.nomoreide.com/install.sh | sh`. That installs the",
+  "   `nomoreide` binary and registers it with every AI agent on this machine.",
+  "2. If you were already registered, restart yourself, then confirm the `nomoreide` tools are connected.",
   "3. Open the NoMoreIDE Web UI at http://127.0.0.1:4317/ and list my current services so I can start working.",
 ];
 
+// One command per agent, because `nomoreide setup` writes each agent's own
+// config in its own format — and records the *absolute* path of the installed
+// binary, which is what an agent launched from a desktop session (with no
+// shell PATH) needs. The manual `mcp add` line is kept alongside for anyone
+// who would rather see exactly what is written.
 const AGENT_SETUPS = [
+  {
+    id: "install",
+    label: "Everything at once",
+    description:
+      "Installs the binary and registers it with every agent it finds — Claude Code, Codex, Gemini, Cursor and Windsurf.",
+    language: "shell",
+    lines: ["curl -fsSL https://www.nomoreide.com/install.sh | sh"],
+    copyText: "curl -fsSL https://www.nomoreide.com/install.sh | sh",
+  },
   {
     id: "prompt",
     label: "Any agent (prompt)",
@@ -42,44 +57,57 @@ const AGENT_SETUPS = [
   {
     id: "claude",
     label: "Claude Code",
-    description: "Add NoMoreIDE as a stdio MCP server.",
+    description: "Registers the MCP server and installs the debugging skill.",
     language: "shell",
-    lines: ["claude mcp add --transport stdio nomoreide -- npx -y nomoreide"],
-    copyText: "claude mcp add --transport stdio nomoreide -- npx -y nomoreide",
+    lines: [
+      "nomoreide setup claude",
+      "",
+      "# or register it by hand:",
+      "claude mcp add --transport stdio nomoreide -- nomoreide mcp",
+    ],
+    copyText: "nomoreide setup claude",
   },
   {
     id: "codex",
     label: "Codex CLI",
-    description: "Register NoMoreIDE as a local MCP server for Codex.",
+    description: "Registers the MCP server and installs the debugging skill.",
     language: "shell",
-    lines: ["codex mcp add nomoreide -- npx -y nomoreide"],
-    copyText: "codex mcp add nomoreide -- npx -y nomoreide",
+    lines: [
+      "nomoreide setup codex",
+      "",
+      "# or register it by hand:",
+      "codex mcp add nomoreide -- nomoreide mcp",
+    ],
+    copyText: "nomoreide setup codex",
   },
   {
     id: "gemini",
     label: "Gemini CLI",
-    description: "Add this server entry to your Gemini settings.",
-    language: "json",
+    description: "Registers the MCP server and installs the debugging skill.",
+    language: "shell",
     lines: [
-      "{",
-      '  "mcpServers": {',
-      '    "nomoreide": {',
-      '      "command": "npx",',
-      '      "args": ["-y", "nomoreide"]',
-      "    }",
-      "  }",
-      "}",
+      "nomoreide setup gemini",
+      "",
+      "# writes ~/.gemini/settings.json for you",
     ],
-    copyText: [
-      "{",
-      '  "mcpServers": {',
-      '    "nomoreide": {',
-      '      "command": "npx",',
-      '      "args": ["-y", "nomoreide"]',
-      "    }",
-      "  }",
-      "}",
-    ].join("\n"),
+    copyText: "nomoreide setup gemini",
+  },
+  {
+    id: "cursor",
+    label: "Cursor",
+    description: "Writes ~/.cursor/mcp.json and installs the debugging skill.",
+    language: "shell",
+    lines: ["nomoreide setup cursor"],
+    copyText: "nomoreide setup cursor",
+  },
+  {
+    id: "windsurf",
+    label: "Windsurf",
+    description:
+      "Writes ~/.codeium/windsurf/mcp_config.json and installs the debugging skill.",
+    language: "shell",
+    lines: ["nomoreide setup windsurf"],
+    copyText: "nomoreide setup windsurf",
   },
 ];
 
@@ -240,8 +268,9 @@ export function Hero() {
               </h2>
             </div>
             <p className="max-w-lg text-sm leading-6 text-muted-foreground">
-              Copy the universal prompt and let your agent wire it up, or grab
-              the exact command for your agent. The Web UI runs locally at{" "}
+              One command installs NoMoreIDE and wires it into every agent on
+              your machine — or pick your agent below. No Node.js required. The
+              Web UI runs locally at{" "}
               <code className="font-mono text-foreground">
                 http://127.0.0.1:4317/
               </code>

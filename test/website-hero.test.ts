@@ -29,9 +29,16 @@ describe("website hero", () => {
   test("keeps MCP setup commands on the page", () => {
     expect(heroSource).toContain('href="#mcp-setup"');
     expect(heroSource).toContain('id="mcp-setup"');
-    expect(heroSource).toContain("claude mcp add --transport stdio nomoreide -- npx -y nomoreide");
-    expect(heroSource).toContain("codex mcp add nomoreide -- npx -y nomoreide");
-    expect(heroSource).toContain('"args": ["-y", "nomoreide"]');
+    expect(heroSource).toContain("nomoreide setup claude");
+    expect(heroSource).toContain("nomoreide setup codex");
+    // The one-liner that installs and wires up every agent it finds.
+    expect(heroSource).toContain("curl -fsSL https://www.nomoreide.com/install.sh | sh");
+    // Five agents, not three.
+    expect(heroSource).toContain("nomoreide setup cursor");
+    expect(heroSource).toContain("nomoreide setup windsurf");
+    // Gemini used to be a hand-pasted JSON block naming `npx`; `setup` writes
+    // ~/.gemini/settings.json itself now, with the binary's absolute path.
+    expect(heroSource).toContain("nomoreide setup gemini");
   });
 
   test("does not render a duplicate real product demo below the hero", () => {

@@ -12,11 +12,16 @@ import {
 import { Button } from "./ui/button";
 
 const claudeSetup =
-  "claude mcp add --transport stdio nomoreide -- npx -y nomoreide";
-const codexSetup = "codex mcp add nomoreide -- npx -y nomoreide";
-const recommendedSetup = `npx -y nomoreide setup codex
-npx -y nomoreide setup claude
-npx -y nomoreide setup gemini`;
+  "claude mcp add --transport stdio nomoreide -- nomoreide mcp";
+const codexSetup = "codex mcp add nomoreide -- nomoreide mcp";
+const recommendedSetup = `curl -fsSL https://www.nomoreide.com/install.sh | sh
+
+# already installed? register one agent at a time:
+nomoreide setup claude
+nomoreide setup codex
+nomoreide setup gemini
+nomoreide setup cursor
+nomoreide setup windsurf`;
 const geminiSetup = `{
   "mcpServers": {
     "nomoreide": {
@@ -27,7 +32,7 @@ const geminiSetup = `{
 }`;
 
 const setupPrompt =
-  "Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.";
+  "Please set up NoMoreIDE as a local MCP server for this agent. Install it with `curl -fsSL https://www.nomoreide.com/install.sh | sh`, which registers a server named nomoreide for every agent it finds. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.";
 
 const sessionPrompt =
   "Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git and GitHub work, inspect status, diffs, PRs, issues, and CI before staging, committing, or merging. For database work, keep MCP queries read-only; return one statement in a standard sql fence, identify the target connection, and direct the human to review it in the locked Web UI SQL console.";
@@ -332,7 +337,7 @@ export function DocsPage() {
                 ["MCP server", "`nomoreide` starts the stdio server for connected agents."],
                 ["Terminal UI", "`nomoreide tui` opens the terminal interface."],
                 ["Web dashboard", "`nomoreide web` serves `http://127.0.0.1:4317` by default."],
-                ["macOS desktop", "Download the standalone app from GitHub Releases for a native dashboard without a separate Node backend."],
+                ["macOS desktop", "Download the standalone app from GitHub Releases, or install the CLI with install.sh, npm or cargo — all ship the same Rust binary with the dashboard compiled in."],
               ]}
             />
             <CodeBlock code={`nomoreide
@@ -502,8 +507,8 @@ nomoreide logs backend`}
           >
             <InfoGrid
               items={[
-                ["MCP missing", "Re-run setup, restart the agent, verify with /mcp, and confirm npx -y nomoreide works."],
-                ["Node issue", "Use Node.js 20 or newer, or install globally with npm install -g nomoreide."],
+                ["MCP missing", "Re-run `nomoreide setup <agent>`, restart the agent, and verify with /mcp. A config still naming `npx -y nomoreide` or a `dist/index.js` path predates the native binary — re-running setup rewrites it."],
+                ["No Node.js", "None is needed — the binary is native. `npm install -g nomoreide` and `cargo install nomoreide` install the same executable."],
                 ["Port conflict", "Use nomoreide web --port=4320 or inspect the process on 4317."],
                 ["Service failure", "Check absolute cwd, command validity, service health, logs, and timeline."],
                 ["Git missing", "Register an absolute Git worktree path before using repository tools."],
