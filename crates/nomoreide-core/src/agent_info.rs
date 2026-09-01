@@ -940,9 +940,10 @@ fn basename(path: &str) -> &str {
 
 /// `Date.parse`, narrowed to the ISO instants these files hold.
 ///
-/// Unreadable is `NaN`, which the ordering below turns into "no opinion" —
-/// exactly what the reference does, because a comparator that returns `NaN` is
-/// read as zero and a stable sort then leaves the pair alone.
+/// Unreadable is `NaN`. The ordering below places unreadable instants after
+/// readable ones: JavaScript treats a `NaN` comparator result as equal, but
+/// reproducing that literally would make the Rust comparator non-transitive
+/// and can make `sort_by` panic.
 fn date_parse_ms(value: Option<&Value>) -> f64 {
     match value {
         None | Some(Value::Null) => 0.0,
@@ -965,17 +966,16 @@ fn project_order(left: &Value, right: &Value) -> std::cmp::Ordering {
     }
     let left_time = date_parse_ms(left.get("lastSessionModified"));
     let right_time = date_parse_ms(right.get("lastSessionModified"));
-    if left_time != right_time {
-        let difference = right_time - left_time;
-        return if difference.is_nan() {
-            Ordering::Equal
-        } else if difference < 0.0 {
-            Ordering::Less
-        } else if difference > 0.0 {
-            Ordering::Greater
-        } else {
-            Ordering::Equal
-        };
+    match (left_time.is_nan(), right_time.is_nan()) {
+        (false, true) => return Ordering::Less,
+        (true, false) => return Ordering::Greater,
+        (false, false) => {
+            let by_time = right_time.total_cmp(&left_time);
+            if by_time != Ordering::Equal {
+                return by_time;
+            }
+        }
+        (true, true) => {}
     }
     locale::compare(
         basename(field(left, "path").as_str().unwrap_or_default()),
@@ -1416,5 +1416,50 @@ mod tests {
     fn a_preview_longer_than_its_limit_says_so() {
         assert_eq!(slice_units("abcdef", 3), "abc");
         assert_eq!(utf16_len("a\u{1F600}"), 3, "a surrogate pair is two units");
+    }
+
+    #[test]
+    fn malformed_project_dates_still_have_a_total_order() {
+        let mut projects = [
+            serde_json::json!({
+                "path": "/workspace/broken-z",
+                "lastSessionModified": "not-a-date",
+            }),
+            serde_json::json!({
+                "path": "/workspace/current",
+                "current": true,
+                "lastSessionModified": "also-not-a-date",
+            }),
+            serde_json::json!({
+                "path": "/workspace/older",
+                "lastSessionModified": "2026-08-01T00:00:00Z",
+            }),
+            serde_json::json!({ "path": "/workspace/missing" }),
+            serde_json::json!({
+                "path": "/workspace/newer",
+                "lastSessionModified": "2026-09-01T00:00:00Z",
+            }),
+            serde_json::json!({
+                "path": "/workspace/broken-a",
+                "lastSessionModified": "still-not-a-date",
+            }),
+        ];
+
+        projects.sort_by(project_order);
+
+        assert_eq!(
+            projects
+                .iter()
+                .map(|project| field(project, "path").as_str().unwrap())
+                .collect::<Vec<_>>(),
+            [
+                "/workspace/current",
+                "/workspace/newer",
+                "/workspace/older",
+                "/workspace/missing",
+                "/workspace/broken-a",
+                "/workspace/broken-z",
+            ]
+        );
     }
 }
