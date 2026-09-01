@@ -60,7 +60,7 @@ There was a TypeScript implementation of everything below, under `src/`. It is g
 | `nomoreide-actions` | The guarded write surface — the operations deliberately kept out of the read-safe modules. |
 | `nomoreide-cli` | Argument parsing and the subcommands, as a library. **No binary** — two crates emitting `nomoreide` collide in `target/`. |
 | `nomoreide` | The binary everything ships as — a front door over `nomoreide-cli`, and the name `cargo install` takes. |
-| `nomoreide-tauri` | The desktop app. Deliberately isolated — it owns its own runtime state and shares no daemon. Its 150 duplicate commands are known debt with a plan: `docs/plans/2026-09-01-desktop-in-process-daemon.md`. |
+| `nomoreide-tauri` | The desktop app. Deliberately isolated — it owns its own runtime state and shares no daemon. Its 150 duplicate commands are known debt with a plan — and the reason agent-environment is a desktop stub rather than a feature: `docs/plans/2026-09-01-desktop-in-process-daemon.md`. |
 
 ### Core
 

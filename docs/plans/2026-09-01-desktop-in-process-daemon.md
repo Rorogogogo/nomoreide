@@ -33,13 +33,24 @@ deleting the duplicate.
 | Desktop-only frontend API impls | **18 files, 1,396 lines** (`apps/dashboard/src/lib/api/*-tauri.ts`) |
 | HTTP API modules they duplicate | 62, already shipped in the browser |
 
-**The drift is not hypothetical.** The desktop app has **no agent-environment
-surface at all** — `agent_env` is referenced nowhere in `crates/nomoreide-tauri`.
-The entire feature the dashboard has, including the Cursor and Windsurf support
-added on 2026-09-01, does not exist there. Nobody decided that; it landed on the
-daemon side and the Tauri copy did not follow. Phase 1 of the original plan
-warned about exactly this: *"three concurrent implementations … with the Tauri
-copy drifting the whole time."* Two are gone. This is the third.
+**The cost is not hypothetical — agent-environment is the worked example.**
+The desktop app renders that page as an empty state. `agent-env-tauri.ts` is a
+deliberate stub whose every method returns nothing or rejects with "not
+available in desktop mode yet", and whose comment gives the reason: *"the Rust
+core has no agent-config readers yet (deliberate: ROR-60 defers the dual-backend
+port)."*
+
+**That reason has since expired.** `nomoreide-core/src/agent_env/` now has the
+readers, writers, documents and skills — it is what gained Cursor and Windsurf
+on 2026-09-01. So the feature is not blocked on core any more; it is blocked on
+someone writing **27 more Tauri commands**, one per method on `AgentEnvApi`, on
+top of the 150 that already duplicate the daemon.
+
+That is the duplication tax quoted in advance for a single feature, and it is
+what this plan removes: with the daemon in-process the stub is deleted and the
+page works, because it is the same dashboard against the same routes. Phase 1 of
+the original plan warned about it — *"three concurrent implementations … with the
+Tauri copy drifting the whole time."* Two are gone; this is the third.
 
 **The replacement is not new code.** The 62 HTTP modules already exist, ship in
 the browser, and are what CI and the 65 parity gates exercise. This moves the

@@ -1142,10 +1142,12 @@ for.
 **But the duplication that came with it is not intended, and has a successor
 plan.** The app currently holds **150 Tauri commands / 7,555 lines** paralleling
 the daemon's routes, plus **18 `*-tauri.ts` files / 1,396 lines** in the
-frontend. It has already drifted: the entire agent-environment feature — the one
-that gained Cursor and Windsurf on 2026-09-01 — does not exist in the desktop
-app at all. That is what Phase 1 predicted would happen to a third concurrent
-implementation.
+frontend. The cost shows in agent-environment, which the desktop app renders
+as an empty state: `agent-env-tauri.ts` is a deliberate stub deferred by ROR-60
+because "the Rust core has no agent-config readers yet". Core has had them for
+some time — they are what gained Cursor and Windsurf on 2026-09-01 — so the
+feature is now blocked only on writing 27 more Tauri commands. That is what
+Phase 1 predicted for a third concurrent implementation.
 
 The resolution is **not** convergence onto a shared daemon. It is running the
 daemon **in-process**: the same binary, on an ephemeral loopback port owned by
