@@ -1,10 +1,5 @@
-/**
- * All-projects overview entry point. Picks the backend implementation once at
- * module load (`isTauri()` → Rust core, else Node HTTP) and re-exports its
- * methods — never a per-function `if (isTauri())` branch.
- */
+/** All-projects overview API entry point shared by browser and desktop. */
 import { requestJson } from "./client.js";
-import { isTauri, tauri_projectOverview } from "./tauri-bridge.js";
 import type { OverviewApi, ProjectOverviewEntry } from "./overview-api.js";
 
 const httpOverviewApi: OverviewApi = {
@@ -16,13 +11,7 @@ const httpOverviewApi: OverviewApi = {
   },
 };
 
-const tauriOverviewApi: OverviewApi = {
-  async listProjectOverview(domain) {
-    return ((await tauri_projectOverview(domain)) ?? []) as ProjectOverviewEntry[];
-  },
-};
-
-const api: OverviewApi = isTauri() ? tauriOverviewApi : httpOverviewApi;
+const api: OverviewApi = httpOverviewApi;
 
 export const { listProjectOverview } = api;
 
