@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "id": "req_device_snapshot_request",
+  "type": "device.snapshot.request",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": null,
+  "payload": {}
+}

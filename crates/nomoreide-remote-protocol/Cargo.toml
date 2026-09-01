@@ -1,0 +1,22 @@
+[package]
+name = "nomoreide-remote-protocol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "The frozen wire protocol between a local NoMoreIDE daemon and the hosted remote-control relay."
+readme = "README.md"
+
+[dependencies]
+# Deliberately three. This crate is depended on by the hosted platform's API
+# container as well as by the daemon, and the whole reason it exists as its own
+# package is that `nomoreide-core` drags in sqlx, portable-pty, reqwest and a
+# tar/gzip stack that a relay has no use for. Anything added here is added to
+# both sides of the wire, so add nothing casually.
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "evt_service_action_response",
+  "type": "service.action.response",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "service": "api",
+    "action": "restart",
+    "state": "starting"
+  }
+}

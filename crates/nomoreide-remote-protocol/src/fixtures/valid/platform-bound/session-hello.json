@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "evt_session_hello",
+  "type": "session.hello",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": null,
+  "payload": {
+    "supportedVersions": [
+      1
+    ],
+    "daemonVersion": "0.3.3",
+    "platform": "macos",
+    "capabilities": [
+      "agent.approvals",
+      "agent.providers",
+      "agent.turns",
+      "bundle.list",
+      "device.snapshot",
+      "service.action",
+      "service.list",
+      "service.logs"
+    ]
+  }
+}

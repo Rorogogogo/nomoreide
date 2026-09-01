@@ -17,6 +17,7 @@ const rustWorkspacePackages = [
   "nomoreide-daemon",
   "nomoreide-daemon-client",
   "nomoreide-mcp",
+  "nomoreide-remote-protocol",
   "nomoreide-tauri",
 ];
 

@@ -1,0 +1,14 @@
+{
+  "note": "A newer platform talking down to this build. Refused by version, before the command name is looked at.",
+  "direction": "deviceBound",
+  "expect": "UNSUPPORTED_PROTOCOL_VERSION",
+  "frame": {
+    "v": 2,
+    "id": "req_1",
+    "type": "service.list.request",
+    "deviceId": "11111111-2222-3333-4444-555555555555",
+    "sentAt": "2026-09-01T00:00:00.000Z",
+    "replyTo": null,
+    "payload": {}
+  }
+}
