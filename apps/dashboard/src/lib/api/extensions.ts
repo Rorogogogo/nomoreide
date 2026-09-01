@@ -3,9 +3,7 @@ import { requestJson } from "./client.js";
 /**
  * The Extensions inventory seam.
  *
- * Direct `requestJson` rather than the four-file api/http/tauri/selector split
- * some domains use — the same shape as `servers.ts`, and for the same reason:
- * one read, no Tauri counterpart, and nothing to select between.
+ * Direct `requestJson`, matching the transport used by every dashboard domain.
  */
 
 export type ExtensionKind = "deploy" | "host";

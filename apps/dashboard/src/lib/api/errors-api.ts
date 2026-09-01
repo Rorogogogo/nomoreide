@@ -1,10 +1,5 @@
 /**
- * Errors API surface — the single contract both backends implement.
- *
- * Error tracking is a Node.js-server feature with no Rust-core equivalent, so
- * the desktop (Tauri) implementation degrades the incident list to empty rather
- * than forking each function with an `if (isTauri())` branch. See {@link ../git-api}
- * for the rationale behind the shared-interface seam.
+ * Errors API contract shared by the browser and embedded desktop daemon clients.
  */
 
 export type IncidentLevel = "error" | "warning";

@@ -1,8 +1,5 @@
 /**
- * GitHub API surface — the single contract both backends implement. The Node
- * backend proxies a resolved repo via `/api/github/*`; the desktop (Tauri) impl
- * resolves owner/repo from the selected repository and calls the Rust GitHub
- * client directly. See {@link ../git-api} for the shared-interface seam rationale.
+ * GitHub API contract shared by the browser and embedded desktop daemon clients.
  */
 
 export interface GitHubPR {

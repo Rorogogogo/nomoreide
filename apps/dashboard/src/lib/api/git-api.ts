@@ -1,12 +1,5 @@
 /**
- * Git API surface — the single contract both backends implement.
- *
- * The web client runs against two backends: the Node HTTP server (`/api/git/*`)
- * and, in the desktop app, the Rust core over Tauri `invoke()`. Rather than fork
- * each function with an `if (isTauri())` branch (easy to forget → silent 404 in
- * the bundled app), both backends implement this one interface and `git.ts`
- * selects the implementation once. A missing or wrong-shaped method on either
- * implementation is then a compile error, not a runtime surprise.
+ * Git API contract shared by the browser and embedded desktop daemon clients.
  */
 
 export interface GitFileStatus {
