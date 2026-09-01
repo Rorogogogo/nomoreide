@@ -1,15 +1,8 @@
-/**
- * Log-sources API entry point. Picks the backend implementation once at module
- * load (`isTauri()` → Rust core, else Node HTTP) and re-exports its methods as
- * the named functions the rest of the app already imports — never a per-function
- * `if (isTauri())` branch.
- */
-import { isTauri } from "./tauri-bridge.js";
+/** Log-sources API entry point shared by browser and desktop. */
 import type { LogSourcesApi } from "./log-sources-api.js";
 import { httpLogSourcesApi } from "./log-sources-http.js";
-import { tauriLogSourcesApi } from "./log-sources-tauri.js";
 
-const api: LogSourcesApi = isTauri() ? tauriLogSourcesApi : httpLogSourcesApi;
+const api: LogSourcesApi = httpLogSourcesApi;
 
 export const { listLogSources, addLogSource, deleteLogSource, getLogSourceLogs } = api;
 
