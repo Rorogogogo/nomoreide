@@ -60,6 +60,17 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
     serve_with_shutdown_requests(options, shutdown_tx, shutdown_rx).await
 }
 
+/// Run the daemon on a listener the caller has already bound.
+///
+/// The desktop app uses this to reserve its private ephemeral port before its
+/// webview exists, removing the gap where another process could claim the port
+/// between discovery and the HTTP server binding it.
+pub async fn run_with_listener(options: DaemonOptions, listener: TcpListener) -> Result<()> {
+    let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
+    tokio::spawn(forward_shutdown_signals(shutdown_tx.clone()));
+    serve_on_listener(options, listener, shutdown_tx, shutdown_rx).await
+}
+
 pub async fn serve_until<F>(options: DaemonOptions, shutdown: F) -> Result<()>
 where
     F: Future<Output = ()> + Send + 'static,
@@ -78,6 +89,18 @@ where
 /// request and a signal reach the same drain rather than two separate exits.
 pub async fn serve_with_shutdown_requests(
     options: DaemonOptions,
+    shutdown_sender: mpsc::Sender<()>,
+    shutdown_requests: mpsc::Receiver<()>,
+) -> Result<()> {
+    let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, options.port)))
+        .await
+        .context("failed to bind the daemon loopback listener")?;
+    serve_on_listener(options, listener, shutdown_sender, shutdown_requests).await
+}
+
+async fn serve_on_listener(
+    options: DaemonOptions,
+    listener: TcpListener,
     shutdown_sender: mpsc::Sender<()>,
     shutdown_requests: mpsc::Receiver<()>,
 ) -> Result<()> {
@@ -116,9 +139,6 @@ pub async fn serve_with_shutdown_requests(
         .await
         .context("failed to reconcile the native runtime registry")?;
 
-    let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, options.port)))
-        .await
-        .context("failed to bind the daemon loopback listener")?;
     let address = listener
         .local_addr()
         .context("failed to inspect the daemon listener")?;

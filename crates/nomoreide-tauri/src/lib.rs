@@ -7,7 +7,11 @@ pub fn run_terminal_attach(socket_path: &str, token: &str) -> Result<(), String>
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tauri::{Manager, RunEvent, State, WindowEvent};
+use std::sync::Mutex as StdMutex;
+use std::time::{Duration, Instant};
+use tauri::{Manager, RunEvent, State, WebviewWindowBuilder, WindowEvent};
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+use tokio::net::TcpListener;
 use tokio::sync::{watch, Mutex};
 
 use nomoreide_core::config::ConfigStore;
@@ -25,7 +29,11 @@ pub struct AppState {
     pub process_manager: ProcessManager,
     pub terminal_manager: TerminalManager,
     pub database_exports: Mutex<HashMap<String, Option<watch::Sender<bool>>>>,
+    daemon_task: StdMutex<Option<tauri::async_runtime::JoinHandle<anyhow::Result<()>>>>,
 }
+
+const DAEMON_STARTUP_TIMEOUT: Duration = Duration::from_secs(20);
+const DAEMON_STARTUP_POLL: Duration = Duration::from_millis(50);
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -49,13 +57,60 @@ pub fn run() {
         process_manager,
         terminal_manager: TerminalManager::new(),
         database_exports: Mutex::new(HashMap::new()),
+        daemon_task: StdMutex::new(None),
     };
+
+    let mut context = tauri::generate_context!();
+    let main_window = context
+        .config()
+        .app
+        .windows
+        .first()
+        .cloned()
+        .expect("the Tauri config must define the main window");
+    for window in &mut context.config_mut().app.windows {
+        window.create = false;
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
+        .setup(move |app| {
+            let app_handle = app.handle().clone();
+            let runtime_paths = nomoreide_daemon_client::RuntimePaths::new(
+                app.path().app_local_data_dir()?.join("runtime"),
+            );
+            let window_config = main_window.clone();
+            tauri::async_runtime::spawn(async move {
+                match start_embedded_daemon(runtime_paths).await {
+                    Ok(daemon_task) => {
+                        let state: State<AppState> = app_handle.state();
+                        state
+                            .daemon_task
+                            .lock()
+                            .expect("embedded daemon task mutex poisoned")
+                            .replace(daemon_task);
+
+                        let window_app = app_handle.clone();
+                        let error_app = app_handle.clone();
+                        if let Err(error) = app_handle.run_on_main_thread(move || {
+                            if let Err(error) =
+                                WebviewWindowBuilder::from_config(&window_app, &window_config)
+                                    .and_then(WebviewWindowBuilder::build)
+                            {
+                                show_startup_error(&window_app, &error.to_string());
+                            }
+                        }) {
+                            show_startup_error(&error_app, &error.to_string());
+                        }
+                    }
+                    Err(error) => show_startup_error(&app_handle, &error),
+                }
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             // agent introspection
             commands::agent::get_agent_info,
@@ -247,11 +302,19 @@ pub fn run() {
                 }
             }
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error building tauri application")
         .run(|app, event| match event {
             RunEvent::Exit => {
                 let state: State<AppState> = app.state();
+                if let Some(daemon_task) = state
+                    .daemon_task
+                    .lock()
+                    .expect("embedded daemon task mutex poisoned")
+                    .take()
+                {
+                    daemon_task.abort();
+                }
                 let _ = state.terminal_manager.close_all();
                 state.process_manager.kill_all();
             }
@@ -263,4 +326,67 @@ pub fn run() {
             }
             _ => {}
         });
+}
+
+async fn start_embedded_daemon(
+    runtime_paths: nomoreide_daemon_client::RuntimePaths,
+) -> Result<tauri::async_runtime::JoinHandle<anyhow::Result<()>>, String> {
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .map_err(|error| format!("failed to reserve a private daemon port: {error}"))?;
+    let port = listener
+        .local_addr()
+        .map_err(|error| format!("failed to inspect the private daemon port: {error}"))?
+        .port();
+    let options = nomoreide_daemon::DaemonOptions {
+        port,
+        runtime_paths,
+        config_path: ConfigStore::default_path(),
+    };
+    let mut daemon_task = tauri::async_runtime::spawn(async move {
+        nomoreide_daemon::run_with_listener(options, listener).await
+    });
+
+    let health_url = format!("http://127.0.0.1:{port}/api/health");
+    let http = reqwest::Client::builder()
+        .timeout(Duration::from_millis(250))
+        .build()
+        .map_err(|error| format!("failed to create the daemon health client: {error}"))?;
+    let deadline = Instant::now() + DAEMON_STARTUP_TIMEOUT;
+    loop {
+        tokio::select! {
+            result = &mut daemon_task => {
+                return Err(match result {
+                    Ok(Ok(())) => "the embedded daemon stopped during startup".to_string(),
+                    Ok(Err(error)) => format!("the embedded daemon failed during startup: {error:#}"),
+                    Err(error) => format!("the embedded daemon task failed during startup: {error}"),
+                });
+            }
+            response = http.get(&health_url).send() => {
+                if response.is_ok_and(|response| response.status().is_success()) {
+                    return Ok(daemon_task);
+                }
+            }
+        }
+
+        if Instant::now() >= deadline {
+            daemon_task.abort();
+            return Err(format!(
+                "the embedded daemon did not become ready within {} seconds",
+                DAEMON_STARTUP_TIMEOUT.as_secs()
+            ));
+        }
+        tokio::time::sleep(DAEMON_STARTUP_POLL).await;
+    }
+}
+
+fn show_startup_error(app: &tauri::AppHandle, error: &str) {
+    let exit_app = app.clone();
+    app.dialog()
+        .message(format!(
+            "NoMoreIDE could not start its local service.\n\n{error}"
+        ))
+        .title("NoMoreIDE startup failed")
+        .kind(MessageDialogKind::Error)
+        .show(move |_| exit_app.exit(1));
 }

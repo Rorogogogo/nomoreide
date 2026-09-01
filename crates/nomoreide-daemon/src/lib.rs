@@ -12,7 +12,9 @@ mod runtime;
 mod server;
 mod service_discovery;
 
-pub use server::{run, serve_until, serve_with_shutdown_requests, DaemonOptions};
+pub use server::{
+    run, run_with_listener, serve_until, serve_with_shutdown_requests, DaemonOptions,
+};
 
 use nomoreide_core::filesystem::{atomic_write, AtomicWriteOptions};
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};

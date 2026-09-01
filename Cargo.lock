@@ -2437,6 +2437,8 @@ dependencies = [
  "libc",
  "nomoreide-actions",
  "nomoreide-core",
+ "nomoreide-daemon",
+ "nomoreide-daemon-client",
  "portable-pty",
  "regex",
  "reqwest 0.12.28",
