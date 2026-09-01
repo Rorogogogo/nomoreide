@@ -1,0 +1,19 @@
+{
+  "v": 1,
+  "id": "evt_service_logs_response",
+  "type": "service.logs.response",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "service": "api",
+    "lines": [
+      {
+        "at": "2026-09-01T00:00:00.000Z",
+        "stream": "stdout",
+        "text": "listening on 3000"
+      }
+    ],
+    "truncated": true
+  }
+}

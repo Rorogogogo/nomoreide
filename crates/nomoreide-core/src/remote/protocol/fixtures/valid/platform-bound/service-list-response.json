@@ -1,0 +1,19 @@
+{
+  "v": 1,
+  "id": "evt_service_list_response",
+  "type": "service.list.response",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "services": [
+      {
+        "name": "api",
+        "description": "The HTTP API",
+        "kind": "node",
+        "port": 3000,
+        "state": "running"
+      }
+    ]
+  }
+}

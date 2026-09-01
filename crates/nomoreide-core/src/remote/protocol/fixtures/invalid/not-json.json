@@ -1,0 +1,6 @@
+{
+  "note": "Bytes that are not JSON at all. The first thing a hostile peer sends.",
+  "direction": "deviceBound",
+  "expect": "MALFORMED_FRAME",
+  "frameText": "this is not a frame"
+}

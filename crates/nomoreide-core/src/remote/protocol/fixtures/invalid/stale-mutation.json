@@ -1,0 +1,14 @@
+{
+  "note": "A restart that spent two days in flight. Its sender stopped waiting long ago, and running it now would be a surprise.",
+  "direction": "deviceBound",
+  "expect": "STALE_REQUEST",
+  "frame": {
+    "v": 1,
+    "id": "req_1",
+    "type": "service.action.request",
+    "deviceId": "11111111-2222-3333-4444-555555555555",
+    "sentAt": "2026-08-30T00:00:00.000Z",
+    "replyTo": null,
+    "payload": { "service": "api", "action": "restart" }
+  }
+}

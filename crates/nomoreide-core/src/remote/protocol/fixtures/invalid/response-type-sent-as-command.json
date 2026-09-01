@@ -1,0 +1,14 @@
+{
+  "note": "A name that exists, in the other direction. Unknown as a command, not malformed.",
+  "direction": "deviceBound",
+  "expect": "UNKNOWN_COMMAND",
+  "frame": {
+    "v": 1,
+    "id": "req_1",
+    "type": "service.list.response",
+    "deviceId": "11111111-2222-3333-4444-555555555555",
+    "sentAt": "2026-09-01T00:00:00.000Z",
+    "replyTo": null,
+    "payload": { "services": [] }
+  }
+}

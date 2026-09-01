@@ -54,6 +54,7 @@ pub mod process_manager;
 pub mod project_overview;
 pub mod providers;
 pub mod read_only_files;
+pub mod remote;
 pub mod repo_create;
 pub mod repo_match;
 pub mod repo_onboard;

@@ -1,0 +1,15 @@
+{
+  "note": "A field nobody defined, riding along beside the ones that are checked.",
+  "direction": "deviceBound",
+  "expect": "MALFORMED_FRAME",
+  "frame": {
+    "v": 1,
+    "id": "req_1",
+    "type": "service.list.request",
+    "deviceId": "11111111-2222-3333-4444-555555555555",
+    "sentAt": "2026-09-01T00:00:00.000Z",
+    "replyTo": null,
+    "payload": {},
+    "shell": "rm -rf /"
+  }
+}
