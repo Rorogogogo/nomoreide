@@ -1,9 +1,7 @@
-import { isTauri } from "./tauri-bridge.js";
 import type { SettingsApi } from "./settings-api.js";
 import { httpSettingsApi } from "./settings-http.js";
-import { tauriSettingsApi } from "./settings-tauri.js";
 
-const api: SettingsApi = isTauri() ? tauriSettingsApi : httpSettingsApi;
+const api: SettingsApi = httpSettingsApi;
 
 export const {
   getSettings,
