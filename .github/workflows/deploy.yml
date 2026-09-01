@@ -1,8 +1,20 @@
 name: Release (Version Bump & Tag)
 
-# Releasing is deliberate, not a side effect of merging. Merges accumulate on
-# main — tested by ci.yml on every push — and a release is cut by running this
-# workflow. Tagging v<version> here is what triggers desktop-release.yml.
+# Releasing is deliberate, but it does not have to be remembered. Two ways in:
+#
+#   1. Label a PR `release:patch`, `release:minor` or `release:major`. Merging
+#      it cuts that release automatically. The decision is made at review time,
+#      where you are already deciding whether the change ships.
+#   2. Run this workflow by hand, from the Actions tab or `gh workflow run`.
+#
+# An unlabelled merge releases nothing, so merges still accumulate on main —
+# tested by ci.yml on every push — until one of the two happens. That matters
+# because a release is irreversible in a way a merge is not: a crates.io version
+# can be yanked but never replaced or reused, and npm's unpublish window closes
+# after 72 hours.
+#
+# Tagging v<version> here is what triggers desktop-release.yml and
+# cli-release.yml, which build the archives and publish npm and crates.io.
 #
 # This no longer publishes to npm. It cannot: the package now carries the
 # compiled Rust binary for four platforms, and none of them exist yet at this
@@ -17,13 +29,58 @@ on:
         type: choice
         options: [patch, minor, major]
         default: patch
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 permissions:
   contents: write
   id-token: write
 
 jobs:
+  # Which release a merged PR asked for, if any. Split out so the job that can
+  # publish never starts unless a label actually said to — a `pull_request`
+  # trigger fires on every close, including one that was never merged.
+  decide:
+    runs-on: ubuntu-latest
+    outputs:
+      bump: ${{ steps.pick.outputs.bump }}
+    steps:
+      - id: pick
+        env:
+          # Through the environment, not interpolated into the script: a label
+          # is attacker-controllable text on a fork's PR, and `${{ }}` inside
+          # `run` is textual substitution.
+          EVENT: ${{ github.event_name }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          MANUAL: ${{ github.event.inputs.bump }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "bump=${MANUAL:-patch}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$MERGED" != "true" ]; then
+            echo "PR was closed without merging; releasing nothing."
+            echo "bump=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Most specific first, so a PR carrying two labels releases the
+          # larger bump rather than whichever the JSON happened to list first.
+          for level in major minor patch; do
+            if printf '%s' "$LABELS" | grep -q "\"release:$level\""; then
+              echo "release:$level -> $level"
+              echo "bump=$level" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "No release label; this merge accumulates on main."
+          echo "bump=" >> "$GITHUB_OUTPUT"
+
   publish:
+    needs: decide
+    if: needs.decide.outputs.bump != ''
     runs-on: ubuntu-latest
 
     steps:
@@ -51,7 +108,7 @@ jobs:
       - name: Bump version and tag
         env:
           REPO_PAT: ${{ secrets.REPO_PAT }}
-          BUMP: ${{ inputs.bump }}
+          BUMP: ${{ needs.decide.outputs.bump }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
