@@ -1,6 +1,8 @@
 # Remote control relay plan — after native Rust cutover
 
-**Status:** Planning only. Do not begin until the native Rust runtime gates below pass.
+**Status:** Planning. The dependency gate below is **met** as of 2026-09-01 —
+see "Revised after the Rust port" at the end of this document, which supersedes
+parts of the text above. Read that section before implementing.
 
 **Goal:** Let an authenticated user control registered local services and interact with local agents from a phone through the hosted NoMoreIDE platform, without opening an inbound port on the user's machine.
 
@@ -204,7 +206,12 @@ crates/nomoreide-core/src/remote/
   redaction.rs         ANSI/control/credential sanitization
 ```
 
-The dispatcher receives the same canonical service manager, log store, agent run manager, and approval broker used by local MCP/web/Tauri clients. It calls core APIs directly rather than looping through the localhost HTTP router.
+The dispatcher receives the same canonical service manager, log store, agent run manager, and approval broker used by local MCP/web/Tauri clients. ~~It calls core APIs directly rather than looping through the localhost HTTP router.~~
+
+> **Reversed 2026-09-01 — see "Revised after the Rust port" below.** Calling core
+> directly makes the relay a fifth dispatch surface, which is the mistake the
+> Tauri crate already made and is still paying for. Route through the daemon's
+> own router in-process, against an allowlist.
 
 Add `nomoreide remote pair|status|unpair` to the native CLI. The local dashboard may show pairing and connection state, but it must never return or render the device credential.
 
@@ -333,3 +340,142 @@ Using a production-like Docker platform and a native daemon on a separate networ
 10. restart the API and prove no stale mutation executes afterward.
 
 The MVP is complete only when phone access cannot do anything outside this explicit allowlist, even if the hosted relay sends a malformed or hostile message.
+
+
+---
+
+# Revised after the Rust port
+
+Written 2026-09-01, after the TypeScript→Rust port finished and v0.3.2 shipped.
+Everything here supersedes the text above where they disagree.
+
+## The dependency gate is met
+
+| Gate | State |
+| --- | --- |
+| Native daemon owns services, logs, terminals, agent runs, approvals | ✅ `approval_broker.rs`, `agent_runtime.rs` in core |
+| Node.js daemon no longer required | ✅ `src/` deleted; `check-no-node.sh` asserts 18 behaviours with node/npm/npx/tsx off PATH |
+| Typed Rust APIs with fail-closed tests | ✅ 778 workspace tests; 65 parity gates |
+| Native release/installer updates the daemon safely | ✅ `install.sh`, npm, crates.io, dmg — all on v0.3.2, `check-install.sh` 53/53 |
+| State and credential files atomic, mode `0600` | ✅ `nomoreide-daemon/src/lib.rs`; asserted by `acquisition_clears_stale_state_and_publishes_private_runtime_files` |
+| Explicit shutdown lifecycle | ✅ `serve_with_shutdown_requests`, signal forwarding — but see **Orphaned daemons** below |
+
+**Implementation may begin.**
+
+## 1. The dispatcher goes through the router, not around it
+
+The plan above says the relay dispatcher should call core APIs directly
+"rather than looping through the localhost HTTP router". **Do not implement it
+that way.**
+
+That is precisely what `crates/nomoreide-tauri` does, and this session measured
+the bill: **150 `#[tauri::command]` functions, 7,555 lines**, duplicating what 43
+daemon route modules already do. It drifts silently — the agent-environment
+feature is a stub in the desktop app (`agent-env-tauri.ts`) because core gained
+`agent_env` and the second dispatch surface never followed. Phase 1 of the
+migration plan predicted exactly this for a third concurrent implementation;
+the relay would be a fifth.
+
+**The security property does not require the bypass.** "Never proxy arbitrary
+local `/api/*` routes" is about *which* routes are reachable, not about how they
+are invoked. Keep the allowlist — an explicit, exhaustive table of permitted
+operations — and have each entry call the daemon's own router in-process
+(`tower::Service`/`oneshot` against the assembled `Router`, not a loopback
+socket). That gives:
+
+- one implementation of what "restart a service" means, shared by browser, CLI,
+  MCP, desktop and phone;
+- the allowlist as a visible table rather than 40 hand-written call sites;
+- the daemon's existing auth, validation and error shapes for free;
+- a new feature reaching the phone with no relay change.
+
+The relay's job is authorization, transport and shaping. It should not also be
+an opinion about what a service action is.
+
+## 2. Orphaned daemons are a security boundary, not housekeeping
+
+The gate item "explicit shutdown lifecycle" assumes daemons exit cleanly. They
+do not. Measured on one developer machine on 2026-09-01: **eight daemon
+processes alive**, the oldest from two days earlier, one still serving v0.1.103
+from before the port. This is a known, recurring condition — killed test runs
+and crashed sessions leave daemons behind for days.
+
+Today that is clutter. With remote control, an orphaned daemon holds a **device
+credential and an outbound WSS**, so it keeps accepting phone commands after the
+user believes it is gone — and it is the copy least likely to have been updated.
+
+Required, beyond what the plan says:
+
+- **Revocation must not depend on the daemon cooperating.** The platform closes
+  the socket and refuses reconnect on its own authority; a daemon that ignores a
+  revoke message must still be unable to act.
+- **Credential lifetime is bound to the daemon's runtime lock**, not just to the
+  file. A daemon that lost the lock must not keep a live relay session.
+- **Presence fails closed.** A missed heartbeat window marks the device offline
+  and suspends command routing rather than queuing.
+- **`nomoreide remote status` must show every live daemon it can see**, so a
+  user can discover the orphan they did not know about.
+- Add to the release gate: *revoke a device while a deliberately orphaned daemon
+  is still running, and prove it cannot act.*
+
+## 3. Version skew needs a stated behaviour
+
+The protocol is versioned, which is right, but the plan does not say what
+happens on mismatch. Real evidence that this matters: this project's own
+development machine ran a **v0.1.103 daemon against a v0.3.0 client for days**,
+and the only signal was a one-line warning. Users do not upgrade daemons
+promptly.
+
+Decide and write down:
+
+- what a phone on today's platform does when the daemon speaks an older protocol
+  — refuse outright, or negotiate down to a capability subset;
+- whether an unknown *capability* is an error or an omission (the answer should
+  differ from an unknown *command*, which the plan already rejects exhaustively);
+- how the phone surfaces "your machine is running an old NoMoreIDE" without
+  making it look like a failure.
+
+Prefer refusing mutating commands across a major protocol gap while still
+allowing presence and read-only status — that keeps the "your machine needs
+updating" message reachable instead of leaving a dead screen.
+
+## 4. Testing: there is no reference to diff against
+
+Every other surface in this repository was ported against a TypeScript
+implementation, and 65 parity gates replay what it answered. **The relay has no
+counterpart**, so none of that applies:
+
+- Do not add recording-based parity gates for it. Recordings are a decaying
+  asset — the policy in `CLAUDE.md` is that they are converted to native tests
+  as they block change, and no new ones are added.
+- The relay gets **native Rust tests** for protocol, allowlist exhaustiveness,
+  redaction and dispatch, plus an **integration harness** that runs a real
+  daemon against a real platform.
+- Note explicitly: the parity suite will stay green through any relay
+  regression. It is not the gate. The end-to-end release gate at the top of this
+  document is.
+
+## 5. Credentials must survive an upgrade
+
+A device credential written by `nomoreide remote pair` has to outlive
+`npm install -g nomoreide`, `install.sh` upgrades and `cargo install`.
+
+This is not hypothetical: the port left agent configs pointing at
+`node .../dist/index.js`, an entry point that no longer exists and that
+`npm run build` no longer produces — so the MCP server failed to start on any
+machine that pulled the new code, with no obvious cause. A stale remote
+credential would fail the same silent way.
+
+- Keep the credential in `~/.nomoreide/`, never in the checkout, never in
+  `dist/`.
+- `install.sh` and the npm postinstall must not clear it.
+- `nomoreide remote status` should say plainly when a credential exists but the
+  platform has revoked it, rather than reporting a connection error.
+
+## What does not change
+
+The rest of the plan holds and should be implemented as written: in-process
+`RelayHub` over Redis, `/app/remote/:deviceId` over per-device hostnames,
+outbound-only WSS with no inbound port, the explicit MVP allowlist and exclusion
+list, the extraction triggers, the single-replica constraint being visible in
+deployment docs, and hardening hosted auth storage before broad rollout.
