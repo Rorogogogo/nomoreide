@@ -298,3 +298,59 @@ jobs:
           done
           npm publish --access public "$PWD/npm-dist/nomoreide"
 
+  crates:
+    # crates.io, from the same tag, with no token anywhere.
+    #
+    # `rust-lang/crates-io-auth-action` exchanges this workflow's OIDC identity
+    # for a token that lives about thirty minutes, so there is no secret to
+    # rotate or leak — the `id-token: write` at the top of this file is the
+    # whole of the credential, exactly as it is for npm.
+    #
+    # It runs after `publish` for the reason the npm job does: crates.io must
+    # never name a version the GitHub release does not have, and `publish`
+    # already refuses a partial set of archives.
+    #
+    # One-time setup on crates.io, per crate: each of `nomoreide`,
+    # `nomoreide-cli`, `nomoreide-core`, `nomoreide-daemon`,
+    # `nomoreide-daemon-client`, `nomoreide-mcp` and `nomoreide-actions` needs a
+    # trusted publisher pointed at this repository and *this* workflow file.
+    # A crate without one fails here with "does not have the required
+    # permissions", at the very end of a release.
+    needs: [build, linux-compatibility, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: .
+          key: crates-io
+
+      - run: npm ci
+
+      - name: Sync the version to the release tag
+        run: node scripts/sync-version.mjs "${TAG#v}"
+
+      # The dashboard is vendored into `nomoreide-daemon` and compiled into it,
+      # so a crate published without this ships a daemon with no UI. Nothing
+      # downstream would notice: every local build finds `dist/` on disk.
+      - name: Build the dashboard the daemon crate carries
+        run: npm run build
+
+      - name: Authenticate with crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Publish in dependency order
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: node scripts/publish-crates.mjs
