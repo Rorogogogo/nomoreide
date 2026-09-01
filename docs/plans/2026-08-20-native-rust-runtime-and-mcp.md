@@ -1128,9 +1128,33 @@ port.
 
 - Serve the compiled React assets and compatible loopback API from the Rust daemon.
 - Move CLI commands to the native client/core crates.
-- Point the remaining Tauri commands at the shared daemon client. Because Phase 1 already removed Tauri's ownership of core modules, this is a call-site change rather than a manager replacement.
-- Keep native-only desktop actions in Tauri, but make runtime state canonical in the daemon.
-- Prove CLI, MCP, web, and Tauri observe the same service, terminal, and agent state.
+- ~~Point the remaining Tauri commands at the shared daemon client.~~
+- ~~Keep native-only desktop actions in Tauri, but make runtime state canonical in the daemon.~~
+- ~~Prove CLI, MCP, web, and Tauri observe the same service, terminal, and agent state.~~
+
+**Those three are withdrawn, by decision, on 2026-09-01: the desktop app does
+not share a daemon with the CLI, MCP or browser.** It is deliberately isolated —
+a service started in the app is invisible to the CLI and vice versa — because
+the desktop audience is not running both against one project at the same time,
+and a shared daemon buys them nothing while costing a lifecycle they never asked
+for.
+
+**But the duplication that came with it is not intended, and has a successor
+plan.** The app currently holds **150 Tauri commands / 7,555 lines** paralleling
+the daemon's routes, plus **18 `*-tauri.ts` files / 1,396 lines** in the
+frontend. It has already drifted: the entire agent-environment feature — the one
+that gained Cursor and Windsurf on 2026-09-01 — does not exist in the desktop
+app at all. That is what Phase 1 predicted would happen to a third concurrent
+implementation.
+
+The resolution is **not** convergence onto a shared daemon. It is running the
+daemon **in-process**: the same binary, on an ephemeral loopback port owned by
+the window, which keeps the isolation above while deleting ~8,950 lines. That
+makes the app *more* self-contained — one process, nothing orphaned on quit —
+rather than less.
+
+**See `docs/plans/2026-09-01-desktop-in-process-daemon.md`.** Do not "finish"
+the struck bullets above; that plan supersedes them.
 
 **Exit gate:** the complete product runs on a machine with no Node.js installed. Node remains only a build-time dependency for frontend assets and tests.
 
@@ -1232,20 +1256,37 @@ codex mcp add nomoreide -- nomoreide mcp
 
 **Exit gate:** no production command or desktop path invokes Node.js, and the previous native release remains a documented rollback target.
 
-**Not met, and it cannot be met inside a working session.** The first bullet
-above is "run at least one stable native release", and the second is "remove
-the TypeScript code only after the rollback window closes". Both are waiting on
-wall-clock time after a release goes out, not on work.
+**Exit gate met.** It was blocked on wall-clock time rather than work — "run at
+least one stable native release", then "remove the TypeScript code after the
+rollback window closes". Both have happened:
 
-**The suite no longer stands in the way.** Deleting the TypeScript runtime used
-to delete the differential gates with it — 59 of the 71 worked by launching the
-reference beside the native binary — which made the phase circular. Every gate
-now records what the reference answered into `test/expectations/<gate>.json` and
-can replay it with the reference never started, and CI runs the suite both ways.
-Replaying points the reference at a path that cannot exist, so the claim is
-enforced rather than asserted: a gate that still reaches for TypeScript dies
-naming itself. When the rollback window closes, `src/` can go and all 71 gates
-keep running.
+- `src/` is deleted: 203 files, 45,202 lines, along with 114 TypeScript tests.
+- No production command or desktop path invokes Node.js. `scripts/check-no-node.sh`
+  asserts 18 behaviours with `node`, `npm`, `npx` and `tsx` absent from PATH, and
+  the desktop app is Rust that spawns its own services (see Phase 6 above).
+- v0.3.0 and v0.3.1 shipped through every channel — GitHub Release archives, the
+  Tauri dmg, npm, and now crates.io — and the previous release stays on GitHub as
+  the documented rollback target.
+- The contract fixtures are retained: `test/fixtures/mcp-contract-v1.json` is
+  compiled into `nomoreide-mcp` and vendored into its published crate.
+- The React frontend source and build pipeline are untouched.
+
+**The suite outlived the reference, which is what made the phase non-circular.**
+Deleting the TypeScript runtime used to delete the differential gates with it —
+59 of the 71 worked by launching the reference beside the native binary. Every
+gate now replays `test/expectations/<gate>.json`, so `src/` could go and the
+gates kept running. Replay is the only mode now, and `referenceSpec()` throws
+rather than letting a live run fail later as a puzzling ENOENT.
+
+**Six gates have since been retired** — `agent-env`, `agent-profiles`, `cli`,
+`mcp-agent-env`, `mcp-profiles`, `mcp` — because adding Cursor and Windsurf
+changed two recorded answers that no recording can ever show: the
+`/api/agent-env` array lists every *known* agent, and the MCP schema error
+spells the enum out. The reference never knew Cursor existed. Their coverage
+moved to native Rust tests asserting correct behaviour rather than remembered
+behaviour. That is the standing policy for these recordings: they are a decaying
+regression asset, so a gate that blocks a deliberate change is converted, not
+worked around, and no new recording gates are added. 71 became 65.
 
 **What has landed toward it:**
 

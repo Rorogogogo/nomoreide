@@ -60,7 +60,7 @@ There was a TypeScript implementation of everything below, under `src/`. It is g
 | `nomoreide-actions` | The guarded write surface — the operations deliberately kept out of the read-safe modules. |
 | `nomoreide-cli` | Argument parsing and the subcommands, as a library. **No binary** — two crates emitting `nomoreide` collide in `target/`. |
 | `nomoreide` | The binary everything ships as — a front door over `nomoreide-cli`, and the name `cargo install` takes. |
-| `nomoreide-tauri` | The desktop app. Still spawns its own services rather than using the shared daemon. |
+| `nomoreide-tauri` | The desktop app. Deliberately isolated — it owns its own runtime state and shares no daemon. Its 150 duplicate commands are known debt with a plan: `docs/plans/2026-09-01-desktop-in-process-daemon.md`. |
 
 ### Core
 
@@ -82,7 +82,7 @@ Around that sit the feature modules. Two exist specifically to keep dangerous op
 
 ### The shared daemon
 
-One detached, machine-global daemon (`nomoreide daemon`, state at `~/.nomoreide/daemon.json`) owns every spawned service — it **is** the web server on `127.0.0.1:4317`. MCP, CLI and TUI are all thin HTTP clients of it. `ensure_daemon` in `nomoreide-daemon-client` reuses a healthy one (state file + live pid + `/api/health`), adopts one it did not start, or spawns one by re-executing `current_exe()` with `daemon` — so services survive a session exiting and are visible from every front door at once. Two sessions racing both spawn; the loser fails to bind and exits, and its poll adopts the winner. `nomoreide daemon {status,stop,restart}` manages it; `stop` stops all services. The Tauri app is the known exception.
+One detached, machine-global daemon (`nomoreide daemon`, state at `~/.nomoreide/daemon.json`) owns every spawned service — it **is** the web server on `127.0.0.1:4317`. MCP, CLI and TUI are all thin HTTP clients of it. `ensure_daemon` in `nomoreide-daemon-client` reuses a healthy one (state file + live pid + `/api/health`), adopts one it did not start, or spawns one by re-executing `current_exe()` with `daemon` — so services survive a session exiting and are visible from every front door at once. Two sessions racing both spawn; the loser fails to bind and exits, and its poll adopts the winner. `nomoreide daemon {status,stop,restart}` manages it; `stop` stops all services. **The Tauri app is deliberately outside this** — it owns its own `ProcessManager` and shares no runtime state, so a service started in the desktop app is invisible to the CLI and vice versa. That isolation is the decision; the duplicate command surface it currently implies is not, and `docs/plans/2026-09-01-desktop-in-process-daemon.md` resolves it by hosting the daemon inside the app rather than sharing one.
 
 The daemon prefers dashboard files on disk and falls back to the copy embedded at compile time, so **a client-only checkout change needs `npm run build` plus a browser refresh; rebuilding the embedded copy needs `cargo build -p nomoreide`; a server change also needs `nomoreide daemon restart`** (which stops running services). Disk-first lookup lets a fresh Vite build take effect without recompiling Rust. Published `nomoreide-daemon` crates carry a vendored client fallback staged through `OUT_DIR` by `build.rs`.
 
