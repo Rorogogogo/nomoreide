@@ -23,9 +23,9 @@ include = [
 
 [dependencies]
 chrono.workspace = true
-nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.2" }
-nomoreide-core = { path = "../nomoreide-core", version = "0.3.2" }
-nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.3.2" }
+nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.3" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.3.3" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.3.3" }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

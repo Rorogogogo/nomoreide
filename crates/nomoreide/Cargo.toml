@@ -16,7 +16,7 @@ name = "nomoreide"
 path = "src/main.rs"
 
 [dependencies]
-nomoreide-cli = { path = "../nomoreide-cli", version = "0.3.2" }
+nomoreide-cli = { path = "../nomoreide-cli", version = "0.3.3" }
 tokio.workspace = true
 
 # The integration tests drive the built binary through `CARGO_BIN_EXE_nomoreide`,
