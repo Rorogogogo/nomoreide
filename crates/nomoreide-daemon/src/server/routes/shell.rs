@@ -145,7 +145,9 @@ mod tests {
     #[test]
     fn the_document_carries_the_credential_before_any_script_runs() {
         let html = with_credential(SHELL.to_string(), Some("abc123"));
-        let script_at = html.find("__NOMOREIDE_WEB__").expect("the global is injected");
+        let script_at = html
+            .find("__NOMOREIDE_WEB__")
+            .expect("the global is injected");
         let head_end = html.find("</head>").expect("head is still closed");
         assert!(
             script_at < head_end,
