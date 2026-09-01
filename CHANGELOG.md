@@ -5,6 +5,31 @@ Notable changes per release. Versions are shared across every channel —
 
 ## Unreleased
 
+### Fixed: the web dashboard could not authenticate
+
+`nomoreide web` loaded the page and then failed every request with
+`Authentication required`. Every `/api/*` route is behind a credential, and the
+browser had no way to obtain one — so the dashboard was entirely non-functional
+in a browser on 0.3.0 through 0.3.2.
+
+It went unnoticed because a pre-port TypeScript daemon was still holding port
+4317 on the development machine, and that one required no credential. The
+browser was never actually talking to the Rust daemon.
+
+The daemon now hands the page its credential. Nothing else changes, and an
+unauthenticated request is still refused.
+
+### The desktop app stopped being a second implementation
+
+The macOS app now runs the daemon inside its own process on a private port,
+rather than reimplementing the product against the core libraries. It is still
+fully self-contained — one download, no Node, nothing external, and no daemon
+shared with the CLI — but it is no longer a separate codebase that drifts.
+
+That removes about 9,300 lines and 149 of its 150 native commands, and the
+desktop app gains every feature it had been missing, including Agent
+Environments.
+
 ### Five agents instead of three
 
 `nomoreide setup` now covers **Cursor** and **Windsurf** alongside Claude Code,
