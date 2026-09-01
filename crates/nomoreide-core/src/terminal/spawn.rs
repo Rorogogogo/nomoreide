@@ -27,6 +27,7 @@ use std::net::Shutdown;
 /// Everything a caller decides about a session before the PTY exists. The
 /// manager owns the spawn; the caller owns the policy — which repository a
 /// shell opens in, what an agent's argv is, what the tab is called.
+#[derive(Clone)]
 pub struct TerminalSpawnSpec {
     pub id: String,
     pub service_name: Option<String>,
@@ -71,6 +72,7 @@ impl TerminalManager {
         sink: SharedEventSink,
         spec: TerminalSpawnSpec,
     ) -> Result<TerminalSession, String> {
+        let restart_spec = spec.clone();
         let TerminalSpawnSpec {
             id,
             service_name,
@@ -158,6 +160,7 @@ impl TerminalManager {
         self.complete_reservation(
             id.clone(),
             PtySession {
+                restart_spec,
                 control: Arc::new(Mutex::new(())),
                 prompt_write_active: false,
                 generation: generation.clone(),

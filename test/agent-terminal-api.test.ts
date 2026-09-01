@@ -207,8 +207,8 @@ describe("agent terminal client API", () => {
 
   test("the terminal entry point exports and dispatches agent creation", () => {
     expect(terminalSource).toContain("export function createAgentTerminalSession");
-    expect(terminalSource).toContain("terminalApi().createAgentTerminalSession(opts)");
-    expect(terminalSource).toContain("terminalApi().renameTerminalSession(id, label)");
+    expect(terminalSource).toContain("httpTerminalApi.createAgentTerminalSession(opts)");
+    expect(terminalSource).toContain("httpTerminalApi.renameTerminalSession(id, label)");
     expect(terminalSource).toContain("CreateAgentTerminalOptions");
   });
 
@@ -268,6 +268,6 @@ describe("agent terminal client API", () => {
         body: JSON.stringify({ prompt: "Review this\nwithout submitting" }),
       },
     );
-    expect(terminalSource).toContain("terminalApi().insertAgentPrompt(id, prompt)");
+    expect(terminalSource).toContain("httpTerminalApi.insertAgentPrompt(id, prompt)");
   });
 });

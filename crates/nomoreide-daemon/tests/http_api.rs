@@ -1,3 +1,4 @@
+use futures_util::{SinkExt, StreamExt};
 use nomoreide_daemon::{run_embedded, serve_until, DaemonOptions};
 use nomoreide_daemon_client::protocol::{ServiceRuntimeState, TimelineEventKind, TimelineSeverity};
 use nomoreide_daemon_client::{
@@ -8,6 +9,8 @@ use serde_json::json;
 use std::path::PathBuf;
 use tokio::sync::oneshot;
 use tokio::time::{sleep, Duration};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::Message;
 use uuid::Uuid;
 
 fn temp_dir() -> PathBuf {
@@ -117,6 +120,115 @@ async fn embedded_daemon_keeps_auth_in_memory_and_allows_only_desktop_origins() 
         .await
         .unwrap();
     assert_eq!(refused.status(), StatusCode::FORBIDDEN);
+
+    let created = http
+        .post(format!("{base_url}/api/terminal/sessions"))
+        .bearer_auth("desktop-test-credential")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status(), StatusCode::CREATED);
+    let session_id = created.json::<serde_json::Value>().await.unwrap()["session"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let socket_url = format!("ws://127.0.0.1:{port}/api/terminal/socket?id={session_id}");
+    let unauthenticated_socket = tokio_tungstenite::connect_async(&socket_url)
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        unauthenticated_socket,
+        tokio_tungstenite::tungstenite::Error::Http(response)
+            if response.status() == StatusCode::UNAUTHORIZED
+    ));
+
+    let mut socket_request = socket_url.into_client_request().unwrap();
+    socket_request
+        .headers_mut()
+        .insert("origin", "tauri://localhost".parse().unwrap());
+    socket_request.headers_mut().insert(
+        "sec-websocket-protocol",
+        "nomoreide, nomoreide-bearer.desktop-test-credential"
+            .parse()
+            .unwrap(),
+    );
+    let (mut socket, response) = tokio_tungstenite::connect_async(socket_request)
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SWITCHING_PROTOCOLS);
+    assert_eq!(
+        response.headers().get("sec-websocket-protocol").unwrap(),
+        "nomoreide"
+    );
+    let first = socket.next().await.unwrap().unwrap().into_text().unwrap();
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&first).unwrap()["state"],
+        "running"
+    );
+
+    socket
+        .send(Message::Text(
+            json!({ "type": "input", "data": "printf 'NOMOREIDE_SOCKET_OK\\n'\r" }).to_string(),
+        ))
+        .await
+        .unwrap();
+    let output = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let text = socket.next().await.unwrap().unwrap().into_text().unwrap();
+            let message = serde_json::from_str::<serde_json::Value>(&text).unwrap();
+            if message["type"] == "output"
+                && message["data"]
+                    .as_str()
+                    .is_some_and(|data| data.contains("NOMOREIDE_SOCKET_OK"))
+            {
+                break message;
+            }
+        }
+    })
+    .await
+    .expect("terminal socket did not return PTY output");
+    assert_eq!(output["type"], "output");
+
+    socket
+        .send(Message::Text(
+            json!({ "type": "restart", "cols": 101, "rows": 37 }).to_string(),
+        ))
+        .await
+        .unwrap();
+    let restarted = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let text = socket.next().await.unwrap().unwrap().into_text().unwrap();
+            let message = serde_json::from_str::<serde_json::Value>(&text).unwrap();
+            if message["type"] == "state"
+                && message["state"] == "running"
+                && message["cols"] == 101
+                && message["rows"] == 37
+            {
+                break message;
+            }
+        }
+    })
+    .await
+    .expect("terminal socket did not report the restarted PTY");
+    assert_eq!(restarted["state"], "running");
+
+    socket
+        .send(Message::Text(json!({ "type": "stop" }).to_string()))
+        .await
+        .unwrap();
+    let stopped_socket = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let text = socket.next().await.unwrap().unwrap().into_text().unwrap();
+            let message = serde_json::from_str::<serde_json::Value>(&text).unwrap();
+            if message["type"] == "state" && message["state"] == "exited" {
+                break message;
+            }
+        }
+    })
+    .await
+    .expect("terminal socket did not report the stopped PTY");
+    assert_eq!(stopped_socket["state"], "exited");
 
     let stopped = http
         .post(format!("{base_url}/api/daemon/shutdown"))

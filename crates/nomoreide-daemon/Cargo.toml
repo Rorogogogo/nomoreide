@@ -24,7 +24,7 @@ include = [
 
 [dependencies]
 anyhow.workspace = true
-axum.workspace = true
+axum = { workspace = true, features = ["ws"] }
 chrono.workspace = true
 futures-util.workspace = true
 nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.1" }
@@ -44,3 +44,4 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage
 
 [dev-dependencies]
 reqwest.workspace = true
+tokio-tungstenite = "0.24"

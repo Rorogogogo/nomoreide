@@ -9,6 +9,7 @@ use super::session::{
     encode_agent_prompt_paste, validate_agent_prompt_target, TerminalExit, TerminalPresentation,
     TerminalSession,
 };
+use super::spawn::TerminalSpawnSpec;
 use crate::event_sink::{emit_event, EventSink, SharedEventSink};
 use portable_pty::{Child, ChildKiller};
 use std::collections::{HashMap, HashSet};
@@ -106,6 +107,7 @@ pub(super) struct OutputGate {
 }
 
 pub(super) struct PtySession {
+    pub(super) restart_spec: TerminalSpawnSpec,
     pub(super) control: Arc<Mutex<()>>,
     pub(super) prompt_write_active: bool,
     pub(super) generation: String,
@@ -716,6 +718,37 @@ impl TerminalManager {
         } else {
             Err(format!("Terminal session changed while closing: {id}"))
         }
+    }
+
+    /// Replace a live PTY with the same command, scope, environment, and id.
+    ///
+    /// The web terminal's restart button is a transport control rather than a
+    /// second session-creation policy. Keeping the original spawn decision on
+    /// the session lets every host restart exactly what it already owns.
+    pub fn restart_session(
+        &self,
+        sink: SharedEventSink,
+        id: &str,
+        cols: u16,
+        rows: u16,
+    ) -> Result<TerminalSession, String> {
+        let mut spec = {
+            let registry = self.registry.0.lock().unwrap();
+            let session = registry
+                .sessions
+                .get(id)
+                .ok_or_else(|| format!("Unknown terminal session: {id}"))?;
+            let mut spec = session.restart_spec.clone();
+            spec.label = session.metadata.label.clone();
+            spec
+        };
+        spec.id = id.to_string();
+        self.close_session(id)?;
+        let mut session = self.create(sink, spec)?;
+        self.resize(id, cols, rows)?;
+        session.cols = cols;
+        session.rows = rows;
+        Ok(session)
     }
 
     pub fn close_all(&self) -> Result<(), String> {

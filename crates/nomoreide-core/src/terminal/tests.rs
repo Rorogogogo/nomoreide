@@ -11,6 +11,7 @@ use super::session::{
     configure_interactive_terminal_environment, encode_agent_prompt_paste, normalize_agent_label,
     normalize_session_label, validate_agent_prompt_target, TerminalPresentation, TerminalSession,
 };
+use super::spawn::TerminalSpawnSpec;
 
 #[test]
 fn agent_prompt_paste_is_unsubmitted_and_rejects_terminal_controls() {
@@ -166,6 +167,17 @@ fn spawn_test_session(manager: &TerminalManager, id: &str, script: &str) -> u32 
     let killer = child.clone_killer();
     let writer = Arc::new(Mutex::new(pair.master.take_writer().unwrap()));
     let session = PtySession {
+        restart_spec: TerminalSpawnSpec {
+            id: id.to_string(),
+            service_name: None,
+            cwd: "/tmp".to_string(),
+            shell: "/bin/sh".into(),
+            args: vec!["-c".to_string(), script.to_string()],
+            env: Vec::new(),
+            label: None,
+            kind: Some("shell".to_string()),
+            provider: None,
+        },
         control: Arc::new(Mutex::new(())),
         prompt_write_active: false,
         generation: generation.clone(),
@@ -961,6 +973,55 @@ fn a_stable_id_reattaches_instead_of_spawning_a_second_child() {
     assert_eq!(first.id, second.id);
     assert_eq!(first_pid, second_pid, "reopening spawned a second child");
     assert_eq!(manager.list_sessions().len(), 1);
+    manager.close_all().unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn restarting_a_session_reuses_its_spawn_policy_and_replaces_the_process() {
+    use crate::event_sink::{EventSink, EventSinkError, SharedEventSink};
+    use std::sync::Arc;
+
+    struct Silent;
+    impl EventSink for Silent {
+        fn emit(&self, _event: &str, _payload: serde_json::Value) -> Result<(), EventSinkError> {
+            Ok(())
+        }
+    }
+
+    let manager = TerminalManager::new();
+    let sink: SharedEventSink = Arc::new(Silent);
+    manager
+        .create(
+            sink.clone(),
+            TerminalSpawnSpec {
+                id: "restartable".to_string(),
+                service_name: None,
+                cwd: "/tmp".to_string(),
+                shell: "/bin/sh".into(),
+                args: vec!["-c".to_string(), "sleep 30".to_string()],
+                env: vec![("NOMOREIDE_RESTART_TEST".to_string(), "kept".to_string())],
+                label: Some("before rename".to_string()),
+                kind: Some("shell".to_string()),
+                provider: None,
+            },
+        )
+        .unwrap();
+    manager
+        .rename_session("restartable", "renamed".to_string())
+        .unwrap();
+    let first_pid = pid_of(&manager, "restartable").unwrap();
+
+    let restarted = manager
+        .restart_session(sink, "restartable", 101, 37)
+        .unwrap();
+    let second_pid = pid_of(&manager, "restartable").unwrap();
+
+    assert_ne!(first_pid, second_pid);
+    assert!(!process_exists(first_pid));
+    assert!(process_exists(second_pid));
+    assert_eq!((restarted.cols, restarted.rows), (101, 37));
+    assert_eq!(restarted.label.as_deref(), Some("renamed"));
     manager.close_all().unwrap();
 }
 
