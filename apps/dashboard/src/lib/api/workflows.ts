@@ -1,15 +1,8 @@
-/**
- * Workflows API entry point. Picks the backend implementation once at module
- * load (`isTauri()` → Rust core, else Node HTTP) and re-exports its methods as
- * the named functions the rest of the app already imports — never a per-function
- * `if (isTauri())` branch.
- */
-import { isTauri } from "./tauri-bridge.js";
+/** Workflows API entry point shared by browser and desktop. */
 import type { WorkflowsApi } from "./workflows-api.js";
 import { httpWorkflowsApi } from "./workflows-http.js";
-import { tauriWorkflowsApi } from "./workflows-tauri.js";
 
-const api: WorkflowsApi = isTauri() ? tauriWorkflowsApi : httpWorkflowsApi;
+const api: WorkflowsApi = httpWorkflowsApi;
 
 export const {
   listWorkflows,
