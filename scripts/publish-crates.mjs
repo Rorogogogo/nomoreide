@@ -143,7 +143,7 @@ console.log(
             `real run publishes in order.`
           : "")
     : `\nPublished ${CRATES.length} crates at ${version}. ` +
-        `\`cargo install nomoreide-cli\` serves the dashboard from the binary.`,
+        `\`cargo install nomoreide\` installs the binary, dashboard included.`,
 );
 
 /// Whether crates.io already holds this exact version — which makes a re-run
