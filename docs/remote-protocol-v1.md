@@ -3,10 +3,23 @@
 **Status:** frozen. This is Phase 1 of
 `docs/plans/2026-08-20-remote-control-relay-after-rust.md`.
 
-Two independently written implementations have to agree about this wire format:
-the daemon's, in `crates/nomoreide-core/src/remote/protocol/`, and the hosted
-platform's, in `../nomoreide-platform`. Neither owns it. This document is the
-contract, and the golden fixtures below are the executable half of it.
+Two independently deployed programs speak this wire format: the daemon on a
+developer's machine, and the hosted platform's API in `../nomoreide-platform` —
+different repositories, different Cargo workspaces, different release cadences.
+
+**They share one implementation.** It is `crates/nomoreide-remote-protocol`, a
+package with three dependencies (`serde`, `serde_json`, `chrono`), deliberately
+light enough for an API container that has no use for `nomoreide-core`'s sqlx,
+PTY and tar stack. The daemon reaches it as
+`nomoreide_core::remote::protocol`; the platform depends on the published crate.
+Writing it twice would make it two implementations of one meaning, which is the
+mistake the desktop app already made and is still paying 150 duplicated commands
+for.
+
+This document is the contract in prose. The golden fixtures below are the
+executable record of the frame *shapes*, which is the part a shared parser does
+not protect: a field renamed or an optional that starts serialising as `null`
+breaks a peer that has not been rebuilt, and fails no type-level test.
 
 Changing anything here is a protocol change. That means a new major version and
 a stated behaviour for the peers that still speak the old one — not a
@@ -249,7 +262,7 @@ does. The end-to-end release gate in the relay plan exercises the starred ones.
 
 ## Golden fixtures
 
-`crates/nomoreide-core/src/remote/protocol/fixtures/`
+`crates/nomoreide-remote-protocol/src/fixtures/`
 
 ```
 valid/device-bound/<type>.json        one frame per command
@@ -274,7 +287,7 @@ Exactly one of `frame` and `frameText` is present. There is no manifest: the
 harness walks the directory, so a fixture cannot be committed and left
 unexercised.
 
-**Both repositories run the same assertions against this directory:**
+**Four assertions run against this directory:**
 
 1. every valid frame parses, and re-encoding it reproduces the file byte for
    byte;
@@ -286,13 +299,35 @@ unexercised.
 The valid half is generated from the Rust sample set:
 
 ```bash
-UPDATE_REMOTE_FIXTURES=1 cargo test -p nomoreide-core remote::protocol::fixtures
+UPDATE_REMOTE_FIXTURES=1 cargo test -p nomoreide-remote-protocol fixtures
 ```
+
+They are also the source for any mirror written in another language. The hosted
+frontend will eventually render run events over SSE, and its TypeScript types
+should be checked against these bytes rather than against a reading of this
+document.
 
 Doing that is a protocol change. The diff is the review.
 
 These are **not** parity recordings, and no parity gate covers the relay. The
 policy in `CLAUDE.md` stands: recordings are a decaying asset, no new ones are
 added, and the relay has no TypeScript counterpart to have recorded anyway. What
-protects it is native Rust tests, this fixture set shared across the two
-repositories, and the end-to-end release gate in the relay plan.
+protects it is native Rust tests, this fixture set, and the end-to-end release
+gate in the relay plan.
+
+---
+
+## How the platform depends on it
+
+`nomoreide-remote-protocol` publishes to crates.io from the same tag as the
+other seven, first in dependency order. Two consequences worth writing down:
+
+- **Its trusted publisher has to be configured before the release that first
+  publishes it**, per `CLAUDE.md`. A new crate with no trusted publisher fails
+  the `crates` job at the end of a release, after the GitHub Release already
+  exists.
+- **The platform can only pick up a protocol change at publish time**, unless it
+  takes a git dependency on a branch during development. Prefer publishing: a
+  git dependency that tracks `main` makes the platform's build depend on
+  whatever was merged this morning, which is exactly the version skew this
+  document exists to make deliberate.

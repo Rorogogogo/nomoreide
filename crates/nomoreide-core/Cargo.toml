@@ -27,6 +27,7 @@ base64.workspace = true
 chrono.workspace = true
 dirs.workspace = true
 flate2.workspace = true
+nomoreide-remote-protocol = { path = "../nomoreide-remote-protocol", version = "0.3.3" }
 tar.workspace = true
 regex.workspace = true
 portable-pty.workspace = true

@@ -13,14 +13,20 @@
 //!
 //! The golden files under `fixtures/` are those samples serialised, plus
 //! hand-written invalid frames that each name the error code they must produce.
-//! They are the **canonical cross-repository artefact**: the hosted platform
-//! reads the same directory and runs the same assertions against its own
-//! implementation, which is what keeps two independently written parsers
-//! agreeing about a wire format neither of them owns alone.
+//! Both ends of the wire share this crate's parser, so their job is not to hold
+//! two implementations together — it is to make a change to the *shape* of a
+//! frame visible. A field renamed, a payload nested differently, an optional
+//! that starts serialising as `null`: none of those fail a type-level test, and
+//! all of them break a peer that has not been rebuilt. Here they are a diff.
+//!
+//! They are also the source for any mirror written in another language — the
+//! hosted frontend will eventually render run events, and its TypeScript types
+//! should be checked against these bytes rather than against a reading of the
+//! spec.
 //!
 //! Regenerate the valid half with `UPDATE_REMOTE_FIXTURES=1 cargo test -p
-//! nomoreide-core remote::protocol::fixtures`. Doing so is a protocol change:
-//! the diff is the review.
+//! nomoreide-remote-protocol fixtures`. Doing so is a protocol change: the diff
+//! is the review.
 
 use super::agent_event::{
     AgentEvent, AgentEventBody, ApprovalDecider, ApprovalRequestEvent, ApprovalSettledEvent,
@@ -227,7 +233,7 @@ pub(crate) mod golden {
     use std::path::{Path, PathBuf};
 
     fn root() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("src/remote/protocol/fixtures")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures")
     }
 
     fn fixture_now() -> DateTime<Utc> {
@@ -262,7 +268,7 @@ pub(crate) mod golden {
         let found = std::fs::read_to_string(path).unwrap_or_else(|error| {
             panic!(
                 "missing golden fixture {} ({error}).\n\
-                 Regenerate with UPDATE_REMOTE_FIXTURES=1 cargo test -p nomoreide-core remote",
+                 Regenerate with UPDATE_REMOTE_FIXTURES=1 cargo test -p nomoreide-remote-protocol",
                 path.display()
             )
         });

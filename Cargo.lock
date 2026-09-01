@@ -2368,6 +2368,7 @@ dependencies = [
  "dirs 5.0.1",
  "flate2",
  "libc",
+ "nomoreide-remote-protocol",
  "portable-pty",
  "regex",
  "reqwest 0.12.28",
@@ -2433,6 +2434,15 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "nomoreide-remote-protocol"
+version = "0.3.3"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

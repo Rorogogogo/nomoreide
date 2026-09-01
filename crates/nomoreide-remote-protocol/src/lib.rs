@@ -1,9 +1,22 @@
-//! The frozen v1 wire protocol between a local daemon and the hosted relay.
+//! The frozen v1 wire protocol between a local NoMoreIDE daemon and the hosted
+//! remote-control relay.
 //!
 //! Nothing here talks to a socket, a service or an agent. It is the shape of
-//! what may be said and the rules for refusing everything else — deliberately
-//! separable, so the platform (a different repository, a different Cargo
-//! workspace) can hold the same contract without depending on this crate.
+//! what may be said and the rules for refusing everything else.
+//!
+//! **Why this is its own package.** Two independently deployed programs speak
+//! this protocol — the daemon on a developer's machine and the platform's API
+//! container, which live in different repositories and different Cargo
+//! workspaces. Writing it twice would make it two implementations of one
+//! meaning, which is the mistake the desktop app already made and is still
+//! paying 150 duplicated commands for. So it is one implementation, in a
+//! package light enough for both: `serde`, `serde_json`, `chrono`, and nothing
+//! else. The daemon reaches it through `nomoreide_core::remote::protocol`.
+//!
+//! The daemon always dials **out** over TLS. Nothing in this protocol opens a
+//! port, asks for a port forward, or accepts an inbound connection — a machine
+//! running NoMoreIDE is not reachable from the internet because of this
+//! feature, and that is the property the whole design is arranged around.
 //!
 //! Where to look:
 //!
@@ -17,8 +30,8 @@
 //! - [`version`] — negotiation, capabilities, and what a phone does against a
 //!   machine that has not been updated.
 //! - [`idempotency`] — why a mutation is never automatically re-sent.
-//! - [`fixtures`] — one sample of every frame, and the golden files both
-//!   repositories check themselves against.
+//! - [`fixtures`] — one sample of every frame, and the golden files an
+//!   independent implementation checks itself against.
 //!
 //! Three properties hold across all of it, and each has a test that fails if it
 //! stops holding:
@@ -31,6 +44,9 @@
 //!    query, a git mutation or a process id — so no payload can smuggle one.
 //! 3. **Ambiguity never retries.** A mutation whose outcome is unknown is a
 //!    question for a human, not a frame to send again.
+//!
+//! The contract in prose, including the threat model, is
+//! `docs/remote-protocol-v1.md` in the repository.
 
 pub mod agent_event;
 pub mod device_bound;

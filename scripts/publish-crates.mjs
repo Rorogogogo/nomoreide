@@ -25,7 +25,11 @@ import { setTimeout as sleep } from "node:timers/promises";
 // names the siblings each one resolves *from the registry* at package time,
 // which is what makes the order mandatory rather than tidy.
 const CRATES = [
-  { name: "nomoreide-core", needs: [] },
+  // First, and depended on from outside this workspace too: the hosted
+  // platform speaks the same relay protocol from its own repository, which is
+  // why the protocol is a package rather than a module of `nomoreide-core`.
+  { name: "nomoreide-remote-protocol", needs: [] },
+  { name: "nomoreide-core", needs: ["nomoreide-remote-protocol"] },
   { name: "nomoreide-daemon-client", needs: [] },
   { name: "nomoreide-actions", needs: ["nomoreide-core"] },
   {
