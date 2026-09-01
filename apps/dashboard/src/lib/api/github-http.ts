@@ -1,5 +1,6 @@
 /** Node HTTP-server implementation of {@link GitHubApi} (the web/MCP backend). */
 import { requestJson } from "./client.js";
+import { apiFetch } from "./desktop-runtime.js";
 import type {
   CommitCIStatus,
   GitHubApi,
@@ -83,7 +84,7 @@ export const httpGitHubApi: GitHubApi = {
   },
 
   async getGitHubPRDiff(number) {
-    const response = await fetch(`/api/github/prs/${number}/diff`);
+    const response = await apiFetch(`/api/github/prs/${number}/diff`);
     if (!response.ok) {
       const body = (await response
         .json()

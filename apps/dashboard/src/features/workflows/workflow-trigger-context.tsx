@@ -19,6 +19,7 @@ import {
   type WorkflowTrigger,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { openApiEventSource } from "@/lib/api/api-event-source";
 import { useWorkflowRun } from "./workflow-run-context";
 
 interface WorkflowTriggerValue {
@@ -77,7 +78,7 @@ export function WorkflowTriggerProvider({ children }: { children: ReactNode }) {
       setPending(Array.isArray(nextPending) ? nextPending : []);
     });
 
-    const source = new EventSource("/api/workflow-triggers/pending/stream");
+    const source = openApiEventSource("/api/workflow-triggers/pending/stream");
     source.addEventListener("pending", (event) => {
       try {
         upsertPending(JSON.parse((event as MessageEvent).data) as PendingRun);

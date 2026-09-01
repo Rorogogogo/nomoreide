@@ -27,7 +27,7 @@ import {
   type ServiceStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { isTauri, openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/tauri";
 import { useT } from "@/lib/i18n";
 import { type BulkAction, ServiceBulkActions } from "./bulk-actions";
 import { DebugTimeline } from "./debug-timeline";
@@ -80,7 +80,6 @@ export function ServicesView({
   >(null);
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [jetBrainsImportOpen, setJetBrainsImportOpen] = useState(false);
-  const supportsJetBrainsImport = !isTauri();
   const { sendToAgent, startOnboard } = useAgentDock();
   const [multiLogOpen, setMultiLogOpen] = useState(false);
   const [graphOpen, setGraphOpen] = useState(false);
@@ -280,9 +279,7 @@ export function ServicesView({
           onOnboardRepo={() => setOnboardOpen(true)}
           onOnboardWithAi={startOnboard}
           onCreateService={() => setServiceComposer({ kind: "add" })}
-          onImportJetBrains={
-            supportsJetBrainsImport ? () => setJetBrainsImportOpen(true) : undefined
-          }
+          onImportJetBrains={() => setJetBrainsImportOpen(true)}
           onCreateWithAi={() =>
             sendToAgent({
               prompt: SETUP_SERVICE_PROMPT,
@@ -344,11 +341,7 @@ export function ServicesView({
                     </Tooltip>
                   </Button>
                   <AddMenu
-                    onImportJetBrains={
-                      supportsJetBrainsImport
-                        ? () => setJetBrainsImportOpen(true)
-                        : undefined
-                    }
+                    onImportJetBrains={() => setJetBrainsImportOpen(true)}
                     onCreateService={() => setServiceComposer({ kind: "add" })}
                     onOnboardRepo={() => setOnboardOpen(true)}
                     onOnboardWithAi={startOnboard}
@@ -597,7 +590,7 @@ export function ServicesView({
       {onboardOpen ? (
         <OnboardDialog onClose={() => setOnboardOpen(false)} onRefresh={onRefresh} />
       ) : null}
-      {supportsJetBrainsImport && jetBrainsImportOpen ? (
+      {jetBrainsImportOpen ? (
         <JetBrainsImportDialog
           initialRoot={
             data.git.selectedRepository?.activeWorktreePath ??

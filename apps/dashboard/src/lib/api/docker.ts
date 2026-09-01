@@ -1,9 +1,7 @@
-import { isTauri } from "./tauri-bridge.js";
 import type { DockerApi } from "./docker-api.js";
 import { httpDockerApi } from "./docker-http.js";
-import { tauriDockerApi } from "./docker-tauri.js";
 
-const api: DockerApi = isTauri() ? tauriDockerApi : httpDockerApi;
+const api: DockerApi = httpDockerApi;
 
 export const {
   getDockerStatus,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getErrorIncidents, type ErrorIncident } from "@/lib/api";
+import { openApiEventSource } from "@/lib/api/api-event-source";
 
 function sortNewestFirst(items: ErrorIncident[]): ErrorIncident[] {
   return [...items].sort((a, b) =>
@@ -33,7 +34,7 @@ export function useErrorIncidents() {
         if (active) setError(err instanceof Error ? err.message : String(err));
       });
 
-    const source = new EventSource("/api/errors/stream");
+    const source = openApiEventSource("/api/errors/stream");
     source.addEventListener("open", () => setConnected(true));
     source.addEventListener("error", () => setConnected(false));
     source.addEventListener("incident", (event) => {

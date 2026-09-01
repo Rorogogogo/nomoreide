@@ -1,5 +1,6 @@
 /** Node HTTP-server implementation of {@link TerminalApi} (the web/MCP backend). */
 import { requestJson } from "./client.js";
+import { openApiEventSource } from "./api-event-source.js";
 import type {
   AgentTranscriptInfo,
   AgentTranscriptScope,
@@ -110,7 +111,7 @@ export const httpTerminalApi: TerminalApi = {
   },
 
   async onTerminalSessionChanged(handler) {
-    const events = new EventSource("/api/terminal/events");
+    const events = openApiEventSource("/api/terminal/events");
     const onSession = (event: MessageEvent<string>) => {
       try {
         handler(JSON.parse(event.data) as TerminalSessionInfo);

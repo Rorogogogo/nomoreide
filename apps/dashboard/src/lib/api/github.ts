@@ -1,15 +1,8 @@
-/**
- * GitHub API entry point. Picks the backend implementation once at module load
- * (`isTauri()` → Rust core, else Node HTTP) and re-exports its methods as the
- * named functions the rest of the app already imports — never a per-function
- * `if (isTauri())` branch.
- */
-import { isTauri } from "./tauri-bridge.js";
+/** GitHub API entry point shared by browser and desktop. */
 import type { GitHubApi } from "./github-api.js";
 import { httpGitHubApi } from "./github-http.js";
-import { tauriGitHubApi } from "./github-tauri.js";
 
-const api: GitHubApi = isTauri() ? tauriGitHubApi : httpGitHubApi;
+const api: GitHubApi = httpGitHubApi;
 
 export const {
   getGitHubTokenInfo,

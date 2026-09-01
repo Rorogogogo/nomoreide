@@ -14,12 +14,9 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  tauri_onTerminalOutput,
-  tauri_resizeTerminal,
-  tauri_startTerminalStream,
-  tauri_writeTerminalInput,
-} from "@/lib/api";
-import { isTauri } from "@/lib/tauri";
+  daemonWebSocketProtocols,
+  daemonWebSocketUrl,
+} from "@/lib/api/desktop-runtime";
 import { useResolvedTheme, type ResolvedTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -367,9 +364,16 @@ export function connectWebTerminal(options: {
   const location = options.location ?? window.location;
   const createSocket =
     options.createSocket ??
-    ((url: string) => new WebSocket(url) as unknown as TerminalSocketLike);
+    ((url: string) =>
+      new WebSocket(url, daemonWebSocketProtocols()) as unknown as TerminalSocketLike);
   options.reportStatus(options.initialStatus);
-  const socket = createSocket(terminalSocketUrl(options.sessionId, location));
+  const fallbackUrl = terminalSocketUrl(options.sessionId, location);
+  const socket = createSocket(
+    daemonWebSocketUrl(
+      `/api/terminal/socket?id=${encodeURIComponent(options.sessionId)}`,
+      fallbackUrl,
+    ),
+  );
   let disposed = false;
   let cancelInitialInput: (() => void) | undefined;
   const cancelStaggeredInputs: Array<() => void> = [];
@@ -508,9 +512,6 @@ export const TerminalViewport = forwardRef<
   const statusRef = useRef<TerminalViewportStatus>(INITIAL_STATUS);
   const [status, setStatus] = useState<TerminalViewportStatus>(INITIAL_STATUS);
   const [repairing, setRepairing] = useState(false);
-  // Desktop owns its PTY in Rust; the web build attaches to the Node server.
-  const tauriMode = isTauri();
-
   activeRef.current = active;
 
   useEffect(() => {
@@ -548,10 +549,6 @@ export const TerminalViewport = forwardRef<
     fit.fit();
     const dimensions = fit.proposeDimensions();
     if (!dimensions) return;
-    if (tauriMode) {
-      void tauri_resizeTerminal(sessionId, dimensions.cols, dimensions.rows);
-      return;
-    }
     const socket = socketRef.current;
     if (socket?.readyState !== WEB_SOCKET_OPEN) return;
     socket.send(
@@ -561,7 +558,7 @@ export const TerminalViewport = forwardRef<
         type: "resize",
       }),
     );
-  }, [tauriMode, sessionId]);
+  }, []);
 
   useEffect(() => {
     if (interactive) sendResize();
@@ -587,28 +584,18 @@ export const TerminalViewport = forwardRef<
     sendResize,
   ]);
 
-  const sendControl = useCallback(
-    (type: TerminalControl) => {
-      // The Rust PTY has no restart/stop commands yet, matching the existing
-      // desktop behavior where these controls are no-ops.
-      if (tauriMode) return;
-      sendWebTerminalControl(socketRef.current, fitRef.current, type);
-    },
-    [tauriMode],
-  );
+  const sendControl = useCallback((type: TerminalControl) => {
+    sendWebTerminalControl(socketRef.current, fitRef.current, type);
+  }, []);
 
   const sendInput = useCallback(
     (data: string) => {
       if (!interactiveRef.current) return;
-      if (tauriMode) {
-        void tauri_writeTerminalInput(sessionId, data);
-        return;
-      }
       const socket = socketRef.current;
       if (socket?.readyState !== WEB_SOCKET_OPEN) return;
       socket.send(JSON.stringify({ data, type: "input" }));
     },
-    [tauriMode, sessionId],
+    [],
   );
 
   useImperativeHandle(
@@ -685,87 +672,26 @@ export const TerminalViewport = forwardRef<
       }
     });
 
-    let cleanupTransport: () => void;
+    const transport = connectWebTerminal({
+      claimInitialInput,
+      initialInputIntervalMs,
+      initialStatus: INITIAL_STATUS,
+      reportStatus,
+      sendResize,
+      sessionId,
+      terminal: {
+        onData: (callback) => terminal.onData((data) => {
+          if (interactiveRef.current) callback(data);
+        }),
+        write: (data) => outputBuffer.push(data),
+      },
+    });
+    socketRef.current = transport.socket;
 
-    if (tauriMode) {
-      reportStatus(INITIAL_STATUS);
-      let unlisten: (() => void) | null = null;
-      let disposed = false;
-      let initialInputTimer: number | undefined;
-      const inputSubscription = terminal.onData((data) => {
-        if (!interactiveRef.current) return;
-        void tauri_writeTerminalInput(sessionId, data);
-      });
-      void tauri_onTerminalOutput(sessionId, (data) => {
-        outputBuffer.push(data);
-        if (initialInputTimer !== undefined) window.clearTimeout(initialInputTimer);
-        initialInputTimer = window.setTimeout(() => {
-          initialInputTimer = undefined;
-          void (async () => {
-            const inputs = claimInitialInput?.() ?? [];
-            for (let index = 0; index < inputs.length; index += 1) {
-              if (index > 0) {
-                await new Promise<void>((resolve) =>
-                  window.setTimeout(resolve, initialInputIntervalMs ?? 75),
-                );
-              }
-              await tauri_writeTerminalInput(sessionId, inputs[index]);
-            }
-          })();
-        }, 200);
-      }).then(
-        (off) => {
-          if (disposed) {
-            off();
-            return;
-          }
-          unlisten = off;
-          reportStatus((current) => ({
-            ...current,
-            state: "running",
-            detail: translate("terminal.shellConnected"),
-          }));
-          // Attach the listener before releasing buffered startup output.
-          void tauri_startTerminalStream(sessionId);
-          sendResize();
-        },
-        (caught) => {
-          if (disposed) return;
-          reportStatus((current) => ({
-            ...current,
-            state: "error",
-            detail: caught instanceof Error ? caught.message : String(caught),
-          }));
-        },
-      );
-      cleanupTransport = () => {
-        disposed = true;
-        if (initialInputTimer !== undefined) window.clearTimeout(initialInputTimer);
-        inputSubscription.dispose();
-        unlisten?.();
-      };
-    } else {
-      const transport = connectWebTerminal({
-        claimInitialInput,
-        initialInputIntervalMs,
-        initialStatus: INITIAL_STATUS,
-        reportStatus,
-        sendResize,
-        sessionId,
-        terminal: {
-          onData: (callback) => terminal.onData((data) => {
-            if (interactiveRef.current) callback(data);
-          }),
-          write: (data) => outputBuffer.push(data),
-        },
-      });
-      socketRef.current = transport.socket;
-
-      cleanupTransport = () => {
-        transport.dispose();
-        socketRef.current = null;
-      };
-    }
+    const cleanupTransport = () => {
+      transport.dispose();
+      socketRef.current = null;
+    };
 
     window.addEventListener("resize", sendResize);
     const initialResizeTimer = window.setTimeout(sendResize, 0);
@@ -801,7 +727,7 @@ export const TerminalViewport = forwardRef<
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [reportStatus, sessionId, sendResize, tauriMode]);
+  }, [reportStatus, sessionId, sendResize]);
 
   useEffect(() => {
     if (!active) {
@@ -851,8 +777,7 @@ export const TerminalViewport = forwardRef<
       {/* Padding stays outside xterm's mount so FitAddon does not provision an
           extra row and clip the final line. */}
       <div className="h-full w-full" ref={containerRef} />
-      {!tauriMode &&
-      status.state === "error" &&
+      {status.state === "error" &&
       isRecoverableTerminalSpawnError(status.detail) ? (
         <div
           className="absolute inset-x-3 top-3 z-20 flex items-start gap-2 border border-destructive/40 bg-background px-3 py-2 text-foreground shadow-sm"

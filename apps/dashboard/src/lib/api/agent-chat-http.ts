@@ -1,5 +1,6 @@
 /** Node HTTP-server implementation of {@link AgentChatApi} (the web/MCP backend). */
 import { requestJson } from "./client.js";
+import { apiFetch } from "./desktop-runtime.js";
 import type {
   AgentChatApi,
   AgentChatModels,
@@ -60,7 +61,7 @@ export const httpAgentChatApi: AgentChatApi = {
   },
 
   async streamAgentChat(message, resumeSessionId, onEvent, signal, autoApprove, provider) {
-    const response = await fetch("/api/agent/chat", {
+    const response = await apiFetch("/api/agent/chat", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ message, resumeSessionId, autoApprove, provider }),

@@ -1,69 +1,51 @@
-/**
- * Terminal API entry point. Picks the backend implementation once at module load
- * (`isTauri()` → Rust core, else Node HTTP) for session lifecycle, and re-exports
- * the bridge helpers the terminal component uses for live I/O — never a
- * per-function `if (isTauri())` branch.
- */
-import { isTauri } from "./tauri-bridge.js";
+/** Terminal API entry point shared by browser and embedded desktop runtimes. */
 import type { AgentTranscriptScope, CreateAgentTerminalOptions, TerminalApi } from "./terminal-api.js";
 import { httpTerminalApi } from "./terminal-http.js";
-import { tauriTerminalApi } from "./terminal-tauri.js";
-
-export {
-  tauri_writeTerminalInput,
-  tauri_resizeTerminal,
-  tauri_onTerminalOutput,
-  tauri_startTerminalStream,
-} from "./tauri-bridge.js";
-
-function terminalApi(): TerminalApi {
-  return isTauri() ? tauriTerminalApi : httpTerminalApi;
-}
 
 export function listTerminalSessions() {
-  return terminalApi().listTerminalSessions();
+  return httpTerminalApi.listTerminalSessions();
 }
 
 export function listAgentTranscripts(scope?: AgentTranscriptScope) {
-  return terminalApi().listAgentTranscripts(scope);
+  return httpTerminalApi.listAgentTranscripts(scope);
 }
 
 export function createTerminalSession(opts?: { serviceName?: string }) {
-  return terminalApi().createTerminalSession(opts);
+  return httpTerminalApi.createTerminalSession(opts);
 }
 
 export function createAgentTerminalSession(opts: CreateAgentTerminalOptions) {
-  return terminalApi().createAgentTerminalSession(opts);
+  return httpTerminalApi.createAgentTerminalSession(opts);
 }
 
 export function renameTerminalSession(id: string, label: string) {
-  return terminalApi().renameTerminalSession(id, label);
+  return httpTerminalApi.renameTerminalSession(id, label);
 }
 
 export function getTerminalCapabilities() {
-  return terminalApi().getTerminalCapabilities();
+  return httpTerminalApi.getTerminalCapabilities();
 }
 
 export function openTerminalInSystemTerminal(id: string) {
-  return terminalApi().openTerminalInSystemTerminal(id);
+  return httpTerminalApi.openTerminalInSystemTerminal(id);
 }
 
 export function reclaimTerminalToDock(id: string) {
-  return terminalApi().reclaimTerminalToDock(id);
+  return httpTerminalApi.reclaimTerminalToDock(id);
 }
 
 export function insertAgentPrompt(id: string, prompt: string) {
-  return terminalApi().insertAgentPrompt(id, prompt);
+  return httpTerminalApi.insertAgentPrompt(id, prompt);
 }
 
 export function onTerminalSessionChanged(
   handler: Parameters<TerminalApi["onTerminalSessionChanged"]>[0],
 ) {
-  return terminalApi().onTerminalSessionChanged(handler);
+  return httpTerminalApi.onTerminalSessionChanged(handler);
 }
 
 export function closeTerminalSession(id: string) {
-  return terminalApi().closeTerminalSession(id);
+  return httpTerminalApi.closeTerminalSession(id);
 }
 
 export type {

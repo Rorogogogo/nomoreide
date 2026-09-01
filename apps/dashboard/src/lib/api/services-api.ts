@@ -1,9 +1,5 @@
 /**
- * Services API surface — the single contract both backends implement.
- *
- * Most config-file / metrics / test endpoints are Node-server only; the desktop
- * (Tauri) impl inherits those from the HTTP impl and overrides just the
- * Rust-backed lifecycle methods. See {@link ../git-api} for the seam rationale.
+ * Services API contract shared by the browser and embedded desktop daemon clients.
  */
 import type { GitBranch, GitFileStatus } from "./git.js";
 import type { LogQuery } from "./log-sources.js";

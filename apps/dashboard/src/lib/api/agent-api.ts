@@ -1,10 +1,5 @@
 /**
- * Agent API surface — the single contract both backends implement.
- *
- * Agent CLI introspection (memory, skills, MCP servers, usage) is a Node-server
- * feature with no Rust-core equivalent. The desktop (Tauri) implementation
- * degrades the profile/usage to empty rather than forking each function with an
- * `if (isTauri())` branch. See {@link ../git-api} for the seam rationale.
+ * Agent API contract shared by the browser and embedded desktop daemon clients.
  */
 
 export interface AgentMemoryFile {

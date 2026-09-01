@@ -52,10 +52,6 @@ vi.mock("../apps/dashboard/src/lib/api", () => ({
   closeTerminalSession: mocks.closeSession,
   createTerminalSession: mocks.createSession,
   listTerminalSessions: mocks.listSessions,
-  tauri_onTerminalOutput: vi.fn(),
-  tauri_resizeTerminal: vi.fn(),
-  tauri_startTerminalStream: vi.fn(),
-  tauri_writeTerminalInput: vi.fn(),
 }));
 
 vi.mock("@xterm/xterm", () => ({

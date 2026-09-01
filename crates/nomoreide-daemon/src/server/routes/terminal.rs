@@ -10,11 +10,13 @@ use crate::server::routes::query::query_value;
 use crate::server::sse;
 use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{DefaultBodyLimit, State};
 use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
+use futures_util::StreamExt;
 use nomoreide_core::agent_transcripts::{
     default_transcript_homes, list_agent_transcripts, AgentTranscript, DEFAULT_TRANSCRIPT_LIMIT,
 };
@@ -30,7 +32,7 @@ use nomoreide_core::terminal::{
 use nomoreide_daemon_client::protocol::{
     TerminalExitInfo, TerminalSessionEnvelope, TerminalSessionInfo, TerminalSessionsEnvelope,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ffi::OsString;
 
@@ -46,6 +48,7 @@ pub(crate) fn routes() -> Router<AppState> {
         // the reference registers these two with a method and nothing else.
         .route("/api/terminal/capabilities", get(capabilities))
         .route("/api/terminal/events", get(events))
+        .route("/api/terminal/socket", get(socket))
         .route("/api/terminal/transcripts", get(transcripts))
         .route(
             "/api/terminal/sessions",
@@ -125,6 +128,214 @@ async fn events(State(state): State<AppState>) -> Response {
 
 /// The event name the terminal manager emits under.
 const TERMINAL_SESSION_CHANGED: &str = "terminal-session-changed";
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+enum SocketCommand {
+    Input { data: String },
+    Resize { cols: u16, rows: u16 },
+    Repair { cols: u16, rows: u16 },
+    Restart { cols: u16, rows: u16 },
+    Stop,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+enum SocketMessage {
+    State {
+        state: String,
+        cwd: String,
+        shell: String,
+        error: Option<String>,
+        cols: u16,
+        rows: u16,
+    },
+    Output {
+        data: String,
+    },
+    Error {
+        error: String,
+    },
+}
+
+async fn socket(State(state): State<AppState>, uri: Uri, upgrade: WebSocketUpgrade) -> Response {
+    let Some(id) = query_value(&uri, "id").filter(|id| is_existing_id(id)) else {
+        return error(StatusCode::BAD_REQUEST, "Invalid terminal session id.");
+    };
+    if !state
+        .terminal
+        .list_sessions()
+        .iter()
+        .any(|session| session.id == id)
+    {
+        return error(
+            StatusCode::NOT_FOUND,
+            &format!("Unknown terminal session: {id}"),
+        );
+    }
+    upgrade
+        .protocols(["nomoreide"])
+        .on_upgrade(move |socket| serve_socket(socket, state, id))
+}
+
+async fn serve_socket(mut socket: WebSocket, state: AppState, id: String) {
+    let mut events = state.event_stream.subscribe();
+    let Some(session) = state
+        .terminal
+        .list_sessions()
+        .into_iter()
+        .find(|session| session.id == id)
+    else {
+        let _ = send_socket_message(
+            &mut socket,
+            &SocketMessage::Error {
+                error: format!("Unknown terminal session: {id}"),
+            },
+        )
+        .await;
+        return;
+    };
+    if send_socket_message(&mut socket, &socket_state(&session))
+        .await
+        .is_err()
+    {
+        return;
+    }
+    if let Some(pending) = state.terminal.take_pending_output(&id) {
+        if !pending.is_empty()
+            && send_socket_message(
+                &mut socket,
+                &SocketMessage::Output {
+                    data: String::from_utf8_lossy(&pending).into_owned(),
+                },
+            )
+            .await
+            .is_err()
+        {
+            return;
+        }
+    }
+
+    loop {
+        tokio::select! {
+            incoming = socket.next() => {
+                let Some(Ok(message)) = incoming else { return; };
+                let Message::Text(text) = message else {
+                    if matches!(message, Message::Close(_)) { return; }
+                    continue;
+                };
+                let command = match serde_json::from_str::<SocketCommand>(&text) {
+                    Ok(command) => command,
+                    Err(_) => {
+                        if send_socket_message(&mut socket, &SocketMessage::Error {
+                            error: "Invalid terminal socket message.".to_string(),
+                        }).await.is_err() { return; }
+                        continue;
+                    }
+                };
+                match run_socket_command(&state, &id, command).await {
+                    Ok(Some(message)) => {
+                        if send_socket_message(&mut socket, &message).await.is_err() { return; }
+                    }
+                    Ok(None) => {}
+                    Err(message) => {
+                        if send_socket_message(&mut socket, &SocketMessage::Error { error: message })
+                            .await
+                            .is_err()
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
+            event = events.recv() => {
+                let event = match event {
+                    Ok(event) => event,
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+                };
+                let message = if event.name == format!("terminal-output-{id}") {
+                    event.payload.as_str().map(|data| SocketMessage::Output { data: data.to_string() })
+                } else if event.name == TERMINAL_SESSION_CHANGED {
+                    serde_json::from_value::<TerminalSession>(event.payload)
+                        .ok()
+                        .filter(|session| session.id == id)
+                        .map(|session| socket_state(&session))
+                } else {
+                    None
+                };
+                if let Some(message) = message {
+                    if send_socket_message(&mut socket, &message).await.is_err() { return; }
+                }
+            }
+        }
+    }
+}
+
+async fn run_socket_command(
+    state: &AppState,
+    id: &str,
+    command: SocketCommand,
+) -> Result<Option<SocketMessage>, String> {
+    match command {
+        SocketCommand::Input { data } => {
+            state.terminal.write_input(id, data.as_bytes())?;
+            Ok(None)
+        }
+        SocketCommand::Resize { cols, rows } => {
+            state.terminal.resize(id, cols, rows)?;
+            Ok(None)
+        }
+        SocketCommand::Repair { cols, rows } | SocketCommand::Restart { cols, rows } => {
+            let manager = state.terminal.clone();
+            let sink = state.events.clone();
+            let id = id.to_string();
+            let session =
+                tokio::task::spawn_blocking(move || manager.restart_session(sink, &id, cols, rows))
+                    .await
+                    .map_err(|error| error.to_string())??;
+            Ok(Some(socket_state(&session)))
+        }
+        SocketCommand::Stop => {
+            let mut session = state
+                .terminal
+                .list_sessions()
+                .into_iter()
+                .find(|session| session.id == id)
+                .ok_or_else(|| format!("Unknown terminal session: {id}"))?;
+            let manager = state.terminal.clone();
+            let id = id.to_string();
+            tokio::task::spawn_blocking(move || manager.close_session(&id))
+                .await
+                .map_err(|error| error.to_string())??;
+            session.state = "exited".to_string();
+            session.exit = None;
+            Ok(Some(socket_state(&session)))
+        }
+    }
+}
+
+fn socket_state(session: &TerminalSession) -> SocketMessage {
+    SocketMessage::State {
+        state: session.state.clone(),
+        cwd: session.cwd.clone(),
+        shell: session.shell.clone(),
+        error: session.error.clone(),
+        cols: session.cols,
+        rows: session.rows,
+    }
+}
+
+async fn send_socket_message(
+    socket: &mut WebSocket,
+    message: &SocketMessage,
+) -> Result<(), axum::Error> {
+    socket
+        .send(Message::Text(
+            serde_json::to_string(message).expect("terminal socket messages serialize"),
+        ))
+        .await
+}
 
 async fn list_sessions(State(state): State<AppState>) -> Response {
     Json(TerminalSessionsEnvelope {

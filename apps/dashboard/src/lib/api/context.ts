@@ -1,9 +1,7 @@
-import { isTauri } from "@/lib/tauri";
 import type { ContextApi } from "./context-api.js";
 import { contextHttpApi } from "./context-http.js";
-import { contextTauriApi } from "./context-tauri.js";
 
-const api: ContextApi = isTauri() ? contextTauriApi : contextHttpApi;
+const api: ContextApi = contextHttpApi;
 
 export const listContext = api.list;
 export const getContextGraph = api.graph;

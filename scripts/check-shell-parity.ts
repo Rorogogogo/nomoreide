@@ -55,6 +55,27 @@ interface Case {
    * recording is for.
    */
   readonly serves?: string;
+
+  /**
+   * The document also carries the daemon's credential.
+   *
+   * Every `/api/*` route is behind a credential and a browser has no other way
+   * to learn one, so the shell injects it — which means these cases are no
+   * longer the file byte for byte. The claim becomes exactly one step weaker
+   * and still checkable without a reference: the daemon serves the file plus
+   * one credential script and nothing else. Stripping the script back out and
+   * comparing what remains is what enforces the "nothing else".
+   */
+  readonly injectsCredential?: boolean;
+}
+
+/** The one script the shell adds: a frozen global holding the credential. */
+const CREDENTIAL_SCRIPT =
+  /<script>Object\.defineProperty\(window,'__NOMOREIDE_WEB__',\{value:Object\.freeze\(\{"credential":"[0-9a-f]+"\}\),enumerable:false,configurable:false,writable:false\}\);<\/script>/;
+
+/** The served document with that script removed — which must be the file. */
+function withoutCredentialScript(body: Buffer): Buffer {
+  return Buffer.from(body.toString("utf8").replace(CREDENTIAL_SCRIPT, ""), "utf8");
 }
 
 const dump = process.argv.includes("--dump");
@@ -83,11 +104,11 @@ const svgAsset = pick(".svg");
 
 const SHELL = "index.html";
 const cases: Case[] = [
-  { name: "shell/root", method: "GET", path: "/", serves: SHELL },
-  { name: "shell/services", method: "GET", path: "/services", serves: SHELL },
-  { name: "shell/agent-env", method: "GET", path: "/agent-env", serves: SHELL },
-  { name: "shell/extensions", method: "GET", path: "/extensions", serves: SHELL },
-  { name: "shell/extension-id", method: "GET", path: "/extensions/some-plugin", serves: SHELL },
+  { name: "shell/root", method: "GET", path: "/", serves: SHELL, injectsCredential: true },
+  { name: "shell/services", method: "GET", path: "/services", serves: SHELL, injectsCredential: true },
+  { name: "shell/agent-env", method: "GET", path: "/agent-env", serves: SHELL, injectsCredential: true },
+  { name: "shell/extensions", method: "GET", path: "/extensions", serves: SHELL, injectsCredential: true },
+  { name: "shell/extension-id", method: "GET", path: "/extensions/some-plugin", serves: SHELL, injectsCredential: true },
   // The bare prefix names no plugin, so it is not a page.
   { name: "shell/extensions-trailing-slash", method: "GET", path: "/extensions/" },
   { name: "shell/unknown-page", method: "GET", path: "/nope" },
@@ -169,8 +190,21 @@ try {
               status: 200,
               body: digest(await readFile(join(clientDirectory, testCase.serves))),
             };
+      // Take the credential script back out before comparing. What is left has
+      // to be the file exactly, so the daemon cannot quietly change anything
+      // else about the document it serves.
+      const served =
+        testCase.injectsCredential && answer.raw
+          ? { status: answer.status, body: digest(withoutCredentialScript(answer.raw)) }
+          : { status: answer.status, body: answer.body };
+      if (testCase.injectsCredential && answer.raw && !CREDENTIAL_SCRIPT.test(answer.raw.toString("utf8"))) {
+        failures += 1;
+        console.log(`FAIL ${testCase.name}`);
+        console.log("  the document carried no credential, so the dashboard cannot authenticate");
+        continue;
+      }
       try {
-        assert.deepStrictEqual({ status: answer.status, body: answer.body }, expected);
+        assert.deepStrictEqual(served, expected);
         console.log(`ok   ${testCase.name}`);
       } catch (error) {
         failures += 1;
@@ -220,6 +254,9 @@ interface Answer {
   /** Hashed rather than compared inline: an asset is hundreds of kilobytes,
    * and a diff of two of them is unreadable either way. */
   readonly body: string;
+  /** The undigested bytes, kept only where a case has to look inside them —
+   * the shell, whose credential script is stripped before comparison. */
+  readonly raw?: Buffer;
 }
 
 async function send(runtime: Runtime, testCase: Case): Promise<Answer> {
@@ -237,6 +274,7 @@ async function sendFetch(runtime: Runtime, testCase: Case): Promise<Answer> {
     status: response.status,
     contentType: response.headers.get("content-type"),
     body: digest(body),
+    raw: body,
   };
 }
 

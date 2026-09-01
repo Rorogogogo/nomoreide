@@ -191,7 +191,19 @@ function erase(value: string, runtime: Runtime): string {
 }
 
 function normalize(answer: Answer, runtime: Runtime): Answer {
-  return { ...answer, body: JSON.parse(erase(JSON.stringify(answer.body), runtime)) };
+  // The filename deliberately carries the day of export. Keep asserting its
+  // shape without binding a replay recording to the day it was captured.
+  const headers = Object.fromEntries(
+    Object.entries(answer.headers).map(([name, value]) => [
+      name,
+      value?.replace(/-\d{4}-\d{2}-\d{2}(?=\.(?:csv|json)(?:"|$))/g, "-%%DATE%%") ?? null,
+    ]),
+  );
+  return {
+    ...answer,
+    headers,
+    body: JSON.parse(erase(JSON.stringify(answer.body), runtime)),
+  };
 }
 
 async function keysOf(runtime: Runtime): Promise<Keys> {

@@ -1,5 +1,6 @@
 /** Node HTTP-server implementation of {@link GitApi} (the web/MCP backend). */
 import { postForm, postFormForJson, requestJson } from "./client.js";
+import { apiFetch } from "./desktop-runtime.js";
 import type {
   ContentSearchResult,
   FileNameMatch,
@@ -69,7 +70,7 @@ export const httpGitApi: GitApi = {
   async getGitCommitDiff(hash, file) {
     const params = new URLSearchParams({ hash });
     if (file) params.set("file", file);
-    const response = await fetch(`/api/git/commit?${params.toString()}`);
+    const response = await apiFetch(`/api/git/commit?${params.toString()}`);
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: response.statusText }));
       throw new Error(body.error || "Unable to load commit diff");
@@ -147,7 +148,7 @@ export const httpGitApi: GitApi = {
   async getGitDiff(path, repo) {
     const params = new URLSearchParams({ file: path });
     if (repo) params.set("repo", repo);
-    const response = await fetch(`/api/git/diff?${params.toString()}`);
+    const response = await apiFetch(`/api/git/diff?${params.toString()}`);
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: response.statusText }));
       throw new Error(body.error || "Unable to load diff");

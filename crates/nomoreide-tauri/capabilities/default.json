@@ -19,8 +19,6 @@
     "shell:allow-execute",
     "shell:allow-spawn",
     "shell:allow-kill",
-    "process:allow-exit",
-    "process:allow-restart",
     "dialog:allow-save"
   ]
 }

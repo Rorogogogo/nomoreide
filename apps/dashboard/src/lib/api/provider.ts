@@ -1,15 +1,8 @@
-/**
- * Deploy-provider API entry point. Picks the backend implementation once at
- * module load (`isTauri()` → Rust core, else Node HTTP) and re-exports its
- * methods as the named functions the rest of the app imports — never a
- * per-function `if (isTauri())` branch.
- */
-import { isTauri } from "./tauri-bridge.js";
+/** Deploy-provider API entry point shared by browser and desktop. */
 import type { ProviderApi } from "./provider-api.js";
 import { httpProviderApi } from "./provider-http.js";
-import { tauriProviderApi } from "./provider-tauri.js";
 
-const api: ProviderApi = isTauri() ? tauriProviderApi : httpProviderApi;
+const api: ProviderApi = httpProviderApi;
 
 export const {
   listProviders,

@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ToolCallRecord } from "@/lib/api";
+import { openApiEventSource } from "@/lib/api/api-event-source";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,7 @@ export function ToolCallFeed() {
   const t = useT();
 
   useEffect(() => {
-    const source = new EventSource("/api/agent/tool-calls/stream");
+    const source = openApiEventSource("/api/agent/tool-calls/stream");
     source.addEventListener("open", () => setConnected(true));
     source.addEventListener("error", () => setConnected(false));
     source.addEventListener("tool-call", (event) => {

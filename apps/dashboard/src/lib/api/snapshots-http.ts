@@ -1,5 +1,6 @@
 /** Node HTTP-server implementation of {@link SnapshotsApi} (the web/MCP backend). */
 import { requestJson } from "./client.js";
+import { apiFetch } from "./desktop-runtime.js";
 import type {
   AgentChangeSession,
   RestoreResult,
@@ -9,7 +10,7 @@ import type {
 } from "./snapshots-api.js";
 
 async function requestText(url: string): Promise<string> {
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
     throw new Error(body.error || "Request failed");

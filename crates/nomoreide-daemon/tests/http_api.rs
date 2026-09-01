@@ -1,4 +1,5 @@
-use nomoreide_daemon::{serve_until, DaemonOptions};
+use futures_util::{SinkExt, StreamExt};
+use nomoreide_daemon::{run_embedded, serve_until, DaemonOptions};
 use nomoreide_daemon_client::protocol::{ServiceRuntimeState, TimelineEventKind, TimelineSeverity};
 use nomoreide_daemon_client::{
     is_pid_alive, read_daemon_state, DaemonClient, DaemonClientError, RuntimePaths,
@@ -8,10 +9,240 @@ use serde_json::json;
 use std::path::PathBuf;
 use tokio::sync::oneshot;
 use tokio::time::{sleep, Duration};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::Message;
 use uuid::Uuid;
 
 fn temp_dir() -> PathBuf {
     std::env::temp_dir().join(format!("nomoreide-daemon-http-{}", Uuid::new_v4()))
+}
+
+#[tokio::test]
+async fn embedded_daemon_keeps_auth_in_memory_and_allows_only_desktop_origins() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({ "version": 1, "services": [], "bundles": [] })).unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let credential = "desktop-test-credential".to_string();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        run_embedded(
+            DaemonOptions {
+                port,
+                runtime_paths: task_paths,
+                config_path,
+            },
+            listener,
+            credential,
+        )
+        .await
+    });
+    let base_url = format!("http://127.0.0.1:{port}");
+    let http = reqwest::Client::new();
+    for _ in 0..100 {
+        if http
+            .get(format!("{base_url}/api/health"))
+            .send()
+            .await
+            .is_ok_and(|response| response.status().is_success())
+        {
+            break;
+        }
+        assert!(
+            !server.is_finished(),
+            "embedded daemon stopped during startup"
+        );
+        sleep(Duration::from_millis(20)).await;
+    }
+
+    assert!(!runtime_paths.state.exists());
+    assert!(!runtime_paths.credential.exists());
+
+    let missing = http
+        .get(format!("{base_url}/api/terminal/capabilities"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(missing.status(), StatusCode::UNAUTHORIZED);
+    let wrong = http
+        .get(format!("{base_url}/api/terminal/capabilities"))
+        .header("origin", "tauri://localhost")
+        .bearer_auth("wrong-desktop-credential")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wrong.status(), StatusCode::UNAUTHORIZED);
+    let allowed = http
+        .get(format!("{base_url}/api/terminal/capabilities"))
+        .header("origin", "tauri://localhost")
+        .bearer_auth("desktop-test-credential")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(allowed.status(), StatusCode::OK);
+    assert_eq!(
+        allowed
+            .headers()
+            .get("access-control-allow-origin")
+            .unwrap(),
+        "tauri://localhost"
+    );
+
+    let preflight = http
+        .request(
+            reqwest::Method::OPTIONS,
+            format!("{base_url}/api/terminal/capabilities"),
+        )
+        .header("origin", "http://127.0.0.1:5173")
+        .header("access-control-request-method", "GET")
+        .header("access-control-request-headers", "authorization")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(preflight.status(), StatusCode::NO_CONTENT);
+    let refused = http
+        .request(
+            reqwest::Method::OPTIONS,
+            format!("{base_url}/api/terminal/capabilities"),
+        )
+        .header("origin", "https://example.com")
+        .header("access-control-request-method", "GET")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(refused.status(), StatusCode::FORBIDDEN);
+
+    let created = http
+        .post(format!("{base_url}/api/terminal/sessions"))
+        .bearer_auth("desktop-test-credential")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status(), StatusCode::CREATED);
+    let session_id = created.json::<serde_json::Value>().await.unwrap()["session"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let socket_url = format!("ws://127.0.0.1:{port}/api/terminal/socket?id={session_id}");
+    let unauthenticated_socket = tokio_tungstenite::connect_async(&socket_url)
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        unauthenticated_socket,
+        tokio_tungstenite::tungstenite::Error::Http(response)
+            if response.status() == StatusCode::UNAUTHORIZED
+    ));
+
+    let mut socket_request = socket_url.into_client_request().unwrap();
+    socket_request
+        .headers_mut()
+        .insert("origin", "tauri://localhost".parse().unwrap());
+    socket_request.headers_mut().insert(
+        "sec-websocket-protocol",
+        "nomoreide, nomoreide-bearer.desktop-test-credential"
+            .parse()
+            .unwrap(),
+    );
+    let (mut socket, response) = tokio_tungstenite::connect_async(socket_request)
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SWITCHING_PROTOCOLS);
+    assert_eq!(
+        response.headers().get("sec-websocket-protocol").unwrap(),
+        "nomoreide"
+    );
+    let first = socket.next().await.unwrap().unwrap().into_text().unwrap();
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&first).unwrap()["state"],
+        "running"
+    );
+
+    socket
+        .send(Message::Text(
+            json!({ "type": "input", "data": "printf 'NOMOREIDE_SOCKET_OK\\n'\r" }).to_string(),
+        ))
+        .await
+        .unwrap();
+    let output = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let text = socket.next().await.unwrap().unwrap().into_text().unwrap();
+            let message = serde_json::from_str::<serde_json::Value>(&text).unwrap();
+            if message["type"] == "output"
+                && message["data"]
+                    .as_str()
+                    .is_some_and(|data| data.contains("NOMOREIDE_SOCKET_OK"))
+            {
+                break message;
+            }
+        }
+    })
+    .await
+    .expect("terminal socket did not return PTY output");
+    assert_eq!(output["type"], "output");
+
+    socket
+        .send(Message::Text(
+            json!({ "type": "restart", "cols": 101, "rows": 37 }).to_string(),
+        ))
+        .await
+        .unwrap();
+    let restarted = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let text = socket.next().await.unwrap().unwrap().into_text().unwrap();
+            let message = serde_json::from_str::<serde_json::Value>(&text).unwrap();
+            if message["type"] == "state"
+                && message["state"] == "running"
+                && message["cols"] == 101
+                && message["rows"] == 37
+            {
+                break message;
+            }
+        }
+    })
+    .await
+    .expect("terminal socket did not report the restarted PTY");
+    assert_eq!(restarted["state"], "running");
+
+    socket
+        .send(Message::Text(json!({ "type": "stop" }).to_string()))
+        .await
+        .unwrap();
+    let stopped_socket = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let text = socket.next().await.unwrap().unwrap().into_text().unwrap();
+            let message = serde_json::from_str::<serde_json::Value>(&text).unwrap();
+            if message["type"] == "state" && message["state"] == "exited" {
+                break message;
+            }
+        }
+    })
+    .await
+    .expect("terminal socket did not report the stopped PTY");
+    assert_eq!(stopped_socket["state"], "exited");
+
+    let stopped = http
+        .post(format!("{base_url}/api/daemon/shutdown"))
+        .bearer_auth("desktop-test-credential")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(stopped.status(), StatusCode::OK);
+    tokio::time::timeout(Duration::from_secs(5), &mut server)
+        .await
+        .expect("embedded daemon did not stop")
+        .unwrap()
+        .unwrap();
+    let _ = tokio::fs::remove_dir_all(root).await;
 }
 
 #[tokio::test]
