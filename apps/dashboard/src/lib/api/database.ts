@@ -1,15 +1,8 @@
-/**
- * Database API entry point. Picks the backend implementation once at module load
- * (`isTauri()` → Rust core, else Node HTTP) and re-exports its methods as the
- * named functions the rest of the app already imports — never a per-function
- * `if (isTauri())` branch.
- */
-import { isTauri } from "./tauri-bridge.js";
+/** Database API entry point shared by browser and desktop. */
 import type { DatabaseApi } from "./database-api.js";
 import { httpDatabaseApi } from "./database-http.js";
-import { tauriDatabaseApi } from "./database-tauri.js";
 
-const api: DatabaseApi = isTauri() ? tauriDatabaseApi : httpDatabaseApi;
+const api: DatabaseApi = httpDatabaseApi;
 
 export const {
   listDatabases,
