@@ -1,15 +1,8 @@
-/**
- * Snapshots API entry point. Picks the backend implementation once at module
- * load (`isTauri()` → Rust core, else Node HTTP) and re-exports its methods as
- * the named functions the rest of the app already imports — never a per-function
- * `if (isTauri())` branch.
- */
-import { isTauri } from "./tauri-bridge.js";
+/** Snapshots API entry point shared by browser and desktop. */
 import type { SnapshotsApi } from "./snapshots-api.js";
 import { httpSnapshotsApi } from "./snapshots-http.js";
-import { tauriSnapshotsApi } from "./snapshots-tauri.js";
 
-const api: SnapshotsApi = isTauri() ? tauriSnapshotsApi : httpSnapshotsApi;
+const api: SnapshotsApi = httpSnapshotsApi;
 
 export const {
   listSnapshots,
