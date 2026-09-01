@@ -117,7 +117,15 @@ jobs:
           NEW_VERSION=$(node -p "require('./package.json').version")
           node scripts/sync-version.mjs "$NEW_VERSION"
           echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
-          git add package.json package-lock.json apps/dashboard/package.json crates/nomoreide-tauri/tauri.conf.json Cargo.toml Cargo.lock
+          # `-u` rather than a list of paths: `sync-version.mjs` decides which
+          # files carry the version, and a list here duplicates that decision
+          # and then drifts from it. It already did — the seven crate manifests
+          # gained sibling `version =` pins for crates.io, the script rewrote
+          # them, and this line did not stage them, so 0.3.2 published with
+          # every crate depending on 0.3.1 of its siblings. The checkout is
+          # clean apart from what the script just wrote, so `-u` stages exactly
+          # that and cannot fall behind again.
+          git add -u
           git commit -m "chore: bump version to $NEW_VERSION"
           git tag "v$NEW_VERSION"
           git push
