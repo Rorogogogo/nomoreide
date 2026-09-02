@@ -107,6 +107,16 @@ pub mod capabilities {
     /// permissions: watching an agent somebody started is not the same as
     /// starting one. A machine can offer either without the other.
     pub const TERMINAL_SPAWN: &str = "terminal.spawn";
+    /// Starting a **shell** terminal, and mirroring one. **v2.**
+    ///
+    /// Its own capability, and the only one here that is a genuine widening: a
+    /// shell is arbitrary command execution. It is separate so a machine can
+    /// offer agents from a phone without offering a shell, and so that turning
+    /// it off is a thing a user can actually do.
+    ///
+    /// Kept honest: while this is advertised, "remote control cannot run
+    /// arbitrary commands" is false, and the pairing copy says so.
+    pub const TERMINAL_SHELL: &str = "terminal.shell";
     /// Mirroring one agent terminal: its output, and typing into it. **v2.**
     ///
     /// Deliberately separate from [`TERMINAL_SESSIONS`], so a machine can show
@@ -141,12 +151,13 @@ pub mod capabilities {
         TERMINAL_SESSIONS,
         TERMINAL_ATTACH,
         TERMINAL_SPAWN,
+        TERMINAL_SHELL,
     ];
 
     /// `V2` must extend `V1` rather than diverge from it. Checked here because
     /// the two lists are written out separately for readability.
     const _: () = {
-        assert!(V2.len() == V1.len() + 3);
+        assert!(V2.len() == V1.len() + 4);
     };
 }
 

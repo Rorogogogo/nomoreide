@@ -66,6 +66,13 @@ pub enum DeviceBound {
     /// Start a new agent terminal on the machine. **v2.**
     #[serde(rename = "terminal.spawn.request")]
     TerminalSpawn(TerminalSpawnRequest),
+    /// Start a plain shell on the machine. **v2.**
+    ///
+    /// Its own frame rather than a flag on the spawn above, so an older daemon
+    /// that never heard of it cannot be handed one by accident — and so the
+    /// capability that gates it gates exactly one thing.
+    #[serde(rename = "terminal.shell.request")]
+    TerminalShell(Empty),
     /// Which agent terminals are running and could be mirrored. **v2.**
     #[serde(rename = "terminal.sessions.request")]
     TerminalSessions(Empty),
@@ -254,6 +261,7 @@ impl DeviceBound {
         "agent.turn.cancel",
         "agent.approval.resolve",
         "terminal.spawn.request",
+        "terminal.shell.request",
         "terminal.sessions.request",
         "terminal.attach.request",
         "terminal.input",
@@ -275,6 +283,7 @@ impl DeviceBound {
             Self::AgentTurnCancel(_) => "agent.turn.cancel",
             Self::AgentApprovalResolve(_) => "agent.approval.resolve",
             Self::TerminalSpawn(_) => "terminal.spawn.request",
+            Self::TerminalShell(_) => "terminal.shell.request",
             Self::TerminalSessions(_) => "terminal.sessions.request",
             Self::TerminalAttach(_) => "terminal.attach.request",
             Self::TerminalInput(_) => "terminal.input",
@@ -298,8 +307,10 @@ impl DeviceBound {
             // keystroke is a second keystroke. Attaching, resizing and
             // detaching only move the mirror, so they are safe to repeat.
             | Self::TerminalInput(_)
-            // A retried spawn is a second agent, running a second time.
-            | Self::TerminalSpawn(_) => true,
+            // A retried spawn is a second agent, running a second time — and a
+            // retried shell is a second shell.
+            | Self::TerminalSpawn(_)
+            | Self::TerminalShell(_) => true,
             Self::SessionWelcome(_)
             | Self::SessionRevoke(_)
             | Self::DeviceSnapshot(_)
@@ -329,6 +340,7 @@ impl DeviceBound {
             Self::AgentTurnStart(_) | Self::AgentTurnCancel(_) => Some(capability::AGENT_TURNS),
             Self::AgentApprovalResolve(_) => Some(capability::AGENT_APPROVALS),
             Self::TerminalSpawn(_) => Some(capability::TERMINAL_SPAWN),
+            Self::TerminalShell(_) => Some(capability::TERMINAL_SHELL),
             Self::TerminalSessions(_) => Some(capability::TERMINAL_SESSIONS),
             Self::TerminalAttach(_)
             | Self::TerminalInput(_)

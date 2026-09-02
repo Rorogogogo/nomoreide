@@ -2845,7 +2845,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "remote.unpairNote": "仅删除本机上的凭据。除非你在手机上撤销，该设备仍会保留在账号中。",
   "remote.expired": "该代码已过期，请重新开始。",
   "remote.failed": "配对未能完成。",
-  "remote.safety": "配对后，你的账号可以在这台机器上启动或停止服务、读取日志，并镜像智能体终端；但无法执行任意命令或打开 shell。",
+  "remote.safety": "配对后，你的账号可以在这台机器上启动或停止服务、读取日志，并打开终端——包括 shell，它能执行你本人能执行的任何命令。设置 NOMOREIDE_REMOTE_SHELL=0 可仅关闭 shell，其余功能保留。",
   "remote.approve": "在你的账号中批准",
   "remote.approveHint": "将在新标签页中打开 NoMoreIDE。如果你已经登录，这一步就完成了，无需输入代码。",
   "remote.orType": "或在手机上输入此代码",

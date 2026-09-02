@@ -60,13 +60,13 @@ impl Mirrors {
         request: &TerminalAttachRequest,
         events: EventSender,
     ) -> Result<PlatformBound, ProtocolError> {
-        // The gate. A shell session is arbitrary command execution, which is
-        // the one thing remote control promises it cannot reach, and a session
-        // whose child has exited has nothing to mirror.
-        if !terminal.is_mirrorable(&request.session_id) {
+        // The gate. Agent sessions always; shells only while this machine says
+        // so, which is the same answer it gives to *starting* one. A session
+        // whose child has exited has nothing to mirror either way.
+        if !terminal.is_mirrorable(&request.session_id, super::shell_allowed()) {
             return Err(ProtocolError::new(
                 ErrorCode::CapabilityUnavailable,
-                "That is not an agent terminal this machine will mirror.",
+                "That is not a terminal this machine will mirror.",
             )
             .with_detail(request.session_id.clone()));
         }
@@ -260,7 +260,7 @@ pub(crate) fn check_prompt(request: &TerminalSpawnRequest) -> Result<(), Protoco
 pub(crate) fn sessions(terminal: &TerminalManager) -> PlatformBound {
     PlatformBound::TerminalSessions(TerminalSessionsResponse {
         sessions: terminal
-            .mirrorable_sessions()
+            .mirrorable_sessions(super::shell_allowed())
             .into_iter()
             .map(describe)
             .collect(),
