@@ -65,6 +65,13 @@ const YELLOW: &str = "\x1b[38;5;221m";
 const RED: &str = "\x1b[38;5;203m";
 const SELECTED_BG: &str = "\x1b[48;5;236m";
 const PANEL_WIDTH: usize = 92;
+const NAME_WIDTH: usize = 24;
+const STATUS_WIDTH: usize = 12;
+const PORT_WIDTH: usize = 8;
+const DESCRIPTION_WIDTH: usize = 36;
+const BUNDLE_MEMBERS_WIDTH: usize = 44;
+const LOG_TIMESTAMP_WIDTH: usize = 12;
+const LOG_MESSAGE_WIDTH: usize = 70;
 
 pub fn render_screen(state: &ScreenState) -> String {
     let running = state
@@ -87,8 +94,8 @@ pub fn render_screen(state: &ScreenState) -> String {
             panel_top(&mut lines, "BUNDLES", "coordinated service groups");
             let header = format!(
                 "{DIM}{MUTED}{}  {}  SERVICES{RESET}",
-                pad_end("BUNDLE", 24),
-                pad_end("STATUS", 12),
+                pad_end("BUNDLE", NAME_WIDTH),
+                pad_end("STATUS", STATUS_WIDTH),
             );
             panel_row(&mut lines, &header, false);
             lines.push(format!("{FAINT}├{}┤{RESET}", "─".repeat(PANEL_WIDTH)));
@@ -96,16 +103,16 @@ pub fn render_screen(state: &ScreenState) -> String {
                 let members = if bundle.services.is_empty() {
                     "No services".to_string()
                 } else {
-                    fit(&bundle.services.join("  ·  "), 44)
+                    fit(&bundle.services.join("  ·  "), BUNDLE_MEMBERS_WIDTH)
                 };
                 let status = bundle_status(&bundle.services, state.runtime);
                 let (status_color, status_dot) = status_style(status);
                 let status_cell = format!("{status_color}{status_dot} {status}{RESET}");
                 let content = format!(
                     "{}  {}{}  {DIM}{MUTED}{members}{RESET}",
-                    pad_end(&fit(&bundle.name, 24), 24),
+                    pad_end(&fit(&bundle.name, NAME_WIDTH), NAME_WIDTH),
                     status_cell,
-                    " ".repeat(12usize.saturating_sub(status.len() + 2)),
+                    " ".repeat(STATUS_WIDTH.saturating_sub(status.len() + 2)),
                 );
                 panel_row(&mut lines, &content, index == state.selected_index);
             }
@@ -137,8 +144,8 @@ pub fn render_screen(state: &ScreenState) -> String {
                 };
                 let content = format!(
                     "{DIM}{MUTED}{}{RESET}  {stream_color}{stream_marker}{RESET}  {}",
-                    compact_timestamp(&entry.timestamp),
-                    fit(&entry.text, 72)
+                    fit(compact_timestamp(&entry.timestamp), LOG_TIMESTAMP_WIDTH),
+                    fit(&entry.text, LOG_MESSAGE_WIDTH)
                 );
                 panel_row(&mut lines, &content, false);
             }
@@ -163,15 +170,18 @@ pub fn render_screen(state: &ScreenState) -> String {
                 let port = service
                     .port
                     .map_or_else(|| "—".to_string(), |port| format!(":{port}"));
-                let description = fit(service.description.as_deref().unwrap_or("—"), 36);
+                let description = fit(
+                    service.description.as_deref().unwrap_or("—"),
+                    DESCRIPTION_WIDTH,
+                );
                 let (status_color, status_dot) = status_style(status);
                 let status_cell = format!("{status_color}{status_dot} {status}{RESET}");
                 let content = format!(
                     "{}  {}{}  {CYAN}{}{RESET}  {DIM}{MUTED}{description}{RESET}",
-                    pad_end(&fit(&service.name, 24), 24),
+                    pad_end(&fit(&service.name, NAME_WIDTH), NAME_WIDTH),
                     status_cell,
-                    " ".repeat(12usize.saturating_sub(status.len() + 2)),
-                    pad_end(&port, 8),
+                    " ".repeat(STATUS_WIDTH.saturating_sub(status.len() + 2)),
+                    pad_end(&fit(&port, PORT_WIDTH), PORT_WIDTH),
                 );
                 panel_row(&mut lines, &content, index == state.selected_index);
             }
@@ -201,7 +211,10 @@ pub fn render_screen(state: &ScreenState) -> String {
     lines.push(String::new());
     lines.push(render_footer(state.mode));
 
-    format!("{}\n", lines.join("\n"))
+    // `cfmakeraw` disables output post-processing on the terminal. A bare LF
+    // therefore moves down without returning to column zero, making every row
+    // drift right and eventually wrap. Always emit CRLF while raw mode is on.
+    format!("{}\r\n", lines.join("\r\n"))
 }
 
 fn render_tabs(mode: Mode) -> String {
@@ -241,9 +254,9 @@ fn panel_header(
 ) {
     let content = format!(
         "{DIM}{MUTED}{}  {}  {}  {description}{RESET}",
-        pad_end(service, 24),
-        pad_end(status, 12),
-        pad_end(port, 8),
+        pad_end(service, NAME_WIDTH),
+        pad_end(status, STATUS_WIDTH),
+        pad_end(port, PORT_WIDTH),
     );
     panel_row(lines, &content, false);
     lines.push(format!("{FAINT}├{}┤{RESET}", "─".repeat(PANEL_WIDTH)));
@@ -367,11 +380,19 @@ fn visible_width(value: &str) -> usize {
 }
 
 fn fit(value: &str, width: usize) -> String {
-    if value.chars().count() <= width {
-        return value.to_string();
-    }
+    let value = value
+        .chars()
+        .filter_map(|character| match character {
+            '\r' | '\n' | '\t' => Some(' '),
+            character if character.is_control() => None,
+            character => Some(character),
+        })
+        .collect::<String>();
     if width == 0 {
         return String::new();
+    }
+    if value.chars().count() <= width {
+        return value;
     }
     let mut fitted = value
         .chars()
@@ -891,7 +912,41 @@ mod tests {
     fn fit_truncates_long_cells_without_breaking_the_panel() {
         assert_eq!(fit("short", 8), "short");
         assert_eq!(fit("a very long value", 8), "a very …");
+        assert_eq!(fit("line one\nline two\tend", 40), "line one line two end");
         assert_eq!(fit("anything", 0), "");
+    }
+
+    #[test]
+    fn raw_mode_frames_use_carriage_returns_and_cap_every_table_row() {
+        let mut config = Config::default();
+        config.services.push(
+            serde_json::from_value(serde_json::json!({
+                "name": "a-service-name-that-is-far-too-long-for-the-name-column",
+                "port": 65535,
+                "description": "a description that is much too long and even contains\na forced second line"
+            }))
+            .expect("service fixture"),
+        );
+        let runtime = HashMap::new();
+        let output = render_screen(&ScreenState {
+            mode: Mode::Services,
+            selected_index: 0,
+            selected_service: None,
+            config: &config,
+            runtime: &runtime,
+            logs: &[],
+            log_offset: 0,
+            notice: None,
+        });
+
+        assert!(output.ends_with("\r\n"));
+        assert!(!output.replace("\r\n", "").contains('\n'));
+        assert!(output.contains("a-service-name-that-is-…"));
+        for line in output.split("\r\n").filter(|line| {
+            line.contains('│') || line.contains('╭') || line.contains('├') || line.contains('╰')
+        }) {
+            assert_eq!(visible_width(line), PANEL_WIDTH + 2, "{line:?}");
+        }
     }
 
     #[test]
