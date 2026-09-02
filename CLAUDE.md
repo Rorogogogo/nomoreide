@@ -112,6 +112,41 @@ User ────► CLI / TUI / browser ──┼── HTTP 127.0.0.1:4317 ─
                                                               Managed processes
 ```
 
+### Remote control
+
+A phone drives a paired machine through the hosted platform. The daemon dials
+**out** over TLS and holds one socket; nothing listens on the user's machine and
+no port is opened. The wire format is `nomoreide-remote-protocol` — its own
+published crate, because `../nomoreide-platform` speaks the same protocol and
+cannot depend on `nomoreide-core`. `docs/remote-protocol-v1.md` is the contract,
+`docs/remote-control-operations.md` is what to do when it misbehaves.
+
+Three rules that are easy to erode and expensive to lose:
+
+- **The dispatcher routes through the daemon's own router**, in-process, against
+  `ALLOWLIST` in `nomoreide-daemon/src/remote/dispatcher.rs`. It does not call
+  core directly. That table is the gate, checked before the match, and the
+  advertised capability set is read off it — so a command cannot be routable
+  without being advertised or the reverse. Adding a remote capability means
+  adding a row, not adding a branch somewhere.
+- **Wire types have nowhere to put what must not leave.** A `RemoteService` has
+  name, description, kind, port, state — no command, cwd, env, pid, container or
+  ssh host. The reshaping in the dispatcher is where those are dropped, and a
+  test renders the answer and greps for each of them.
+- **Nothing retries a mutation.** A timeout says nothing about whether the
+  machine did the work. Not in the hub, not in the connector, not in the
+  frontend's mutation hooks.
+
+Two kill switches, independent on purpose: `REMOTE_RELAY_ENABLED=false` on the
+platform (the routes are *unmounted*, so it 404s rather than refusing), and
+`NOMOREIDE_REMOTE_DISABLED=1` on one machine. Neither revokes anything —
+revocation is the owner's, it writes the row before closing the socket, and it is
+one-way.
+
+The relay hub is in memory, so **the API runs as one replica** while it is on.
+That is logged at startup and unenforced; the extraction triggers are in the
+relay plan.
+
 ## Key Patterns
 
 - **serde everywhere**: config and MCP tool inputs are typed and validated on the way in. `serde_json` is built with `preserve_order` and **must stay that way** — a JSON object's keys are sometimes the user's own data (the MCP servers in a profile), and the reference preserved insertion order.

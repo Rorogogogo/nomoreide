@@ -34,6 +34,7 @@ serde.workspace = true
 serde_json.workspace = true
 subtle.workspace = true
 tokio.workspace = true
+tower.workspace = true
 uuid.workspace = true
 
 [target.'cfg(unix)'.dependencies]
