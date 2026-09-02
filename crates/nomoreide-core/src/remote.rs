@@ -7,9 +7,10 @@
 //! meaning. It is re-exported here as [`protocol`] so callers in this workspace
 //! read `remote::protocol::…` whichever side of the split a type lives on.
 //!
-//! The protocol, the local credential and the pairing client exist so far.
-//! The rest of the plan — `docs/plans/2026-08-20-remote-control-relay-after-rust.md`
-//! — adds the outbound connector and the dispatcher. The wire format came first
+//! The protocol, the local credential, the pairing client and the outbound
+//! connector exist so far. The rest of the plan —
+//! `docs/plans/2026-08-20-remote-control-relay-after-rust.md` — adds the
+//! dispatcher. The wire format came first
 //! because both repositories depend on it and neither could be tested against
 //! the other until it was frozen.
 //!
@@ -19,6 +20,7 @@
 //! took the other road and paid 150 duplicated commands for it, one of which
 //! silently became a stub — the relay would be the fifth such surface.
 
+pub mod connector;
 pub mod credentials;
 pub mod pairing;
 

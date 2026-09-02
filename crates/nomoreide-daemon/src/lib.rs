@@ -8,6 +8,7 @@
 // general and wrong here.
 #![allow(clippy::result_large_err)]
 
+mod remote;
 mod runtime;
 mod server;
 mod service_discovery;

@@ -62,6 +62,14 @@ tauri-build = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-process = "2"
 tauri-plugin-shell = "2"
+# The relay connector's WebSocket client. rustls with the OS trust store, to
+# match `reqwest` above — nothing in this workspace links OpenSSL, and a bare
+# `debian:12` does not ship libssl.
+tokio-tungstenite = { version = "0.24", default-features = false, features = [
+    "connect",
+    "handshake",
+    "rustls-tls-native-roots",
+] }
 thiserror = "2"
 # `preserve_order` because an agent config reports its MCP servers in file
 # order, which a sorted table would lose.

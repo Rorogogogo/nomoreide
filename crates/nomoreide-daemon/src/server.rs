@@ -267,6 +267,13 @@ async fn serve_on_listener(
         app
     };
 
+    // Only the machine-global daemon dials the relay. The desktop app runs its
+    // own in-process, and two daemons sharing one credential would leave a
+    // phone talking to whichever restarted last — see `crate::remote`.
+    if !embedded {
+        crate::remote::spawn_if_paired(&options.runtime_paths.state_dir);
+    }
+
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();
     let shutdown_coordinator = tokio::spawn(drain_before_shutdown(
         runtime.clone(),

@@ -2367,6 +2367,7 @@ dependencies = [
  "chrono",
  "dirs 5.0.1",
  "flate2",
+ "futures-util",
  "libc",
  "nomoreide-remote-protocol",
  "portable-pty",
@@ -2379,6 +2380,7 @@ dependencies = [
  "sqlx",
  "tar",
  "tokio",
+ "tokio-tungstenite",
  "toml 0.8.2",
  "toml_edit 0.20.2",
  "url",
@@ -5012,7 +5014,11 @@ checksum = "edc5f74e248dc973e0dbb7b74c7e0d6fcc301c694ff50049504004ef4d0cdcd9"
 dependencies = [
  "futures-util",
  "log",
+ "rustls",
+ "rustls-native-certs",
+ "rustls-pki-types",
  "tokio",
+ "tokio-rustls",
  "tungstenite",
 ]
 
@@ -5269,6 +5275,8 @@ dependencies = [
  "httparse",
  "log",
  "rand 0.8.6",
+ "rustls",
+ "rustls-pki-types",
  "sha1",
  "thiserror 1.0.69",
  "utf-8",
