@@ -7,6 +7,7 @@ import {
   Languages,
   Palette,
   Server,
+  Smartphone,
   ShieldCheck,
   SquareTerminal,
   type LucideIcon,
@@ -22,6 +23,7 @@ export type SettingsCategoryId =
   | "agents-mcp"
   | "database-safety"
   | "notifications"
+  | "remote"
   | "data-privacy"
   | "about";
 
@@ -45,6 +47,7 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
   { id: "agents-mcp", label: "Agents & MCP", description: "Agent environments and MCP management.", icon: Bot, scope: "mixed", keywords: ["agent", "model", "mcp", "claude", "codex", "sound", "chime", "completion"] },
   { id: "database-safety", label: "Database & Safety", description: "Project query limits and write safeguards.", icon: Database, scope: "project", keywords: ["database", "sql", "danger confirmation", "writes", "limit"] },
   { id: "notifications", label: "Notifications", description: "Browser notification capability and permission.", icon: Bell, scope: "global", keywords: ["alerts", "desktop", "permission"] },
+  { id: "remote", label: "Remote control", description: "Pair this machine with your phone.", icon: Smartphone, scope: "global", keywords: ["remote", "phone", "pair", "mobile", "relay", "terminal"] },
   { id: "data-privacy", label: "Data & Privacy", description: "Local storage, export, reset, and privacy.", icon: ShieldCheck, scope: "mixed", keywords: ["data", "privacy", "export", "reset", "storage"] },
   { id: "about", label: "About", description: "Version, runtime, documentation, and support.", icon: Info, scope: "global", keywords: ["version", "docs", "runtime", "issues"] },
 ];

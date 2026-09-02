@@ -102,6 +102,13 @@ pub(crate) struct AppState {
     /// the moment it writes a credential, rather than the machine sitting
     /// offline until something restarts it.
     pub(crate) relay: crate::remote::supervisor::RelaySupervisor,
+    /// The pairing in flight, if the dashboard started one.
+    ///
+    /// In memory rather than on disk: a pairing code lives for minutes and a
+    /// daemon that restarted has nothing useful to resume — the code on the
+    /// user's screen is dead either way, and persisting a bearer token to
+    /// survive that would be storing a secret to no end.
+    pub(crate) pending_pairing: crate::server::routes::remote::PendingPairing,
 }
 
 /// One runtime event: what happened, and the thing it happened to.

@@ -274,6 +274,7 @@ async fn serve_on_listener(
         registry_auth: AuthStates::new(),
         provider_logins: ProviderLogins::new(),
         relay: relay.clone(),
+        pending_pairing: Default::default(),
     });
     let app = if embedded {
         app.layer(axum::middleware::from_fn(routes::allow_desktop_origin))

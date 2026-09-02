@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { RemotePairingPanel } from "@/features/remote/remote-pairing-panel";
 import { BookOpen, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
@@ -370,6 +371,12 @@ function CategoryContent({
         </ScopeSection>
       );
     }
+    case "remote":
+      return (
+        <ScopeSection scope="global">
+          <RemotePairingPanel />
+        </ScopeSection>
+      );
     case "data-privacy":
       return (
         <>

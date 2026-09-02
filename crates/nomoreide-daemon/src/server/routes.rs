@@ -30,7 +30,7 @@ mod meta;
 mod metrics;
 mod onboard;
 mod query;
-mod remote;
+pub(crate) mod remote;
 mod servers;
 mod service_config;
 mod service_files;

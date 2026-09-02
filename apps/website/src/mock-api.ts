@@ -2438,6 +2438,20 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       ],
     });
   }
+  // The settings hub reads this on mount, so the embedded dashboard needs an
+  // answer with the right shape. Demoed as *paired and connected*, because a
+  // marketing page showing the feature switched off shows nothing at all.
+  if (path === "/api/remote/status") {
+    return json({
+      ok: true,
+      paired: true,
+      deviceName: "Studio",
+      deviceId: "11111111-2222-3333-4444-555555555555",
+      platformBaseUrl: "https://api.nomoreide.com",
+      relay: { connected: true, deviceName: "Studio", lastError: null, stopped: false },
+    });
+  }
+
   if (path === "/api/terminal/sessions") {
     if (method === "POST") {
       let agent: { provider?: "claude" | "codex"; prompt?: string; label?: string } | undefined;
