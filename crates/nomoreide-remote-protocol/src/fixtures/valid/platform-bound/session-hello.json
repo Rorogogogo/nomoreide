@@ -23,6 +23,7 @@
       "service.logs",
       "terminal.attach",
       "terminal.sessions",
+      "terminal.shell",
       "terminal.spawn"
     ]
   }

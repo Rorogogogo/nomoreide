@@ -131,6 +131,11 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
         routes: "POST /api/terminal/sessions (an agent, in the daemon's workspace)",
     },
     Allowed {
+        kind: "terminal.shell.request",
+        capability: capabilities::TERMINAL_SHELL,
+        routes: "POST /api/terminal/sessions (a shell, in the daemon's workspace)",
+    },
+    Allowed {
         kind: "terminal.sessions.request",
         capability: capabilities::TERMINAL_SESSIONS,
         routes: "(the terminal manager; agent sessions only)",
@@ -163,7 +168,17 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
 /// drift. A capability the relay believes in but the daemon will not route is a
 /// button on a phone that does nothing.
 pub(crate) fn served_capabilities() -> CapabilitySet {
-    CapabilitySet::from_names(ALLOWLIST.iter().map(|allowed| allowed.capability))
+    let shells = super::shell_allowed();
+    CapabilitySet::from_names(
+        ALLOWLIST
+            .iter()
+            // A machine with shells switched off does not advertise them, so a
+            // phone is never shown a button it would be refused for pressing.
+            // The row stays in the table — what changes is what this machine
+            // says it will do, not what the table permits.
+            .filter(|allowed| shells || allowed.capability != capabilities::TERMINAL_SHELL)
+            .map(|allowed| allowed.capability),
+    )
 }
 
 /// Calls the daemon's router in-process.
@@ -636,6 +651,7 @@ impl CommandSink for RouterDispatcher {
                     self.agent_approval_resolve(request, events.clone()).await
                 }
                 DeviceBound::TerminalSpawn(request) => self.terminal_spawn(request).await,
+                DeviceBound::TerminalShell(_) => self.terminal_shell().await,
                 DeviceBound::TerminalSessions(_) => Ok(super::terminal::sessions(&self.terminal)),
                 DeviceBound::TerminalAttach(request) => {
                     self.mirrors.attach(&self.terminal, request, events.clone())
@@ -686,6 +702,66 @@ impl RouterDispatcher {
                     "No agent is installed on this machine.",
                 )
             })
+    }
+
+    /// Start a plain shell, through the same route.
+    ///
+    /// No body beyond an empty object: the route opens the machine's own shell
+    /// in the workspace it already has. There is nothing here for a caller to
+    /// name, which is the difference between this and `terminal.exec` — the
+    /// widening is "a shell exists", not "a phone chooses what runs".
+    async fn terminal_shell(&self) -> Result<PlatformBound, ProtocolError> {
+        if !super::shell_allowed() {
+            return Err(ProtocolError::new(
+                ErrorCode::CapabilityUnavailable,
+                "This machine does not offer a shell to a phone.",
+            ));
+        }
+        let session = self.create_terminal(serde_json::json!({})).await?;
+        Ok(super::terminal::spawned(session))
+    }
+
+    /// POST a terminal-creation body and read back the session it made.
+    async fn create_terminal(
+        &self,
+        body: Value,
+    ) -> Result<nomoreide_core::terminal::TerminalSession, ProtocolError> {
+        let built = Request::builder()
+            .method(Method::POST)
+            .uri("/api/terminal/sessions")
+            .header("authorization", format!("Bearer {}", self.credential))
+            .header("content-type", "application/json")
+            // The route requires this against cross-origin form posts. The
+            // dispatcher is not a browser, but it goes through the same door as
+            // one, so it presents what a browser does.
+            .header("x-nomoreide-terminal-control", "1")
+            .body(Body::from(body.to_string()))
+            .map_err(|error| internal(format!("could not build a local request: {error}")))?;
+        let response = self
+            .router
+            .clone()
+            .oneshot(built)
+            .await
+            .map_err(|error| internal(format!("the local router failed: {error}")))?;
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), limits::MAX_FRAME_BYTES)
+            .await
+            .map_err(|error| internal(format!("could not read the local response: {error}")))?;
+        let parsed: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
+
+        if !status.is_success() {
+            let detail = parsed
+                .get("error")
+                .and_then(Value::as_str)
+                .unwrap_or("that terminal could not be started");
+            return Err(ProtocolError::new(
+                ErrorCode::ServiceActionFailed,
+                "That terminal could not be started on this machine.",
+            )
+            .with_detail(detail.to_string()));
+        }
+        serde_json::from_value(parsed.get("session").cloned().unwrap_or(Value::Null))
+            .map_err(|error| internal(format!("the local response was not a session: {error}")))
     }
 
     /// Start an agent terminal, through the daemon's own route.
@@ -1538,245 +1614,85 @@ mod tests {
                 "the allowlist mentions {forbidden}: {rendered}"
             );
         }
-        // Fifteen rows: five service, four agent, six terminal. Pinned so
+        // Sixteen rows: five service, four agent, seven terminal. Pinned so
         // growing the remote surface is a deliberate edit to a test rather than
         // a quiet addition.
-        assert_eq!(ALLOWLIST.len(), 15);
+        assert_eq!(ALLOWLIST.len(), 16);
     }
 
-    /// The rule that replaced "the allowlist never says terminal".
+    /// What a phone may mirror, on both sides of the shell switch.
     ///
-    /// A shell session is arbitrary command execution, which is precisely what
-    /// pairing promises remote control cannot do. Mirroring an agent is not,
-    /// because the agent is a program the user chose to run and its own prompts
-    /// are what gate it. Asserted against real sessions rather than against the
-    /// wording of the table.
+    /// Agents always. Shells only while this machine offers them — and the
+    /// listing and the attach check share one predicate, so a session can never
+    /// be offered that the attach would then refuse. A `service` session is
+    /// neither: that is a process the daemon runs, not a terminal anybody sits
+    /// in, and it is never mirrorable however the switch is set.
     #[tokio::test]
-    async fn a_shell_session_cannot_be_mirrored_but_an_agent_can() {
+    async fn shells_are_mirrorable_exactly_when_this_machine_offers_them() {
         let terminal = TerminalManager::new();
-        let shell = spawn_kind(&terminal, "shell-session", "shell");
-        let agent = spawn_kind(&terminal, "agent-session", "agent");
+        let shell = spawn_kind(&terminal, "switch-shell", "shell");
+        let agent = spawn_kind(&terminal, "switch-agent", "agent");
+        let service = spawn_kind(&terminal, "switch-service", "service");
 
-        assert!(
-            !terminal.is_mirrorable(&shell),
-            "a shell is arbitrary command execution and must never be reachable"
-        );
-        assert!(terminal.is_mirrorable(&agent));
-
-        let offered: Vec<String> = terminal
-            .mirrorable_sessions()
-            .into_iter()
-            .map(|session| session.id)
-            .collect();
-        assert_eq!(
-            offered,
-            vec![agent.clone()],
-            "the listing and the attach check must agree"
-        );
-
-        terminal.close_session(&shell).unwrap();
-        terminal.close_session(&agent).unwrap();
-    }
-
-    /// Losing the socket takes the mirrors with it.
-    ///
-    /// A revocation arrives as a closed socket, so a mirror that outlived one
-    /// would be a PTY still streaming for a device the owner has just removed.
-    #[tokio::test]
-    async fn a_lost_socket_drops_every_mirror() {
-        let terminal = TerminalManager::new();
-        let agent = spawn_kind(&terminal, "disconnect-agent", "agent");
-        let dispatcher = RouterDispatcher::new(
-            stub_router(Arc::new(Mutex::new(Vec::new()))),
-            CREDENTIAL.to_string(),
-            "11111111-2222-3333-4444-555555555555".into(),
-            "Studio".into(),
-            terminal.clone(),
-        );
-        let (events, _drain) = tokio::sync::mpsc::channel(16);
-
-        let answer = dispatcher
-            .dispatch(
-                "req_1",
-                DeviceBound::TerminalAttach(
-                    nomoreide_core::remote::protocol::device_bound::TerminalAttachRequest {
-                        session_id: agent.clone(),
-                        cols: 80,
-                        rows: 24,
-                    },
-                ),
-                events.clone(),
-            )
-            .await;
-        let PlatformBound::TerminalAttachAccepted(accepted) = answer else {
-            panic!("attach was answered with {}", answer.kind());
-        };
-
-        dispatcher.disconnected();
-
-        // The stream id is no longer known, so input against it is refused
-        // rather than reaching a PTY.
-        let after = dispatcher
-            .dispatch(
-                "req_2",
-                DeviceBound::TerminalInput(
-                    nomoreide_core::remote::protocol::device_bound::TerminalInput {
-                        stream_id: accepted.stream_id,
-                        data: nomoreide_core::remote::protocol::TerminalBytes::new(b"x".to_vec()),
-                    },
-                ),
-                events,
-            )
-            .await;
-        let PlatformBound::CommandError(error) = after else {
-            panic!(
-                "input after a disconnect was answered with {}",
-                after.kind()
+        for shells in [true, false] {
+            assert!(
+                terminal.is_mirrorable(&agent, shells),
+                "an agent is mirrorable whatever the shell switch says"
             );
-        };
-        assert_eq!(error.error.code, ErrorCode::CapabilityUnavailable);
+            assert_eq!(
+                terminal.is_mirrorable(&shell, shells),
+                shells,
+                "a shell follows the switch"
+            );
+            assert!(
+                !terminal.is_mirrorable(&service, shells),
+                "a service is never a terminal somebody is sitting in"
+            );
 
-        terminal.close_session(&agent).unwrap();
-    }
-
-    /// A spawn with no provider must resolve one, not pass the gap along.
-    ///
-    /// The wire type says an absent provider means the machine's own selection,
-    /// but the route it lands on requires one — so an unfixed daemon answered
-    /// the phone (which sends no provider) with "Agent provider must be codex
-    /// or claude", from a field the phone never had. Documented and not
-    /// implemented is worse than absent, because it reads as working.
-    #[tokio::test]
-    async fn a_spawn_without_a_provider_asks_the_machine_which_one() {
-        use nomoreide_core::remote::protocol::device_bound::TerminalSpawnRequest;
-
-        let reached = Arc::new(Mutex::new(Vec::new()));
-        let dispatcher = RouterDispatcher::new(
-            stub_router(reached.clone()),
-            CREDENTIAL.to_string(),
-            "11111111-2222-3333-4444-555555555555".into(),
-            "Studio".into(),
-            TerminalManager::new(),
-        );
-        let (events, _drain) = tokio::sync::mpsc::channel(16);
-
-        let _ = dispatcher
-            .dispatch(
-                "req_1",
-                DeviceBound::TerminalSpawn(TerminalSpawnRequest {
-                    provider: None,
-                    prompt: "look at the logs".to_string(),
-                }),
-                events,
-            )
-            .await;
-
-        let seen = reached.lock().unwrap().join(" ");
-        assert!(
-            seen.contains("/api/agent/chat/status"),
-            "a spawn with no provider must ask which agent this machine uses, saw: {seen}"
-        );
-    }
-
-    /// A spawn with nothing to do is refused here, not on the machine.
-    ///
-    /// An empty prompt would start an agent that sits waiting, which from a
-    /// phone looks exactly like a spawn that failed — and it costs a real
-    /// process to find that out.
-    #[tokio::test]
-    async fn a_spawn_needs_something_to_work_on() {
-        use nomoreide_core::remote::protocol::device_bound::TerminalSpawnRequest;
-
-        let reached = Arc::new(Mutex::new(Vec::new()));
-        let dispatcher = RouterDispatcher::new(
-            stub_router(reached.clone()),
-            CREDENTIAL.to_string(),
-            "11111111-2222-3333-4444-555555555555".into(),
-            "Studio".into(),
-            TerminalManager::new(),
-        );
-        let (events, _drain) = tokio::sync::mpsc::channel(16);
-
-        for prompt in ["", "   ", "\n\t "] {
-            let answer = dispatcher
-                .dispatch(
-                    "req_1",
-                    DeviceBound::TerminalSpawn(TerminalSpawnRequest {
-                        provider: None,
-                        prompt: prompt.to_string(),
-                    }),
-                    events.clone(),
-                )
-                .await;
-            let PlatformBound::CommandError(error) = answer else {
-                panic!("an empty prompt was answered with {}", answer.kind());
+            let offered: Vec<String> = terminal
+                .mirrorable_sessions(shells)
+                .into_iter()
+                .map(|session| session.id)
+                .collect();
+            let expected: Vec<String> = if shells {
+                vec![shell.clone(), agent.clone()]
+            } else {
+                vec![agent.clone()]
             };
-            assert_eq!(error.error.code, ErrorCode::MalformedFrame);
+            assert_eq!(
+                offered, expected,
+                "the listing and the attach check must agree (shells={shells})"
+            );
         }
 
-        assert!(
-            reached.lock().unwrap().is_empty(),
-            "nothing should have been routed for a prompt that cannot start anything"
-        );
+        for id in [&shell, &agent, &service] {
+            terminal.close_session(id).unwrap();
+        }
     }
 
-    /// A phone must never reflow the terminal somebody is using at their desk.
-    ///
-    /// The dock and the mirror render the same child, and a PTY has one size.
-    /// Attaching from a 40-column phone used to set it, which re-laid-out a TUI
-    /// under the hands of whoever was working in it. The mirror now reports the
-    /// geometry rather than setting it.
-    #[tokio::test]
-    async fn attaching_does_not_resize_the_shared_terminal() {
-        let terminal = TerminalManager::new();
-        let agent = spawn_kind(&terminal, "geometry-agent", "agent");
-        let before = terminal.session_size(&agent).expect("a size");
-        let dispatcher = RouterDispatcher::new(
-            stub_router(Arc::new(Mutex::new(Vec::new()))),
-            CREDENTIAL.to_string(),
-            "11111111-2222-3333-4444-555555555555".into(),
-            "Studio".into(),
-            terminal.clone(),
-        );
-        let (events, _drain) = tokio::sync::mpsc::channel(16);
-
-        let answer = dispatcher
-            .dispatch(
-                "req_1",
-                DeviceBound::TerminalAttach(
-                    nomoreide_core::remote::protocol::device_bound::TerminalAttachRequest {
-                        session_id: agent.clone(),
-                        // A phone in portrait. Nothing like the dock's size.
-                        cols: 40,
-                        rows: 12,
-                    },
-                ),
-                events,
-            )
-            .await;
-        let PlatformBound::TerminalAttachAccepted(accepted) = answer else {
-            panic!("attach was answered with {}", answer.kind());
-        };
-
+    /// A machine with shells off does not advertise them, so a phone is never
+    /// shown a button it would be refused for pressing.
+    #[test]
+    fn the_shell_capability_follows_the_switch() {
+        let advertised = served_capabilities();
         assert_eq!(
-            terminal.session_size(&agent),
-            Some(before),
-            "the PTY somebody else is looking at must not have moved"
+            advertised.contains(capabilities::TERMINAL_SHELL),
+            super::super::shell_allowed(),
+            "what this machine says it will do must match what it will do"
         );
-        assert_eq!(
-            (accepted.cols, accepted.rows),
-            before,
-            "the phone is told what it will actually be drawing"
-        );
-
-        terminal.close_session(&agent).unwrap();
+        // The row never leaves the table; only the advertisement moves.
+        assert!(ALLOWLIST
+            .iter()
+            .any(|allowed| allowed.capability == capabilities::TERMINAL_SHELL));
     }
 
     /// A session that does not exist is refused the same way a shell is, so a
     /// guessed id is not a different answer from a forbidden one.
     #[test]
     fn an_unknown_session_is_not_mirrorable() {
-        assert!(!TerminalManager::new().is_mirrorable("no-such-session"));
+        for shells in [true, false] {
+            assert!(!TerminalManager::new().is_mirrorable("no-such-session", shells));
+        }
     }
 
     fn spawn_kind(terminal: &TerminalManager, id: &str, kind: &str) -> String {

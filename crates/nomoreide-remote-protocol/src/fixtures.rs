@@ -98,6 +98,7 @@ pub fn every_command() -> Vec<DeviceBound> {
             provider: Some("claude".to_string()),
             prompt: "why is the api restarting".to_string(),
         }),
+        DeviceBound::TerminalShell(Empty {}),
         DeviceBound::TerminalSessions(Empty {}),
         DeviceBound::TerminalAttach(TerminalAttachRequest {
             session_id: "term_1".to_string(),

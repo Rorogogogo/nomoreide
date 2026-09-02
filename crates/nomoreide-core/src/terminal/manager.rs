@@ -170,12 +170,26 @@ pub(super) struct PtySession {
 /// follow it.
 pub type TerminalMirror = (Vec<u8>, tokio::sync::broadcast::Receiver<Arc<[u8]>>);
 
-/// An agent session with a child still in it.
+/// A session a phone may mirror, given whether shells are on this machine's
+/// terms.
 ///
 /// One definition, used by both the listing and the attach check, so a session
 /// can never be offered to a phone that the attach would then refuse.
-fn is_live_agent(session: &TerminalSession) -> bool {
-    session.kind.as_deref() == Some("agent") && session.exit.is_none()
+///
+/// `shells` follows whether the machine will *start* one: offering to mirror a
+/// shell it would not start, or refusing to mirror one it just did, are both
+/// ways of being incoherent about the same permission. A `service` session is
+/// never mirrorable either way — that is a process the daemon runs, not a
+/// terminal anybody is sitting in.
+fn is_mirrorable_session(session: &TerminalSession, shells: bool) -> bool {
+    if session.exit.is_some() {
+        return false;
+    }
+    match session.kind.as_deref() {
+        Some("agent") => true,
+        Some("shell") => shells,
+        _ => false,
+    }
 }
 
 #[derive(Default)]
@@ -890,23 +904,23 @@ impl TerminalManager {
     /// command execution, which is the one thing remote control promises it
     /// cannot do, so the check is here — beside the sessions rather than in the
     /// dispatcher — and `remote_mirrorable_sessions` reads the same rule.
-    pub fn is_mirrorable(&self, id: &str) -> bool {
+    pub fn is_mirrorable(&self, id: &str, shells: bool) -> bool {
         let registry = self.registry.0.lock().unwrap();
         registry
             .sessions
             .get(id)
-            .is_some_and(|session| is_live_agent(&session.metadata))
+            .is_some_and(|session| is_mirrorable_session(&session.metadata, shells))
     }
 
     /// Every session a phone may mirror, oldest first.
-    pub fn mirrorable_sessions(&self) -> Vec<TerminalSession> {
+    pub fn mirrorable_sessions(&self, shells: bool) -> Vec<TerminalSession> {
         let registry = self.registry.0.lock().unwrap();
         registry
             .order
             .iter()
             .filter_map(|id| registry.sessions.get(id))
             .map(|session| session.metadata.clone())
-            .filter(is_live_agent)
+            .filter(|session| is_mirrorable_session(session, shells))
             .collect()
     }
 

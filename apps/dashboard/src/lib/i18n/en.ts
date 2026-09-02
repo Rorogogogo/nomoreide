@@ -2955,7 +2955,8 @@ export const en = {
   "remote.unpairNote": "Removes the credential from this machine. The device stays on your account until you revoke it from your phone.",
   "remote.expired": "That code expired. Start again.",
   "remote.failed": "Pairing could not be completed.",
-  "remote.safety": "Pairing lets your account start and stop services on this machine, read their logs, and mirror an agent terminal. It cannot run arbitrary commands or open a shell.",
+  "remote.safety":
+    "Pairing lets your account start and stop services on this machine, read their logs, and open terminals on it — including a shell, which can run anything you could run yourself. Set NOMOREIDE_REMOTE_SHELL=0 to withhold the shell and keep the rest.",
   "remote.approve": "Approve in your account",
   "remote.approveHint": "Opens NoMoreIDE in a new tab. If you are already signed in there, that is the whole of it — no code to type.",
   "remote.orType": "Or type this code on your phone",
