@@ -20,6 +20,7 @@
 //! took the other road and paid 150 duplicated commands for it, one of which
 //! silently became a stub — the relay would be the fifth such surface.
 
+pub mod agent_runs;
 pub mod connector;
 pub mod credentials;
 pub mod pairing;

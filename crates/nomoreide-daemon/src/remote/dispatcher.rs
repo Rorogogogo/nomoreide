@@ -28,7 +28,7 @@
 
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode};
-use nomoreide_core::remote::connector::{Answer, CommandSink};
+use nomoreide_core::remote::connector::{Answer, CommandSink, EventSender};
 use nomoreide_core::remote::protocol::device_bound::{ServiceAction, ServiceActionRequest};
 use nomoreide_core::remote::protocol::errors::{ErrorCode, ProtocolError};
 use nomoreide_core::remote::protocol::limits;
@@ -336,7 +336,12 @@ impl RouterDispatcher {
 }
 
 impl CommandSink for RouterDispatcher {
-    fn dispatch<'a>(&'a self, _request_id: &'a str, command: DeviceBound) -> Answer<'a> {
+    fn dispatch<'a>(
+        &'a self,
+        _request_id: &'a str,
+        command: DeviceBound,
+        _events: EventSender,
+    ) -> Answer<'a> {
         Box::pin(async move {
             let kind = command.kind();
             // The gate, before the match. Checking the table rather than
@@ -647,6 +652,12 @@ mod tests {
         );
     }
 
+    /// A discard channel: these tests are about answers, not about the
+    /// unsolicited stream, which agent runs use.
+    fn events() -> EventSender {
+        tokio::sync::mpsc::channel(8).0
+    }
+
     fn dispatcher() -> (RouterDispatcher, Arc<Mutex<Vec<String>>>) {
         let reached = Arc::new(Mutex::new(Vec::new()));
         let dispatcher = RouterDispatcher::new(
@@ -663,7 +674,7 @@ mod tests {
         let (dispatcher, _) = dispatcher();
 
         let answer = dispatcher
-            .dispatch("req_1", DeviceBound::DeviceSnapshot(Empty {}))
+            .dispatch("req_1", DeviceBound::DeviceSnapshot(Empty {}), events())
             .await;
 
         let PlatformBound::DeviceSnapshot(response) = answer else {
@@ -680,7 +691,7 @@ mod tests {
         let (dispatcher, _) = dispatcher();
 
         let answer = dispatcher
-            .dispatch("req_1", DeviceBound::ServiceList(Empty {}))
+            .dispatch("req_1", DeviceBound::ServiceList(Empty {}), events())
             .await;
 
         let PlatformBound::ServiceList(response) = answer else {
@@ -718,7 +729,7 @@ mod tests {
         let (dispatcher, _) = dispatcher();
 
         let answer = dispatcher
-            .dispatch("req_1", DeviceBound::BundleList(Empty {}))
+            .dispatch("req_1", DeviceBound::BundleList(Empty {}), events())
             .await;
 
         let PlatformBound::BundleList(response) = answer else {
@@ -740,6 +751,7 @@ mod tests {
                     service: "api".into(),
                     action: ServiceAction::Start,
                 }),
+                events(),
             )
             .await;
 
@@ -767,6 +779,7 @@ mod tests {
                     service: "ghost".into(),
                     action: ServiceAction::Start,
                 }),
+                events(),
             )
             .await;
 
@@ -788,6 +801,7 @@ mod tests {
                     service: "nope".into(),
                     action: ServiceAction::Start,
                 }),
+                events(),
             )
             .await;
 
@@ -818,6 +832,7 @@ mod tests {
                         service: hostile.into(),
                         action: ServiceAction::Start,
                     }),
+                    events(),
                 )
                 .await;
 
@@ -842,6 +857,7 @@ mod tests {
                     service: "api".into(),
                     limit: Some(10),
                 }),
+                events(),
             )
             .await;
 
@@ -874,6 +890,7 @@ mod tests {
                     service: "api".into(),
                     limit: Some(100_000),
                 }),
+                events(),
             )
             .await;
 
@@ -896,7 +913,7 @@ mod tests {
                 continue;
             }
             let kind = command.kind();
-            let answer = dispatcher.dispatch("req_1", command).await;
+            let answer = dispatcher.dispatch("req_1", command, events()).await;
             let PlatformBound::CommandError(error) = answer else {
                 panic!("{kind} was answered with {}", answer.kind());
             };

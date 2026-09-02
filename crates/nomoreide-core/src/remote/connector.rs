@@ -65,6 +65,20 @@ impl std::fmt::Display for Disconnected {
 pub type Answer<'a> =
     std::pin::Pin<Box<dyn std::future::Future<Output = PlatformBound> + Send + 'a>>;
 
+/// Where a dispatcher pushes frames nobody asked for.
+///
+/// An agent turn answers once — "accepted, run 3" — and then emits for as long
+/// as it runs. Those events correlate to no request, so they cannot be the
+/// return value of anything; they need a way out of the dispatcher that is not
+/// the answer to a command.
+///
+/// Bounded, and deliberately: a relay that stopped reading must not be able to
+/// stall the agent producing into it.
+pub type EventSender = tokio::sync::mpsc::Sender<PlatformBound>;
+
+/// How many unsolicited frames may queue for the socket.
+pub const EVENT_QUEUE: usize = 256;
+
 /// What the connector does with a command, and how it answers.
 ///
 /// A trait so the socket can be tested without a relay, and so the dispatcher —
@@ -77,7 +91,16 @@ pub type Answer<'a> =
 /// awkward signature is cheaper than a dependency in everybody's build.
 pub trait CommandSink: Send + Sync {
     /// Handle one command, returning the frame that answers it.
-    fn dispatch<'a>(&'a self, request_id: &'a str, command: DeviceBound) -> Answer<'a>;
+    ///
+    /// `events` is for everything that is *not* the answer — an agent run's
+    /// output, which continues long after the command that started it has been
+    /// replied to.
+    fn dispatch<'a>(
+        &'a self,
+        request_id: &'a str,
+        command: DeviceBound,
+        events: EventSender,
+    ) -> Answer<'a>;
 }
 
 /// Where to dial, and as whom.
@@ -177,8 +200,24 @@ pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) 
     // The first tick fires immediately; the hello just went out, so skip it.
     heartbeat.tick().await;
 
+    let (events, mut pending_events) = tokio::sync::mpsc::channel(EVENT_QUEUE);
+
     loop {
         tokio::select! {
+            unsolicited = pending_events.recv() => {
+                let Some(body) = unsolicited else {
+                    // Only reachable if every sender is gone, which cannot
+                    // happen while this loop holds one.
+                    continue;
+                };
+                let frame = frame(config, body);
+                if let Err(error) = sink
+                    .send(Message::Text(envelope::encode_platform_bound(&frame).to_string()))
+                    .await
+                {
+                    return Disconnected::Transient(error.to_string());
+                }
+            }
             _ = heartbeat.tick() => {
                 let beat = frame(config, PlatformBound::SessionHeartbeat(Empty {}));
                 if let Err(error) = sink
@@ -198,7 +237,7 @@ pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) 
                 };
                 match message {
                     Message::Text(text) => {
-                        match handle(config, commands, text.as_bytes()).await {
+                        match handle(config, commands, text.as_bytes(), &events).await {
                             Ok(Some(answer)) => {
                                 if let Err(error) = sink
                                     .send(Message::Text(
@@ -230,6 +269,7 @@ async fn handle(
     config: &ConnectorConfig,
     commands: &dyn CommandSink,
     raw: &[u8],
+    events: &EventSender,
 ) -> Result<Option<Envelope<PlatformBound>>, Disconnected> {
     let parsed = match envelope::parse_device_bound(raw, chrono::Utc::now()) {
         Ok(parsed) => parsed,
@@ -257,7 +297,7 @@ async fn handle(
         // us reconnecting into a refusal loop.
         DeviceBound::SessionRevoke(revoke) => Err(Disconnected::Refused(revoke.reason)),
         command => {
-            let answer = commands.dispatch(&parsed.id, command).await;
+            let answer = commands.dispatch(&parsed.id, command, events.clone()).await;
             Ok(Some(frame(config, answer).in_reply_to(parsed.id)))
         }
     }
