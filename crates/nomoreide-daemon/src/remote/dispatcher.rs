@@ -664,6 +664,30 @@ impl CommandSink for RouterDispatcher {
 }
 
 impl RouterDispatcher {
+    /// Which agent this machine reaches for when nobody says.
+    ///
+    /// Read from the same status route the dashboard uses, so "the default" is
+    /// one fact rather than two that can disagree.
+    async fn selected_agent_provider(&self) -> Result<String, ProtocolError> {
+        let (status, body) = self.call(Method::GET, "/api/agent/chat/status").await?;
+        if !status.is_success() {
+            return Err(ProtocolError::new(
+                ErrorCode::ServiceActionFailed,
+                "This machine could not say which agent it would use.",
+            ));
+        }
+        body.get("provider")
+            .and_then(|provider| provider.get("id"))
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .ok_or_else(|| {
+                ProtocolError::new(
+                    ErrorCode::CapabilityUnavailable,
+                    "No agent is installed on this machine.",
+                )
+            })
+    }
+
     /// Start an agent terminal, through the daemon's own route.
     ///
     /// **Through the router, unlike the mirror.** Spawning is a request and an
@@ -677,11 +701,18 @@ impl RouterDispatcher {
     ) -> Result<PlatformBound, ProtocolError> {
         super::terminal::check_prompt(request)?;
 
-        let mut agent = serde_json::json!({ "prompt": request.prompt });
-        if let Some(provider) = &request.provider {
-            agent["provider"] = Value::String(provider.clone());
-        }
-        let body = serde_json::json!({ "agent": agent });
+        // The route this lands on *requires* a provider, while the wire type
+        // says an absent one means the machine's own selection. Resolving it
+        // here is what makes that true — it was documented and not implemented,
+        // and the phone, which sends no provider, met "Agent provider must be
+        // codex or claude" and had no idea why.
+        let provider = match &request.provider {
+            Some(provider) => provider.clone(),
+            None => self.selected_agent_provider().await?,
+        };
+        let body = serde_json::json!({
+            "agent": { "prompt": request.prompt, "provider": provider }
+        });
 
         let built = Request::builder()
             .method(Method::POST)
@@ -1046,6 +1077,7 @@ mod tests {
         let action_note = note.clone();
         let logs_note = note.clone();
         let trap_note = note.clone();
+        let agent_status_note = note.clone();
 
         Router::new()
             .route(
@@ -1069,6 +1101,28 @@ mod tests {
                                 "args": ["--inspect"]
                             }],
                             "bundles": [{ "name": "web", "services": ["api", "worker"] }]
+                        }))
+                    }
+                }),
+            )
+            // What the daemon answers when asked which agent it would use.
+            // Present here because a spawn with no provider has to resolve one,
+            // and a stub that 404s would make that look like "no agent".
+            .route(
+                "/api/agent/chat/status",
+                get(move |headers: HeaderMap| {
+                    let note = agent_status_note.clone();
+                    async move {
+                        note("GET /api/agent/chat/status".into());
+                        require(&headers);
+                        Json(serde_json::json!({
+                            "ok": true,
+                            "configured": true,
+                            "provider": { "id": "claude", "label": "Claude Code" },
+                            "providers": [
+                                { "id": "claude", "label": "Claude Code", "configured": true },
+                                { "id": "codex", "label": "Codex", "configured": true }
+                            ]
                         }))
                     }
                 }),
@@ -1583,6 +1637,45 @@ mod tests {
         assert_eq!(error.error.code, ErrorCode::CapabilityUnavailable);
 
         terminal.close_session(&agent).unwrap();
+    }
+
+    /// A spawn with no provider must resolve one, not pass the gap along.
+    ///
+    /// The wire type says an absent provider means the machine's own selection,
+    /// but the route it lands on requires one — so an unfixed daemon answered
+    /// the phone (which sends no provider) with "Agent provider must be codex
+    /// or claude", from a field the phone never had. Documented and not
+    /// implemented is worse than absent, because it reads as working.
+    #[tokio::test]
+    async fn a_spawn_without_a_provider_asks_the_machine_which_one() {
+        use nomoreide_core::remote::protocol::device_bound::TerminalSpawnRequest;
+
+        let reached = Arc::new(Mutex::new(Vec::new()));
+        let dispatcher = RouterDispatcher::new(
+            stub_router(reached.clone()),
+            CREDENTIAL.to_string(),
+            "11111111-2222-3333-4444-555555555555".into(),
+            "Studio".into(),
+            TerminalManager::new(),
+        );
+        let (events, _drain) = tokio::sync::mpsc::channel(16);
+
+        let _ = dispatcher
+            .dispatch(
+                "req_1",
+                DeviceBound::TerminalSpawn(TerminalSpawnRequest {
+                    provider: None,
+                    prompt: "look at the logs".to_string(),
+                }),
+                events,
+            )
+            .await;
+
+        let seen = reached.lock().unwrap().join(" ");
+        assert!(
+            seen.contains("/api/agent/chat/status"),
+            "a spawn with no provider must ask which agent this machine uses, saw: {seen}"
+        );
     }
 
     /// A spawn with nothing to do is refused here, not on the machine.
