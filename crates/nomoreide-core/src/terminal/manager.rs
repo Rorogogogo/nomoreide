@@ -110,10 +110,25 @@ pub(super) const TERMINAL_REPLAY_BYTES: usize = 1024 * 1024;
 /// which makes first attach and reattach the same operation, and bounds what a
 /// chatty session can hold — the old buffer grew without limit until someone
 /// looked at it.
+/// How far a mirror may fall behind before it is cut loose.
+///
+/// Dropping is the only safe answer: the reader thread must never block on a
+/// phone's network, and a terminal that has fallen behind is better told to
+/// repaint than fed a gap it cannot see. Same trade the relay hub makes for
+/// events.
+pub(super) const MIRROR_BACKLOG: usize = 256;
+
 #[derive(Default)]
 pub(super) struct OutputGate {
     pub(super) replay: VecDeque<u8>,
     pub(super) streaming: bool,
+    /// Live byte feed for mirrors, created on first subscribe.
+    ///
+    /// Separate from the event sink because that one carries
+    /// `String::from_utf8_lossy` of each chunk, and a mirror needs the bytes
+    /// the child actually wrote — a `read()` that splits a multi-byte
+    /// character would otherwise deliver two replacement characters instead.
+    pub(super) mirror: Option<tokio::sync::broadcast::Sender<std::sync::Arc<[u8]>>>,
     #[cfg(target_os = "macos")]
     pub(super) external: Option<ExternalOutputSink>,
     #[cfg(target_os = "macos")]
@@ -126,6 +141,11 @@ impl OutputGate {
         self.replay.extend(data);
         let excess = self.replay.len().saturating_sub(TERMINAL_REPLAY_BYTES);
         self.replay.drain(..excess);
+        if let Some(mirror) = &self.mirror {
+            // An error here means nobody is listening any more, which is not a
+            // condition the PTY reader has any business caring about.
+            let _ = mirror.send(std::sync::Arc::from(data));
+        }
     }
 }
 
@@ -144,6 +164,18 @@ pub(super) struct PtySession {
     pub(super) gate: Arc<Mutex<OutputGate>>,
     #[cfg(target_os = "macos")]
     pub(super) attachment: Option<ExternalAttachment>,
+}
+
+/// A mirror's two halves: the scrollback to draw first, and the bytes that
+/// follow it.
+pub type TerminalMirror = (Vec<u8>, tokio::sync::broadcast::Receiver<Arc<[u8]>>);
+
+/// An agent session with a child still in it.
+///
+/// One definition, used by both the listing and the attach check, so a session
+/// can never be offered to a phone that the attach would then refuse.
+fn is_live_agent(session: &TerminalSession) -> bool {
+    session.kind.as_deref() == Some("agent") && session.exit.is_none()
 }
 
 #[derive(Default)]
@@ -815,6 +847,55 @@ impl TerminalManager {
     /// redraw instead of the blank screen a drained buffer left it. Read under
     /// the gate lock together with the flag, so it cannot interleave behind
     /// output the reader thread is about to emit.
+    /// Watch a session's output as bytes: what it has said, and what it says
+    /// next.
+    ///
+    /// Both halves come from one lock, which is what makes them seamless — a
+    /// replay taken separately from the subscription would either miss the
+    /// bytes written in between or repeat them.
+    pub fn mirror_output(&self, id: &str) -> Option<TerminalMirror> {
+        let gate = {
+            let registry = self.registry.0.lock().unwrap();
+            registry
+                .sessions
+                .get(id)
+                .map(|session| session.gate.clone())
+        }?;
+        let mut gate = gate.lock().unwrap();
+        gate.streaming = true;
+        let sender = gate
+            .mirror
+            .get_or_insert_with(|| tokio::sync::broadcast::channel(MIRROR_BACKLOG).0);
+        let receiver = sender.subscribe();
+        Some((gate.replay.iter().copied().collect(), receiver))
+    }
+
+    /// Whether a session exists, is an agent session, and is still running.
+    ///
+    /// The gate for mirroring to a phone. A *shell* session is arbitrary
+    /// command execution, which is the one thing remote control promises it
+    /// cannot do, so the check is here — beside the sessions rather than in the
+    /// dispatcher — and `remote_mirrorable_sessions` reads the same rule.
+    pub fn is_mirrorable(&self, id: &str) -> bool {
+        let registry = self.registry.0.lock().unwrap();
+        registry
+            .sessions
+            .get(id)
+            .is_some_and(|session| is_live_agent(&session.metadata))
+    }
+
+    /// Every session a phone may mirror, oldest first.
+    pub fn mirrorable_sessions(&self) -> Vec<TerminalSession> {
+        let registry = self.registry.0.lock().unwrap();
+        registry
+            .order
+            .iter()
+            .filter_map(|id| registry.sessions.get(id))
+            .map(|session| session.metadata.clone())
+            .filter(is_live_agent)
+            .collect()
+    }
+
     pub fn attach_output(&self, id: &str) -> Option<Vec<u8>> {
         let gate = {
             let registry = self.registry.0.lock().unwrap();

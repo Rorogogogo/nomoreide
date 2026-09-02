@@ -41,8 +41,8 @@ use super::errors::{ErrorCode, ProtocolError};
 use super::platform_bound::{
     AgentProvidersResponse, AgentTurnAccepted, BundleListResponse, CommandErrorResponse,
     DeviceSnapshotResponse, PlatformBound, ServiceActionResponse, ServiceListResponse,
-    ServiceLogsResponse, SessionHello, TerminalAttachAccepted, TerminalCloseReason, TerminalClosed,
-    TerminalOutput, TerminalSessionsResponse,
+    ServiceLogsResponse, SessionHello, TerminalAck, TerminalAttachAccepted, TerminalCloseReason,
+    TerminalClosed, TerminalOutput, TerminalSessionsResponse,
 };
 use super::snapshot::{
     BundleState, DeviceSnapshot, LogLine, LogStream, RemoteAgentProvider, RemoteBundle,
@@ -204,6 +204,9 @@ pub fn every_event() -> Vec<PlatformBound> {
             // An escape sequence, because that is what a terminal actually
             // sends and what a UTF-8 string type would have mangled.
             data: TerminalBytes::new(b"\x1b[2J$ ".to_vec()),
+        }),
+        PlatformBound::TerminalAck(TerminalAck {
+            stream_id: "stream_1".to_string(),
         }),
         PlatformBound::TerminalClosed(TerminalClosed {
             stream_id: "stream_1".to_string(),

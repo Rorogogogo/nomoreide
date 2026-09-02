@@ -44,16 +44,22 @@ pub(crate) enum StartOutcome {
 pub(crate) struct RelaySupervisor {
     state_dir: PathBuf,
     credential: String,
+    terminal: nomoreide_core::terminal::TerminalManager,
     router: Arc<OnceLock<axum::Router>>,
     started: Arc<AtomicBool>,
     status: Arc<OnceLock<RelayStatus>>,
 }
 
 impl RelaySupervisor {
-    pub(crate) fn new(state_dir: PathBuf, credential: String) -> Self {
+    pub(crate) fn new(
+        state_dir: PathBuf,
+        credential: String,
+        terminal: nomoreide_core::terminal::TerminalManager,
+    ) -> Self {
         Self {
             state_dir,
             credential,
+            terminal,
             router: Arc::new(OnceLock::new()),
             started: Arc::new(AtomicBool::new(false)),
             status: Arc::new(OnceLock::new()),
@@ -95,6 +101,7 @@ impl RelaySupervisor {
             self.credential.clone(),
             stored.device_id,
             stored.device_name.clone(),
+            self.terminal.clone(),
         ));
         tokio::spawn(nomoreide_core::remote::connector::run_forever(
             config, sink, status,
@@ -124,7 +131,11 @@ mod tests {
 
     #[test]
     fn an_unpaired_machine_does_not_connect() {
-        let supervisor = RelaySupervisor::new(scratch("unpaired"), "cred".into());
+        let supervisor = RelaySupervisor::new(
+            scratch("unpaired"),
+            "cred".into(),
+            nomoreide_core::terminal::TerminalManager::new(),
+        );
         supervisor.attach_router(axum::Router::new());
 
         assert_eq!(supervisor.ensure_started(), StartOutcome::NotPaired);
@@ -137,7 +148,11 @@ mod tests {
     fn nothing_starts_before_the_router_exists() {
         let dir = scratch("no-router");
         write_credential(&dir);
-        let supervisor = RelaySupervisor::new(dir, "cred".into());
+        let supervisor = RelaySupervisor::new(
+            dir,
+            "cred".into(),
+            nomoreide_core::terminal::TerminalManager::new(),
+        );
 
         assert_eq!(supervisor.ensure_started(), StartOutcome::NotPaired);
     }
@@ -149,7 +164,11 @@ mod tests {
     async fn starting_twice_starts_once() {
         let dir = scratch("twice");
         write_credential(&dir);
-        let supervisor = RelaySupervisor::new(dir, "cred".into());
+        let supervisor = RelaySupervisor::new(
+            dir,
+            "cred".into(),
+            nomoreide_core::terminal::TerminalManager::new(),
+        );
         supervisor.attach_router(axum::Router::new());
 
         assert_eq!(supervisor.ensure_started(), StartOutcome::Started);
@@ -163,7 +182,11 @@ mod tests {
     async fn a_started_connector_reports_itself_before_it_is_connected() {
         let dir = scratch("status");
         write_credential(&dir);
-        let supervisor = RelaySupervisor::new(dir, "cred".into());
+        let supervisor = RelaySupervisor::new(
+            dir,
+            "cred".into(),
+            nomoreide_core::terminal::TerminalManager::new(),
+        );
         supervisor.attach_router(axum::Router::new());
         supervisor.ensure_started();
 

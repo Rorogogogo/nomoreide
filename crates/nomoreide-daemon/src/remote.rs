@@ -12,6 +12,7 @@
 
 pub(crate) mod dispatcher;
 pub(crate) mod supervisor;
+pub(crate) mod terminal;
 
 /// Whether the environment says not to connect.
 ///

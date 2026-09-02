@@ -1,0 +1,11 @@
+{
+  "v": 2,
+  "id": "evt_terminal_ack",
+  "type": "terminal.ack",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "streamId": "stream_1"
+  }
+}

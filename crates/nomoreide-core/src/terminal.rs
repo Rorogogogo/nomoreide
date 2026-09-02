@@ -21,7 +21,7 @@ pub use agent::{
     agent_binary, default_terminal_shell, derive_agent_invocation, resolve_session_scope,
     AgentInvocation, SessionScope,
 };
-pub use manager::TerminalManager;
+pub use manager::{TerminalManager, TerminalMirror};
 pub use service::{resolve_service_terminal, service_terminal_env, ServiceTerminal};
 pub use session::{
     encode_agent_prompt_paste, normalize_agent_label, normalize_session_label,

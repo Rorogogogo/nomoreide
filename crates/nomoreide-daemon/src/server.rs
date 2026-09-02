@@ -246,9 +246,14 @@ async fn serve_on_listener(
     // credential a browser does, so it gets its own copy before the state takes
     // ownership. It is not a second, more privileged way in — it is the same
     // door.
+    // Hoisted out of the state literal below so the relay mirrors *these*
+    // sessions. Two managers would each own their own PTYs, and a phone would
+    // be shown a terminal list the dashboard has never heard of.
+    let terminal = TerminalManager::new();
     let relay = crate::remote::supervisor::RelaySupervisor::new(
         options.runtime_paths.state_dir.clone(),
         credential.clone(),
+        terminal.clone(),
     );
     let app = routes::router(AppState {
         credential,
@@ -257,7 +262,7 @@ async fn serve_on_listener(
         runtime: runtime.clone(),
         errors,
         shutdown: shutdown_sender,
-        terminal: TerminalManager::new(),
+        terminal,
         events: Arc::new(app::BroadcastEventSink::new(event_stream.clone())),
         event_stream,
         session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),

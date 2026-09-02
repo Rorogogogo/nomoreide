@@ -159,6 +159,17 @@ pub trait CommandSink: Send + Sync {
         command: DeviceBound,
         events: EventSender,
     ) -> Answer<'a>;
+
+    /// The socket this session ran on has gone.
+    ///
+    /// Anything the sink was holding *for that socket* — a mirrored terminal,
+    /// say — has nobody to deliver to any more and must be dropped here.
+    /// Reconnecting mints a new session, and state carried across would belong
+    /// to a conversation that has ended: on a revocation, that is state
+    /// belonging to a device the owner has just removed.
+    ///
+    /// Default empty, because most sinks hold nothing per-socket.
+    fn disconnected(&self) {}
 }
 
 /// Where to dial, and as whom.
@@ -427,6 +438,10 @@ pub async fn run_forever(
     loop {
         let started = std::time::Instant::now();
         let ended = connect_once(&config, commands.as_ref(), &status).await;
+        // Before anything else about the ending is interpreted: whatever the
+        // sink was holding for that socket has nowhere to go now, and a
+        // revocation is one of the ways we get here.
+        commands.disconnected();
         status.record(&ended);
         // A connection that stayed up is evidence the platform is healthy, so
         // the next blip starts from one second again. Without this a daemon

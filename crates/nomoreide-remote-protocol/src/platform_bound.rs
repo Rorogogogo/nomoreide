@@ -61,6 +61,9 @@ pub enum PlatformBound {
     /// A coalesced chunk of what the terminal drew. **v2.**
     #[serde(rename = "terminal.output")]
     TerminalOutput(TerminalOutput),
+    /// A terminal command was carried out and had nothing to report. **v2.**
+    #[serde(rename = "terminal.ack")]
+    TerminalAck(TerminalAck),
     /// The mirror ended. **v2.**
     #[serde(rename = "terminal.closed")]
     TerminalClosed(TerminalClosed),
@@ -100,6 +103,19 @@ pub struct TerminalOutput {
     /// cannot see — the same contract the run-event stream uses.
     pub seq: u64,
     pub data: super::terminal_bytes::TerminalBytes,
+}
+
+/// Nothing to say beyond "done".
+///
+/// Its own frame because the alternative was answering a keystroke with
+/// [`TerminalAttachAccepted`] carrying a geometry nobody set — an ack that has
+/// to lie about a field is a worse economy than one more variant. A *resize*
+/// still answers with `attach.accepted`, because reporting the geometry that
+/// was actually applied is precisely what that frame is for.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalAck {
+    pub stream_id: String,
 }
 
 /// Why a mirror ended.
@@ -216,6 +232,7 @@ impl PlatformBound {
         "terminal.sessions.response",
         "terminal.attach.accepted",
         "terminal.output",
+        "terminal.ack",
         "terminal.closed",
         "command.error",
     ];
@@ -235,6 +252,7 @@ impl PlatformBound {
             Self::TerminalSessions(_) => "terminal.sessions.response",
             Self::TerminalAttachAccepted(_) => "terminal.attach.accepted",
             Self::TerminalOutput(_) => "terminal.output",
+            Self::TerminalAck(_) => "terminal.ack",
             Self::TerminalClosed(_) => "terminal.closed",
             Self::CommandError(_) => "command.error",
         }
@@ -266,6 +284,7 @@ impl PlatformBound {
             | Self::AgentTurnAccepted(_)
             | Self::TerminalSessions(_)
             | Self::TerminalAttachAccepted(_)
+            | Self::TerminalAck(_)
             | Self::CommandError(_) => true,
         }
     }
