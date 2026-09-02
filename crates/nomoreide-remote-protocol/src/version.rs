@@ -156,7 +156,7 @@ impl CapabilitySet {
     /// Everything this build offers.
     pub fn current() -> Self {
         Self(
-            capabilities::V1
+            capabilities::V2
                 .iter()
                 .map(|name| Capability::new(name))
                 .collect(),
@@ -240,6 +240,18 @@ pub fn negotiate(ours: &[u32], theirs: &[u32]) -> Negotiation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `current()` means "what this build offers", so it has to track the
+    /// newest capability list rather than whichever one it was written against.
+    /// It said `V1` for a while after v2 shipped, which made a current daemon
+    /// look like it could not mirror a terminal it could.
+    #[test]
+    fn current_capabilities_are_the_newest_ones() {
+        let current = CapabilitySet::current();
+        for name in capabilities::V2 {
+            assert!(current.contains(name), "{name} is missing from current()");
+        }
+    }
 
     #[test]
     fn identical_peers_agree_on_full() {

@@ -20,7 +20,9 @@
       "device.snapshot",
       "service.action",
       "service.list",
-      "service.logs"
+      "service.logs",
+      "terminal.attach",
+      "terminal.sessions"
     ]
   }
 }
