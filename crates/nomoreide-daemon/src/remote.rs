@@ -26,6 +26,14 @@ pub(crate) fn spawn_if_paired(
     router: axum::Router,
     credential: String,
 ) -> bool {
+    // A local kill switch, independent of the platform's. A user who wants
+    // their machine to stop answering does not have to reach a web page to do
+    // it, and an operator debugging a daemon can take the socket out of the
+    // picture without unpairing — which would need a second pairing to undo.
+    if disabled_by_environment() {
+        eprintln!("nomoreide: remote control is disabled by NOMOREIDE_REMOTE_DISABLED");
+        return false;
+    }
     let credentials = RemoteCredentials::new(state_dir);
     let Some(stored) = credentials.load() else {
         return false;
@@ -44,4 +52,46 @@ pub(crate) fn spawn_if_paired(
     eprintln!("nomoreide: remote control connecting as \"{device_name}\"");
     tokio::spawn(nomoreide_core::remote::connector::run_forever(config, sink));
     true
+}
+
+/// Whether the environment says not to connect.
+///
+/// Any value except `0` and `false` counts as set, because the common mistake
+/// is `NOMOREIDE_REMOTE_DISABLED=1` meaning "off" and the second-commonest is
+/// `=true`. A switch whose safe position is hard to reach is not a switch.
+fn disabled_by_environment() -> bool {
+    std::env::var("NOMOREIDE_REMOTE_DISABLED")
+        .map(|value| {
+            !matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "" | "0" | "false"
+            )
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    /// The parsing, tested directly rather than through the environment, which
+    /// is process-global and would make these tests order-dependent.
+    fn disabled(value: &str) -> bool {
+        !matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "" | "0" | "false"
+        )
+    }
+
+    #[test]
+    fn the_switch_is_off_for_the_ways_people_write_off() {
+        for value in ["0", "false", "FALSE", " false ", ""] {
+            assert!(!disabled(value), "{value:?} should not disable");
+        }
+    }
+
+    #[test]
+    fn the_switch_is_on_for_the_ways_people_write_on() {
+        for value in ["1", "true", "TRUE", "yes", "on"] {
+            assert!(disabled(value), "{value:?} should disable");
+        }
+    }
 }
