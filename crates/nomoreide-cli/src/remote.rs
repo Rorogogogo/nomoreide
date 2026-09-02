@@ -104,15 +104,43 @@ async fn ask_daemon_to_connect() -> Option<bool> {
 }
 
 /// What a running daemon says about the relay, or `None` when none is running.
-async fn daemon_relay_status() -> Option<serde_json::Value> {
-    let daemon = local_daemon().await?;
-    let response = reqwest::Client::new()
+/// What the local daemon can say about the relay.
+///
+/// Three states rather than two, because a daemon that is *not running* and a
+/// daemon that is *too old to answer* fail the same naive check — and telling
+/// someone to start a daemon while one is plainly serving is exactly the class
+/// of wrong answer this command exists to stop giving. It is also the ordinary
+/// case for one upgrade: the new CLI ships before the running daemon restarts.
+enum DaemonRelay {
+    /// Nothing is answering where the state file says a daemon should be.
+    Absent,
+    /// A daemon answered, but knows nothing about a relay — it predates this
+    /// endpoint, so it is still running code that never read the credential.
+    NoRelayEndpoint,
+    Reported(serde_json::Value),
+}
+
+async fn daemon_relay_status() -> DaemonRelay {
+    let (Some(daemon), Some(credential)) = (local_daemon().await, local_credential()) else {
+        return DaemonRelay::Absent;
+    };
+    let Ok(response) = reqwest::Client::new()
         .get(format!("{daemon}/api/remote/status"))
-        .bearer_auth(local_credential()?)
+        .bearer_auth(credential)
         .send()
         .await
-        .ok()?;
-    response.json().await.ok()
+    else {
+        return DaemonRelay::Absent;
+    };
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return DaemonRelay::NoRelayEndpoint;
+    }
+    match response.json().await {
+        Ok(value) => DaemonRelay::Reported(value),
+        // It answered and it was not JSON we know. Whatever it is, it is not a
+        // relay report, and it is certainly not an absent daemon.
+        Err(_) => DaemonRelay::NoRelayEndpoint,
+    }
 }
 
 /// The running daemon's URL, read from the state file it publishes.
@@ -195,11 +223,16 @@ async fn status() -> CliResult {
     // states, and reporting only the first is what made a machine look healthy
     // here while a phone showed it offline.
     match daemon_relay_status().await {
-        None => println!(
+        DaemonRelay::Absent => println!(
             "\n  Not connected: no daemon is running.\n  \
              Start one with `nomoreide daemon`."
         ),
-        Some(status) => {
+        DaemonRelay::NoRelayEndpoint => println!(
+            "\n  Not connected: the daemon that is running is older than this\n  \
+             command and cannot dial the relay. Run `nomoreide daemon restart`\n  \
+             to pick up this version. Note that this stops running services."
+        ),
+        DaemonRelay::Reported(status) => {
             let relay = status.get("relay");
             let connected = relay
                 .and_then(|relay| relay.get("connected"))
