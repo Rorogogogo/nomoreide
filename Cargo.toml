@@ -76,6 +76,9 @@ thiserror = "2"
 toml = { version = "0.8", features = ["preserve_order"] }
 # Edits Codex's config in place, so its comments and layout survive a write.
 toml_edit = "0.20"
+# `util` for `ServiceExt::oneshot`: the relay dispatcher calls the daemon's
+# own router in-process rather than over a loopback socket.
+tower = { version = "0.5", features = ["util"] }
 tokio = { version = "1", features = ["full"] }
 url = "2"
 urlencoding = "2"

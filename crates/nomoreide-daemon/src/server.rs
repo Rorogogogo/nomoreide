@@ -242,6 +242,11 @@ async fn serve_on_listener(
     // One channel behind the sink every manager already emits into, so the
     // terminal stream is a subscriber rather than a change to the manager.
     let event_stream = tokio::sync::broadcast::Sender::<app::RuntimeEvent>::new(app::EVENT_BACKLOG);
+    // The dispatcher calls this router in-process and has to present the same
+    // credential a browser does, so it gets its own copy before the state takes
+    // ownership. It is not a second, more privileged way in — it is the same
+    // door.
+    let relay_credential = credential.clone();
     let app = routes::router(AppState {
         credential,
         owner_id: ownership.owner_id().to_string(),
@@ -271,7 +276,11 @@ async fn serve_on_listener(
     // own in-process, and two daemons sharing one credential would leave a
     // phone talking to whichever restarted last — see `crate::remote`.
     if !embedded {
-        crate::remote::spawn_if_paired(&options.runtime_paths.state_dir);
+        crate::remote::spawn_if_paired(
+            &options.runtime_paths.state_dir,
+            app.clone(),
+            relay_credential,
+        );
     }
 
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();

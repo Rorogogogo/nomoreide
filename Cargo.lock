@@ -2407,6 +2407,7 @@ dependencies = [
  "subtle",
  "tokio",
  "tokio-tungstenite",
+ "tower",
  "uuid",
  "windows-sys 0.61.2",
 ]
