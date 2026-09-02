@@ -12,7 +12,7 @@ use super::session::{
 use super::spawn::TerminalSpawnSpec;
 use crate::event_sink::{emit_event, EventSink, SharedEventSink};
 use portable_pty::{Child, ChildKiller};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::Write;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
@@ -26,8 +26,6 @@ use super::external::{
 use crate::external_terminal::{
     external_terminal_title, launch_terminal, new_socket_path, SocketPathGuard,
 };
-#[cfg(target_os = "macos")]
-use std::collections::VecDeque;
 #[cfg(target_os = "macos")]
 use uuid::Uuid;
 
@@ -89,21 +87,66 @@ fn wait_for_process_group_exit(pid: u32, timeout: Duration) -> bool {
     true
 }
 
-/// Gates PTY output behind the frontend attaching its event listener. The shell
-/// prints its prompt within milliseconds of spawning — well before the async
-/// `listen()` on the JS side resolves — so without this the first prompt is lost
-/// and the terminal looks dead until the user presses Enter. Output is buffered
-/// until `start_terminal_stream` flushes it and switches to live emission.
+/// How much of a session's output is kept for whoever attaches next.
+///
+/// One megabyte is far more than a screen, because what a reattaching client
+/// needs is not the last screen but enough scrollback to redraw one: a TUI
+/// repaints by replaying escape sequences, and a cut that lands mid-sequence
+/// renders as garbage rather than as a shorter transcript.
+pub(super) const TERMINAL_REPLAY_BYTES: usize = 1024 * 1024;
+
+/// Everything the child has written lately, and whether anyone is listening.
+///
+/// **Why a ring rather than a flushed buffer.** This began as a gate: the shell
+/// prints its prompt within milliseconds of spawning, well before a listener is
+/// in place, so output was buffered and handed over once on attach. That loses
+/// the session to anyone who attaches *twice* — the buffer was drained and
+/// nothing replaced it, so a dashboard websocket that reconnected, or a phone
+/// that locked its screen and came back, met a blank terminal until the child
+/// happened to write again. For an agent thinking quietly, that is a long time
+/// staring at nothing.
+///
+/// So the ring is fed unconditionally and never drained. Attaching copies it,
+/// which makes first attach and reattach the same operation, and bounds what a
+/// chatty session can hold — the old buffer grew without limit until someone
+/// looked at it.
+/// How far a mirror may fall behind before it is cut loose.
+///
+/// Dropping is the only safe answer: the reader thread must never block on a
+/// phone's network, and a terminal that has fallen behind is better told to
+/// repaint than fed a gap it cannot see. Same trade the relay hub makes for
+/// events.
+pub(super) const MIRROR_BACKLOG: usize = 256;
+
 #[derive(Default)]
 pub(super) struct OutputGate {
-    pub(super) pending: Vec<u8>,
-    pub(super) streaming: bool,
-    #[cfg(target_os = "macos")]
     pub(super) replay: VecDeque<u8>,
+    pub(super) streaming: bool,
+    /// Live byte feed for mirrors, created on first subscribe.
+    ///
+    /// Separate from the event sink because that one carries
+    /// `String::from_utf8_lossy` of each chunk, and a mirror needs the bytes
+    /// the child actually wrote — a `read()` that splits a multi-byte
+    /// character would otherwise deliver two replacement characters instead.
+    pub(super) mirror: Option<tokio::sync::broadcast::Sender<std::sync::Arc<[u8]>>>,
     #[cfg(target_os = "macos")]
     pub(super) external: Option<ExternalOutputSink>,
     #[cfg(target_os = "macos")]
     pub(super) closed: bool,
+}
+
+impl OutputGate {
+    /// Record what the child wrote, discarding the oldest bytes past the cap.
+    pub(super) fn record(&mut self, data: &[u8]) {
+        self.replay.extend(data);
+        let excess = self.replay.len().saturating_sub(TERMINAL_REPLAY_BYTES);
+        self.replay.drain(..excess);
+        if let Some(mirror) = &self.mirror {
+            // An error here means nobody is listening any more, which is not a
+            // condition the PTY reader has any business caring about.
+            let _ = mirror.send(std::sync::Arc::from(data));
+        }
+    }
 }
 
 pub(super) struct PtySession {
@@ -121,6 +164,18 @@ pub(super) struct PtySession {
     pub(super) gate: Arc<Mutex<OutputGate>>,
     #[cfg(target_os = "macos")]
     pub(super) attachment: Option<ExternalAttachment>,
+}
+
+/// A mirror's two halves: the scrollback to draw first, and the bytes that
+/// follow it.
+pub type TerminalMirror = (Vec<u8>, tokio::sync::broadcast::Receiver<Arc<[u8]>>);
+
+/// An agent session with a child still in it.
+///
+/// One definition, used by both the listing and the attach check, so a session
+/// can never be offered to a phone that the attach would then refuse.
+fn is_live_agent(session: &TerminalSession) -> bool {
+    session.kind.as_deref() == Some("agent") && session.exit.is_none()
 }
 
 #[derive(Default)]
@@ -784,15 +839,21 @@ pub(super) fn emit_terminal_session(sink: &dyn EventSink, session: &TerminalSess
 /// terminal — the PTY has one controller at a time, and while Terminal.app
 /// holds it the dock is a spectator.
 impl TerminalManager {
-    /// Hand back whatever the session printed before anyone was listening, and
-    /// switch it to live emission.
+    /// Hand back what the session has written lately, and switch it to live
+    /// emission.
     ///
-    /// The shell prints its prompt within milliseconds of spawning — well
-    /// before a listener is in place — so without this the first prompt is lost
-    /// and the terminal looks dead until the user presses Enter. The buffer is
-    /// taken under the gate lock so it cannot interleave behind output the
-    /// reader thread is about to emit.
-    pub fn take_pending_output(&self, id: &str) -> Option<Vec<u8>> {
+    /// Answers every attach, not just the first: the ring is copied rather than
+    /// taken, so a client that reconnects is given the scrollback it needs to
+    /// redraw instead of the blank screen a drained buffer left it. Read under
+    /// the gate lock together with the flag, so it cannot interleave behind
+    /// output the reader thread is about to emit.
+    /// Watch a session's output as bytes: what it has said, and what it says
+    /// next.
+    ///
+    /// Both halves come from one lock, which is what makes them seamless — a
+    /// replay taken separately from the subscription would either miss the
+    /// bytes written in between or repeat them.
+    pub fn mirror_output(&self, id: &str) -> Option<TerminalMirror> {
         let gate = {
             let registry = self.registry.0.lock().unwrap();
             registry
@@ -801,9 +862,51 @@ impl TerminalManager {
                 .map(|session| session.gate.clone())
         }?;
         let mut gate = gate.lock().unwrap();
-        let pending = std::mem::take(&mut gate.pending);
         gate.streaming = true;
-        Some(pending)
+        let sender = gate
+            .mirror
+            .get_or_insert_with(|| tokio::sync::broadcast::channel(MIRROR_BACKLOG).0);
+        let receiver = sender.subscribe();
+        Some((gate.replay.iter().copied().collect(), receiver))
+    }
+
+    /// Whether a session exists, is an agent session, and is still running.
+    ///
+    /// The gate for mirroring to a phone. A *shell* session is arbitrary
+    /// command execution, which is the one thing remote control promises it
+    /// cannot do, so the check is here — beside the sessions rather than in the
+    /// dispatcher — and `remote_mirrorable_sessions` reads the same rule.
+    pub fn is_mirrorable(&self, id: &str) -> bool {
+        let registry = self.registry.0.lock().unwrap();
+        registry
+            .sessions
+            .get(id)
+            .is_some_and(|session| is_live_agent(&session.metadata))
+    }
+
+    /// Every session a phone may mirror, oldest first.
+    pub fn mirrorable_sessions(&self) -> Vec<TerminalSession> {
+        let registry = self.registry.0.lock().unwrap();
+        registry
+            .order
+            .iter()
+            .filter_map(|id| registry.sessions.get(id))
+            .map(|session| session.metadata.clone())
+            .filter(is_live_agent)
+            .collect()
+    }
+
+    pub fn attach_output(&self, id: &str) -> Option<Vec<u8>> {
+        let gate = {
+            let registry = self.registry.0.lock().unwrap();
+            registry
+                .sessions
+                .get(id)
+                .map(|session| session.gate.clone())
+        }?;
+        let mut gate = gate.lock().unwrap();
+        gate.streaming = true;
+        Some(gate.replay.iter().copied().collect())
     }
 
     /// Type into a session from the dock.

@@ -96,6 +96,12 @@ pub(crate) struct AppState {
     /// `status` polls — and only something outliving all three can tie them
     /// together.
     pub(crate) provider_logins: ProviderLogins,
+    /// The relay connection, and whether it is up.
+    ///
+    /// Held here so `nomoreide remote pair` can ask a *running* daemon to dial
+    /// the moment it writes a credential, rather than the machine sitting
+    /// offline until something restarts it.
+    pub(crate) relay: crate::remote::supervisor::RelaySupervisor,
 }
 
 /// One runtime event: what happened, and the thing it happened to.

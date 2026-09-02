@@ -201,7 +201,9 @@ async fn serve_socket(mut socket: WebSocket, state: AppState, id: String) {
     {
         return;
     }
-    if let Some(pending) = state.terminal.take_pending_output(&id) {
+    // Every attach replays, so a reconnecting socket redraws rather than
+    // waiting for the child to say something next.
+    if let Some(pending) = state.terminal.attach_output(&id) {
         if !pending.is_empty()
             && send_socket_message(
                 &mut socket,

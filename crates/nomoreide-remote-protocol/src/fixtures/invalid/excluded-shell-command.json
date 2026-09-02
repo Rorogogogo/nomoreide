@@ -3,7 +3,7 @@
   "direction": "deviceBound",
   "expect": "UNKNOWN_COMMAND",
   "frame": {
-    "v": 1,
+    "v": 2,
     "id": "req_1",
     "type": "shell.exec",
     "deviceId": "11111111-2222-3333-4444-555555555555",

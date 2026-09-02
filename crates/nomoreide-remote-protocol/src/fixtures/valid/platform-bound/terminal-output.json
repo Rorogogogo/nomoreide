@@ -1,0 +1,13 @@
+{
+  "v": 2,
+  "id": "evt_terminal_output",
+  "type": "terminal.output",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": null,
+  "payload": {
+    "streamId": "stream_1",
+    "seq": 0,
+    "data": "G1sySiQg"
+  }
+}

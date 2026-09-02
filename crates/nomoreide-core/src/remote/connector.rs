@@ -37,7 +37,7 @@ use super::credentials::StoredCredential;
 use super::protocol::device_bound::Empty;
 use super::protocol::limits;
 use super::protocol::platform_bound::SessionHello;
-use super::protocol::version::{CapabilitySet, SUPPORTED_VERSIONS};
+use super::protocol::version::{CapabilitySet, MINIMUM_SPEAKABLE_VERSION, SUPPORTED_VERSIONS};
 use super::protocol::{envelope, DeviceBound, Envelope, PlatformBound};
 
 /// Why a connection ended.
@@ -79,6 +79,64 @@ pub type EventSender = tokio::sync::mpsc::Sender<PlatformBound>;
 /// How many unsolicited frames may queue for the socket.
 pub const EVENT_QUEUE: usize = 256;
 
+/// What the relay connection is doing, readable from outside the task.
+///
+/// Exists because "paired" and "connected" are different states and a user who
+/// cannot tell them apart has no way to act. A credential on disk with nothing
+/// attached looks healthy to every check that only reads the file, which is
+/// exactly the state a freshly paired machine is in until something dials.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelaySnapshot {
+    /// A socket is attached right now.
+    pub connected: bool,
+    /// The connector gave up: the platform refused this credential. It will not
+    /// retry, and only pairing again will change that.
+    pub stopped: bool,
+    pub device_id: String,
+    pub device_name: String,
+    pub platform_base_url: String,
+    /// Why the last attempt ended, when it ended badly.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
+}
+
+/// A shared, cloneable view of [`RelaySnapshot`].
+#[derive(Clone, Default)]
+pub struct RelayStatus(std::sync::Arc<std::sync::Mutex<RelaySnapshot>>);
+
+impl RelayStatus {
+    pub fn new(config: &ConnectorConfig, device_name: &str) -> Self {
+        Self(std::sync::Arc::new(std::sync::Mutex::new(RelaySnapshot {
+            connected: false,
+            stopped: false,
+            device_id: config.device_id.clone(),
+            device_name: device_name.to_string(),
+            platform_base_url: config.platform_base_url.clone(),
+            last_error: None,
+        })))
+    }
+
+    pub fn snapshot(&self) -> RelaySnapshot {
+        self.0.lock().expect("relay status").clone()
+    }
+
+    fn set_connected(&self, connected: bool) {
+        let mut status = self.0.lock().expect("relay status");
+        status.connected = connected;
+        if connected {
+            status.last_error = None;
+        }
+    }
+
+    fn record(&self, error: &Disconnected) {
+        let mut status = self.0.lock().expect("relay status");
+        status.connected = false;
+        status.last_error = Some(error.to_string());
+        status.stopped = matches!(error, Disconnected::Refused(_));
+    }
+}
+
 /// What the connector does with a command, and how it answers.
 ///
 /// A trait so the socket can be tested without a relay, and so the dispatcher —
@@ -101,6 +159,17 @@ pub trait CommandSink: Send + Sync {
         command: DeviceBound,
         events: EventSender,
     ) -> Answer<'a>;
+
+    /// The socket this session ran on has gone.
+    ///
+    /// Anything the sink was holding *for that socket* — a mirrored terminal,
+    /// say — has nobody to deliver to any more and must be dropped here.
+    /// Reconnecting mints a new session, and state carried across would belong
+    /// to a conversation that has ended: on a revocation, that is state
+    /// belonging to a device the owner has just removed.
+    ///
+    /// Default empty, because most sinks hold nothing per-socket.
+    fn disconnected(&self) {}
 }
 
 /// Where to dial, and as whom.
@@ -151,7 +220,11 @@ impl ConnectorConfig {
 ///
 /// Returns why it ended. The caller decides whether to try again — see
 /// [`run_forever`].
-pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) -> Disconnected {
+pub async fn connect_once(
+    config: &ConnectorConfig,
+    commands: &dyn CommandSink,
+    status: &RelayStatus,
+) -> Disconnected {
     let mut request = match config.socket_url().into_client_request() {
         Ok(request) => request,
         Err(error) => return Disconnected::Refused(format!("bad relay URL: {error}")),
@@ -178,8 +251,10 @@ pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) 
     // The hello is first, always. Until it lands the relay knows a credential
     // but not what this machine can do, and it will not route to a device whose
     // capabilities it has to guess at.
+    let speaking = Speaking::new();
     let hello = frame(
         config,
+        &speaking,
         PlatformBound::SessionHello(SessionHello {
             supported_versions: SUPPORTED_VERSIONS.to_vec(),
             daemon_version: config.daemon_version.clone(),
@@ -196,6 +271,10 @@ pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) 
         return Disconnected::Transient(error.to_string());
     }
 
+    // Connected once the hello is away: the socket is open and the relay knows
+    // what this machine can do.
+    status.set_connected(true);
+
     let mut heartbeat = tokio::time::interval(limits::HEARTBEAT_INTERVAL);
     // The first tick fires immediately; the hello just went out, so skip it.
     heartbeat.tick().await;
@@ -210,7 +289,7 @@ pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) 
                     // happen while this loop holds one.
                     continue;
                 };
-                let frame = frame(config, body);
+                let frame = frame(config, &speaking, body);
                 if let Err(error) = sink
                     .send(Message::Text(envelope::encode_platform_bound(&frame).to_string()))
                     .await
@@ -219,7 +298,7 @@ pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) 
                 }
             }
             _ = heartbeat.tick() => {
-                let beat = frame(config, PlatformBound::SessionHeartbeat(Empty {}));
+                let beat = frame(config, &speaking, PlatformBound::SessionHeartbeat(Empty {}));
                 if let Err(error) = sink
                     .send(Message::Text(envelope::encode_platform_bound(&beat).to_string()))
                     .await
@@ -237,7 +316,7 @@ pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) 
                 };
                 match message {
                     Message::Text(text) => {
-                        match handle(config, commands, text.as_bytes(), &events).await {
+                        match handle(config, &speaking, commands, text.as_bytes(), &events).await {
                             Ok(Some(answer)) => {
                                 if let Err(error) = sink
                                     .send(Message::Text(
@@ -267,6 +346,7 @@ pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) 
 /// Handle one inbound frame. `Ok(None)` means nothing to send back.
 async fn handle(
     config: &ConnectorConfig,
+    speaking: &Speaking,
     commands: &dyn CommandSink,
     raw: &[u8],
     events: &EventSender,
@@ -280,6 +360,7 @@ async fn handle(
             return Ok(Some(
                 frame(
                     config,
+                    speaking,
                     PlatformBound::CommandError(
                         super::protocol::platform_bound::CommandErrorResponse { error },
                     ),
@@ -290,21 +371,53 @@ async fn handle(
     };
 
     match parsed.body {
-        // The relay's answer to our hello. Nothing to do but note it — the
-        // negotiated version is the relay's decision, and it enforces it.
-        DeviceBound::SessionWelcome(_) => Ok(None),
+        // The relay's answer to our hello. Its choice of version is binding:
+        // every frame from here on is stamped with it, because a peer that
+        // asked us to speak 1 cannot read 2.
+        DeviceBound::SessionWelcome(welcome) => {
+            speaking.agreed(welcome.version);
+            Ok(None)
+        }
         // Advisory. The socket closing is the real revocation, and this stops
         // us reconnecting into a refusal loop.
         DeviceBound::SessionRevoke(revoke) => Err(Disconnected::Refused(revoke.reason)),
         command => {
             let answer = commands.dispatch(&parsed.id, command, events.clone()).await;
-            Ok(Some(frame(config, answer).in_reply_to(parsed.id)))
+            Ok(Some(frame(config, speaking, answer).in_reply_to(parsed.id)))
         }
     }
 }
 
-fn frame(config: &ConnectorConfig, body: PlatformBound) -> Envelope<PlatformBound> {
-    Envelope::new(
+/// The version this connection speaks, which is not necessarily the newest one
+/// this build knows.
+///
+/// Starts at [`MINIMUM_SPEAKABLE_VERSION`] rather than [`PROTOCOL_VERSION`],
+/// because the hello goes out *before* anything has been agreed and has to be
+/// readable by a peer whose version is still unknown — including one older than
+/// this build. The welcome then raises it to whatever the relay chose.
+struct Speaking(std::sync::atomic::AtomicU32);
+
+impl Speaking {
+    fn new() -> Self {
+        Self(std::sync::atomic::AtomicU32::new(MINIMUM_SPEAKABLE_VERSION))
+    }
+
+    fn get(&self) -> u32 {
+        self.0.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    fn agreed(&self, version: u32) {
+        self.0.store(version, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+fn frame(
+    config: &ConnectorConfig,
+    speaking: &Speaking,
+    body: PlatformBound,
+) -> Envelope<PlatformBound> {
+    Envelope::at_version(
+        speaking.get(),
         format!("evt_{}", uuid::Uuid::new_v4()),
         config.device_id.clone(),
         chrono::Utc::now(),
@@ -316,11 +429,20 @@ fn frame(config: &ConnectorConfig, body: PlatformBound) -> Envelope<PlatformBoun
 ///
 /// Runs until the credential is refused, which is the one ending a daemon
 /// should not argue with.
-pub async fn run_forever(config: ConnectorConfig, commands: std::sync::Arc<dyn CommandSink>) {
+pub async fn run_forever(
+    config: ConnectorConfig,
+    commands: std::sync::Arc<dyn CommandSink>,
+    status: RelayStatus,
+) {
     let mut backoff = Backoff::new();
     loop {
         let started = std::time::Instant::now();
-        let ended = connect_once(&config, commands.as_ref()).await;
+        let ended = connect_once(&config, commands.as_ref(), &status).await;
+        // Before anything else about the ending is interpreted: whatever the
+        // sink was holding for that socket has nowhere to go now, and a
+        // revocation is one of the ways we get here.
+        commands.disconnected();
+        status.record(&ended);
         // A connection that stayed up is evidence the platform is healthy, so
         // the next blip starts from one second again. Without this a daemon
         // that reconnected an hour ago carries that hour's backoff into a
@@ -483,5 +605,31 @@ mod tests {
         assert!(Disconnected::Refused("revoked".into())
             .to_string()
             .contains("credential refused"));
+    }
+
+    /// The compatibility rule v2 turns on.
+    ///
+    /// A hello goes out before anything has been agreed, so it is stamped with
+    /// the oldest version this build speaks — otherwise a daemon one version
+    /// ahead of the relay would be unreadable at the only moment it has to be
+    /// understood, and could never negotiate its way down.
+    #[test]
+    fn the_hello_is_stamped_low_enough_for_an_older_relay_to_read() {
+        assert_eq!(Speaking::new().get(), MINIMUM_SPEAKABLE_VERSION);
+    }
+
+    /// And once the relay has chosen, that choice is what goes on the wire —
+    /// including when it is lower than this build would have preferred.
+    #[test]
+    fn the_relays_choice_is_what_later_frames_carry() {
+        let speaking = Speaking::new();
+        speaking.agreed(1);
+        assert_eq!(speaking.get(), 1);
+
+        speaking.agreed(super::super::protocol::version::PROTOCOL_VERSION);
+        assert_eq!(
+            speaking.get(),
+            super::super::protocol::version::PROTOCOL_VERSION
+        );
     }
 }

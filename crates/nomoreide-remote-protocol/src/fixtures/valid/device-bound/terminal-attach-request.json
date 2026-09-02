@@ -1,0 +1,13 @@
+{
+  "v": 2,
+  "id": "req_terminal_attach_request",
+  "type": "terminal.attach.request",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": null,
+  "payload": {
+    "sessionId": "term_1",
+    "cols": 80,
+    "rows": 24
+  }
+}

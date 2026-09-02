@@ -1,5 +1,5 @@
 {
-  "v": 1,
+  "v": 2,
   "id": "evt_session_hello",
   "type": "session.hello",
   "deviceId": "11111111-2222-3333-4444-555555555555",
@@ -7,7 +7,8 @@
   "replyTo": null,
   "payload": {
     "supportedVersions": [
-      1
+      1,
+      2
     ],
     "daemonVersion": "0.3.3",
     "platform": "macos",
@@ -19,7 +20,9 @@
       "device.snapshot",
       "service.action",
       "service.list",
-      "service.logs"
+      "service.logs",
+      "terminal.attach",
+      "terminal.sessions"
     ]
   }
 }

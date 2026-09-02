@@ -17,10 +17,7 @@ use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 #[cfg(target_os = "macos")]
-use super::external::{
-    emit_reset_external_presentation, forward_external_output, ExternalOutput,
-    TERMINAL_REPLAY_BYTES,
-};
+use super::external::{emit_reset_external_presentation, forward_external_output, ExternalOutput};
 #[cfg(target_os = "macos")]
 use std::net::Shutdown;
 
@@ -214,21 +211,18 @@ impl TerminalManager {
                     Ok(read) => read,
                 };
                 let mut locked = gate.lock().unwrap();
+                // Recorded before anything is emitted, and on every platform:
+                // the ring is what a client attaching later is given, so a byte
+                // that reached a live listener but not the ring would be lost
+                // to the next one.
+                locked.record(&buffer[..read]);
                 #[cfg(target_os = "macos")]
-                let external_failure = {
-                    locked.replay.extend(&buffer[..read]);
-                    while locked.replay.len() > TERMINAL_REPLAY_BYTES {
-                        locked.replay.pop_front();
-                    }
-                    forward_external_output(&mut locked, &buffer[..read])
-                };
-                if locked.streaming {
-                    drop(locked);
+                let external_failure = forward_external_output(&mut locked, &buffer[..read]);
+                let streaming = locked.streaming;
+                drop(locked);
+                if streaming {
                     let data = String::from_utf8_lossy(&buffer[..read]).into_owned();
                     let _ = emit_event(sink.as_ref(), &format!("terminal-output-{id}"), data);
-                } else {
-                    locked.pending.extend_from_slice(&buffer[..read]);
-                    drop(locked);
                 }
                 #[cfg(target_os = "macos")]
                 if let Some(lease) = external_failure {

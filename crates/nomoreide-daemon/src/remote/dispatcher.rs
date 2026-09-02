@@ -53,6 +53,7 @@ use nomoreide_core::remote::protocol::snapshot::{
 use nomoreide_core::remote::protocol::version::{capabilities, CapabilitySet, PROTOCOL_VERSION};
 use nomoreide_core::remote::protocol::{DeviceBound, PlatformBound};
 use nomoreide_core::remote::redaction::redact_line;
+use nomoreide_core::terminal::TerminalManager;
 use serde_json::Value;
 use tower::ServiceExt;
 
@@ -124,6 +125,31 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
         capability: capabilities::AGENT_APPROVALS,
         routes: "POST /api/agent/chat/approve",
     },
+    Allowed {
+        kind: "terminal.sessions.request",
+        capability: capabilities::TERMINAL_SESSIONS,
+        routes: "(the terminal manager; agent sessions only)",
+    },
+    Allowed {
+        kind: "terminal.attach.request",
+        capability: capabilities::TERMINAL_ATTACH,
+        routes: "(the terminal manager; a PTY stream, not a route)",
+    },
+    Allowed {
+        kind: "terminal.input",
+        capability: capabilities::TERMINAL_ATTACH,
+        routes: "(the terminal manager)",
+    },
+    Allowed {
+        kind: "terminal.resize",
+        capability: capabilities::TERMINAL_ATTACH,
+        routes: "(the terminal manager)",
+    },
+    Allowed {
+        kind: "terminal.detach",
+        capability: capabilities::TERMINAL_ATTACH,
+        routes: "(the terminal manager)",
+    },
 ];
 
 /// What this daemon tells the relay it can do.
@@ -153,6 +179,11 @@ pub(crate) struct RouterDispatcher {
     device_id: String,
     device_name: String,
     platform: String,
+    /// Held directly rather than reached through the router. A PTY mirror is a
+    /// websocket upgrade, which `oneshot` cannot perform — see
+    /// [`super::terminal`], which is where that exception is argued.
+    terminal: TerminalManager,
+    mirrors: super::terminal::Mirrors,
 }
 
 impl RouterDispatcher {
@@ -161,6 +192,7 @@ impl RouterDispatcher {
         credential: String,
         device_id: String,
         device_name: String,
+        terminal: TerminalManager,
     ) -> Self {
         Self {
             router,
@@ -170,6 +202,8 @@ impl RouterDispatcher {
             device_id,
             device_name,
             platform: nomoreide_core::remote::pairing::platform_name().to_string(),
+            terminal,
+            mirrors: super::terminal::Mirrors::default(),
         }
     }
 
@@ -550,6 +584,13 @@ impl RouterDispatcher {
 }
 
 impl CommandSink for RouterDispatcher {
+    fn disconnected(&self) {
+        // Every mirror belonged to the socket that just closed. Reconnecting
+        // re-attaches; nothing survives the gap, least of all after a
+        // revocation.
+        self.mirrors.close_all();
+    }
+
     fn dispatch<'a>(
         &'a self,
         _request_id: &'a str,
@@ -589,6 +630,15 @@ impl CommandSink for RouterDispatcher {
                 DeviceBound::AgentApprovalResolve(request) => {
                     self.agent_approval_resolve(request, events.clone()).await
                 }
+                DeviceBound::TerminalSessions(_) => Ok(super::terminal::sessions(&self.terminal)),
+                DeviceBound::TerminalAttach(request) => {
+                    self.mirrors.attach(&self.terminal, request, events.clone())
+                }
+                DeviceBound::TerminalInput(request) => self.mirrors.input(&self.terminal, request),
+                DeviceBound::TerminalResize(request) => {
+                    self.mirrors.resize(&self.terminal, request)
+                }
+                DeviceBound::TerminalDetach(request) => self.mirrors.detach(request),
                 // Unreachable: the gate above refuses anything with no row,
                 // and every row has an arm. Kept as a refusal rather than an
                 // `unreachable!` because a panic here would take the socket
@@ -1058,6 +1108,7 @@ mod tests {
             CREDENTIAL.to_string(),
             "11111111-2222-3333-4444-555555555555".into(),
             "Studio".into(),
+            TerminalManager::new(),
         );
         (dispatcher, reached)
     }
@@ -1344,6 +1395,11 @@ mod tests {
 
     /// The excluded operations have no entry, and the table is short enough to
     /// read — which is the point of it being data.
+    ///
+    /// **`terminal` left this list in v2, and that is the one loosening.** It
+    /// is no longer true that nothing here reaches a PTY; what is true is that
+    /// only an *agent* PTY can be reached, and that rule is asserted directly
+    /// below rather than inferred from a word not appearing in a string.
     #[test]
     fn the_allowlist_names_nothing_dangerous() {
         let rendered = ALLOWLIST
@@ -1352,15 +1408,152 @@ mod tests {
             .collect::<Vec<_>>()
             .join(" ");
         for forbidden in [
-            "terminal", "shutdown", "database", "git", "fs", "exec", "env", "kill", "config",
+            "shutdown", "database", "git", "fs", "exec", "env", "kill", "config",
         ] {
             assert!(
                 !rendered.contains(forbidden),
                 "the allowlist mentions {forbidden}: {rendered}"
             );
         }
-        // Nine rows: five service, four agent. Pinned so growing the remote
-        // surface is a deliberate edit to a test rather than a quiet addition.
-        assert_eq!(ALLOWLIST.len(), 9);
+        // Fourteen rows: five service, four agent, five terminal. Pinned so
+        // growing the remote surface is a deliberate edit to a test rather than
+        // a quiet addition.
+        assert_eq!(ALLOWLIST.len(), 14);
+    }
+
+    /// The rule that replaced "the allowlist never says terminal".
+    ///
+    /// A shell session is arbitrary command execution, which is precisely what
+    /// pairing promises remote control cannot do. Mirroring an agent is not,
+    /// because the agent is a program the user chose to run and its own prompts
+    /// are what gate it. Asserted against real sessions rather than against the
+    /// wording of the table.
+    #[tokio::test]
+    async fn a_shell_session_cannot_be_mirrored_but_an_agent_can() {
+        let terminal = TerminalManager::new();
+        let shell = spawn_kind(&terminal, "shell-session", "shell");
+        let agent = spawn_kind(&terminal, "agent-session", "agent");
+
+        assert!(
+            !terminal.is_mirrorable(&shell),
+            "a shell is arbitrary command execution and must never be reachable"
+        );
+        assert!(terminal.is_mirrorable(&agent));
+
+        let offered: Vec<String> = terminal
+            .mirrorable_sessions()
+            .into_iter()
+            .map(|session| session.id)
+            .collect();
+        assert_eq!(
+            offered,
+            vec![agent.clone()],
+            "the listing and the attach check must agree"
+        );
+
+        terminal.close_session(&shell).unwrap();
+        terminal.close_session(&agent).unwrap();
+    }
+
+    /// Losing the socket takes the mirrors with it.
+    ///
+    /// A revocation arrives as a closed socket, so a mirror that outlived one
+    /// would be a PTY still streaming for a device the owner has just removed.
+    #[tokio::test]
+    async fn a_lost_socket_drops_every_mirror() {
+        let terminal = TerminalManager::new();
+        let agent = spawn_kind(&terminal, "disconnect-agent", "agent");
+        let dispatcher = RouterDispatcher::new(
+            stub_router(Arc::new(Mutex::new(Vec::new()))),
+            CREDENTIAL.to_string(),
+            "11111111-2222-3333-4444-555555555555".into(),
+            "Studio".into(),
+            terminal.clone(),
+        );
+        let (events, _drain) = tokio::sync::mpsc::channel(16);
+
+        let answer = dispatcher
+            .dispatch(
+                "req_1",
+                DeviceBound::TerminalAttach(
+                    nomoreide_core::remote::protocol::device_bound::TerminalAttachRequest {
+                        session_id: agent.clone(),
+                        cols: 80,
+                        rows: 24,
+                    },
+                ),
+                events.clone(),
+            )
+            .await;
+        let PlatformBound::TerminalAttachAccepted(accepted) = answer else {
+            panic!("attach was answered with {}", answer.kind());
+        };
+
+        dispatcher.disconnected();
+
+        // The stream id is no longer known, so input against it is refused
+        // rather than reaching a PTY.
+        let after = dispatcher
+            .dispatch(
+                "req_2",
+                DeviceBound::TerminalInput(
+                    nomoreide_core::remote::protocol::device_bound::TerminalInput {
+                        stream_id: accepted.stream_id,
+                        data: nomoreide_core::remote::protocol::TerminalBytes::new(b"x".to_vec()),
+                    },
+                ),
+                events,
+            )
+            .await;
+        let PlatformBound::CommandError(error) = after else {
+            panic!(
+                "input after a disconnect was answered with {}",
+                after.kind()
+            );
+        };
+        assert_eq!(error.error.code, ErrorCode::CapabilityUnavailable);
+
+        terminal.close_session(&agent).unwrap();
+    }
+
+    /// A session that does not exist is refused the same way a shell is, so a
+    /// guessed id is not a different answer from a forbidden one.
+    #[test]
+    fn an_unknown_session_is_not_mirrorable() {
+        assert!(!TerminalManager::new().is_mirrorable("no-such-session"));
+    }
+
+    fn spawn_kind(terminal: &TerminalManager, id: &str, kind: &str) -> String {
+        terminal
+            .create(
+                std::sync::Arc::new(SilentSink),
+                nomoreide_core::terminal::TerminalSpawnSpec {
+                    id: id.to_string(),
+                    service_name: None,
+                    cwd: std::env::temp_dir().to_string_lossy().into_owned(),
+                    shell: "/bin/sh".into(),
+                    args: vec!["-c".to_string(), "sleep 30".to_string()],
+                    env: Vec::new(),
+                    label: None,
+                    kind: Some(kind.to_string()),
+                    provider: (kind == "agent").then(|| "claude".to_string()),
+                },
+            )
+            .expect("spawn")
+            .id
+    }
+
+    /// These tests are about which sessions may be mirrored, not about what a
+    /// session emits, so the events go nowhere.
+    struct SilentSink;
+
+    impl nomoreide_core::event_sink::EventSink for SilentSink {
+        fn emit(
+            &self,
+            _event: &str,
+            _payload: serde_json::Value,
+        ) -> Result<(), nomoreide_core::event_sink::EventSinkError> {
+            Ok(())
+        }
     }
 }

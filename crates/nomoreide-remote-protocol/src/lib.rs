@@ -57,12 +57,14 @@ pub mod idempotency;
 pub mod limits;
 pub mod platform_bound;
 pub mod snapshot;
+pub mod terminal_bytes;
 pub mod version;
 
 pub use device_bound::DeviceBound;
 pub use envelope::Envelope;
 pub use errors::{ErrorCode, ProtocolError};
 pub use platform_bound::PlatformBound;
+pub use terminal_bytes::TerminalBytes;
 pub use version::{Capability, CapabilitySet, SessionMode, PROTOCOL_VERSION};
 
 #[cfg(test)]

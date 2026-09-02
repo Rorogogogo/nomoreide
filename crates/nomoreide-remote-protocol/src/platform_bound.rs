@@ -52,10 +52,94 @@ pub enum PlatformBound {
     #[serde(rename = "agent.turn.event")]
     AgentTurnEvent(super::agent_event::AgentEvent),
 
+    /// The agent terminals that could be mirrored. **v2.**
+    #[serde(rename = "terminal.sessions.response")]
+    TerminalSessions(TerminalSessionsResponse),
+    /// The mirror is open, and this is its id. **v2.**
+    #[serde(rename = "terminal.attach.accepted")]
+    TerminalAttachAccepted(TerminalAttachAccepted),
+    /// A coalesced chunk of what the terminal drew. **v2.**
+    #[serde(rename = "terminal.output")]
+    TerminalOutput(TerminalOutput),
+    /// A terminal command was carried out and had nothing to report. **v2.**
+    #[serde(rename = "terminal.ack")]
+    TerminalAck(TerminalAck),
+    /// The mirror ended. **v2.**
+    #[serde(rename = "terminal.closed")]
+    TerminalClosed(TerminalClosed),
+
     /// A refusal. Always carries `replyTo`, because an error with nothing to
     /// answer is a log line, not a frame.
     #[serde(rename = "command.error")]
     CommandError(CommandErrorResponse),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalSessionsResponse {
+    pub sessions: Vec<super::snapshot::RemoteTerminalSession>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalAttachAccepted {
+    /// Minted by the daemon. Every later frame for this mirror names it, so a
+    /// stale frame from a mirror that has already closed cannot be applied to
+    /// the one that replaced it.
+    pub stream_id: String,
+    pub session_id: String,
+    /// What the daemon actually set, which may be smaller than what was asked
+    /// for — the request is clamped, not rejected.
+    pub cols: u16,
+    pub rows: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalOutput {
+    pub stream_id: String,
+    /// Monotonic within a stream, from zero. A reader that sees a gap has lost
+    /// bytes to backpressure and must repaint rather than render a hole it
+    /// cannot see — the same contract the run-event stream uses.
+    pub seq: u64,
+    pub data: super::terminal_bytes::TerminalBytes,
+}
+
+/// Nothing to say beyond "done".
+///
+/// Its own frame because the alternative was answering a keystroke with
+/// [`TerminalAttachAccepted`] carrying a geometry nobody set — an ack that has
+/// to lie about a field is a worse economy than one more variant. A *resize*
+/// still answers with `attach.accepted`, because reporting the geometry that
+/// was actually applied is precisely what that frame is for.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalAck {
+    pub stream_id: String,
+}
+
+/// Why a mirror ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TerminalCloseReason {
+    /// The phone asked to stop mirroring.
+    Detached,
+    /// The child exited. The tab is over, not just the mirror.
+    Exited,
+    /// The session was closed on the machine.
+    SessionClosed,
+    /// The reader could not keep up and the mirror was dropped to protect the
+    /// device socket. Reattaching is the remedy, and it replays.
+    Overrun,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalClosed {
+    pub stream_id: String,
+    pub reason: TerminalCloseReason,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -145,6 +229,11 @@ impl PlatformBound {
         "agent.providers.response",
         "agent.turn.accepted",
         "agent.turn.event",
+        "terminal.sessions.response",
+        "terminal.attach.accepted",
+        "terminal.output",
+        "terminal.ack",
+        "terminal.closed",
         "command.error",
     ];
 
@@ -160,6 +249,11 @@ impl PlatformBound {
             Self::AgentProviders(_) => "agent.providers.response",
             Self::AgentTurnAccepted(_) => "agent.turn.accepted",
             Self::AgentTurnEvent(_) => "agent.turn.event",
+            Self::TerminalSessions(_) => "terminal.sessions.response",
+            Self::TerminalAttachAccepted(_) => "terminal.attach.accepted",
+            Self::TerminalOutput(_) => "terminal.output",
+            Self::TerminalAck(_) => "terminal.ack",
+            Self::TerminalClosed(_) => "terminal.closed",
             Self::CommandError(_) => "command.error",
         }
     }
@@ -173,7 +267,14 @@ impl PlatformBound {
     /// the wrong browser.
     pub fn requires_reply_to(&self) -> bool {
         match self {
-            Self::SessionHello(_) | Self::SessionHeartbeat(_) | Self::AgentTurnEvent(_) => false,
+            Self::SessionHello(_)
+            | Self::SessionHeartbeat(_)
+            | Self::AgentTurnEvent(_)
+            // A mirror is a stream, not an exchange: output and its closing
+            // arrive on their own schedule, long after the attach they belong
+            // to was answered.
+            | Self::TerminalOutput(_)
+            | Self::TerminalClosed(_) => false,
             Self::DeviceSnapshot(_)
             | Self::ServiceList(_)
             | Self::ServiceAction(_)
@@ -181,6 +282,9 @@ impl PlatformBound {
             | Self::BundleList(_)
             | Self::AgentProviders(_)
             | Self::AgentTurnAccepted(_)
+            | Self::TerminalSessions(_)
+            | Self::TerminalAttachAccepted(_)
+            | Self::TerminalAck(_)
             | Self::CommandError(_) => true,
         }
     }

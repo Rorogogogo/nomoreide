@@ -24,7 +24,7 @@ use super::device_bound::DeviceBound;
 use super::errors::{ErrorCode, ProtocolError};
 use super::limits;
 use super::platform_bound::PlatformBound;
-use super::version::PROTOCOL_VERSION;
+use super::version::{PROTOCOL_VERSION, SUPPORTED_VERSIONS};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -71,14 +71,35 @@ struct RawEnvelope {
 impl<T> Envelope<T> {
     /// Build a frame to send. `sent_at` is taken from the caller rather than
     /// the clock so that tests and the golden fixtures are not time-dependent.
+    /// A frame stamped with the newest version this build speaks.
+    ///
+    /// Right for a peer known to be current, and for tests. A connection that
+    /// has negotiated down must use [`Self::at_version`] instead.
     pub fn new(
         id: impl Into<String>,
         device_id: impl Into<String>,
         sent_at: DateTime<Utc>,
         body: T,
     ) -> Self {
+        Self::at_version(PROTOCOL_VERSION, id, device_id, sent_at, body)
+    }
+
+    /// A frame stamped with a specific version.
+    ///
+    /// **Why this is not just `new`.** Once two versions exist, the version a
+    /// session speaks is the one it *negotiated*, not the one this build
+    /// prefers. A v2 daemon that stamped 2 on every frame after agreeing to
+    /// speak 1 would have every frame refused by the peer that asked it to
+    /// downgrade — which is the entire population of already-deployed peers.
+    pub fn at_version(
+        version: u32,
+        id: impl Into<String>,
+        device_id: impl Into<String>,
+        sent_at: DateTime<Utc>,
+        body: T,
+    ) -> Self {
         Self {
-            v: PROTOCOL_VERSION,
+            v: version,
             id: id.into(),
             device_id: device_id.into(),
             sent_at,
@@ -167,7 +188,16 @@ fn parse_header(raw: &[u8]) -> Result<RawEnvelope, ProtocolError> {
         ProtocolError::new(ErrorCode::MalformedFrame, "Frame is not a valid envelope.")
             .with_detail(error.to_string())
     })?;
-    if envelope.v != PROTOCOL_VERSION {
+    // Any version this build serves, not merely the newest one it prefers.
+    //
+    // These were the same number while 1 was the only version, and the
+    // difference only became visible when 2 arrived: an exact check would have
+    // made a v2 build reject every frame from a v1 daemon outright, which is
+    // precisely the peer that `SUPPORTED_VERSIONS`, `negotiate` and the whole
+    // degraded-session design exist to keep talking. Which *payloads* a session
+    // may use is settled by the version it negotiated; this is only about
+    // whether the envelope can be read at all.
+    if !SUPPORTED_VERSIONS.contains(&envelope.v) {
         return Err(ProtocolError::new(
             ErrorCode::UnsupportedProtocolVersion,
             "This build does not speak that protocol version.",

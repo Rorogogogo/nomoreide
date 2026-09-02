@@ -307,6 +307,90 @@ fn output_overflow_and_disconnect_revoke_the_external_sink() {
 }
 
 #[cfg(target_os = "macos")]
+/// The regression this ring exists for.
+///
+/// Attach used to *drain* the buffer, so the first client got the session and
+/// every one after it got nothing — a dashboard websocket that reconnected, or
+/// a phone returning from a locked screen, sat in front of a blank terminal
+/// until the child happened to write again.
+#[test]
+fn every_attach_replays_not_just_the_first() {
+    let manager = TerminalManager::new();
+    spawn_test_session(&manager, "replay-twice", "sleep 30");
+    {
+        let registry = manager.registry.0.lock().unwrap();
+        let session = registry.sessions.get("replay-twice").unwrap();
+        session.gate.lock().unwrap().record(b"$ whoami\r\nroro\r\n");
+    }
+
+    let first = manager.attach_output("replay-twice").unwrap();
+    let second = manager.attach_output("replay-twice").unwrap();
+
+    assert_eq!(first, b"$ whoami\r\nroro\r\n");
+    assert_eq!(
+        second, first,
+        "a reattaching client gets the same scrollback"
+    );
+    manager.close_session("replay-twice").unwrap();
+}
+
+/// Attaching also switches the session to live emission, which is what the
+/// gate was originally for. Replaying must not have cost that.
+#[test]
+fn attaching_starts_live_emission() {
+    let manager = TerminalManager::new();
+    spawn_test_session(&manager, "replay-streaming", "sleep 30");
+    {
+        let registry = manager.registry.0.lock().unwrap();
+        assert!(
+            !registry.sessions["replay-streaming"]
+                .gate
+                .lock()
+                .unwrap()
+                .streaming
+        );
+    }
+
+    manager.attach_output("replay-streaming").unwrap();
+
+    {
+        let registry = manager.registry.0.lock().unwrap();
+        assert!(
+            registry.sessions["replay-streaming"]
+                .gate
+                .lock()
+                .unwrap()
+                .streaming
+        );
+    }
+    manager.close_session("replay-streaming").unwrap();
+}
+
+/// The buffer this replaced grew without limit until someone attached. The ring
+/// keeps the newest bytes, because that is what redraws a screen.
+#[test]
+fn the_replay_ring_is_capped_and_keeps_the_newest_bytes() {
+    let mut gate = OutputGate::default();
+    let cap = super::manager::TERMINAL_REPLAY_BYTES;
+
+    gate.record(&vec![b'o'; cap]);
+    gate.record(b"newest");
+
+    assert_eq!(
+        gate.replay.len(),
+        cap,
+        "the ring does not grow past its cap"
+    );
+    let tail: Vec<u8> = gate.replay.iter().rev().take(6).rev().copied().collect();
+    assert_eq!(tail, b"newest", "the oldest bytes are what is discarded");
+}
+
+#[test]
+fn an_unknown_session_has_nothing_to_replay() {
+    let manager = TerminalManager::new();
+    assert_eq!(manager.attach_output("never-existed"), None);
+}
+
 #[test]
 fn closed_output_gate_rejects_a_new_external_launch() {
     let manager = TerminalManager::new();

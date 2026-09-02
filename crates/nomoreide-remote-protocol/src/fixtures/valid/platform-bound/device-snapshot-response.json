@@ -1,5 +1,5 @@
 {
-  "v": 1,
+  "v": 2,
   "id": "evt_device_snapshot_response",
   "type": "device.snapshot.response",
   "deviceId": "11111111-2222-3333-4444-555555555555",
@@ -20,7 +20,9 @@
         "device.snapshot",
         "service.action",
         "service.list",
-        "service.logs"
+        "service.logs",
+        "terminal.attach",
+        "terminal.sessions"
       ]
     }
   }

@@ -246,7 +246,15 @@ async fn serve_on_listener(
     // credential a browser does, so it gets its own copy before the state takes
     // ownership. It is not a second, more privileged way in — it is the same
     // door.
-    let relay_credential = credential.clone();
+    // Hoisted out of the state literal below so the relay mirrors *these*
+    // sessions. Two managers would each own their own PTYs, and a phone would
+    // be shown a terminal list the dashboard has never heard of.
+    let terminal = TerminalManager::new();
+    let relay = crate::remote::supervisor::RelaySupervisor::new(
+        options.runtime_paths.state_dir.clone(),
+        credential.clone(),
+        terminal.clone(),
+    );
     let app = routes::router(AppState {
         credential,
         owner_id: ownership.owner_id().to_string(),
@@ -254,7 +262,7 @@ async fn serve_on_listener(
         runtime: runtime.clone(),
         errors,
         shutdown: shutdown_sender,
-        terminal: TerminalManager::new(),
+        terminal,
         events: Arc::new(app::BroadcastEventSink::new(event_stream.clone())),
         event_stream,
         session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
@@ -265,6 +273,7 @@ async fn serve_on_listener(
         approvals: ApprovalBroker::new(),
         registry_auth: AuthStates::new(),
         provider_logins: ProviderLogins::new(),
+        relay: relay.clone(),
     });
     let app = if embedded {
         app.layer(axum::middleware::from_fn(routes::allow_desktop_origin))
@@ -276,11 +285,11 @@ async fn serve_on_listener(
     // own in-process, and two daemons sharing one credential would leave a
     // phone talking to whichever restarted last — see `crate::remote`.
     if !embedded {
-        crate::remote::spawn_if_paired(
-            &options.runtime_paths.state_dir,
-            app.clone(),
-            relay_credential,
-        );
+        // The router exists now, so the dispatcher has something to call. A
+        // machine already paired connects here; one paired later connects when
+        // `nomoreide remote pair` asks, without a restart.
+        relay.attach_router(app.clone());
+        relay.ensure_started();
     }
 
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();
