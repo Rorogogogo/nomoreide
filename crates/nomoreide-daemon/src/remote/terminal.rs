@@ -24,13 +24,13 @@ use std::sync::{Arc, Mutex};
 
 use nomoreide_core::remote::connector::EventSender;
 use nomoreide_core::remote::protocol::device_bound::{
-    TerminalAttachRequest, TerminalDetach, TerminalInput, TerminalResize,
+    TerminalAttachRequest, TerminalDetach, TerminalInput, TerminalResize, TerminalSpawnRequest,
 };
 use nomoreide_core::remote::protocol::errors::{ErrorCode, ProtocolError};
 use nomoreide_core::remote::protocol::limits;
 use nomoreide_core::remote::protocol::platform_bound::{
     TerminalAck, TerminalAttachAccepted, TerminalCloseReason, TerminalClosed, TerminalOutput,
-    TerminalSessionsResponse,
+    TerminalSessionsResponse, TerminalSpawned,
 };
 use nomoreide_core::remote::protocol::snapshot::RemoteTerminalSession;
 use nomoreide_core::remote::protocol::PlatformBound;
@@ -79,10 +79,17 @@ impl Mirrors {
             ));
         }
 
-        let (cols, rows) = clamp_size(request.cols, request.rows);
-        // Best effort: a session that refuses to resize is still worth
-        // mirroring at whatever size it already is.
-        let _ = terminal.resize(&request.session_id, cols, rows);
+        // **The mirror does not resize.** A PTY has exactly one size, and this
+        // session is very likely also on somebody's screen at their desk — the
+        // dock and the phone are looking at the same child. Setting it to a
+        // phone's viewport would reflow a terminal being worked in, and a TUI
+        // re-laying itself out to 40 columns under your hands is worse than a
+        // phone that has to scroll. So the requested `cols`/`rows` are read as
+        // what the phone *can* draw, and the answer tells it what it *will* be
+        // drawing instead.
+        let (cols, rows) = terminal
+            .session_size(&request.session_id)
+            .unwrap_or((80, 24));
 
         let Some((replay, updates)) = terminal.mirror_output(&request.session_id) else {
             return Err(ProtocolError::new(
@@ -146,14 +153,20 @@ impl Mirrors {
         }))
     }
 
+    /// Answer a viewport change with the geometry that is actually in use.
+    ///
+    /// Deliberately **not** a resize, for the reason [`Self::attach`] gives: the
+    /// PTY is shared with whatever is rendering it locally. Turning a phone
+    /// rotation into a reflow of somebody's desk terminal is not a feature. The
+    /// frame is answered rather than refused because a viewer is entitled to
+    /// ask what size it should be drawing at, and that is what it gets back.
     pub(crate) fn resize(
         &self,
         terminal: &TerminalManager,
         request: &TerminalResize,
     ) -> Result<PlatformBound, ProtocolError> {
         let session_id = self.session_for(&request.stream_id)?;
-        let (cols, rows) = clamp_size(request.cols, request.rows);
-        let _ = terminal.resize(&session_id, cols, rows);
+        let (cols, rows) = terminal.session_size(&session_id).unwrap_or((80, 24));
         Ok(PlatformBound::TerminalAttachAccepted(
             TerminalAttachAccepted {
                 stream_id: request.stream_id.clone(),
@@ -199,38 +212,59 @@ impl Mirrors {
     }
 }
 
+/// Turn one local session into what a phone may know about it.
+///
+/// The single place that reshaping happens, so a spawn cannot answer with
+/// fields the listing would have dropped.
+pub(crate) fn describe(
+    session: nomoreide_core::terminal::TerminalSession,
+) -> RemoteTerminalSession {
+    RemoteTerminalSession {
+        id: session.id,
+        label: session.label,
+        provider: session.provider,
+        // The final component only. A phone needs to tell one agent from
+        // another; it does not need a map of somebody's disk.
+        workspace: std::path::Path::new(&session.cwd)
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned()),
+        running: session.exit.is_none(),
+    }
+}
+
+/// What a spawn answers with, given the session the router just created.
+pub(crate) fn spawned(session: nomoreide_core::terminal::TerminalSession) -> PlatformBound {
+    PlatformBound::TerminalSpawned(TerminalSpawned {
+        session: describe(session),
+    })
+}
+
+/// Reject a prompt a phone should never have sent.
+pub(crate) fn check_prompt(request: &TerminalSpawnRequest) -> Result<(), ProtocolError> {
+    if request.prompt.trim().is_empty() {
+        return Err(ProtocolError::new(
+            ErrorCode::MalformedFrame,
+            "An agent needs something to work on.",
+        ));
+    }
+    if request.prompt.len() > limits::MAX_AGENT_PROMPT_BYTES {
+        return Err(ProtocolError::new(
+            ErrorCode::MalformedFrame,
+            "That prompt is larger than one frame may carry.",
+        ));
+    }
+    Ok(())
+}
+
 /// Everything a phone may know about the terminals on this machine.
 pub(crate) fn sessions(terminal: &TerminalManager) -> PlatformBound {
     PlatformBound::TerminalSessions(TerminalSessionsResponse {
         sessions: terminal
             .mirrorable_sessions()
             .into_iter()
-            .map(|session| RemoteTerminalSession {
-                id: session.id,
-                label: session.label,
-                provider: session.provider,
-                // The final component only. A phone needs to tell one agent
-                // from another; it does not need a map of somebody's disk.
-                workspace: std::path::Path::new(&session.cwd)
-                    .file_name()
-                    .map(|name| name.to_string_lossy().into_owned()),
-                running: session.exit.is_none(),
-            })
+            .map(describe)
             .collect(),
     })
-}
-
-/// Bound a caller-supplied viewport before it reaches an `ioctl`.
-///
-/// Clamped rather than refused: a phone that asks for a size this build will
-/// not set should get a terminal, not an error. Zero is the interesting case —
-/// a zero-column PTY is a division by zero waiting to happen in whatever draws
-/// into it.
-fn clamp_size(cols: u16, rows: u16) -> (u16, u16) {
-    (
-        cols.clamp(1, limits::MAX_TERMINAL_DIMENSION),
-        rows.clamp(1, limits::MAX_TERMINAL_DIMENSION),
-    )
 }
 
 /// Carry one terminal's output to the phone until something stops it.

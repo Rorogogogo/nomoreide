@@ -64,14 +64,18 @@ fn an_oversized_frame_is_refused_before_it_is_parsed() {
 /// the absence of a frame — it is the daemon refusing to attach to any session
 /// that is not an agent session. That rule cannot be asserted here, because
 /// this crate has no sessions; it is enforced and tested in the dispatcher.
-/// `terminal.open` stays excluded: mirroring a terminal somebody started is a
-/// different thing from spawning one from a pocket.
+/// `terminal.spawn.request` later joined it, and that is not the loosening it
+/// looks like: it starts an *agent*, in the daemon's own workspace, with no
+/// argv and no path — the same thing `agent.turn.start` has always been allowed
+/// to do, through the door that gives you a real session instead of a headless
+/// one. `terminal.open` and `terminal.exec` stay excluded, because those would
+/// be a shell.
 #[test]
 fn every_excluded_operation_is_an_unknown_command() {
     for kind in [
         "terminal.open",
-        "terminal.spawn",
         "terminal.close",
+        "terminal.exec",
         "shell.exec",
         "fs.read",
         "fs.write",
@@ -287,7 +291,7 @@ fn junk_is_a_malformed_frame() {
 /// than derived, so that changing a command's mutating-ness has to be done
 /// twice and noticed once.
 #[test]
-fn the_mutating_half_of_the_union_is_exactly_these_five() {
+fn the_mutating_half_of_the_union_is_exactly_these_six() {
     let mutating: Vec<&str> = every_command()
         .iter()
         .filter(|command| command.mutating())
@@ -300,6 +304,7 @@ fn the_mutating_half_of_the_union_is_exactly_these_five() {
             "agent.turn.start",
             "agent.turn.cancel",
             "agent.approval.resolve",
+            "terminal.spawn.request",
             "terminal.input",
         ]
     );

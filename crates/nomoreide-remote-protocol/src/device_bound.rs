@@ -63,6 +63,9 @@ pub enum DeviceBound {
     #[serde(rename = "agent.approval.resolve")]
     AgentApprovalResolve(AgentApprovalResolve),
 
+    /// Start a new agent terminal on the machine. **v2.**
+    #[serde(rename = "terminal.spawn.request")]
+    TerminalSpawn(TerminalSpawnRequest),
     /// Which agent terminals are running and could be mirrored. **v2.**
     #[serde(rename = "terminal.sessions.request")]
     TerminalSessions(Empty),
@@ -177,6 +180,27 @@ pub struct AgentApprovalResolve {
     pub verdict: ApprovalVerdict,
 }
 
+/// Start an agent, in a terminal, on the machine.
+///
+/// **There is deliberately no working directory here.** The daemon runs the
+/// agent in the workspace it already has selected, the same one the dashboard
+/// would use. A caller-supplied path would be the filesystem reach that remote
+/// control does not have, and no field for it is the way to not have it.
+///
+/// Nor is there an argv: `provider` picks between the agent CLIs this machine
+/// knows, and everything else about the invocation is the daemon's.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalSpawnRequest {
+    /// `claude` or `codex`. Absent means the machine's own selection.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    /// The first thing to say to it. Bounded by
+    /// [`super::limits::MAX_AGENT_PROMPT_BYTES`], like any other prompt from a
+    /// phone.
+    pub prompt: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TerminalAttachRequest {
@@ -229,6 +253,7 @@ impl DeviceBound {
         "agent.turn.start",
         "agent.turn.cancel",
         "agent.approval.resolve",
+        "terminal.spawn.request",
         "terminal.sessions.request",
         "terminal.attach.request",
         "terminal.input",
@@ -249,6 +274,7 @@ impl DeviceBound {
             Self::AgentTurnStart(_) => "agent.turn.start",
             Self::AgentTurnCancel(_) => "agent.turn.cancel",
             Self::AgentApprovalResolve(_) => "agent.approval.resolve",
+            Self::TerminalSpawn(_) => "terminal.spawn.request",
             Self::TerminalSessions(_) => "terminal.sessions.request",
             Self::TerminalAttach(_) => "terminal.attach.request",
             Self::TerminalInput(_) => "terminal.input",
@@ -271,7 +297,9 @@ impl DeviceBound {
             // Typing is the most mutating thing there is, and a retried
             // keystroke is a second keystroke. Attaching, resizing and
             // detaching only move the mirror, so they are safe to repeat.
-            | Self::TerminalInput(_) => true,
+            | Self::TerminalInput(_)
+            // A retried spawn is a second agent, running a second time.
+            | Self::TerminalSpawn(_) => true,
             Self::SessionWelcome(_)
             | Self::SessionRevoke(_)
             | Self::DeviceSnapshot(_)
@@ -300,6 +328,7 @@ impl DeviceBound {
             Self::AgentProviders(_) => Some(capability::AGENT_PROVIDERS),
             Self::AgentTurnStart(_) | Self::AgentTurnCancel(_) => Some(capability::AGENT_TURNS),
             Self::AgentApprovalResolve(_) => Some(capability::AGENT_APPROVALS),
+            Self::TerminalSpawn(_) => Some(capability::TERMINAL_SPAWN),
             Self::TerminalSessions(_) => Some(capability::TERMINAL_SESSIONS),
             Self::TerminalAttach(_)
             | Self::TerminalInput(_)

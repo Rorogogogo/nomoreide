@@ -126,6 +126,11 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
         routes: "POST /api/agent/chat/approve",
     },
     Allowed {
+        kind: "terminal.spawn.request",
+        capability: capabilities::TERMINAL_SPAWN,
+        routes: "POST /api/terminal/sessions (an agent, in the daemon's workspace)",
+    },
+    Allowed {
         kind: "terminal.sessions.request",
         capability: capabilities::TERMINAL_SESSIONS,
         routes: "(the terminal manager; agent sessions only)",
@@ -630,6 +635,7 @@ impl CommandSink for RouterDispatcher {
                 DeviceBound::AgentApprovalResolve(request) => {
                     self.agent_approval_resolve(request, events.clone()).await
                 }
+                DeviceBound::TerminalSpawn(request) => self.terminal_spawn(request).await,
                 DeviceBound::TerminalSessions(_) => Ok(super::terminal::sessions(&self.terminal)),
                 DeviceBound::TerminalAttach(request) => {
                     self.mirrors.attach(&self.terminal, request, events.clone())
@@ -654,6 +660,69 @@ impl CommandSink for RouterDispatcher {
                 Err(error) => PlatformBound::CommandError(CommandErrorResponse { error }),
             }
         })
+    }
+}
+
+impl RouterDispatcher {
+    /// Start an agent terminal, through the daemon's own route.
+    ///
+    /// **Through the router, unlike the mirror.** Spawning is a request and an
+    /// answer, so it needs none of the exception `super::terminal` argues for —
+    /// and going through the route means the working directory is the one the
+    /// daemon already selected rather than anything a caller could name. The
+    /// wire type has no field for a path, and this is why it needs none.
+    async fn terminal_spawn(
+        &self,
+        request: &nomoreide_core::remote::protocol::device_bound::TerminalSpawnRequest,
+    ) -> Result<PlatformBound, ProtocolError> {
+        super::terminal::check_prompt(request)?;
+
+        let mut agent = serde_json::json!({ "prompt": request.prompt });
+        if let Some(provider) = &request.provider {
+            agent["provider"] = Value::String(provider.clone());
+        }
+        let body = serde_json::json!({ "agent": agent });
+
+        let built = Request::builder()
+            .method(Method::POST)
+            .uri("/api/terminal/sessions")
+            .header("authorization", format!("Bearer {}", self.credential))
+            .header("content-type", "application/json")
+            // The route requires this header against cross-origin form posts.
+            // The dispatcher is not a browser, but it goes through the same
+            // door as one, so it presents the same thing a browser does.
+            .header("x-nomoreide-terminal-control", "1")
+            .body(Body::from(body.to_string()))
+            .map_err(|error| internal(format!("could not build a local request: {error}")))?;
+        let response = self
+            .router
+            .clone()
+            .oneshot(built)
+            .await
+            .map_err(|error| internal(format!("the local router failed: {error}")))?;
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), limits::MAX_FRAME_BYTES)
+            .await
+            .map_err(|error| internal(format!("could not read the local response: {error}")))?;
+        let parsed: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
+
+        if !status.is_success() {
+            let detail = parsed
+                .get("error")
+                .and_then(Value::as_str)
+                .unwrap_or("that agent could not be started");
+            return Err(ProtocolError::new(
+                ErrorCode::ServiceActionFailed,
+                "That agent could not be started on this machine.",
+            )
+            .with_detail(detail.to_string()));
+        }
+
+        let session: nomoreide_core::terminal::TerminalSession = serde_json::from_value(
+            parsed.get("session").cloned().unwrap_or(Value::Null),
+        )
+        .map_err(|error| internal(format!("the local response was not a session: {error}")))?;
+        Ok(super::terminal::spawned(session))
     }
 }
 
@@ -1415,10 +1484,10 @@ mod tests {
                 "the allowlist mentions {forbidden}: {rendered}"
             );
         }
-        // Fourteen rows: five service, four agent, five terminal. Pinned so
+        // Fifteen rows: five service, four agent, six terminal. Pinned so
         // growing the remote surface is a deliberate edit to a test rather than
         // a quiet addition.
-        assert_eq!(ALLOWLIST.len(), 14);
+        assert_eq!(ALLOWLIST.len(), 15);
     }
 
     /// The rule that replaced "the allowlist never says terminal".
@@ -1512,6 +1581,100 @@ mod tests {
             );
         };
         assert_eq!(error.error.code, ErrorCode::CapabilityUnavailable);
+
+        terminal.close_session(&agent).unwrap();
+    }
+
+    /// A spawn with nothing to do is refused here, not on the machine.
+    ///
+    /// An empty prompt would start an agent that sits waiting, which from a
+    /// phone looks exactly like a spawn that failed — and it costs a real
+    /// process to find that out.
+    #[tokio::test]
+    async fn a_spawn_needs_something_to_work_on() {
+        use nomoreide_core::remote::protocol::device_bound::TerminalSpawnRequest;
+
+        let reached = Arc::new(Mutex::new(Vec::new()));
+        let dispatcher = RouterDispatcher::new(
+            stub_router(reached.clone()),
+            CREDENTIAL.to_string(),
+            "11111111-2222-3333-4444-555555555555".into(),
+            "Studio".into(),
+            TerminalManager::new(),
+        );
+        let (events, _drain) = tokio::sync::mpsc::channel(16);
+
+        for prompt in ["", "   ", "\n\t "] {
+            let answer = dispatcher
+                .dispatch(
+                    "req_1",
+                    DeviceBound::TerminalSpawn(TerminalSpawnRequest {
+                        provider: None,
+                        prompt: prompt.to_string(),
+                    }),
+                    events.clone(),
+                )
+                .await;
+            let PlatformBound::CommandError(error) = answer else {
+                panic!("an empty prompt was answered with {}", answer.kind());
+            };
+            assert_eq!(error.error.code, ErrorCode::MalformedFrame);
+        }
+
+        assert!(
+            reached.lock().unwrap().is_empty(),
+            "nothing should have been routed for a prompt that cannot start anything"
+        );
+    }
+
+    /// A phone must never reflow the terminal somebody is using at their desk.
+    ///
+    /// The dock and the mirror render the same child, and a PTY has one size.
+    /// Attaching from a 40-column phone used to set it, which re-laid-out a TUI
+    /// under the hands of whoever was working in it. The mirror now reports the
+    /// geometry rather than setting it.
+    #[tokio::test]
+    async fn attaching_does_not_resize_the_shared_terminal() {
+        let terminal = TerminalManager::new();
+        let agent = spawn_kind(&terminal, "geometry-agent", "agent");
+        let before = terminal.session_size(&agent).expect("a size");
+        let dispatcher = RouterDispatcher::new(
+            stub_router(Arc::new(Mutex::new(Vec::new()))),
+            CREDENTIAL.to_string(),
+            "11111111-2222-3333-4444-555555555555".into(),
+            "Studio".into(),
+            terminal.clone(),
+        );
+        let (events, _drain) = tokio::sync::mpsc::channel(16);
+
+        let answer = dispatcher
+            .dispatch(
+                "req_1",
+                DeviceBound::TerminalAttach(
+                    nomoreide_core::remote::protocol::device_bound::TerminalAttachRequest {
+                        session_id: agent.clone(),
+                        // A phone in portrait. Nothing like the dock's size.
+                        cols: 40,
+                        rows: 12,
+                    },
+                ),
+                events,
+            )
+            .await;
+        let PlatformBound::TerminalAttachAccepted(accepted) = answer else {
+            panic!("attach was answered with {}", answer.kind());
+        };
+
+        assert_eq!(
+            terminal.session_size(&agent),
+            Some(before),
+            "the PTY somebody else is looking at must not have moved"
+        );
+        assert_eq!(
+            (accepted.cols, accepted.rows),
+            before,
+            "the phone is told what it will actually be drawing"
+        );
 
         terminal.close_session(&agent).unwrap();
     }

@@ -101,6 +101,12 @@ pub mod capabilities {
 
     /// Listing the agent terminals running on the machine. **v2.**
     pub const TERMINAL_SESSIONS: &str = "terminal.sessions";
+    /// Starting an agent terminal. **v2.**
+    ///
+    /// Its own capability, separate from mirroring, because they are different
+    /// permissions: watching an agent somebody started is not the same as
+    /// starting one. A machine can offer either without the other.
+    pub const TERMINAL_SPAWN: &str = "terminal.spawn";
     /// Mirroring one agent terminal: its output, and typing into it. **v2.**
     ///
     /// Deliberately separate from [`TERMINAL_SESSIONS`], so a machine can show
@@ -134,12 +140,13 @@ pub mod capabilities {
         AGENT_APPROVALS,
         TERMINAL_SESSIONS,
         TERMINAL_ATTACH,
+        TERMINAL_SPAWN,
     ];
 
     /// `V2` must extend `V1` rather than diverge from it. Checked here because
     /// the two lists are written out separately for readability.
     const _: () = {
-        assert!(V2.len() == V1.len() + 2);
+        assert!(V2.len() == V1.len() + 3);
     };
 }
 

@@ -2281,6 +2281,8 @@ export const en = {
   "settingsHub.cat.database-safety.desc": "Project query limits and write safeguards.",
   "settingsHub.cat.notifications.label": "Notifications",
   "settingsHub.cat.notifications.desc": "Browser notification capability and permission.",
+  "settingsHub.cat.remote.label": "Remote control",
+  "settingsHub.cat.remote.desc": "Pair this machine with your phone.",
   "settingsHub.cat.data-privacy.label": "Data & Privacy",
   "settingsHub.cat.data-privacy.desc": "Local storage, export, reset, and privacy.",
   "settingsHub.cat.about.label": "About",
@@ -2940,6 +2942,23 @@ export const en = {
   "provider.logs.runtime": "Runtime",
   "provider.logs.runtimeEmpty":
     "No runtime logs. Either nothing was logged, or this plan does not include them.",
+  "remote.title": "Control this machine from your phone",
+  "remote.intro": "Pair this machine with your NoMoreIDE account to start and stop services, read logs, and watch an agent terminal from your phone.",
+  "remote.pair": "Pair this machine",
+  "remote.pairing": "Waiting for approval…",
+  "remote.codeLabel": "Enter this code on your phone",
+  "remote.openLink": "Or open this link",
+  "remote.pairedAs": "Paired as {name}",
+  "remote.connected": "Connected. This machine is reachable from your phone.",
+  "remote.notConnected": "Paired, but not connected yet.",
+  "remote.unpair": "Unpair this machine",
+  "remote.unpairNote": "Removes the credential from this machine. The device stays on your account until you revoke it from your phone.",
+  "remote.expired": "That code expired. Start again.",
+  "remote.failed": "Pairing could not be completed.",
+  "remote.safety": "Pairing lets your account start and stop services on this machine, read their logs, and mirror an agent terminal. It cannot run arbitrary commands or open a shell.",
+  "remote.approve": "Approve in your account",
+  "remote.approveHint": "Opens NoMoreIDE in a new tab. If you are already signed in there, that is the whole of it — no code to type.",
+  "remote.orType": "Or type this code on your phone",
 } as const;
 
 export type TranslationKey = keyof typeof en;

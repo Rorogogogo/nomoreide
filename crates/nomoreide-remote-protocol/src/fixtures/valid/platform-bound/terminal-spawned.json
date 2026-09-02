@@ -1,0 +1,17 @@
+{
+  "v": 2,
+  "id": "evt_terminal_spawned",
+  "type": "terminal.spawned",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "session": {
+      "id": "term_2",
+      "label": "Claude task",
+      "provider": "claude",
+      "workspace": "nomoreide",
+      "running": true
+    }
+  }
+}

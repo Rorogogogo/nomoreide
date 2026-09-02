@@ -35,14 +35,14 @@ use super::agent_event::{
 use super::device_bound::{
     AgentApprovalResolve, AgentTurnCancel, AgentTurnStart, ApprovalVerdict, DeviceBound, Empty,
     ServiceAction, ServiceActionRequest, ServiceLogsRequest, SessionRevoke, SessionWelcome,
-    TerminalAttachRequest, TerminalDetach, TerminalInput, TerminalResize,
+    TerminalAttachRequest, TerminalDetach, TerminalInput, TerminalResize, TerminalSpawnRequest,
 };
 use super::errors::{ErrorCode, ProtocolError};
 use super::platform_bound::{
     AgentProvidersResponse, AgentTurnAccepted, BundleListResponse, CommandErrorResponse,
     DeviceSnapshotResponse, PlatformBound, ServiceActionResponse, ServiceListResponse,
     ServiceLogsResponse, SessionHello, TerminalAck, TerminalAttachAccepted, TerminalCloseReason,
-    TerminalClosed, TerminalOutput, TerminalSessionsResponse,
+    TerminalClosed, TerminalOutput, TerminalSessionsResponse, TerminalSpawned,
 };
 use super::snapshot::{
     BundleState, DeviceSnapshot, LogLine, LogStream, RemoteAgentProvider, RemoteBundle,
@@ -93,6 +93,10 @@ pub fn every_command() -> Vec<DeviceBound> {
             run_id: "run_1".to_string(),
             approval_id: "ap_1".to_string(),
             verdict: ApprovalVerdict::Deny,
+        }),
+        DeviceBound::TerminalSpawn(TerminalSpawnRequest {
+            provider: Some("claude".to_string()),
+            prompt: "why is the api restarting".to_string(),
         }),
         DeviceBound::TerminalSessions(Empty {}),
         DeviceBound::TerminalAttach(TerminalAttachRequest {
@@ -182,6 +186,15 @@ pub fn every_event() -> Vec<PlatformBound> {
         PlatformBound::CommandError(CommandErrorResponse {
             error: ProtocolError::new(ErrorCode::UnknownService, "No such registered service.")
                 .with_detail("api"),
+        }),
+        PlatformBound::TerminalSpawned(TerminalSpawned {
+            session: RemoteTerminalSession {
+                id: "term_2".to_string(),
+                label: Some("Claude task".to_string()),
+                provider: Some("claude".to_string()),
+                workspace: Some("nomoreide".to_string()),
+                running: true,
+            },
         }),
         PlatformBound::TerminalSessions(TerminalSessionsResponse {
             sessions: vec![RemoteTerminalSession {

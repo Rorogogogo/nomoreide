@@ -5,9 +5,10 @@
 //! desktop app — needs the same three outcomes, and a second implementation of
 //! "spawn one if none is running" is a second way to end up with two daemons.
 
+use crate::protocol::ServiceRuntimeState;
 use crate::{
     discover_daemon, probe_daemon, DaemonClient, DaemonClientError, DaemonDiscovery,
-    DaemonEndpoint, DaemonProbe, DiscoveryStatus, RuntimePaths,
+    DaemonEndpoint, DaemonProbe, DiscoveredDaemon, DiscoveryStatus, RuntimePaths,
 };
 use reqwest::Client;
 use std::io;
@@ -30,6 +31,9 @@ pub enum EnsureStatus {
     /// The port answered without a state file naming it — someone else's
     /// daemon, or one whose state was removed underneath it.
     Adopted,
+    /// An older daemon was running, nothing was running *in* it, so it was
+    /// replaced with this build rather than left for a human to notice.
+    Upgraded,
 }
 
 impl EnsureStatus {
@@ -38,6 +42,7 @@ impl EnsureStatus {
             Self::Started => "started",
             Self::AlreadyRunning => "already_running",
             Self::Adopted => "adopted",
+            Self::Upgraded => "upgraded",
         }
     }
 }
@@ -86,19 +91,98 @@ pub async fn ensure(
         .await
         .map_err(LifecycleError::State)?
     {
-        DaemonDiscovery::Running(daemon) => Ok(EnsuredDaemon {
-            status: match daemon.status {
-                DiscoveryStatus::Recorded => EnsureStatus::AlreadyRunning,
-                DiscoveryStatus::Adopted => EnsureStatus::Adopted,
-            },
-            endpoint: daemon.endpoint,
-            pid: daemon.pid,
-            version_warning: daemon.version_warning,
-        }),
+        DaemonDiscovery::Running(daemon) => {
+            if daemon.version_warning.is_some() {
+                if let Some(upgraded) = upgrade_if_idle(paths, &daemon, &http, client_version).await
+                {
+                    return Ok(upgraded);
+                }
+            }
+            Ok(EnsuredDaemon {
+                status: match daemon.status {
+                    DiscoveryStatus::Recorded => EnsureStatus::AlreadyRunning,
+                    DiscoveryStatus::Adopted => EnsureStatus::Adopted,
+                },
+                endpoint: daemon.endpoint,
+                pid: daemon.pid,
+                version_warning: daemon.version_warning,
+            })
+        }
         DaemonDiscovery::Foreign(endpoint) => Err(LifecycleError::Foreign(endpoint.port())),
         DaemonDiscovery::Down(endpoint) => start(endpoint, &http, client_version).await,
     }
 }
+
+/// Replace a daemon from an older build, but only while it is holding nothing.
+///
+/// **Why this is conditional rather than automatic.** Restarting the daemon
+/// kills every service it manages, so upgrading on sight would mean an
+/// installer — or an agent that happened to call a tool — silently taking down
+/// somebody's dev servers. Warning instead put the work on a human, who then
+/// had to read the warning: it reached the CLI and exactly one MCP tool, so an
+/// agent calling anything else went on using the old daemon indefinitely, with
+/// whatever the new build added simply missing and nothing saying why.
+///
+/// Idle is the case where both objections vanish. Nothing is running, so
+/// nothing is lost, and the upgrade costs a second of startup nobody sees.
+/// Anything running and this declines, leaving the warning to be shown — the
+/// choice to stop work is a person's.
+///
+/// Returns `None` for every reason not to act: services running, a daemon that
+/// will not answer, or a restart that does not come back. A failure here is
+/// never fatal, because the daemon that is already running still works.
+async fn upgrade_if_idle(
+    paths: &RuntimePaths,
+    daemon: &DiscoveredDaemon,
+    http: &Client,
+    client_version: &str,
+) -> Option<EnsuredDaemon> {
+    let client = DaemonClient::connect(daemon.endpoint.clone(), paths)
+        .await
+        .ok()?;
+    let services = client.status().await.ok()?;
+    if !is_idle(&services) {
+        return None;
+    }
+
+    client.shutdown().await.ok()?;
+    // The old daemon has to release the port before the new one can take it.
+    // Its own shutdown is what we are waiting on, not a fixed delay.
+    let deadline = std::time::Instant::now() + SHUTDOWN_TIMEOUT;
+    while std::time::Instant::now() < deadline {
+        if !crate::is_pid_alive(daemon.pid) {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    let started = start(daemon.endpoint.clone(), http, client_version)
+        .await
+        .ok()?;
+    Some(EnsuredDaemon {
+        status: EnsureStatus::Upgraded,
+        ..started
+    })
+}
+
+/// Whether replacing this daemon would cost anybody anything.
+///
+/// `Starting` counts as busy: a service partway through coming up is one
+/// somebody asked for a moment ago, and killing it would look exactly like it
+/// failed to start. `Stopping` does not — it is already on its way out, and
+/// waiting for it would mean declining the upgrade for a service that is about
+/// to be gone anyway.
+fn is_idle(services: &[crate::protocol::ServiceRuntimeStatus]) -> bool {
+    !services.iter().any(|service| {
+        matches!(
+            service.state,
+            ServiceRuntimeState::Running | ServiceRuntimeState::Starting
+        )
+    })
+}
+
+/// How long the old daemon is given to let go of its port.
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Ask a running daemon to stop. A daemon that is not there needs no asking,
 /// and one holding the port that is not ours is not ours to stop.
@@ -185,4 +269,67 @@ fn detach(command: &mut Command) {
     use std::os::windows::process::CommandExt;
     // DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
     command.creation_flags(0x0000_0008 | 0x0000_0200);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::protocol::{ServiceRuntimeState, ServiceRuntimeStatus};
+
+    fn service(state: ServiceRuntimeState) -> ServiceRuntimeStatus {
+        ServiceRuntimeStatus {
+            name: "api".to_string(),
+            state,
+            kind: None,
+            host: None,
+            container_id: None,
+            pid: None,
+            url: None,
+            exit_code: None,
+            exited_at: None,
+            started_at: None,
+            signal: None,
+            inspector: None,
+        }
+    }
+
+    /// The whole point of the gate: a machine doing work is never interrupted
+    /// for a version number. An installer must not be able to take down
+    /// somebody's dev server, and nor must an agent that happened to call a
+    /// tool.
+    #[test]
+    fn a_daemon_with_work_in_it_is_never_replaced() {
+        for state in [ServiceRuntimeState::Running, ServiceRuntimeState::Starting] {
+            assert!(!is_idle(&[service(state)]), "{state:?} must count as busy");
+        }
+    }
+
+    /// And the case that makes the feature worth having: nothing is running, so
+    /// the upgrade costs a second of startup nobody sees.
+    #[test]
+    fn a_daemon_holding_nothing_is_replaceable() {
+        assert!(is_idle(&[]));
+        for state in [
+            ServiceRuntimeState::Stopped,
+            ServiceRuntimeState::Exited,
+            ServiceRuntimeState::Stopping,
+        ] {
+            assert!(
+                is_idle(&[service(state)]),
+                "{state:?} holds nothing worth keeping a stale daemon for"
+            );
+        }
+    }
+
+    /// One running service among many stopped ones still protects the daemon.
+    #[test]
+    fn one_running_service_is_enough_to_decline() {
+        let services = [
+            service(ServiceRuntimeState::Stopped),
+            service(ServiceRuntimeState::Exited),
+            service(ServiceRuntimeState::Running),
+            service(ServiceRuntimeState::Stopped),
+        ];
+        assert!(!is_idle(&services));
+    }
 }

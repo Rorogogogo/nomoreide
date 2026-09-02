@@ -194,7 +194,7 @@ describe("SettingsView", () => {
     expect(document.activeElement?.id).toBe("setting-theme");
   });
 
-  test("shows all ten stable categories in the desktop navigation", async () => {
+  test("shows all eleven stable categories in the desktop navigation", async () => {
     await renderView();
 
     const nav = host.querySelector('[aria-label="Settings categories"]');
@@ -208,6 +208,7 @@ describe("SettingsView", () => {
       "Agents & MCP",
       "Database & Safety",
       "Notifications",
+      "Remote control",
       "Data & Privacy",
       "About",
     ]);
@@ -384,7 +385,7 @@ describe("SettingsView", () => {
     // Named by aria-label rather than a visible <label>: the narrow layout
     // stacks select + search, and a heading over each one is noise.
     expect(select?.getAttribute("aria-label")).toContain("Category");
-    expect(select?.options).toHaveLength(10);
+    expect(select?.options).toHaveLength(11);
   });
 
   test("renders the shared AI loader and a load error with retry", async () => {
