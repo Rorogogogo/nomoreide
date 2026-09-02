@@ -79,6 +79,64 @@ pub type EventSender = tokio::sync::mpsc::Sender<PlatformBound>;
 /// How many unsolicited frames may queue for the socket.
 pub const EVENT_QUEUE: usize = 256;
 
+/// What the relay connection is doing, readable from outside the task.
+///
+/// Exists because "paired" and "connected" are different states and a user who
+/// cannot tell them apart has no way to act. A credential on disk with nothing
+/// attached looks healthy to every check that only reads the file, which is
+/// exactly the state a freshly paired machine is in until something dials.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelaySnapshot {
+    /// A socket is attached right now.
+    pub connected: bool,
+    /// The connector gave up: the platform refused this credential. It will not
+    /// retry, and only pairing again will change that.
+    pub stopped: bool,
+    pub device_id: String,
+    pub device_name: String,
+    pub platform_base_url: String,
+    /// Why the last attempt ended, when it ended badly.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
+}
+
+/// A shared, cloneable view of [`RelaySnapshot`].
+#[derive(Clone, Default)]
+pub struct RelayStatus(std::sync::Arc<std::sync::Mutex<RelaySnapshot>>);
+
+impl RelayStatus {
+    pub fn new(config: &ConnectorConfig, device_name: &str) -> Self {
+        Self(std::sync::Arc::new(std::sync::Mutex::new(RelaySnapshot {
+            connected: false,
+            stopped: false,
+            device_id: config.device_id.clone(),
+            device_name: device_name.to_string(),
+            platform_base_url: config.platform_base_url.clone(),
+            last_error: None,
+        })))
+    }
+
+    pub fn snapshot(&self) -> RelaySnapshot {
+        self.0.lock().expect("relay status").clone()
+    }
+
+    fn set_connected(&self, connected: bool) {
+        let mut status = self.0.lock().expect("relay status");
+        status.connected = connected;
+        if connected {
+            status.last_error = None;
+        }
+    }
+
+    fn record(&self, error: &Disconnected) {
+        let mut status = self.0.lock().expect("relay status");
+        status.connected = false;
+        status.last_error = Some(error.to_string());
+        status.stopped = matches!(error, Disconnected::Refused(_));
+    }
+}
+
 /// What the connector does with a command, and how it answers.
 ///
 /// A trait so the socket can be tested without a relay, and so the dispatcher —
@@ -151,7 +209,11 @@ impl ConnectorConfig {
 ///
 /// Returns why it ended. The caller decides whether to try again — see
 /// [`run_forever`].
-pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) -> Disconnected {
+pub async fn connect_once(
+    config: &ConnectorConfig,
+    commands: &dyn CommandSink,
+    status: &RelayStatus,
+) -> Disconnected {
     let mut request = match config.socket_url().into_client_request() {
         Ok(request) => request,
         Err(error) => return Disconnected::Refused(format!("bad relay URL: {error}")),
@@ -195,6 +257,10 @@ pub async fn connect_once(config: &ConnectorConfig, commands: &dyn CommandSink) 
     {
         return Disconnected::Transient(error.to_string());
     }
+
+    // Connected once the hello is away: the socket is open and the relay knows
+    // what this machine can do.
+    status.set_connected(true);
 
     let mut heartbeat = tokio::time::interval(limits::HEARTBEAT_INTERVAL);
     // The first tick fires immediately; the hello just went out, so skip it.
@@ -316,11 +382,16 @@ fn frame(config: &ConnectorConfig, body: PlatformBound) -> Envelope<PlatformBoun
 ///
 /// Runs until the credential is refused, which is the one ending a daemon
 /// should not argue with.
-pub async fn run_forever(config: ConnectorConfig, commands: std::sync::Arc<dyn CommandSink>) {
+pub async fn run_forever(
+    config: ConnectorConfig,
+    commands: std::sync::Arc<dyn CommandSink>,
+    status: RelayStatus,
+) {
     let mut backoff = Backoff::new();
     loop {
         let started = std::time::Instant::now();
-        let ended = connect_once(&config, commands.as_ref()).await;
+        let ended = connect_once(&config, commands.as_ref(), &status).await;
+        status.record(&ended);
         // A connection that stayed up is evidence the platform is healthy, so
         // the next blip starts from one second again. Without this a daemon
         // that reconnected an hour ago carries that hour's backoff into a

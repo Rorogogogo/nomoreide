@@ -30,6 +30,7 @@ mod meta;
 mod metrics;
 mod onboard;
 mod query;
+mod remote;
 mod servers;
 mod service_config;
 mod service_files;
@@ -219,6 +220,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(log_sources::routes())
         .merge(metrics::routes())
         .merge(onboard::routes())
+        .merge(remote::routes())
         .merge(snapshots::routes())
         .merge(settings::routes())
         .merge(skills::routes())

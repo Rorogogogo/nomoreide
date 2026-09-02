@@ -63,7 +63,84 @@ async fn pair(args: &[String]) -> CliResult {
         "Credential saved to {}",
         flow.credentials().path().display()
     );
+
+    // Pairing and connecting are separate events, and a daemon that started
+    // before the credential existed has no reason to look again. Asking it here
+    // is the difference between "it works" and "it works after you restart
+    // something nobody told you to restart".
+    match ask_daemon_to_connect().await {
+        Some(true) => println!("Your machine is connecting now."),
+        Some(false) => println!(
+            "The daemon is running but did not accept the connection.\n\
+             Run `nomoreide daemon restart`, then `nomoreide remote status`."
+        ),
+        None => println!(
+            "No daemon is running, so this machine is not connected yet.\n\
+             Start one with `nomoreide daemon` — it connects on its own from then on."
+        ),
+    }
     Ok(())
+}
+
+/// Ask a running daemon to dial the relay.
+///
+/// `None` means there is no daemon to ask, which is a different thing from one
+/// that refused: the first is "start it", the second is "something is wrong",
+/// and a user needs to be told which.
+async fn ask_daemon_to_connect() -> Option<bool> {
+    let daemon = local_daemon().await?;
+    let response = reqwest::Client::new()
+        .post(format!("{daemon}/api/remote/connect"))
+        .bearer_auth(local_credential()?)
+        .send()
+        .await
+        .ok()?;
+    let body: serde_json::Value = response.json().await.ok()?;
+    Some(
+        body.get("ok")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
+    )
+}
+
+/// What a running daemon says about the relay, or `None` when none is running.
+async fn daemon_relay_status() -> Option<serde_json::Value> {
+    let daemon = local_daemon().await?;
+    let response = reqwest::Client::new()
+        .get(format!("{daemon}/api/remote/status"))
+        .bearer_auth(local_credential()?)
+        .send()
+        .await
+        .ok()?;
+    response.json().await.ok()
+}
+
+/// The running daemon's URL, read from the state file it publishes.
+///
+/// Probed rather than trusted: the file outlives a daemon that crashed, and a
+/// stale URL would make "not connected" look like "no daemon".
+async fn local_daemon() -> Option<String> {
+    let paths = nomoreide_daemon_client::RuntimePaths::default();
+    let text = std::fs::read_to_string(&paths.state).ok()?;
+    let state: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let url = state.get("url")?.as_str()?.to_string();
+    reqwest::Client::new()
+        .get(format!("{url}/api/health"))
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await
+        .ok()?
+        .status()
+        .is_success()
+        .then_some(url)
+}
+
+fn local_credential() -> Option<String> {
+    let paths = nomoreide_daemon_client::RuntimePaths::default();
+    std::fs::read_to_string(&paths.credential)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 /// Poll until a human approves, the pairing expires, or the user gives up.
@@ -113,6 +190,48 @@ async fn status() -> CliResult {
     println!("  Platform: {}", stored.platform_base_url);
     println!("  Since:    {}", stored.paired_at);
     println!("  Stored:   {}", credentials.path().display());
+
+    // The part a file on disk cannot answer. Paired and connected are different
+    // states, and reporting only the first is what made a machine look healthy
+    // here while a phone showed it offline.
+    match daemon_relay_status().await {
+        None => println!(
+            "\n  Not connected: no daemon is running.\n  \
+             Start one with `nomoreide daemon`."
+        ),
+        Some(status) => {
+            let relay = status.get("relay");
+            let connected = relay
+                .and_then(|relay| relay.get("connected"))
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
+            let stopped = relay
+                .and_then(|relay| relay.get("stopped"))
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
+            let last_error = relay
+                .and_then(|relay| relay.get("lastError"))
+                .and_then(serde_json::Value::as_str);
+            if connected {
+                println!("\n  Connected. This machine is reachable from your phone.");
+            } else if stopped {
+                println!(
+                    "\n  Not connected: the platform refused this credential.\n  \
+                     It was probably revoked from your account. Run `nomoreide remote pair` again."
+                );
+            } else if relay.is_none() {
+                println!(
+                    "\n  Not connected: the daemon has not started a relay connection.\n  \
+                     Run `nomoreide remote pair` again, or restart the daemon."
+                );
+            } else {
+                println!("\n  Not connected yet — retrying.");
+                if let Some(error) = last_error {
+                    println!("  Last attempt: {error}");
+                }
+            }
+        }
+    }
 
     if credentials.is_world_readable() {
         println!(
