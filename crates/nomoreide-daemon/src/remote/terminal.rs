@@ -79,10 +79,17 @@ impl Mirrors {
             ));
         }
 
-        let (cols, rows) = clamp_size(request.cols, request.rows);
-        // Best effort: a session that refuses to resize is still worth
-        // mirroring at whatever size it already is.
-        let _ = terminal.resize(&request.session_id, cols, rows);
+        // **The mirror does not resize.** A PTY has exactly one size, and this
+        // session is very likely also on somebody's screen at their desk — the
+        // dock and the phone are looking at the same child. Setting it to a
+        // phone's viewport would reflow a terminal being worked in, and a TUI
+        // re-laying itself out to 40 columns under your hands is worse than a
+        // phone that has to scroll. So the requested `cols`/`rows` are read as
+        // what the phone *can* draw, and the answer tells it what it *will* be
+        // drawing instead.
+        let (cols, rows) = terminal
+            .session_size(&request.session_id)
+            .unwrap_or((80, 24));
 
         let Some((replay, updates)) = terminal.mirror_output(&request.session_id) else {
             return Err(ProtocolError::new(
@@ -146,14 +153,20 @@ impl Mirrors {
         }))
     }
 
+    /// Answer a viewport change with the geometry that is actually in use.
+    ///
+    /// Deliberately **not** a resize, for the reason [`Self::attach`] gives: the
+    /// PTY is shared with whatever is rendering it locally. Turning a phone
+    /// rotation into a reflow of somebody's desk terminal is not a feature. The
+    /// frame is answered rather than refused because a viewer is entitled to
+    /// ask what size it should be drawing at, and that is what it gets back.
     pub(crate) fn resize(
         &self,
         terminal: &TerminalManager,
         request: &TerminalResize,
     ) -> Result<PlatformBound, ProtocolError> {
         let session_id = self.session_for(&request.stream_id)?;
-        let (cols, rows) = clamp_size(request.cols, request.rows);
-        let _ = terminal.resize(&session_id, cols, rows);
+        let (cols, rows) = terminal.session_size(&session_id).unwrap_or((80, 24));
         Ok(PlatformBound::TerminalAttachAccepted(
             TerminalAttachAccepted {
                 stream_id: request.stream_id.clone(),
@@ -218,19 +231,6 @@ pub(crate) fn sessions(terminal: &TerminalManager) -> PlatformBound {
             })
             .collect(),
     })
-}
-
-/// Bound a caller-supplied viewport before it reaches an `ioctl`.
-///
-/// Clamped rather than refused: a phone that asks for a size this build will
-/// not set should get a terminal, not an error. Zero is the interesting case —
-/// a zero-column PTY is a division by zero waiting to happen in whatever draws
-/// into it.
-fn clamp_size(cols: u16, rows: u16) -> (u16, u16) {
-    (
-        cols.clamp(1, limits::MAX_TERMINAL_DIMENSION),
-        rows.clamp(1, limits::MAX_TERMINAL_DIMENSION),
-    )
 }
 
 /// Carry one terminal's output to the phone until something stops it.

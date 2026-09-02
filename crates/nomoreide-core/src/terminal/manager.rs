@@ -870,6 +870,20 @@ impl TerminalManager {
         Some((gate.replay.iter().copied().collect(), receiver))
     }
 
+    /// The size a session's PTY is actually running at.
+    ///
+    /// For a *viewer* — something that renders a terminal it does not own — this
+    /// is the geometry to draw into, rather than a number to set. A PTY has one
+    /// size, and a mirror that set it would reflow the terminal somebody is
+    /// working in at their desk.
+    pub fn session_size(&self, id: &str) -> Option<(u16, u16)> {
+        let registry = self.registry.0.lock().unwrap();
+        registry
+            .sessions
+            .get(id)
+            .map(|session| (session.metadata.cols, session.metadata.rows))
+    }
+
     /// Whether a session exists, is an agent session, and is still running.
     ///
     /// The gate for mirroring to a phone. A *shell* session is arbitrary

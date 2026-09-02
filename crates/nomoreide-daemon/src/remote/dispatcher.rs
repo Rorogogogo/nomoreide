@@ -1516,6 +1516,58 @@ mod tests {
         terminal.close_session(&agent).unwrap();
     }
 
+    /// A phone must never reflow the terminal somebody is using at their desk.
+    ///
+    /// The dock and the mirror render the same child, and a PTY has one size.
+    /// Attaching from a 40-column phone used to set it, which re-laid-out a TUI
+    /// under the hands of whoever was working in it. The mirror now reports the
+    /// geometry rather than setting it.
+    #[tokio::test]
+    async fn attaching_does_not_resize_the_shared_terminal() {
+        let terminal = TerminalManager::new();
+        let agent = spawn_kind(&terminal, "geometry-agent", "agent");
+        let before = terminal.session_size(&agent).expect("a size");
+        let dispatcher = RouterDispatcher::new(
+            stub_router(Arc::new(Mutex::new(Vec::new()))),
+            CREDENTIAL.to_string(),
+            "11111111-2222-3333-4444-555555555555".into(),
+            "Studio".into(),
+            terminal.clone(),
+        );
+        let (events, _drain) = tokio::sync::mpsc::channel(16);
+
+        let answer = dispatcher
+            .dispatch(
+                "req_1",
+                DeviceBound::TerminalAttach(
+                    nomoreide_core::remote::protocol::device_bound::TerminalAttachRequest {
+                        session_id: agent.clone(),
+                        // A phone in portrait. Nothing like the dock's size.
+                        cols: 40,
+                        rows: 12,
+                    },
+                ),
+                events,
+            )
+            .await;
+        let PlatformBound::TerminalAttachAccepted(accepted) = answer else {
+            panic!("attach was answered with {}", answer.kind());
+        };
+
+        assert_eq!(
+            terminal.session_size(&agent),
+            Some(before),
+            "the PTY somebody else is looking at must not have moved"
+        );
+        assert_eq!(
+            (accepted.cols, accepted.rows),
+            before,
+            "the phone is told what it will actually be drawing"
+        );
+
+        terminal.close_session(&agent).unwrap();
+    }
+
     /// A session that does not exist is refused the same way a shell is, so a
     /// guessed id is not a different answer from a forbidden one.
     #[test]
