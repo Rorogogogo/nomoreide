@@ -18,7 +18,7 @@ use nomoreide_daemon_client::{DaemonClient, DaemonClientError, RuntimePaths, Ser
 
 use crate::flags::{parse_flags, Flags};
 
-pub const USAGE: &str = "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|agents|profile|list|logs|start|stop|restart|add]";
+pub const USAGE: &str = "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|agents|profile|remote|list|logs|start|stop|restart|add]";
 
 /// A failure on its way to an exit code.
 pub enum CliError {
@@ -107,6 +107,7 @@ async fn dispatch(args: &[String], paths: &RuntimePaths, port: u16) -> CliResult
         (Some("agents"), _) => crate::agents::run(subcommand, &rest),
         (Some("db"), _) => crate::database::run(subcommand, &rest, &store).await,
         (Some("profile"), _) => crate::profile::run(subcommand, &rest).await,
+        (Some("remote"), _) => crate::remote::run(subcommand, &rest).await,
         (Some("add"), Some("service")) => add_service(&store, &rest).await,
         (Some("add"), Some("bundle")) => add_bundle(&store, &rest).await,
         (Some("list"), _) => list(&store).await,

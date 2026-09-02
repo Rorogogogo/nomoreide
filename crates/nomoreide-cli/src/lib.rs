@@ -19,6 +19,7 @@ mod database;
 mod flags;
 mod git;
 mod profile;
+mod remote;
 mod setup;
 mod tui;
 
