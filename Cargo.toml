@@ -21,6 +21,7 @@ anyhow = "1"
 axum = "0.7"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
+crossterm = "0.28"
 dirs = "5"
 # A profile exports as a `.tar.gz`, which is the interchange format the
 # reference already writes — so these read and write someone else's archives,
@@ -29,6 +30,7 @@ flate2 = "1"
 tar = "0.4"
 futures-util = "0.3"
 regex = "1"
+ratatui = "0.29"
 # rustls rather than the default native-tls, which on Linux means a dynamic
 # link to `libssl.so.3`. A bare `debian:12` does not ship it, so the binary
 # would not start at all there — caught by the `glibc floor` job, which runs

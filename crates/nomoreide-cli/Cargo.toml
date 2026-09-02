@@ -21,11 +21,9 @@ nomoreide-daemon = { path = "../nomoreide-daemon", version = "0.7.0" }
 nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.7.0" }
 nomoreide-mcp = { path = "../nomoreide-mcp", version = "0.7.0" }
 anyhow.workspace = true
+crossterm.workspace = true
+ratatui.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
-
-# The TUI puts the terminal into raw mode and puts it back on the way out.
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
