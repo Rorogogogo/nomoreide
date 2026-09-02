@@ -300,7 +300,7 @@ graph TD
 | Feature | CLI | TUI | Desktop / Web | MCP |
 |---|:---:|:---:|:---:|:---:|
 | Start / stop / restart services | ✓ | ✓ | ✓ | ✓ |
-| Bundle orchestration | ✓ | | ✓ | ✓ |
+| Bundle orchestration | ✓ | ✓ | ✓ | ✓ |
 | Port conflict detection | | | ✓ | ✓ |
 | Real-time log streaming | ✓ | ✓ | ✓ | ✓ |
 | Activity and resource monitoring | | | ✓ | |
@@ -319,7 +319,7 @@ graph TD
 | Agent environments (live MCPs & skills) | ✓ | | ✓ | ✓ |
 | Agent profiles (snapshot / apply / share) | ✓ | | ✓ | ✓ |
 | Hosted profile registry (publish / install) | ✓ | | ✓ | ✓ |
-| Safe Git (no force-push, no reset) | ✓ | ✓ | ✓ | ✓ |
+| Safe Git (no force-push, no reset) | ✓ | | ✓ | ✓ |
 
 ---
 
@@ -338,6 +338,12 @@ npm run dev
 ```bash
 nomoreide tui
 ```
+
+Use `↑`/`↓` to select a service, `S` to start it, `X` to stop it, and `R` to
+restart it. Press `B` to manage bundles and `L` to follow the selected
+service's logs. In logs, use the arrow keys or Page Up/Page Down to inspect
+history and `End` to return to the live tail. `Esc` returns to services and
+`Q` quits; services continue running in the daemon.
 
 ### Database CLI
 
