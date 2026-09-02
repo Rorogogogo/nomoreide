@@ -1,9 +1,11 @@
 {
   "v": 2,
-  "id": "req_device_snapshot_request",
-  "type": "device.snapshot.request",
+  "id": "req_terminal_detach",
+  "type": "terminal.detach",
   "deviceId": "11111111-2222-3333-4444-555555555555",
   "sentAt": "2026-09-01T00:00:00.000Z",
   "replyTo": null,
-  "payload": {}
+  "payload": {
+    "streamId": "stream_1"
+  }
 }

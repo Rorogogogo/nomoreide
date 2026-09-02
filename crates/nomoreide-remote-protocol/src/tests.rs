@@ -58,11 +58,20 @@ fn an_oversized_frame_is_refused_before_it_is_parsed() {
 
 /// Every name outside the union, including plausible ones and the exact
 /// operations the MVP excludes.
+///
+/// **`terminal.input` left this list in v2, and that was the point of v2.** It
+/// is now a real command, so what stops a phone reaching a *shell* is no longer
+/// the absence of a frame — it is the daemon refusing to attach to any session
+/// that is not an agent session. That rule cannot be asserted here, because
+/// this crate has no sessions; it is enforced and tested in the dispatcher.
+/// `terminal.open` stays excluded: mirroring a terminal somebody started is a
+/// different thing from spawning one from a pocket.
 #[test]
 fn every_excluded_operation_is_an_unknown_command() {
     for kind in [
         "terminal.open",
-        "terminal.input",
+        "terminal.spawn",
+        "terminal.close",
         "shell.exec",
         "fs.read",
         "fs.write",
@@ -120,7 +129,7 @@ fn a_command_type_is_not_an_event() {
 
 #[test]
 fn a_frame_from_another_major_version_is_refused() {
-    for version in [0, 2, 99] {
+    for version in [0, super::version::PROTOCOL_VERSION + 1, 99] {
         let mut frame = a_command();
         frame["v"] = serde_json::Value::from(version);
         assert_eq!(refuse(&frame), ErrorCode::UnsupportedProtocolVersion);
@@ -133,7 +142,9 @@ fn a_frame_from_another_major_version_is_refused() {
 #[test]
 fn the_version_is_checked_before_the_command_name() {
     let mut frame = a_command();
-    frame["v"] = serde_json::Value::from(2);
+    // Derived, not written out: the last bump made every hardcoded `2` in this
+    // file mean the opposite of what it was written to mean.
+    frame["v"] = serde_json::Value::from(super::version::PROTOCOL_VERSION + 1);
     frame["type"] = serde_json::Value::String("something.invented".into());
     assert_eq!(refuse(&frame), ErrorCode::UnsupportedProtocolVersion);
 }
@@ -231,7 +242,7 @@ fn a_command_may_not_claim_to_be_a_reply() {
 fn an_events_reply_to_must_match_what_its_type_requires() {
     let base = |kind: &str, payload: serde_json::Value, reply_to: Option<&str>| {
         serde_json::json!({
-            "v": 1,
+            "v": super::version::PROTOCOL_VERSION,
             "id": "evt_1",
             "type": kind,
             "deviceId": FIXTURE_DEVICE_ID,
@@ -276,7 +287,7 @@ fn junk_is_a_malformed_frame() {
 /// than derived, so that changing a command's mutating-ness has to be done
 /// twice and noticed once.
 #[test]
-fn the_mutating_half_of_the_union_is_exactly_these_four() {
+fn the_mutating_half_of_the_union_is_exactly_these_five() {
     let mutating: Vec<&str> = every_command()
         .iter()
         .filter(|command| command.mutating())
@@ -289,6 +300,7 @@ fn the_mutating_half_of_the_union_is_exactly_these_four() {
             "agent.turn.start",
             "agent.turn.cancel",
             "agent.approval.resolve",
+            "terminal.input",
         ]
     );
 }
@@ -307,6 +319,25 @@ fn every_non_control_command_is_gated_by_a_capability() {
             control,
             "{} is gated wrongly",
             command.kind()
+        );
+    }
+}
+
+/// A v2 build must still be able to *read* a v1 peer's frames.
+///
+/// This is the compatibility the version list promises, and it was briefly not
+/// true: the envelope parser compared against the newest version rather than
+/// the supported set, so bumping to 2 would have made every 0.4.0 daemon
+/// unreadable the moment the platform shipped.
+#[test]
+fn an_older_but_supported_version_still_parses() {
+    for version in super::version::SUPPORTED_VERSIONS {
+        let mut frame = a_command();
+        frame["v"] = serde_json::Value::from(*version);
+        let bytes = serde_json::to_vec(&frame).expect("encode");
+        assert!(
+            parse_device_bound(&bytes, now()).is_ok(),
+            "v{version} is advertised as supported and must parse"
         );
     }
 }

@@ -37,7 +37,7 @@ use super::credentials::StoredCredential;
 use super::protocol::device_bound::Empty;
 use super::protocol::limits;
 use super::protocol::platform_bound::SessionHello;
-use super::protocol::version::{CapabilitySet, SUPPORTED_VERSIONS};
+use super::protocol::version::{CapabilitySet, MINIMUM_SPEAKABLE_VERSION, SUPPORTED_VERSIONS};
 use super::protocol::{envelope, DeviceBound, Envelope, PlatformBound};
 
 /// Why a connection ended.
@@ -240,8 +240,10 @@ pub async fn connect_once(
     // The hello is first, always. Until it lands the relay knows a credential
     // but not what this machine can do, and it will not route to a device whose
     // capabilities it has to guess at.
+    let speaking = Speaking::new();
     let hello = frame(
         config,
+        &speaking,
         PlatformBound::SessionHello(SessionHello {
             supported_versions: SUPPORTED_VERSIONS.to_vec(),
             daemon_version: config.daemon_version.clone(),
@@ -276,7 +278,7 @@ pub async fn connect_once(
                     // happen while this loop holds one.
                     continue;
                 };
-                let frame = frame(config, body);
+                let frame = frame(config, &speaking, body);
                 if let Err(error) = sink
                     .send(Message::Text(envelope::encode_platform_bound(&frame).to_string()))
                     .await
@@ -285,7 +287,7 @@ pub async fn connect_once(
                 }
             }
             _ = heartbeat.tick() => {
-                let beat = frame(config, PlatformBound::SessionHeartbeat(Empty {}));
+                let beat = frame(config, &speaking, PlatformBound::SessionHeartbeat(Empty {}));
                 if let Err(error) = sink
                     .send(Message::Text(envelope::encode_platform_bound(&beat).to_string()))
                     .await
@@ -303,7 +305,7 @@ pub async fn connect_once(
                 };
                 match message {
                     Message::Text(text) => {
-                        match handle(config, commands, text.as_bytes(), &events).await {
+                        match handle(config, &speaking, commands, text.as_bytes(), &events).await {
                             Ok(Some(answer)) => {
                                 if let Err(error) = sink
                                     .send(Message::Text(
@@ -333,6 +335,7 @@ pub async fn connect_once(
 /// Handle one inbound frame. `Ok(None)` means nothing to send back.
 async fn handle(
     config: &ConnectorConfig,
+    speaking: &Speaking,
     commands: &dyn CommandSink,
     raw: &[u8],
     events: &EventSender,
@@ -346,6 +349,7 @@ async fn handle(
             return Ok(Some(
                 frame(
                     config,
+                    speaking,
                     PlatformBound::CommandError(
                         super::protocol::platform_bound::CommandErrorResponse { error },
                     ),
@@ -356,21 +360,53 @@ async fn handle(
     };
 
     match parsed.body {
-        // The relay's answer to our hello. Nothing to do but note it — the
-        // negotiated version is the relay's decision, and it enforces it.
-        DeviceBound::SessionWelcome(_) => Ok(None),
+        // The relay's answer to our hello. Its choice of version is binding:
+        // every frame from here on is stamped with it, because a peer that
+        // asked us to speak 1 cannot read 2.
+        DeviceBound::SessionWelcome(welcome) => {
+            speaking.agreed(welcome.version);
+            Ok(None)
+        }
         // Advisory. The socket closing is the real revocation, and this stops
         // us reconnecting into a refusal loop.
         DeviceBound::SessionRevoke(revoke) => Err(Disconnected::Refused(revoke.reason)),
         command => {
             let answer = commands.dispatch(&parsed.id, command, events.clone()).await;
-            Ok(Some(frame(config, answer).in_reply_to(parsed.id)))
+            Ok(Some(frame(config, speaking, answer).in_reply_to(parsed.id)))
         }
     }
 }
 
-fn frame(config: &ConnectorConfig, body: PlatformBound) -> Envelope<PlatformBound> {
-    Envelope::new(
+/// The version this connection speaks, which is not necessarily the newest one
+/// this build knows.
+///
+/// Starts at [`MINIMUM_SPEAKABLE_VERSION`] rather than [`PROTOCOL_VERSION`],
+/// because the hello goes out *before* anything has been agreed and has to be
+/// readable by a peer whose version is still unknown — including one older than
+/// this build. The welcome then raises it to whatever the relay chose.
+struct Speaking(std::sync::atomic::AtomicU32);
+
+impl Speaking {
+    fn new() -> Self {
+        Self(std::sync::atomic::AtomicU32::new(MINIMUM_SPEAKABLE_VERSION))
+    }
+
+    fn get(&self) -> u32 {
+        self.0.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    fn agreed(&self, version: u32) {
+        self.0.store(version, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+fn frame(
+    config: &ConnectorConfig,
+    speaking: &Speaking,
+    body: PlatformBound,
+) -> Envelope<PlatformBound> {
+    Envelope::at_version(
+        speaking.get(),
         format!("evt_{}", uuid::Uuid::new_v4()),
         config.device_id.clone(),
         chrono::Utc::now(),
@@ -554,5 +590,31 @@ mod tests {
         assert!(Disconnected::Refused("revoked".into())
             .to_string()
             .contains("credential refused"));
+    }
+
+    /// The compatibility rule v2 turns on.
+    ///
+    /// A hello goes out before anything has been agreed, so it is stamped with
+    /// the oldest version this build speaks — otherwise a daemon one version
+    /// ahead of the relay would be unreadable at the only moment it has to be
+    /// understood, and could never negotiate its way down.
+    #[test]
+    fn the_hello_is_stamped_low_enough_for_an_older_relay_to_read() {
+        assert_eq!(Speaking::new().get(), MINIMUM_SPEAKABLE_VERSION);
+    }
+
+    /// And once the relay has chosen, that choice is what goes on the wire —
+    /// including when it is lower than this build would have preferred.
+    #[test]
+    fn the_relays_choice_is_what_later_frames_carry() {
+        let speaking = Speaking::new();
+        speaking.agreed(1);
+        assert_eq!(speaking.get(), 1);
+
+        speaking.agreed(super::super::protocol::version::PROTOCOL_VERSION);
+        assert_eq!(
+            speaking.get(),
+            super::super::protocol::version::PROTOCOL_VERSION
+        );
     }
 }

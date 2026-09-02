@@ -1,0 +1,16 @@
+{
+  "note": "v2 mirrors a terminal somebody already started; it never spawns one. `terminal.input` used to live here and is now a real command, gated in the daemon by refusing to attach to anything but an agent session.",
+  "direction": "deviceBound",
+  "expect": "UNKNOWN_COMMAND",
+  "frame": {
+    "v": 2,
+    "id": "req_1",
+    "type": "terminal.spawn",
+    "deviceId": "11111111-2222-3333-4444-555555555555",
+    "sentAt": "2026-09-01T00:00:00.000Z",
+    "replyTo": null,
+    "payload": {
+      "shell": "/bin/sh"
+    }
+  }
+}

@@ -35,17 +35,20 @@ use super::agent_event::{
 use super::device_bound::{
     AgentApprovalResolve, AgentTurnCancel, AgentTurnStart, ApprovalVerdict, DeviceBound, Empty,
     ServiceAction, ServiceActionRequest, ServiceLogsRequest, SessionRevoke, SessionWelcome,
+    TerminalAttachRequest, TerminalDetach, TerminalInput, TerminalResize,
 };
 use super::errors::{ErrorCode, ProtocolError};
 use super::platform_bound::{
     AgentProvidersResponse, AgentTurnAccepted, BundleListResponse, CommandErrorResponse,
     DeviceSnapshotResponse, PlatformBound, ServiceActionResponse, ServiceListResponse,
-    ServiceLogsResponse, SessionHello,
+    ServiceLogsResponse, SessionHello, TerminalAttachAccepted, TerminalCloseReason, TerminalClosed,
+    TerminalOutput, TerminalSessionsResponse,
 };
 use super::snapshot::{
     BundleState, DeviceSnapshot, LogLine, LogStream, RemoteAgentProvider, RemoteBundle,
-    RemoteService, ServiceState,
+    RemoteService, RemoteTerminalSession, ServiceState,
 };
+use super::terminal_bytes::TerminalBytes;
 use super::version::{CapabilitySet, SessionMode, SUPPORTED_VERSIONS};
 
 /// The `sentAt` every golden fixture carries, so a recording is never a picture
@@ -90,6 +93,25 @@ pub fn every_command() -> Vec<DeviceBound> {
             run_id: "run_1".to_string(),
             approval_id: "ap_1".to_string(),
             verdict: ApprovalVerdict::Deny,
+        }),
+        DeviceBound::TerminalSessions(Empty {}),
+        DeviceBound::TerminalAttach(TerminalAttachRequest {
+            session_id: "term_1".to_string(),
+            cols: 80,
+            rows: 24,
+        }),
+        DeviceBound::TerminalInput(TerminalInput {
+            // A carriage return, which is what answering a TUI prompt is.
+            data: TerminalBytes::new(b"\r".to_vec()),
+            stream_id: "stream_1".to_string(),
+        }),
+        DeviceBound::TerminalResize(TerminalResize {
+            stream_id: "stream_1".to_string(),
+            cols: 100,
+            rows: 40,
+        }),
+        DeviceBound::TerminalDetach(TerminalDetach {
+            stream_id: "stream_1".to_string(),
         }),
     ]
 }
@@ -160,6 +182,32 @@ pub fn every_event() -> Vec<PlatformBound> {
         PlatformBound::CommandError(CommandErrorResponse {
             error: ProtocolError::new(ErrorCode::UnknownService, "No such registered service.")
                 .with_detail("api"),
+        }),
+        PlatformBound::TerminalSessions(TerminalSessionsResponse {
+            sessions: vec![RemoteTerminalSession {
+                id: "term_1".to_string(),
+                label: Some("Hey".to_string()),
+                provider: Some("claude".to_string()),
+                workspace: Some("nomoreide".to_string()),
+                running: true,
+            }],
+        }),
+        PlatformBound::TerminalAttachAccepted(TerminalAttachAccepted {
+            stream_id: "stream_1".to_string(),
+            session_id: "term_1".to_string(),
+            cols: 80,
+            rows: 24,
+        }),
+        PlatformBound::TerminalOutput(TerminalOutput {
+            stream_id: "stream_1".to_string(),
+            seq: 0,
+            // An escape sequence, because that is what a terminal actually
+            // sends and what a UTF-8 string type would have mangled.
+            data: TerminalBytes::new(b"\x1b[2J$ ".to_vec()),
+        }),
+        PlatformBound::TerminalClosed(TerminalClosed {
+            stream_id: "stream_1".to_string(),
+            reason: TerminalCloseReason::Exited,
         }),
     ];
     // One frame per run-event kind, because `agent.turn.event` is a union in

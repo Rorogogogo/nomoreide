@@ -103,6 +103,35 @@ const _: () = assert!(MAX_AGENT_PROMPT_BYTES * 2 < MAX_FRAME_BYTES);
 /// gap it cannot see.
 pub const AGENT_EVENT_REPLAY_EVENTS: usize = 2048;
 
+/// The most raw PTY output carried in one frame, before base64.
+///
+/// Well under [`MAX_FRAME_BYTES`] with the encoding's third added on top, so a
+/// coalesced burst can never be the thing that overflows a frame.
+pub const MAX_TERMINAL_CHUNK_BYTES: usize = 32 * 1024;
+
+/// How long the daemon gathers PTY output before sending it.
+///
+/// A TUI repaints far faster than anyone can read, and a frame per `read()`
+/// would spend a phone's battery redrawing frames it never displays. Roughly
+/// one screen's worth of latency, which is imperceptible while typing and
+/// collapses a spinner into a handful of frames a second.
+pub const TERMINAL_COALESCE_INTERVAL: Duration = Duration::from_millis(16);
+
+/// The most keystroke data one input frame may carry.
+///
+/// Small on purpose: this is for typing, and a phone with a long block of text
+/// to deliver should use the agent prompt path, which is bounded separately and
+/// goes in as one paste rather than as a stream of keys.
+pub const MAX_TERMINAL_INPUT_BYTES: usize = 4 * 1024;
+
+/// How many terminals one device may have mirrored at once.
+pub const MAX_TERMINAL_STREAMS: usize = 4;
+
+/// The widest and tallest a mirrored terminal may claim to be. A resize is
+/// attacker-supplied arithmetic that reaches `ioctl`, so it is bounded before
+/// it gets there rather than trusted.
+pub const MAX_TERMINAL_DIMENSION: u16 = 1_000;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,6 +152,23 @@ mod tests {
         assert_eq!(PRESENCE_TIMEOUT.as_secs(), 75);
         assert_eq!(RECONNECT_BACKOFF_CAP.as_secs(), 30);
         assert_eq!(APPROVAL_EXPIRY.as_secs(), 120);
+        assert_eq!(MAX_TERMINAL_CHUNK_BYTES, 32_768);
+        assert_eq!(MAX_TERMINAL_INPUT_BYTES, 4_096);
+        assert_eq!(MAX_TERMINAL_STREAMS, 4);
+        assert_eq!(MAX_TERMINAL_DIMENSION, 1_000);
+        assert_eq!(TERMINAL_COALESCE_INTERVAL.as_millis(), 16);
+    }
+
+    /// A coalesced chunk must still fit a frame once base64 has added its
+    /// third, with room for the envelope around it. Base64 is 4 bytes out per
+    /// 3 in, so the check is the encoded size rather than the raw one.
+    #[test]
+    fn a_full_terminal_chunk_fits_a_frame_once_encoded() {
+        let encoded = MAX_TERMINAL_CHUNK_BYTES.div_ceil(3) * 4;
+        assert!(
+            encoded * 2 < MAX_FRAME_BYTES,
+            "a coalesced chunk must leave room for the envelope, not merely fit"
+        );
     }
 
     /// A dedup window shorter than the staleness window would let a frame be

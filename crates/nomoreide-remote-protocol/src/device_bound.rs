@@ -62,6 +62,22 @@ pub enum DeviceBound {
     /// Allow or deny one pending mutating tool request.
     #[serde(rename = "agent.approval.resolve")]
     AgentApprovalResolve(AgentApprovalResolve),
+
+    /// Which agent terminals are running and could be mirrored. **v2.**
+    #[serde(rename = "terminal.sessions.request")]
+    TerminalSessions(Empty),
+    /// Begin mirroring one agent terminal. **v2.**
+    #[serde(rename = "terminal.attach.request")]
+    TerminalAttach(TerminalAttachRequest),
+    /// Keystrokes for a mirrored terminal. **v2.**
+    #[serde(rename = "terminal.input")]
+    TerminalInput(TerminalInput),
+    /// The viewport changed size. **v2.**
+    #[serde(rename = "terminal.resize")]
+    TerminalResize(TerminalResize),
+    /// Stop mirroring. The PTY keeps running; only the mirror ends. **v2.**
+    #[serde(rename = "terminal.detach")]
+    TerminalDetach(TerminalDetach),
 }
 
 /// A payload with no fields.
@@ -161,6 +177,41 @@ pub struct AgentApprovalResolve {
     pub verdict: ApprovalVerdict,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalAttachRequest {
+    /// An exact session id the daemon already reported. The daemon refuses any
+    /// session that is not an *agent* session, so this is never a way to reach
+    /// a shell — see the dispatcher, which is where that is enforced.
+    pub session_id: String,
+    /// The viewport the phone will render into. Bounded by
+    /// [`super::limits::MAX_TERMINAL_DIMENSION`] before it reaches an `ioctl`.
+    pub cols: u16,
+    pub rows: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalInput {
+    pub stream_id: String,
+    /// Bounded by [`super::limits::MAX_TERMINAL_INPUT_BYTES`].
+    pub data: super::terminal_bytes::TerminalBytes,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalResize {
+    pub stream_id: String,
+    pub cols: u16,
+    pub rows: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalDetach {
+    pub stream_id: String,
+}
+
 impl DeviceBound {
     /// Every accepted `type`, in the order the union declares them.
     ///
@@ -178,6 +229,11 @@ impl DeviceBound {
         "agent.turn.start",
         "agent.turn.cancel",
         "agent.approval.resolve",
+        "terminal.sessions.request",
+        "terminal.attach.request",
+        "terminal.input",
+        "terminal.resize",
+        "terminal.detach",
     ];
 
     pub fn kind(&self) -> &'static str {
@@ -193,6 +249,11 @@ impl DeviceBound {
             Self::AgentTurnStart(_) => "agent.turn.start",
             Self::AgentTurnCancel(_) => "agent.turn.cancel",
             Self::AgentApprovalResolve(_) => "agent.approval.resolve",
+            Self::TerminalSessions(_) => "terminal.sessions.request",
+            Self::TerminalAttach(_) => "terminal.attach.request",
+            Self::TerminalInput(_) => "terminal.input",
+            Self::TerminalResize(_) => "terminal.resize",
+            Self::TerminalDetach(_) => "terminal.detach",
         }
     }
 
@@ -206,14 +267,22 @@ impl DeviceBound {
             Self::ServiceAction(_)
             | Self::AgentTurnStart(_)
             | Self::AgentTurnCancel(_)
-            | Self::AgentApprovalResolve(_) => true,
+            | Self::AgentApprovalResolve(_)
+            // Typing is the most mutating thing there is, and a retried
+            // keystroke is a second keystroke. Attaching, resizing and
+            // detaching only move the mirror, so they are safe to repeat.
+            | Self::TerminalInput(_) => true,
             Self::SessionWelcome(_)
             | Self::SessionRevoke(_)
             | Self::DeviceSnapshot(_)
             | Self::ServiceList(_)
             | Self::ServiceLogs(_)
             | Self::BundleList(_)
-            | Self::AgentProviders(_) => false,
+            | Self::AgentProviders(_)
+            | Self::TerminalSessions(_)
+            | Self::TerminalAttach(_)
+            | Self::TerminalResize(_)
+            | Self::TerminalDetach(_) => false,
         }
     }
 
@@ -231,6 +300,11 @@ impl DeviceBound {
             Self::AgentProviders(_) => Some(capability::AGENT_PROVIDERS),
             Self::AgentTurnStart(_) | Self::AgentTurnCancel(_) => Some(capability::AGENT_TURNS),
             Self::AgentApprovalResolve(_) => Some(capability::AGENT_APPROVALS),
+            Self::TerminalSessions(_) => Some(capability::TERMINAL_SESSIONS),
+            Self::TerminalAttach(_)
+            | Self::TerminalInput(_)
+            | Self::TerminalResize(_)
+            | Self::TerminalDetach(_) => Some(capability::TERMINAL_ATTACH),
         }
     }
 

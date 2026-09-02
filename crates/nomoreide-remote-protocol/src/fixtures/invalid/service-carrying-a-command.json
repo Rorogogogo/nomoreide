@@ -3,7 +3,7 @@
   "direction": "platformBound",
   "expect": "MALFORMED_FRAME",
   "frame": {
-    "v": 1,
+    "v": 2,
     "id": "evt_1",
     "type": "service.list.response",
     "deviceId": "11111111-2222-3333-4444-555555555555",

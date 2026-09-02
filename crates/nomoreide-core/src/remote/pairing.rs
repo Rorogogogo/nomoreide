@@ -295,7 +295,10 @@ mod tests {
 
         assert_eq!(proposal.name, "Studio");
         assert_eq!(proposal.daemon_version, env!("CARGO_PKG_VERSION"));
-        assert_eq!(proposal.protocol_version, 1);
+        assert_eq!(
+            proposal.protocol_version,
+            crate::remote::protocol::version::PROTOCOL_VERSION as i32
+        );
         assert!(
             ["macos", "linux", "windows"].contains(&proposal.platform.as_str()),
             "{}",

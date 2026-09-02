@@ -63,6 +63,34 @@ pub struct RemoteService {
     pub state: ServiceState,
 }
 
+/// An agent terminal, as much of it as may leave the machine.
+///
+/// **What is missing is the point.** A local `TerminalSession` carries `cwd`,
+/// `shell`, the argv it was spawned with, and its pid. None of those has a
+/// field here, and the reshaping in the daemon's dispatcher is where they are
+/// dropped — the same rule that keeps a command line out of [`RemoteService`].
+///
+/// `workspace` is the exception that proves it: a phone showing three agents
+/// needs to tell them apart, and "which repo" is the only thing that does. It
+/// is the directory's *final component*, never the path — a name, not a map of
+/// somebody's disk.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteTerminalSession {
+    pub id: String,
+    /// The tab's label, if it has been named.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// `claude`, `codex` — which CLI is running in it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    /// The basename of the directory the agent is working in. Never a path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace: Option<String>,
+    /// False once the child has exited. The tab may still be on screen.
+    pub running: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BundleState {

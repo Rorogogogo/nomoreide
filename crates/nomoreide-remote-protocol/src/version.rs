@@ -32,18 +32,21 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 /// The major version this build speaks.
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
 
 /// The oldest major version worth talking to at all.
 ///
 /// Below this the platform rejects the socket outright rather than degrading:
 /// there is a point where "read-only and please upgrade" stops being reachable
-/// because the frames themselves have changed. Equal to [`PROTOCOL_VERSION`]
-/// today, and it stays there until a v2 exists to be lenient towards.
+/// because the frames themselves have changed.
+///
+/// Still 1 now that 2 exists, which is the whole point of the number: v2 added
+/// frames and took none away, so a v1 daemon is not broken, only smaller. It
+/// keeps every v1 capability and simply never advertises the terminal ones.
 pub const MINIMUM_SPEAKABLE_VERSION: u32 = 1;
 
 /// Every major version this build can serve, newest last.
-pub const SUPPORTED_VERSIONS: &[u32] = &[1];
+pub const SUPPORTED_VERSIONS: &[u32] = &[1, 2];
 
 /// A floor above what this build speaks would reject every peer, including
 /// itself. Checked at compile time, for the same reason the limits are.
@@ -96,6 +99,14 @@ pub mod capabilities {
     /// Answering a pending mutating tool request.
     pub const AGENT_APPROVALS: &str = "agent.approvals";
 
+    /// Listing the agent terminals running on the machine. **v2.**
+    pub const TERMINAL_SESSIONS: &str = "terminal.sessions";
+    /// Mirroring one agent terminal: its output, and typing into it. **v2.**
+    ///
+    /// Deliberately separate from [`TERMINAL_SESSIONS`], so a machine can show
+    /// a phone *that* an agent is running without handing over its screen.
+    pub const TERMINAL_ATTACH: &str = "terminal.attach";
+
     /// Everything a fully-featured v1 daemon offers.
     pub const V1: &[&str] = &[
         DEVICE_SNAPSHOT,
@@ -107,6 +118,29 @@ pub mod capabilities {
         AGENT_TURNS,
         AGENT_APPROVALS,
     ];
+
+    /// Everything a fully-featured v2 daemon offers: v1, plus the terminal.
+    ///
+    /// Additive by construction — v2 removed nothing, so this is `V1` with the
+    /// new names appended rather than a second list to keep in step.
+    pub const V2: &[&str] = &[
+        DEVICE_SNAPSHOT,
+        SERVICE_LIST,
+        SERVICE_ACTION,
+        SERVICE_LOGS,
+        BUNDLE_LIST,
+        AGENT_PROVIDERS,
+        AGENT_TURNS,
+        AGENT_APPROVALS,
+        TERMINAL_SESSIONS,
+        TERMINAL_ATTACH,
+    ];
+
+    /// `V2` must extend `V1` rather than diverge from it. Checked here because
+    /// the two lists are written out separately for readability.
+    const _: () = {
+        assert!(V2.len() == V1.len() + 2);
+    };
 }
 
 /// What a daemon advertises, and what the platform holds about it.
@@ -212,7 +246,7 @@ mod tests {
         assert_eq!(
             negotiate(SUPPORTED_VERSIONS, SUPPORTED_VERSIONS),
             Negotiation::Agreed {
-                version: 1,
+                version: PROTOCOL_VERSION,
                 mode: SessionMode::Full,
             }
         );

@@ -3,7 +3,7 @@
   "direction": "deviceBound",
   "expect": "MALFORMED_FRAME",
   "frame": {
-    "v": 1,
+    "v": 2,
     "id": "",
     "type": "service.list.request",
     "deviceId": "11111111-2222-3333-4444-555555555555",
