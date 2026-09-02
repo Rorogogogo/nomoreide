@@ -21,8 +21,6 @@ use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
-pub(super) const TERMINAL_REPLAY_BYTES: usize = 1024 * 1024;
-
 #[derive(Clone)]
 pub(super) struct ExternalOutputSink {
     pub(super) lease: String,
