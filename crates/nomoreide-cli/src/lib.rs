@@ -129,6 +129,14 @@ async fn web(paths: &RuntimePaths, configured_port: u16) -> u8 {
             if let Some(warning) = &daemon.version_warning {
                 eprintln!("{warning}");
             }
+            // Said out loud because it costs a second of startup. Silence would
+            // be a pause with no cause, which reads as the tool being slow.
+            if daemon.status == nomoreide_daemon_client::EnsureStatus::Upgraded {
+                eprintln!(
+                    "NoMoreIDE daemon updated to v{}.",
+                    env!("CARGO_PKG_VERSION")
+                );
+            }
             eprintln!(
                 "NoMoreIDE web UI: http://127.0.0.1:{}",
                 daemon.endpoint.port()
