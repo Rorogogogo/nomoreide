@@ -2846,4 +2846,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "remote.expired": "该代码已过期，请重新开始。",
   "remote.failed": "配对未能完成。",
   "remote.safety": "配对后，你的账号可以在这台机器上启动或停止服务、读取日志，并镜像智能体终端；但无法执行任意命令或打开 shell。",
+  "remote.approve": "在你的账号中批准",
+  "remote.approveHint": "将在新标签页中打开 NoMoreIDE。如果你已经登录，这一步就完成了，无需输入代码。",
+  "remote.orType": "或在手机上输入此代码",
 };

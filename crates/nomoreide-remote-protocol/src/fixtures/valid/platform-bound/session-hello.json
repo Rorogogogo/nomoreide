@@ -22,7 +22,8 @@
       "service.list",
       "service.logs",
       "terminal.attach",
-      "terminal.sessions"
+      "terminal.sessions",
+      "terminal.spawn"
     ]
   }
 }

@@ -152,21 +152,29 @@ export function RemotePairingPanel() {
         </div>
       ) : code ? (
         <div className="mt-4">
-          <p className="text-muted-foreground">{t("remote.codeLabel")}</p>
-          <p className="mt-1 font-mono text-2xl tracking-[0.2em]">{code}</p>
+          {/*
+            The browser showing this dashboard may already be signed in to
+            NoMoreIDE, and the claim page claims a `?code=` on its own — so for
+            most people this is one click and no typing. The code stays visible
+            underneath because the other browser is sometimes a phone.
+          */}
           {link ? (
-            <p className="mt-2 text-muted-foreground">
-              {t("remote.openLink")}{" "}
+            <>
               <a
-                className="underline"
+                className="inline-block rounded border px-3 py-1.5 text-xs"
                 href={link}
                 rel="noreferrer"
                 target="_blank"
               >
-                {link}
+                {t("remote.approve")}
               </a>
-            </p>
+              <p className="mt-2 max-w-prose text-muted-foreground">
+                {t("remote.approveHint")}
+              </p>
+            </>
           ) : null}
+          <p className="mt-4 text-muted-foreground">{t("remote.orType")}</p>
+          <p className="mt-1 font-mono text-2xl tracking-[0.2em]">{code}</p>
           <p className="mt-3 flex items-center gap-1.5 text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             {t("remote.pairing")}

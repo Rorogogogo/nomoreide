@@ -1,11 +1,11 @@
 {
-  "note": "v2 mirrors a terminal somebody already started; it never spawns one. `terminal.input` used to live here and is now a real command, gated in the daemon by refusing to attach to anything but an agent session.",
+  "note": "Spawning an *agent* is a real command. Opening a bare terminal is not, and neither is executing in one: those would be a shell, which is the thing pairing promises remote control cannot reach.",
   "direction": "deviceBound",
   "expect": "UNKNOWN_COMMAND",
   "frame": {
     "v": 2,
     "id": "req_1",
-    "type": "terminal.spawn",
+    "type": "terminal.open",
     "deviceId": "11111111-2222-3333-4444-555555555555",
     "sentAt": "2026-09-01T00:00:00.000Z",
     "replyTo": null,

@@ -52,6 +52,9 @@ pub enum PlatformBound {
     #[serde(rename = "agent.turn.event")]
     AgentTurnEvent(super::agent_event::AgentEvent),
 
+    /// An agent terminal was started, and this is it. **v2.**
+    #[serde(rename = "terminal.spawned")]
+    TerminalSpawned(TerminalSpawned),
     /// The agent terminals that could be mirrored. **v2.**
     #[serde(rename = "terminal.sessions.response")]
     TerminalSessions(TerminalSessionsResponse),
@@ -72,6 +75,17 @@ pub enum PlatformBound {
     /// answer is a log line, not a frame.
     #[serde(rename = "command.error")]
     CommandError(CommandErrorResponse),
+}
+
+/// The session a spawn produced, described exactly like any other.
+///
+/// The same sanitized shape the listing uses, so a phone can attach to it
+/// without a second code path — and so a spawn cannot answer with fields the
+/// listing would have dropped.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalSpawned {
+    pub session: super::snapshot::RemoteTerminalSession,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -229,6 +243,7 @@ impl PlatformBound {
         "agent.providers.response",
         "agent.turn.accepted",
         "agent.turn.event",
+        "terminal.spawned",
         "terminal.sessions.response",
         "terminal.attach.accepted",
         "terminal.output",
@@ -249,6 +264,7 @@ impl PlatformBound {
             Self::AgentProviders(_) => "agent.providers.response",
             Self::AgentTurnAccepted(_) => "agent.turn.accepted",
             Self::AgentTurnEvent(_) => "agent.turn.event",
+            Self::TerminalSpawned(_) => "terminal.spawned",
             Self::TerminalSessions(_) => "terminal.sessions.response",
             Self::TerminalAttachAccepted(_) => "terminal.attach.accepted",
             Self::TerminalOutput(_) => "terminal.output",
@@ -282,6 +298,7 @@ impl PlatformBound {
             | Self::BundleList(_)
             | Self::AgentProviders(_)
             | Self::AgentTurnAccepted(_)
+            | Self::TerminalSpawned(_)
             | Self::TerminalSessions(_)
             | Self::TerminalAttachAccepted(_)
             | Self::TerminalAck(_)

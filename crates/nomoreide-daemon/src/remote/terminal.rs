@@ -24,13 +24,13 @@ use std::sync::{Arc, Mutex};
 
 use nomoreide_core::remote::connector::EventSender;
 use nomoreide_core::remote::protocol::device_bound::{
-    TerminalAttachRequest, TerminalDetach, TerminalInput, TerminalResize,
+    TerminalAttachRequest, TerminalDetach, TerminalInput, TerminalResize, TerminalSpawnRequest,
 };
 use nomoreide_core::remote::protocol::errors::{ErrorCode, ProtocolError};
 use nomoreide_core::remote::protocol::limits;
 use nomoreide_core::remote::protocol::platform_bound::{
     TerminalAck, TerminalAttachAccepted, TerminalCloseReason, TerminalClosed, TerminalOutput,
-    TerminalSessionsResponse,
+    TerminalSessionsResponse, TerminalSpawned,
 };
 use nomoreide_core::remote::protocol::snapshot::RemoteTerminalSession;
 use nomoreide_core::remote::protocol::PlatformBound;
@@ -212,23 +212,57 @@ impl Mirrors {
     }
 }
 
+/// Turn one local session into what a phone may know about it.
+///
+/// The single place that reshaping happens, so a spawn cannot answer with
+/// fields the listing would have dropped.
+pub(crate) fn describe(
+    session: nomoreide_core::terminal::TerminalSession,
+) -> RemoteTerminalSession {
+    RemoteTerminalSession {
+        id: session.id,
+        label: session.label,
+        provider: session.provider,
+        // The final component only. A phone needs to tell one agent from
+        // another; it does not need a map of somebody's disk.
+        workspace: std::path::Path::new(&session.cwd)
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned()),
+        running: session.exit.is_none(),
+    }
+}
+
+/// What a spawn answers with, given the session the router just created.
+pub(crate) fn spawned(session: nomoreide_core::terminal::TerminalSession) -> PlatformBound {
+    PlatformBound::TerminalSpawned(TerminalSpawned {
+        session: describe(session),
+    })
+}
+
+/// Reject a prompt a phone should never have sent.
+pub(crate) fn check_prompt(request: &TerminalSpawnRequest) -> Result<(), ProtocolError> {
+    if request.prompt.trim().is_empty() {
+        return Err(ProtocolError::new(
+            ErrorCode::MalformedFrame,
+            "An agent needs something to work on.",
+        ));
+    }
+    if request.prompt.len() > limits::MAX_AGENT_PROMPT_BYTES {
+        return Err(ProtocolError::new(
+            ErrorCode::MalformedFrame,
+            "That prompt is larger than one frame may carry.",
+        ));
+    }
+    Ok(())
+}
+
 /// Everything a phone may know about the terminals on this machine.
 pub(crate) fn sessions(terminal: &TerminalManager) -> PlatformBound {
     PlatformBound::TerminalSessions(TerminalSessionsResponse {
         sessions: terminal
             .mirrorable_sessions()
             .into_iter()
-            .map(|session| RemoteTerminalSession {
-                id: session.id,
-                label: session.label,
-                provider: session.provider,
-                // The final component only. A phone needs to tell one agent
-                // from another; it does not need a map of somebody's disk.
-                workspace: std::path::Path::new(&session.cwd)
-                    .file_name()
-                    .map(|name| name.to_string_lossy().into_owned()),
-                running: session.exit.is_none(),
-            })
+            .map(describe)
             .collect(),
     })
 }
