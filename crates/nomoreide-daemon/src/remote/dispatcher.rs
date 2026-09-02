@@ -26,18 +26,29 @@
 //! line, the working directory and the environment keys. None of that has a
 //! field in the remote wire types, and the mapping here is where it is dropped.
 
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode};
+use futures_util::StreamExt;
+use nomoreide_core::agent_runtime::AgentStreamEvent;
+use nomoreide_core::remote::agent_runs::{self, AgentRuns};
 use nomoreide_core::remote::connector::{Answer, CommandSink, EventSender};
+use nomoreide_core::remote::protocol::agent_event::ApprovalRequestEvent;
+use nomoreide_core::remote::protocol::device_bound::{
+    AgentApprovalResolve, AgentTurnCancel, AgentTurnStart, ApprovalVerdict,
+};
 use nomoreide_core::remote::protocol::device_bound::{ServiceAction, ServiceActionRequest};
 use nomoreide_core::remote::protocol::errors::{ErrorCode, ProtocolError};
 use nomoreide_core::remote::protocol::limits;
 use nomoreide_core::remote::protocol::platform_bound::{
-    BundleListResponse, CommandErrorResponse, DeviceSnapshotResponse, ServiceActionResponse,
-    ServiceListResponse, ServiceLogsResponse,
+    AgentProvidersResponse, AgentTurnAccepted, BundleListResponse, CommandErrorResponse,
+    DeviceSnapshotResponse, ServiceActionResponse, ServiceListResponse, ServiceLogsResponse,
 };
 use nomoreide_core::remote::protocol::snapshot::{
-    BundleState, DeviceSnapshot, LogLine, LogStream, RemoteBundle, RemoteService, ServiceState,
+    BundleState, DeviceSnapshot, LogLine, LogStream, RemoteAgentProvider, RemoteBundle,
+    RemoteService, ServiceState,
 };
 use nomoreide_core::remote::protocol::version::{capabilities, CapabilitySet, PROTOCOL_VERSION};
 use nomoreide_core::remote::protocol::{DeviceBound, PlatformBound};
@@ -93,6 +104,26 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
         capability: capabilities::BUNDLE_LIST,
         routes: "GET /api/services, GET /api/status",
     },
+    Allowed {
+        kind: "agent.providers.request",
+        capability: capabilities::AGENT_PROVIDERS,
+        routes: "GET /api/agent/chat/status",
+    },
+    Allowed {
+        kind: "agent.turn.start",
+        capability: capabilities::AGENT_TURNS,
+        routes: "POST /api/agent/chat",
+    },
+    Allowed {
+        kind: "agent.turn.cancel",
+        capability: capabilities::AGENT_TURNS,
+        routes: "(ends the run locally; the stream is dropped)",
+    },
+    Allowed {
+        kind: "agent.approval.resolve",
+        capability: capabilities::AGENT_APPROVALS,
+        routes: "POST /api/agent/chat/approve",
+    },
 ];
 
 /// What this daemon tells the relay it can do.
@@ -107,6 +138,13 @@ pub(crate) fn served_capabilities() -> CapabilitySet {
 /// Calls the daemon's router in-process.
 pub(crate) struct RouterDispatcher {
     router: axum::Router,
+    /// Agent turns in flight: sequence numbers, replay, and the approvals that
+    /// deny themselves.
+    runs: AgentRuns,
+    /// The provider's own session id for each run, learned from the stream's
+    /// first event. An approval is resolved against *that* id, not the run's —
+    /// the daemon's approval broker is keyed by the agent CLI's session.
+    sessions: Arc<Mutex<HashMap<String, String>>>,
     /// The daemon's own local credential. Held so the in-process call passes the
     /// same `require_credential` layer a browser does — the dispatcher gets no
     /// privileged back door, and a route that gains an auth requirement gains it
@@ -126,6 +164,8 @@ impl RouterDispatcher {
     ) -> Self {
         Self {
             router,
+            runs: AgentRuns::new(),
+            sessions: Arc::new(Mutex::new(HashMap::new())),
             credential,
             device_id,
             device_name,
@@ -263,6 +303,180 @@ impl RouterDispatcher {
         }))
     }
 
+    /// Which agent providers this machine has, and which may be driven from a
+    /// phone.
+    async fn agent_providers(&self) -> Result<PlatformBound, ProtocolError> {
+        let (_, body) = self.call(Method::GET, "/api/agent/chat/status").await?;
+        let providers = body
+            .get("providers")
+            .and_then(Value::as_array)
+            .map(|providers| {
+                providers
+                    .iter()
+                    .filter_map(|provider| {
+                        let id = provider.get("id").and_then(Value::as_str)?;
+                        Some(RemoteAgentProvider {
+                            id: id.to_string(),
+                            name: provider
+                                .get("label")
+                                .or_else(|| provider.get("name"))
+                                .and_then(Value::as_str)
+                                .unwrap_or(id)
+                                .to_string(),
+                            available: provider
+                                .get("configured")
+                                .and_then(Value::as_bool)
+                                .unwrap_or(false),
+                            remote_writes: remote_writes_allowed(id),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        Ok(PlatformBound::AgentProviders(AgentProvidersResponse {
+            providers,
+        }))
+    }
+
+    /// Start a turn.
+    ///
+    /// Answers immediately with the run id, then streams. The answer has to come
+    /// first: a phone needs the run it is about to watch before the events for
+    /// it arrive, and holding the reply until the turn finished would make every
+    /// long turn look like a timeout.
+    async fn agent_turn_start(
+        &self,
+        request: &AgentTurnStart,
+        events: EventSender,
+    ) -> Result<PlatformBound, ProtocolError> {
+        if request.prompt.len() > limits::MAX_AGENT_PROMPT_BYTES {
+            return Err(ProtocolError::new(
+                ErrorCode::PayloadTooLarge,
+                "That prompt is too long to send from a phone.",
+            ));
+        }
+        if let Some(provider) = &request.provider {
+            if !remote_writes_allowed(provider) {
+                return Err(ProtocolError::new(
+                    ErrorCode::CapabilityUnavailable,
+                    "That agent cannot be driven remotely yet.",
+                )
+                .with_detail(provider.clone()));
+            }
+        }
+
+        let run_id = request
+            .run_id
+            .clone()
+            .unwrap_or_else(|| format!("run_{}", uuid::Uuid::new_v4()));
+        let next_seq = self.runs.open(&run_id);
+
+        let mut body = serde_json::json!({ "message": request.prompt });
+        if let Some(provider) = &request.provider {
+            body["provider"] = Value::String(provider.clone());
+        }
+        // Resuming a run resumes the provider's session, so the agent keeps its
+        // context rather than starting over mid-conversation.
+        if let Some(session) = self.sessions.lock().expect("sessions").get(&run_id) {
+            body["resumeSessionId"] = Value::String(session.clone());
+        }
+
+        let request_builder = Request::builder()
+            .method(Method::POST)
+            .uri("/api/agent/chat")
+            .header("authorization", format!("Bearer {}", self.credential))
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .map_err(|error| internal(format!("could not build a local request: {error}")))?;
+        let response = self
+            .router
+            .clone()
+            .oneshot(request_builder)
+            .await
+            .map_err(|error| internal(format!("the local router failed: {error}")))?;
+
+        if !response.status().is_success() {
+            self.runs.close(&run_id);
+            return Err(ProtocolError::new(
+                ErrorCode::ServiceActionFailed,
+                "That agent could not be started on this machine.",
+            ));
+        }
+
+        let stream_runs = self.runs.clone();
+        let sessions = self.sessions.clone();
+        let router = self.router.clone();
+        let credential = self.credential.clone();
+        let streamed_run = run_id.clone();
+        tokio::spawn(async move {
+            pump(
+                response,
+                streamed_run,
+                stream_runs,
+                sessions,
+                events,
+                router,
+                credential,
+            )
+            .await;
+        });
+
+        Ok(PlatformBound::AgentTurnAccepted(AgentTurnAccepted {
+            run_id,
+            next_seq,
+        }))
+    }
+
+    /// End a turn. Closing the run denies anything parked on it, which is the
+    /// third of the four routes to a denial.
+    async fn agent_turn_cancel(
+        &self,
+        request: &AgentTurnCancel,
+        events: EventSender,
+    ) -> Result<PlatformBound, ProtocolError> {
+        if !self.runs.is_running(&request.run_id) {
+            return Err(ProtocolError::new(
+                ErrorCode::UnknownRun,
+                "That agent turn is not running.",
+            )
+            .with_detail(request.run_id.clone()));
+        }
+        for event in self.runs.close(&request.run_id) {
+            let _ = events.send(PlatformBound::AgentTurnEvent(event)).await;
+        }
+        Ok(PlatformBound::AgentTurnAccepted(AgentTurnAccepted {
+            run_id: request.run_id.clone(),
+            next_seq: 0,
+        }))
+    }
+
+    /// A human's verdict on one tool call.
+    async fn agent_approval_resolve(
+        &self,
+        request: &AgentApprovalResolve,
+        events: EventSender,
+    ) -> Result<PlatformBound, ProtocolError> {
+        let settled = self
+            .runs
+            .settle_approval(&request.run_id, &request.approval_id, request.verdict)
+            .ok_or_else(|| {
+                // Already settled — by the timer, by the run ending, or by a
+                // second tap. Not an error the phone can act on, but it must
+                // not read as success either.
+                ProtocolError::new(
+                    ErrorCode::UnknownApproval,
+                    "That request has already been answered.",
+                )
+                .with_detail(request.approval_id.clone())
+            })?;
+        let run_id = settled.run_id.clone();
+        let _ = events.send(PlatformBound::AgentTurnEvent(settled)).await;
+        Ok(PlatformBound::AgentTurnAccepted(AgentTurnAccepted {
+            run_id,
+            next_seq: 0,
+        }))
+    }
+
     async fn service_logs(
         &self,
         service: &str,
@@ -340,7 +554,7 @@ impl CommandSink for RouterDispatcher {
         &'a self,
         _request_id: &'a str,
         command: DeviceBound,
-        _events: EventSender,
+        events: EventSender,
     ) -> Answer<'a> {
         Box::pin(async move {
             let kind = command.kind();
@@ -365,6 +579,16 @@ impl CommandSink for RouterDispatcher {
                 DeviceBound::ServiceLogs(request) => {
                     self.service_logs(&request.service, request.limit).await
                 }
+                DeviceBound::AgentProviders(_) => self.agent_providers().await,
+                DeviceBound::AgentTurnStart(request) => {
+                    self.agent_turn_start(request, events.clone()).await
+                }
+                DeviceBound::AgentTurnCancel(request) => {
+                    self.agent_turn_cancel(request, events.clone()).await
+                }
+                DeviceBound::AgentApprovalResolve(request) => {
+                    self.agent_approval_resolve(request, events.clone()).await
+                }
                 // Unreachable: the gate above refuses anything with no row,
                 // and every row has an arm. Kept as a refusal rather than an
                 // `unreachable!` because a panic here would take the socket
@@ -380,6 +604,175 @@ impl CommandSink for RouterDispatcher {
                 Err(error) => PlatformBound::CommandError(CommandErrorResponse { error }),
             }
         })
+    }
+}
+
+/// Whether a provider may be *driven* from a phone, as opposed to merely
+/// listed.
+///
+/// Claude only, for now, and deliberately: the relay plan makes write-capable
+/// remote turns conditional on the provider's native adapter giving the same
+/// approval guarantees, and only one does. A provider that cannot promise every
+/// mutating call reaches a human is one that must not be handed a prompt from a
+/// pocket. Listing the others with `remote_writes: false` is better than hiding
+/// them — a missing provider reads as a bug, a labelled one reads as a decision.
+fn remote_writes_allowed(provider_id: &str) -> bool {
+    provider_id == "claude"
+}
+
+/// Read one turn's stream to its end, numbering everything on the way out.
+///
+/// Runs as its own task because the command that started it was answered long
+/// ago. It owns the run from here: every path out of this function ends the run,
+/// so a stream that dies mid-turn denies its approvals rather than leaving them
+/// parked forever.
+#[allow(clippy::too_many_arguments)]
+async fn pump(
+    response: axum::response::Response,
+    run_id: String,
+    runs: AgentRuns,
+    sessions: Arc<Mutex<HashMap<String, String>>>,
+    events: EventSender,
+    router: axum::Router,
+    credential: String,
+) {
+    let mut stream = response.into_body().into_data_stream();
+    let mut buffer = String::new();
+
+    while let Some(chunk) = stream.next().await {
+        let Ok(chunk) = chunk else { break };
+        buffer.push_str(&String::from_utf8_lossy(&chunk));
+        // SSE frames end with a blank line; anything after the last one is a
+        // partial frame and waits for more bytes.
+        while let Some(split) = buffer.find("\n\n") {
+            let frame: String = buffer.drain(..split + 2).collect();
+            let Some(data) = frame.lines().find_map(|line| line.strip_prefix("data: ")) else {
+                continue;
+            };
+            let Ok(event) = serde_json::from_str::<AgentStreamEvent>(data) else {
+                continue;
+            };
+            if !handle_stream_event(
+                event,
+                &run_id,
+                &runs,
+                &sessions,
+                &events,
+                &router,
+                &credential,
+            )
+            .await
+            {
+                return;
+            }
+        }
+    }
+
+    // The stream ended without saying so. Closing denies whatever is parked.
+    for event in runs.close(&run_id) {
+        let _ = events.send(PlatformBound::AgentTurnEvent(event)).await;
+    }
+}
+
+/// Handle one stream event. `false` means the run is over.
+async fn handle_stream_event(
+    event: AgentStreamEvent,
+    run_id: &str,
+    runs: &AgentRuns,
+    sessions: &Arc<Mutex<HashMap<String, String>>>,
+    events: &EventSender,
+    router: &axum::Router,
+    credential: &str,
+) -> bool {
+    match event {
+        // The provider's own session id. Not sent onward — it names something
+        // on this machine — but kept, because an approval is resolved against
+        // it and a resumed turn needs it.
+        AgentStreamEvent::Session { session_id } => {
+            sessions
+                .lock()
+                .expect("sessions")
+                .insert(run_id.to_string(), session_id);
+            true
+        }
+        AgentStreamEvent::ApprovalRequest {
+            request_id,
+            name,
+            input,
+        } => {
+            let expires_at = (chrono::Utc::now()
+                + chrono::Duration::from_std(limits::APPROVAL_EXPIRY).expect("in range"))
+            .to_rfc3339();
+            let workspace = std::env::current_dir()
+                .map(|path| path.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let Some((opened, wait)) = runs.open_approval(
+                run_id,
+                ApprovalRequestEvent {
+                    approval_id: request_id.clone(),
+                    provider: "claude".to_string(),
+                    tool_name: name,
+                    // The **full** input. A summary is what lets a hostile
+                    // prompt get a destructive call approved by looking boring.
+                    input,
+                    workspace,
+                    expires_at,
+                },
+            ) else {
+                return true;
+            };
+            let _ = events.send(PlatformBound::AgentTurnEvent(opened)).await;
+
+            // One task per approval, and exactly one POST per approval however
+            // the verdict was reached — a human, the timer, the run ending, or
+            // the daemon stopping all arrive here.
+            let session_id = sessions
+                .lock()
+                .expect("sessions")
+                .get(run_id)
+                .cloned()
+                .unwrap_or_default();
+            let router = router.clone();
+            let credential = credential.to_string();
+            tokio::spawn(async move {
+                let verdict = wait.await.unwrap_or(ApprovalVerdict::Deny);
+                let decision = match verdict {
+                    ApprovalVerdict::Allow => "allow",
+                    ApprovalVerdict::Deny => "deny",
+                };
+                let body = serde_json::json!({
+                    "sessionId": session_id,
+                    "requestId": request_id,
+                    "decision": decision,
+                });
+                let Ok(request) = Request::builder()
+                    .method(Method::POST)
+                    .uri("/api/agent/chat/approve")
+                    .header("authorization", format!("Bearer {credential}"))
+                    .header("content-type", "application/json")
+                    .body(Body::from(body.to_string()))
+                else {
+                    return;
+                };
+                let _ = router.oneshot(request).await;
+            });
+            true
+        }
+        other => {
+            let Some(body) = agent_runs::from_stream_event(&other) else {
+                return true;
+            };
+            let terminal = body.terminal();
+            if let Some(numbered) = runs.emit(run_id, body) {
+                let _ = events.send(PlatformBound::AgentTurnEvent(numbered)).await;
+            }
+            if terminal {
+                // A finished run has nothing parked: `emit` marked it done, and
+                // `close` would only add a spurious `cancelled`.
+                return false;
+            }
+            true
+        }
     }
 }
 
@@ -966,6 +1359,8 @@ mod tests {
                 "the allowlist mentions {forbidden}: {rendered}"
             );
         }
-        assert_eq!(ALLOWLIST.len(), 5);
+        // Nine rows: five service, four agent. Pinned so growing the remote
+        // surface is a deliberate edit to a test rather than a quiet addition.
+        assert_eq!(ALLOWLIST.len(), 9);
     }
 }

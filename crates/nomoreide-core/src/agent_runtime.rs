@@ -210,7 +210,11 @@ pub fn build_agent_invocation(
 /// rather than incidental: `type` first, the variant in snake_case, and the
 /// fields in camelCase. `stopReason` is present even when null — the dashboard
 /// distinguishes "finished with no reason given" from "still going".
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+///
+/// `Deserialize` as well as `Serialize` because the relay reads this stream
+/// back: its dispatcher drives a turn through the daemon's own `/api/agent/chat`
+/// and parses what comes out, rather than reaching into the runtime behind it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AgentStreamEvent {
     #[serde(rename_all = "camelCase")]
