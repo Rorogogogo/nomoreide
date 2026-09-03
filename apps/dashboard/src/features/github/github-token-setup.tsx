@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { CheckCircle, GitFork, KeyRound, Loader } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { GitFork, KeyRound, Loader } from "lucide-react";
 import {
   pollGitHubDeviceFlow,
   setGitHubToken,
@@ -56,20 +56,12 @@ export function GitHubTokenSetup({
 
   // "choose" — primary screen
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-muted">
-          <GitFork className="size-6 text-muted-foreground" />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold">{t("github.setup.connectTitle")}</h2>
-          <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-            {t("github.setup.connectDesc")}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex w-full max-w-xs flex-col gap-2">
+    <SetupFrame
+      description={t("github.setup.connectDesc")}
+      icon={<GitFork aria-hidden="true" />}
+      title={t("github.setup.connectTitle")}
+    >
+      <div className="flex flex-col gap-2">
         {info ? <GitHubAccountSelector info={info} onChanged={onSaved} /> : null}
         {info && info.accounts.length > 0 ? (
           <div className="flex items-center gap-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -79,7 +71,7 @@ export function GitHubTokenSetup({
           </div>
         ) : null}
         <Button className="w-full" onClick={() => setMode("device-pending")} type="button">
-          <GitFork className="mr-2 size-4" />
+          <GitFork aria-hidden="true" className="mr-2 size-4" />
           {t("github.setup.authorizeWith")}
         </Button>
         <button
@@ -99,7 +91,7 @@ export function GitHubTokenSetup({
           </button>
         ) : null}
       </div>
-    </div>
+    </SetupFrame>
   );
 }
 
@@ -184,65 +176,59 @@ function DeviceFlowPending({
 
   if (starting) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Loader className="size-6 animate-spin text-muted-foreground" />
-          <p className="text-[13px] text-muted-foreground">{t("github.setup.requesting")}</p>
-        </div>
+      <div className="flex h-full items-center justify-center gap-2 bg-background p-4 text-[12px] text-muted-foreground">
+        <Loader aria-hidden="true" className="size-3.5 animate-spin motion-reduce:animate-none" />
+        {t("github.setup.requesting")}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
+      <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center gap-3 bg-background p-4">
         <Alert variant="destructive">{error}</Alert>
-        <Button onClick={onCancel} variant="outline">{t("github.setup.goBack")}</Button>
+        <Button className="self-start" onClick={onCancel} size="sm" variant="outline">
+          {t("github.setup.goBack")}
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-500/15">
-          <CheckCircle className="size-6 text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold">{t("github.setup.authorizeOnTitle")}</h2>
-          <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-            {t("github.setup.enterCodePre")}
-            <strong>{t("github.setup.authorizeWord")}</strong>
-            {t("github.setup.enterCodePost")}
-          </p>
-        </div>
-      </div>
-
-      {/* User code display */}
-      <div className="flex flex-col items-center gap-2">
-        <div
-          className="flex cursor-pointer select-all items-center gap-3 rounded-xl border-2 border-border bg-muted px-6 py-4 font-mono text-2xl font-bold tracking-[0.3em] transition-colors hover:border-ring"
-          onClick={copyCode}
-          title={t("github.setup.clickToCopy")}
-        >
+    <SetupFrame
+      description={
+        <>
+          {t("github.setup.enterCodePre")}
+          <strong className="font-medium text-foreground">
+            {t("github.setup.authorizeWord")}
+          </strong>
+          {t("github.setup.enterCodePost")}
+        </>
+      }
+      icon={<GitFork aria-hidden="true" />}
+      title={t("github.setup.authorizeOnTitle")}
+    >
+      <button
+        className="group flex w-full items-center justify-between gap-4 rounded-md border border-border bg-muted/20 px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={copyCode}
+        title={t("github.setup.clickToCopy")}
+        type="button"
+      >
+        <span className="select-all font-mono text-lg font-semibold tracking-[0.2em] text-foreground">
           {flow?.user_code}
-        </div>
-        <button
-          className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-          onClick={copyCode}
-          type="button"
-        >
+        </span>
+        <span className="shrink-0 text-[10px] text-muted-foreground group-hover:text-foreground">
           {copied ? t("common.copied") : t("github.setup.clickCodeCopy")}
-        </button>
-      </div>
+        </span>
+      </button>
 
-      <div className="flex flex-col items-center gap-2">
-        <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-          <Loader className="size-3.5 animate-spin" />
-          {t("github.setup.waiting")}
-        </div>
+      <div className="mt-3 flex items-center gap-2 border-b border-border/60 pb-3 text-[11px] text-muted-foreground">
+        <Loader aria-hidden="true" className="size-3 animate-spin motion-reduce:animate-none" />
+        {t("github.setup.waiting")}
+      </div>
+      <div className="mt-3 flex items-center gap-4">
         <a
-          className="text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          className="text-[11px] font-medium text-foreground underline-offset-2 hover:underline"
           href={flow?.verification_uri_complete || flow?.verification_uri}
           rel="noopener noreferrer"
           target="_blank"
@@ -250,14 +236,14 @@ function DeviceFlowPending({
           {t("github.setup.openAgain")}
         </a>
         <button
-          className="text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           onClick={onCancel}
           type="button"
         >
           {t("common.cancel")}
         </button>
       </div>
-    </div>
+    </SetupFrame>
   );
 }
 
@@ -290,33 +276,29 @@ function PATForm({
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-muted">
-          <KeyRound className="size-6 text-muted-foreground" />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold">{t("github.setup.patTitle")}</h2>
-          <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-            {t("github.setup.patDescPre")}
-            <a
-              className="underline underline-offset-2 hover:text-foreground"
-              href="https://github.com/settings/tokens/new?scopes=repo,workflow"
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              github.com/settings/tokens
-            </a>
-            {t("github.setup.patDescMid")}
-            <code className="rounded bg-muted px-1 py-px text-[11px]">repo</code>
-            {t("github.setup.patDescAnd")}
-            <code className="rounded bg-muted px-1 py-px text-[11px]">workflow</code>
-            {t("github.setup.patDescPost")}
-          </p>
-        </div>
-      </div>
-
-      <form className="flex w-full max-w-sm flex-col gap-3" onSubmit={(e) => void handleSubmit(e)}>
+    <SetupFrame
+      description={
+        <>
+          {t("github.setup.patDescPre")}
+          <a
+            className="underline underline-offset-2 hover:text-foreground"
+            href="https://github.com/settings/tokens/new?scopes=repo,workflow"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            github.com/settings/tokens
+          </a>
+          {t("github.setup.patDescMid")}
+          <code className="rounded bg-muted px-1 py-px text-[11px]">repo</code>
+          {t("github.setup.patDescAnd")}
+          <code className="rounded bg-muted px-1 py-px text-[11px]">workflow</code>
+          {t("github.setup.patDescPost")}
+        </>
+      }
+      icon={<KeyRound aria-hidden="true" />}
+      title={t("github.setup.patTitle")}
+    >
+      <form className="flex flex-col gap-3" onSubmit={(e) => void handleSubmit(e)}>
         <input
           autoComplete="off"
           className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-[13px] placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -332,7 +314,7 @@ function PATForm({
         </Button>
         {onBack ? (
           <button
-            className="text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="self-start text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
             onClick={onBack}
             type="button"
           >
@@ -340,6 +322,37 @@ function PATForm({
           </button>
         ) : null}
       </form>
+    </SetupFrame>
+  );
+}
+
+function SetupFrame({
+  children,
+  description,
+  icon,
+  title,
+}: {
+  children: ReactNode;
+  description: ReactNode;
+  icon: ReactNode;
+  title: string;
+}) {
+  return (
+    <div className="h-full min-h-0 overflow-auto bg-background">
+      <section className="mx-auto w-full max-w-lg px-4 py-8 sm:py-10">
+        <div className="flex items-start gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/20 text-muted-foreground [&_svg]:size-4">
+            {icon}
+          </div>
+          <div className="min-w-0 pt-0.5">
+            <h2 className="text-[14px] font-semibold tracking-tight">{title}</h2>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 border-t border-border pt-4">{children}</div>
+      </section>
     </div>
   );
 }

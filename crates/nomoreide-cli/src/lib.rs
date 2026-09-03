@@ -76,7 +76,11 @@ pub async fn run() -> ExitCode {
         // window it opened, handing it the socket and the one-shot token that
         // authorise the attachment. Named with a `__` prefix for that reason,
         // and absent from every usage string.
-        "__terminal-attach" => {
+        // The shared terminal launcher runs inside either this CLI daemon or
+        // the Tauri executable. Tauri historically used the flag spelling;
+        // accept both spellings here so the daemon's current executable can
+        // always attach the Terminal.app window it just opened.
+        command if is_terminal_attach_command(command) => {
             let socket = args.get(1).map(String::as_str).unwrap_or("");
             let token = args.get(2).map(String::as_str).unwrap_or("");
             match nomoreide_core::external_terminal::run_attach(socket, token) {
@@ -90,6 +94,10 @@ pub async fn run() -> ExitCode {
         _ => commands::run(&args, &paths, configured_port).await,
     };
     ExitCode::from(code)
+}
+
+fn is_terminal_attach_command(command: &str) -> bool {
+    matches!(command, "__terminal-attach" | "--terminal-attach")
 }
 
 /// `nomoreide daemon` with no subcommand: be the machine-global daemon.
@@ -147,5 +155,17 @@ async fn web(paths: &RuntimePaths, configured_port: u16) -> u8 {
             eprintln!("{error}");
             1
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_terminal_attach_command;
+
+    #[test]
+    fn terminal_attachment_accepts_the_shared_launchers_flag() {
+        assert!(is_terminal_attach_command("--terminal-attach"));
+        assert!(is_terminal_attach_command("__terminal-attach"));
+        assert!(!is_terminal_attach_command("terminal-attach"));
     }
 }

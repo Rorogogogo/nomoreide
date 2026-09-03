@@ -1,0 +1,1 @@
+[{"id": "logs", "tool": "nomoreide_deploy_logs", "arguments": {"deployment": "d"}}, {"id": "ndjson", "tool": "nomoreide_deploy_logs", "arguments": {"deployment": "nd"}}]

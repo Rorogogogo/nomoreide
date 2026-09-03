@@ -1,0 +1,1 @@
+[{"method": "GET", "path": "/accounts?per_page=50", "body": {"success": true, "errors": [], "messages": [], "result": [{"id": "acc_1", "name": "Acme Account"}]}}]

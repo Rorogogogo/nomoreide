@@ -70,18 +70,27 @@ To revoke everything for one account, drop the `AND id =` clause and use
 
 ## Single replica
 
-**The API must run as one replica while the relay is enabled.** Device sockets
-are held in the process that accepted them, so two replicas would each know half
-the devices and neither would know it — a phone would reach its machine only when
-its REST request happened to land on the right one.
+**Done: the hub was extracted on 2026-09-03.** It is the platform's `relay`
+binary, running as its own container beside the API. What follows is kept
+because the reasoning still governs the relay itself.
 
-This is logged at startup on every boot, and it is not enforced anywhere, because
-the thing that would enforce it is the thing that removes the need for it. When
-this stops being acceptable — more replicas, deploys disconnecting devices
-becoming intolerable, socket load hurting REST latency, regional routing — the
-relay plan's extraction triggers apply: the same `RelayHub` contract moves into
-its own process with Redis for ephemeral presence and routing, and Postgres stays
-the authority for ownership, credentials, revocation and audit.
+**The relay must run as one replica.** Device sockets are held in the process
+that accepted them, so two would each know half the devices and neither would
+know it — a phone would reach its machine only when its request happened to land
+on the right one.
+
+The API is now free of that, and free to restart: a deploy of the registry no
+longer disconnects anyone. What still pins the *API* to one replica is only the
+in-memory rate limiter, which is a counter rather than a connection.
+
+**A new state exists that did not before:** the relay can be *unreachable*,
+which is not a machine being offline, and the two are reported differently on
+purpose. `GET /health/relay` on the API says which. If every machine reads
+offline at once, check that before checking any machine.
+
+The original trigger list, for the day the *relay* itself must scale: presence
+and routing move to Redis, and Postgres stays the authority for ownership,
+credentials, revocation and audit.
 
 ---
 
@@ -146,5 +155,6 @@ keeps the decision with the code that has to honour it.
   release gate should include: revoke a device while a deliberately orphaned
   daemon is still running, and prove it cannot act.
 - **Rate limits die with the process.** They are in memory, so a deploy resets
-  them. An attacker who times a run to a deploy gains one window. Acceptable at
-  one replica; it moves to Redis with the hub.
+  them. An attacker who times a run to a deploy gains one window. Acceptable
+  while the API is one replica — and now the *only* thing keeping it that way,
+  the sockets having moved out. It moves to Redis when the API scales.

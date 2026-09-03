@@ -123,7 +123,6 @@ export function ProjectOverviewTable({
     <Surface>
       <OverviewHeader domain={domain} linked={summarized.length} total={projects.length} />
       <div className="w-full px-4 py-4">
-      {summarized.length > 0 ? (
         <div>
           <div
             className={cn(
@@ -155,7 +154,6 @@ export function ProjectOverviewTable({
             />
           ))}
         </div>
-      ) : null}
 
         {unsummarized.length > 0 ? (
           <EmptyGroup
@@ -254,7 +252,8 @@ function ProjectRow({
  * Projects with nothing to report, kept reachable but out of the way.
  *
  * They stay clickable because "not linked yet" is often exactly the project you
- * came to open — but as names on a line, not as rows of blanks.
+ * came to open. They still use the table grid: falling back to wrapping chips
+ * made GitHub's project column move when several API summaries were unavailable.
  */
 function EmptyGroup({
   domain,
@@ -270,22 +269,28 @@ function EmptyGroup({
   const t = useT();
 
   return (
-    <div className={cn(spaced && "mt-6")}>
+    <div className={cn(spaced && "mt-4")}>
       <p className="px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
         {t(DOMAIN_EMPTY_GROUP[domain])} · {projects.length}
       </p>
-      <div className="flex flex-wrap gap-x-1 gap-y-1 px-1 pt-2">
+      <div className="mt-1 border-t border-border/40">
         {projects.map((project) => (
           <button
-            className="max-w-full truncate rounded border border-transparent px-1.5 py-0.5 text-[11px] text-muted-foreground/70 transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className={cn(
+              "grid w-full items-center gap-x-4 border-b border-border/40 px-2 py-2 text-left text-[11px] text-muted-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              DOMAIN_TEMPLATES[domain],
+            )}
             key={project.name}
             onClick={() => onEnter(project.name)}
-            // The reason a project is here is worth having, but not worth a
-            // line of its own — it rides along as the row's tooltip.
             title={project.error ?? project.path}
             type="button"
           >
-            {project.name}
+            <span className="min-w-0 truncate text-[12px] font-medium text-foreground">
+              {project.name}
+            </span>
+            <span className="col-span-3 min-w-0 truncate text-[10px] text-muted-foreground/70">
+              {t(DOMAIN_EMPTY_GROUP[domain])}
+            </span>
           </button>
         ))}
       </div>
