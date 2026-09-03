@@ -1,7 +1,12 @@
-# Remote control protocol, v1
+# Remote control protocol
 
-**Status:** frozen. This is Phase 1 of
-`docs/plans/2026-08-20-remote-control-relay-after-rust.md`.
+**Status:** v1 frozen; v2 current. v1 is Phase 1 of
+`docs/plans/2026-08-20-remote-control-relay-after-rust.md`, and v2 added the
+terminal mirror described in
+`docs/plans/2026-09-02-remote-terminal-stream-v2.md`. v2 **added frames and
+removed none**, which is why `MINIMUM_SPEAKABLE_VERSION` is still 1: a v1 daemon
+is not broken, only smaller, and it simply never advertises the terminal
+capabilities.
 
 Two independently deployed programs speak this wire format: the daemon on a
 developer's machine, and the hosted platform's API in `../nomoreide-platform` —
@@ -92,15 +97,32 @@ anything that is not listed here.
 | `agent.turn.start` | **yes** | `agent.turns` |
 | `agent.turn.cancel` | **yes** | `agent.turns` |
 | `agent.approval.resolve` | **yes** | `agent.approvals` |
+| `terminal.sessions.request` | no | `terminal.sessions` |
+| `terminal.spawn.request` | **yes** | `terminal.spawn` |
+| `terminal.shell.request` | **yes** | `terminal.shell` |
+| `terminal.attach.request` | **yes** | `terminal.attach` |
+| `terminal.input` | **yes** | `terminal.attach` |
+| `terminal.resize` | **yes** | `terminal.attach` |
+| `terminal.detach` | **yes** | `terminal.attach` |
 
 No payload carries a command, argument, working directory, environment, port
-override, SSH host, process id or kill strategy.
+override, SSH host, process id or kill strategy. `terminal.spawn.request`
+carries a provider name and a prompt and **nothing else** — there is no field
+for a path or an argv, which is how there comes to be no way to name one.
 
-**Excluded, and refused by name:** raw terminal input or output, terminal
-creation, arbitrary shell, filesystem browsing or writes, git mutations,
+**Excluded, and refused by name:** filesystem browsing or writes, git mutations,
 database queries or write-unlock, service and config registration, environment
 and credential reads, provider and deployment mutations, daemon shutdown,
 port-holder killing, generic HTTP forwarding, and offline queued commands.
+
+**No longer excluded, and this is a real widening.** v1 refused raw terminal
+input and output, terminal creation and arbitrary shell by name. v2 offers all
+three, each behind its own capability so a machine can grant them separately —
+and `terminal.shell` is genuinely arbitrary command execution, gated by
+`NOMOREIDE_REMOTE_SHELL` on the machine and off the advertised set when that is
+off. While it is advertised, "remote control cannot run arbitrary commands" is
+false, and the pairing copy says so rather than keeping a promise the code
+stopped making.
 
 ## Events — daemon → platform
 
@@ -116,6 +138,13 @@ port-holder killing, generic HTTP forwarding, and offline queued commands.
 | `agent.providers.response` | required |
 | `agent.turn.accepted` | required |
 | `agent.turn.event` | absent |
+| `terminal.spawned` | required |
+| `terminal.sessions.response` | required |
+| `terminal.attach.accepted` | required |
+| `terminal.ack` | required |
+| `terminal.output` | absent |
+| `terminal.geometry` | absent |
+| `terminal.closed` | absent |
 | `command.error` | required |
 
 An answer that arrives with no correlation is one the relay would have to guess
@@ -132,6 +161,26 @@ last three are terminal.
 Ordering is never inferred from arrival. A reconnecting client resumes from the
 last `seq` it rendered; one whose `seq` is older than the replay buffer is told
 to take a fresh snapshot rather than handed a gap it cannot detect.
+
+### The terminal mirror
+
+A mirror is a stream, not an exchange: `terminal.output`, `terminal.geometry`
+and `terminal.closed` arrive on their own schedule long after the attach they
+belong to was answered, so they carry no `replyTo` and are keyed by the
+`streamId` the attach minted.
+
+Bytes are base64 in JSON rather than binary WebSocket frames. It costs 33% and
+buys one frame type, one parser and one validation story; PTY traffic is small
+and bursty enough that the overhead is irrelevant beside the invariant.
+
+**The viewer never sets the geometry.** A PTY has exactly one size and the
+person at the desk owns it — a phone that resized it would reflow a terminal
+somebody is working in. So `terminal.attach.request` states what the phone
+*can* draw, `terminal.attach.accepted` answers with what it *will* be drawing,
+and `terminal.geometry` says so again whenever the machine changes it. That last
+frame is not a nicety: a TUI positions with absolute column escapes, so a viewer
+still drawing into the grid it was told about at attach does not produce a
+ragged margin, it produces characters landing on top of each other.
 
 **Remote approval policy is fail-closed, and stated once:** `autoApprove` does
 not exist remotely; an approval unanswered for 120 s denies itself; a run or

@@ -29,8 +29,8 @@ use nomoreide_core::remote::protocol::device_bound::{
 use nomoreide_core::remote::protocol::errors::{ErrorCode, ProtocolError};
 use nomoreide_core::remote::protocol::limits;
 use nomoreide_core::remote::protocol::platform_bound::{
-    TerminalAck, TerminalAttachAccepted, TerminalCloseReason, TerminalClosed, TerminalOutput,
-    TerminalSessionsResponse, TerminalSpawned,
+    TerminalAck, TerminalAttachAccepted, TerminalCloseReason, TerminalClosed, TerminalGeometry,
+    TerminalOutput, TerminalSessionsResponse, TerminalSpawned,
 };
 use nomoreide_core::remote::protocol::snapshot::RemoteTerminalSession;
 use nomoreide_core::remote::protocol::PlatformBound;
@@ -86,18 +86,20 @@ impl Mirrors {
         // re-laying itself out to 40 columns under your hands is worse than a
         // phone that has to scroll. So the requested `cols`/`rows` are read as
         // what the phone *can* draw, and the answer tells it what it *will* be
-        // drawing instead.
-        let (cols, rows) = terminal
-            .session_size(&request.session_id)
-            .unwrap_or((80, 24));
-
-        let Some((replay, updates)) = terminal.mirror_output(&request.session_id) else {
+        // drawing instead — and `terminal.geometry` tells it again whenever the
+        // machine changes it, which is the half that was missing.
+        //
+        // The size comes out of the mirror rather than from a separate
+        // `session_size` call, so it is the geometry the replay was actually
+        // drawn at and the one the subscription is watching for changes to.
+        let Some(mirror) = terminal.mirror_output(&request.session_id) else {
             return Err(ProtocolError::new(
                 ErrorCode::CapabilityUnavailable,
                 "That terminal is no longer running.",
             )
             .with_detail(request.session_id.clone()));
         };
+        let (cols, rows) = mirror.size;
 
         let stream_id = format!("stream_{}", uuid::Uuid::new_v4());
         let (cancel, cancelled) = tokio::sync::oneshot::channel();
@@ -112,8 +114,7 @@ impl Mirrors {
 
         tokio::spawn(pump(
             stream_id.clone(),
-            replay,
-            updates,
+            mirror,
             cancelled,
             events,
             self.clone(),
@@ -275,12 +276,17 @@ pub(crate) fn sessions(terminal: &TerminalManager) -> PlatformBound {
 /// [`limits::TERMINAL_COALESCE_INTERVAL`] and sent as one.
 async fn pump(
     stream_id: String,
-    replay: Vec<u8>,
-    mut updates: tokio::sync::broadcast::Receiver<Arc<[u8]>>,
+    mirror: nomoreide_core::terminal::TerminalMirror,
     mut cancelled: tokio::sync::oneshot::Receiver<()>,
     events: EventSender,
     mirrors: Mirrors,
 ) {
+    let nomoreide_core::terminal::TerminalMirror {
+        replay,
+        mut output,
+        size: _,
+        mut resized,
+    } = mirror;
     let mut seq = 0u64;
     let mut pending: Vec<u8> = replay;
 
@@ -302,12 +308,34 @@ async fn pump(
 
         tokio::select! {
             _ = &mut cancelled => break TerminalCloseReason::Detached,
-            received = updates.recv() => match received {
+            // Ahead of the bytes, and that ordering is the point. Everything
+            // gathered so far was drawn at the old size and has just been
+            // flushed above; everything after this frame is drawn at the new
+            // one, because the child cannot begin repainting until it has seen
+            // a `SIGWINCH` that the `ioctl` here has already returned from.
+            changed = resized.changed() => match changed {
+                Ok(()) => {
+                    let (cols, rows) = *resized.borrow_and_update();
+                    let frame = PlatformBound::TerminalGeometry(TerminalGeometry {
+                        stream_id: stream_id.clone(),
+                        cols,
+                        rows,
+                    });
+                    if events.send(frame).await.is_err() {
+                        break TerminalCloseReason::Detached;
+                    }
+                }
+                // The sender lives in the session's gate, so losing it means
+                // the session is gone — the same news the output arm carries,
+                // reached from whichever arm the select happened to pick.
+                Err(_) => break TerminalCloseReason::Exited,
+            },
+            received = output.recv() => match received {
                 Ok(data) => {
                     pending.extend_from_slice(&data);
                     // Gather for a moment before waking the socket again.
                     tokio::time::sleep(limits::TERMINAL_COALESCE_INTERVAL).await;
-                    while let Ok(more) = updates.try_recv() {
+                    while let Ok(more) = output.try_recv() {
                         pending.extend_from_slice(&more);
                     }
                 }
@@ -328,4 +356,111 @@ async fn pump(
             reason,
         }))
         .await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A resize on the machine reaches the phone as its own frame.
+    ///
+    /// The failure this pins down is not a crash: the mirror kept streaming
+    /// perfectly, and the phone kept drawing every byte into the grid it was
+    /// told about once, at attach. A TUI positions with absolute column escapes
+    /// (`ESC[nG`), so a grid one size and a stream drawn for another do not
+    /// produce a ragged margin — they produce characters landing on top of each
+    /// other, which is what a permission prompt looked like on a phone whose
+    /// desk terminal had since been resized.
+    #[tokio::test]
+    async fn a_resize_on_the_machine_is_sent_to_the_mirror() {
+        let terminal = TerminalManager::new();
+        let session = spawn_agent(&terminal, "geometry-agent");
+        let (events, mut received) = tokio::sync::mpsc::channel(16);
+        let mirrors = Mirrors::default();
+
+        let accepted = mirrors
+            .attach(
+                &terminal,
+                &TerminalAttachRequest {
+                    session_id: session.clone(),
+                    // What the phone can draw, which the daemon does not honour
+                    // — a PTY has one size and the desk owns it.
+                    cols: 40,
+                    rows: 20,
+                },
+                events,
+            )
+            .expect("attach");
+        let PlatformBound::TerminalAttachAccepted(accepted) = accepted else {
+            panic!("attach must answer with the geometry it will be drawing");
+        };
+        assert_eq!((accepted.cols, accepted.rows), (80, 24));
+
+        terminal.resize(&session, 132, 43).expect("resize");
+
+        let geometry = wait_for_geometry(&mut received).await;
+        assert_eq!(geometry.stream_id, accepted.stream_id);
+        assert_eq!((geometry.cols, geometry.rows), (132, 43));
+
+        terminal.close_session(&session).unwrap();
+    }
+
+    /// Read frames until the geometry arrives, ignoring output.
+    ///
+    /// A live shell repaints on `SIGWINCH`, so the bytes it draws share the
+    /// stream with the news of the resize. Asserting on the *first* frame would
+    /// be asserting on a race; what the contract promises is that the geometry
+    /// arrives, and that it arrives before the repaint drawn for it.
+    async fn wait_for_geometry(
+        received: &mut tokio::sync::mpsc::Receiver<PlatformBound>,
+    ) -> TerminalGeometry {
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            let frame = tokio::time::timeout_at(deadline, received.recv())
+                .await
+                .expect("a geometry frame within five seconds")
+                .expect("the pump is still running");
+            match frame {
+                PlatformBound::TerminalGeometry(geometry) => return geometry,
+                // Anything drawn before the resize was drawn at the old size,
+                // which is exactly why the frame exists.
+                PlatformBound::TerminalOutput(_) => continue,
+                other => panic!("unexpected frame while waiting: {}", other.kind()),
+            }
+        }
+    }
+
+    fn spawn_agent(terminal: &TerminalManager, id: &str) -> String {
+        terminal
+            .create(
+                std::sync::Arc::new(SilentSink),
+                nomoreide_core::terminal::TerminalSpawnSpec {
+                    id: id.to_string(),
+                    service_name: None,
+                    cwd: std::env::temp_dir().to_string_lossy().into_owned(),
+                    shell: "/bin/sh".into(),
+                    args: vec!["-c".to_string(), "sleep 30".to_string()],
+                    env: Vec::new(),
+                    label: None,
+                    kind: Some("agent".to_string()),
+                    provider: Some("claude".to_string()),
+                },
+            )
+            .expect("spawn")
+            .id
+    }
+
+    /// This test is about the geometry frame, not about what a session emits,
+    /// so the session's own events go nowhere.
+    struct SilentSink;
+
+    impl nomoreide_core::event_sink::EventSink for SilentSink {
+        fn emit(
+            &self,
+            _event: &str,
+            _payload: serde_json::Value,
+        ) -> Result<(), nomoreide_core::event_sink::EventSinkError> {
+            Ok(())
+        }
+    }
 }

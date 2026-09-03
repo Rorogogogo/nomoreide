@@ -129,6 +129,14 @@ pub(super) struct OutputGate {
     /// the child actually wrote — a `read()` that splits a multi-byte
     /// character would otherwise deliver two replacement characters instead.
     pub(super) mirror: Option<tokio::sync::broadcast::Sender<std::sync::Arc<[u8]>>>,
+    /// The session's geometry, for mirrors, created on first subscribe.
+    ///
+    /// A `watch` rather than a `broadcast` because a viewer only ever needs the
+    /// size the session is *now* — a run of resizes as somebody drags a window
+    /// edge is one fact that keeps changing, and replaying every intermediate
+    /// value to a phone would be a burst of frames describing a shape the
+    /// terminal already left.
+    pub(super) size: Option<tokio::sync::watch::Sender<(u16, u16)>>,
     #[cfg(target_os = "macos")]
     pub(super) external: Option<ExternalOutputSink>,
     #[cfg(target_os = "macos")]
@@ -166,9 +174,22 @@ pub(super) struct PtySession {
     pub(super) attachment: Option<ExternalAttachment>,
 }
 
-/// A mirror's two halves: the scrollback to draw first, and the bytes that
-/// follow it.
-pub type TerminalMirror = (Vec<u8>, tokio::sync::broadcast::Receiver<Arc<[u8]>>);
+/// Everything a viewer needs to draw a session it does not own.
+///
+/// One value from one lock, which is what makes the parts consistent with each
+/// other: a replay taken separately from the subscription would miss the bytes
+/// written in between or repeat them, and a size read separately from either
+/// could describe a grid the replay was not drawn for.
+pub struct TerminalMirror {
+    /// The scrollback to draw before anything else.
+    pub replay: Vec<u8>,
+    /// The bytes that follow it.
+    pub output: tokio::sync::broadcast::Receiver<Arc<[u8]>>,
+    /// The geometry `replay` was drawn at.
+    pub size: (u16, u16),
+    /// Fires when the machine resizes the session under the viewer.
+    pub resized: tokio::sync::watch::Receiver<(u16, u16)>,
+}
 
 /// A session a phone may mirror, given whether shells are on this machine's
 /// terms.
@@ -868,20 +889,31 @@ impl TerminalManager {
     /// replay taken separately from the subscription would either miss the
     /// bytes written in between or repeat them.
     pub fn mirror_output(&self, id: &str) -> Option<TerminalMirror> {
-        let gate = {
-            let registry = self.registry.0.lock().unwrap();
-            registry
-                .sessions
-                .get(id)
-                .map(|session| session.gate.clone())
-        }?;
+        // The registry lock is held across the gate lock rather than dropped
+        // first, so a resize cannot land between reading the size and
+        // subscribing to changes of it — that window would leave a viewer
+        // holding a stale geometry with no notification coming to correct it.
+        // `resize` takes the two in this same order, so there is no cycle.
+        let registry = self.registry.0.lock().unwrap();
+        let session = registry.sessions.get(id)?;
+        let size = (session.metadata.cols, session.metadata.rows);
+        let gate = session.gate.clone();
         let mut gate = gate.lock().unwrap();
         gate.streaming = true;
         let sender = gate
             .mirror
             .get_or_insert_with(|| tokio::sync::broadcast::channel(MIRROR_BACKLOG).0);
-        let receiver = sender.subscribe();
-        Some((gate.replay.iter().copied().collect(), receiver))
+        let output = sender.subscribe();
+        let sizes = gate
+            .size
+            .get_or_insert_with(|| tokio::sync::watch::channel(size).0);
+        let resized = sizes.subscribe();
+        Some(TerminalMirror {
+            replay: gate.replay.iter().copied().collect(),
+            output,
+            size,
+            resized,
+        })
     }
 
     /// The size a session's PTY is actually running at.
@@ -997,6 +1029,17 @@ impl TerminalManager {
             .map_err(|error| error.to_string())?;
         session.metadata.cols = cols;
         session.metadata.rows = rows;
+        // Tell anyone mirroring this session, before the child has even seen
+        // its `SIGWINCH`. A viewer that only learns the size at attach draws
+        // every later repaint into the wrong grid, and a TUI positioning with
+        // absolute column escapes then lands text on top of other text.
+        //
+        // `send_replace` rather than `send`: with no mirror attached there is
+        // no receiver, and `send` would report that as an error while
+        // discarding the value the next attach should read.
+        if let Some(sizes) = session.gate.lock().unwrap().size.as_ref() {
+            sizes.send_replace((cols, rows));
+        }
         Ok(())
     }
 }
