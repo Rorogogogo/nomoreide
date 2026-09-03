@@ -64,6 +64,9 @@ pub enum PlatformBound {
     /// A coalesced chunk of what the terminal drew. **v2.**
     #[serde(rename = "terminal.output")]
     TerminalOutput(TerminalOutput),
+    /// The mirrored session was resized *on the machine*. **v2.**
+    #[serde(rename = "terminal.geometry")]
+    TerminalGeometry(TerminalGeometry),
     /// A terminal command was carried out and had nothing to report. **v2.**
     #[serde(rename = "terminal.ack")]
     TerminalAck(TerminalAck),
@@ -117,6 +120,32 @@ pub struct TerminalOutput {
     /// cannot see — the same contract the run-event stream uses.
     pub seq: u64,
     pub data: super::terminal_bytes::TerminalBytes,
+}
+
+/// The session changed size, and every byte after this frame is drawn for it.
+///
+/// **Why this has to be said rather than inferred.** A PTY has exactly one
+/// geometry, and the mirror does not own it — the person at the desk does, by
+/// resizing the dock the session is running in. A viewer told the size once at
+/// attach keeps drawing into the old grid forever, and because a TUI positions
+/// with absolute column escapes (`ESC[nG`), the result is not a slightly wrong
+/// margin but text landing on top of other text. That is what a permission
+/// prompt looks like when it goes wrong, and it is why this exists.
+///
+/// Sent *before* the repaint it explains, which costs nothing to arrange: the
+/// notification fires when the `ioctl` returns, and the child's redraw cannot
+/// begin until it has seen the `SIGWINCH` that follows. A viewer that resizes
+/// on this frame is therefore already the right shape when the bytes arrive.
+///
+/// A platform too old to know this name skips it and stays connected — an
+/// unknown event is refused, not fatal — so the phone simply keeps the
+/// behaviour it had before this frame existed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalGeometry {
+    pub stream_id: String,
+    pub cols: u16,
+    pub rows: u16,
 }
 
 /// Nothing to say beyond "done".
@@ -247,6 +276,7 @@ impl PlatformBound {
         "terminal.sessions.response",
         "terminal.attach.accepted",
         "terminal.output",
+        "terminal.geometry",
         "terminal.ack",
         "terminal.closed",
         "command.error",
@@ -268,6 +298,7 @@ impl PlatformBound {
             Self::TerminalSessions(_) => "terminal.sessions.response",
             Self::TerminalAttachAccepted(_) => "terminal.attach.accepted",
             Self::TerminalOutput(_) => "terminal.output",
+            Self::TerminalGeometry(_) => "terminal.geometry",
             Self::TerminalAck(_) => "terminal.ack",
             Self::TerminalClosed(_) => "terminal.closed",
             Self::CommandError(_) => "command.error",
@@ -290,6 +321,10 @@ impl PlatformBound {
             // arrive on their own schedule, long after the attach they belong
             // to was answered.
             | Self::TerminalOutput(_)
+            // The machine resizing is news, not an answer: nobody on the phone
+            // asked for it, and the request it would otherwise name was
+            // answered when the mirror opened.
+            | Self::TerminalGeometry(_)
             | Self::TerminalClosed(_) => false,
             Self::DeviceSnapshot(_)
             | Self::ServiceList(_)

@@ -1120,3 +1120,56 @@ fn pid_of(manager: &TerminalManager, id: &str) -> Option<u32> {
         .get(id)
         .and_then(|session| session.pid)
 }
+
+/// A mirror is told when the machine resizes the session under it.
+///
+/// The bug this pins down: a viewer was handed the geometry once, at attach,
+/// and never again. Resize the dock at your desk and the phone keeps drawing
+/// into the old grid — and because a TUI positions with absolute column
+/// escapes, the next repaint lands text on top of other text rather than merely
+/// wrapping oddly. So the size travels with the mirror, and changes to it are
+/// an event.
+#[cfg(unix)]
+#[test]
+fn a_resize_reaches_an_attached_mirror() {
+    let manager = TerminalManager::new();
+    spawn_test_session(&manager, "mirror-resize", "sleep 30");
+
+    let mut mirror = manager.mirror_output("mirror-resize").expect("a mirror");
+    assert_eq!(
+        mirror.size,
+        (80, 24),
+        "the geometry the replay was drawn at"
+    );
+    assert!(
+        !mirror.resized.has_changed().unwrap(),
+        "nothing has happened yet"
+    );
+
+    manager.resize("mirror-resize", 132, 43).unwrap();
+
+    assert!(mirror.resized.has_changed().unwrap(), "the mirror was told");
+    assert_eq!(*mirror.resized.borrow_and_update(), (132, 43));
+    assert_eq!(manager.session_size("mirror-resize"), Some((132, 43)));
+    manager.close_all().unwrap();
+}
+
+/// A resize with nobody watching still moves the size a later attach reports.
+///
+/// Worth its own case because the notification is created lazily: for a session
+/// nobody has mirrored there is no channel to send on, and an implementation
+/// that only updated the channel would leave the *next* viewer drawing into a
+/// grid the session left long ago.
+#[cfg(unix)]
+#[test]
+fn a_resize_with_no_mirror_is_still_what_the_next_one_is_told() {
+    let manager = TerminalManager::new();
+    spawn_test_session(&manager, "mirror-later", "sleep 30");
+
+    manager.resize("mirror-later", 100, 30).unwrap();
+
+    let mirror = manager.mirror_output("mirror-later").expect("a mirror");
+    assert_eq!(mirror.size, (100, 30));
+    assert_eq!(*mirror.resized.borrow(), (100, 30));
+    manager.close_all().unwrap();
+}
