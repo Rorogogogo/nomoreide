@@ -137,7 +137,16 @@ jobs:
           }
           tar -xzf "${{ steps.stage.outputs.name }}.tar.gz" -C "$RUNNER_TEMP"
           BIN="$RUNNER_TEMP/${{ steps.stage.outputs.name }}/bin/nomoreide"
-          "$BIN" setup | grep -q "nomoreide setup claude"
+          # Captured, not piped. `grep -q` exits on its first match and closes
+          # the pipe, and under `pipefail` a writer that has not finished takes
+          # the whole step down — which is how v0.7.0 failed to release. The
+          # binary no longer aborts on a closed pipe either, but a gate should
+          # not be testing that by accident.
+          setup_output="$("$BIN" setup)"
+          case "$setup_output" in
+            *"nomoreide setup claude"*) ;;
+            *) echo "setup did not mention the claude command" >&2; exit 1 ;;
+          esac
           test -f "$RUNNER_TEMP/${{ steps.stage.outputs.name }}/share/nomoreide/web/client/index.html"
 
       - uses: actions/upload-artifact@v4
@@ -182,7 +191,16 @@ jobs:
           # No Node, no npm, no Rust, no shell profile — the container has what
           # the base image ships and this binary.
           ! command -v node >/dev/null 2>&1 || { echo "node is present; this is not the test we meant"; exit 1; }
-          "$BIN" setup | grep -q "nomoreide setup claude"
+          # Captured, not piped. `grep -q` exits on its first match and closes
+          # the pipe, and under `pipefail` a writer that has not finished takes
+          # the whole step down — which is how v0.7.0 failed to release. The
+          # binary no longer aborts on a closed pipe either, but a gate should
+          # not be testing that by accident.
+          setup_output="$("$BIN" setup)"
+          case "$setup_output" in
+            *"nomoreide setup claude"*) ;;
+            *) echo "setup did not mention the claude command" >&2; exit 1 ;;
+          esac
           echo "ran on $(ldd --version 2>&1 | head -1)"
 
   publish:

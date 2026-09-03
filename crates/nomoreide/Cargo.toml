@@ -19,6 +19,10 @@ path = "src/main.rs"
 nomoreide-cli = { path = "../nomoreide-cli", version = "0.7.0" }
 tokio.workspace = true
 
+# For restoring the default SIGPIPE disposition — see `main`.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 # The integration tests drive the built binary through `CARGO_BIN_EXE_nomoreide`,
 # which cargo only defines for the crate that produces it — so they live here
 # rather than beside the library they exercise.
