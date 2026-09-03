@@ -1,22 +1,29 @@
 //! `nomoreide tui` — the interactive terminal service dashboard.
 //!
-//! A **daemon client**, not a supervisor: it starts and stops services through
-//! the machine-global daemon, so everything it launched is still running after
-//! it quits, and the status it shows is every session's services rather than
-//! its own. Quitting is therefore not a shutdown, which is why `q` says
-//! nothing about the services it leaves behind.
-//!
-//! [`render_screen`] is deliberately a pure function of a snapshot. Keeping
-//! layout separate from I/O makes the visual hierarchy and ANSI output easy to
-//! test without starting a daemon or taking terminal screenshots.
+//! A daemon client, not a supervisor: services keep running when this screen
+//! exits. Ratatui owns the viewport and only paints changed cells, while
+//! Crossterm owns terminal setup, input, resize events, and cleanup.
 
 use std::collections::HashMap;
+use std::io::{self, IsTerminal, Stdout};
+use std::time::Duration;
 
-use nomoreide_core::config::{Config, ServiceDef};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::execute;
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
+use nomoreide_core::config::{BundleDef, Config, ConfigStore, ServiceDef};
 use nomoreide_daemon_client::{
     protocol::{ServiceLogEntry, ServiceRuntimeState},
     DaemonClient, RuntimePaths, ServiceAction,
 };
+use ratatui::backend::CrosstermBackend;
+use ratatui::layout::{Constraint, Layout, Margin, Rect};
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState};
+use ratatui::{Frame, Terminal};
 
 use crate::commands::{CliError, CliResult};
 
@@ -27,297 +34,535 @@ pub enum Mode {
     Logs,
 }
 
-pub struct ScreenState<'a> {
-    pub mode: Mode,
-    pub selected_index: usize,
-    pub selected_service: Option<&'a str>,
-    pub config: &'a Config,
-    /// Service name to runtime state. A name the daemon has never run is
-    /// reported as `stopped` rather than left blank — the reference's `??`.
-    pub runtime: &'a HashMap<String, String>,
-    pub logs: &'a [ServiceLogEntry],
-    /// Number of lines between the viewport and the live end of the log.
-    pub log_offset: usize,
-    pub notice: Option<&'a str>,
-}
-
-struct RenderOptions<'a> {
+struct App {
     mode: Mode,
     selected_index: usize,
-    selected_service: &'a mut Option<String>,
+    selected_service: Option<String>,
     log_offset: usize,
-    notice: Option<&'a str>,
+    notice: Option<String>,
 }
 
-/// How many recent log lines are shown before the terminal viewport clips.
-const LOG_TAIL: usize = 20;
+struct Snapshot {
+    config: Config,
+    runtime: HashMap<String, String>,
+    logs: Vec<ServiceLogEntry>,
+    current_service: Option<String>,
+}
 
-const RESET: &str = "\x1b[0m";
-const BOLD: &str = "\x1b[1m";
-const DIM: &str = "\x1b[2m";
-const WHITE: &str = "\x1b[38;5;255m";
-const MUTED: &str = "\x1b[38;5;245m";
-const FAINT: &str = "\x1b[38;5;239m";
-const ACCENT: &str = "\x1b[38;5;141m";
-const CYAN: &str = "\x1b[38;5;81m";
-const GREEN: &str = "\x1b[38;5;84m";
-const YELLOW: &str = "\x1b[38;5;221m";
-const RED: &str = "\x1b[38;5;203m";
-const SELECTED_BG: &str = "\x1b[48;5;236m";
-const PANEL_WIDTH: usize = 92;
-const NAME_WIDTH: usize = 24;
-const STATUS_WIDTH: usize = 12;
-const PORT_WIDTH: usize = 8;
-const DESCRIPTION_WIDTH: usize = 36;
-const BUNDLE_MEMBERS_WIDTH: usize = 44;
-const LOG_TIMESTAMP_WIDTH: usize = 12;
-const LOG_MESSAGE_WIDTH: usize = 70;
+const LOG_PAGE: usize = 20;
+const ACCENT: Color = Color::Indexed(141);
+const CYAN: Color = Color::Indexed(81);
+const GREEN: Color = Color::Indexed(84);
+const YELLOW: Color = Color::Indexed(221);
+const RED: Color = Color::Indexed(203);
+const MUTED: Color = Color::Indexed(245);
+const FAINT: Color = Color::Indexed(239);
+const SELECTED_BG: Color = Color::Indexed(236);
 
-pub fn render_screen(state: &ScreenState) -> String {
-    let running = state
-        .runtime
-        .values()
-        .filter(|status| status.as_str() == "running")
-        .count();
-    let mut lines = vec![format!(
-        "{BOLD}{ACCENT}◆{RESET}  {BOLD}{WHITE}NoMoreIDE{RESET}  {DIM}{MUTED}SERVICE CONTROL{RESET}"
-    )];
-    lines.push(format!(
-        "   {}   {DIM}{MUTED}{} services  ·  {GREEN}{running} running{RESET}",
-        render_tabs(state.mode),
-        state.config.services.len()
-    ));
-    lines.push(String::new());
-
-    match state.mode {
-        Mode::Bundles => {
-            panel_top(&mut lines, "BUNDLES", "coordinated service groups");
-            let header = format!(
-                "{DIM}{MUTED}{}  {}  SERVICES{RESET}",
-                pad_end("BUNDLE", NAME_WIDTH),
-                pad_end("STATUS", STATUS_WIDTH),
-            );
-            panel_row(&mut lines, &header, false);
-            lines.push(format!("{FAINT}├{}┤{RESET}", "─".repeat(PANEL_WIDTH)));
-            for (index, bundle) in state.config.bundles.iter().enumerate() {
-                let members = if bundle.services.is_empty() {
-                    "No services".to_string()
-                } else {
-                    fit(&bundle.services.join("  ·  "), BUNDLE_MEMBERS_WIDTH)
-                };
-                let status = bundle_status(&bundle.services, state.runtime);
-                let (status_color, status_dot) = status_style(status);
-                let status_cell = format!("{status_color}{status_dot} {status}{RESET}");
-                let content = format!(
-                    "{}  {}{}  {DIM}{MUTED}{members}{RESET}",
-                    pad_end(&fit(&bundle.name, NAME_WIDTH), NAME_WIDTH),
-                    status_cell,
-                    " ".repeat(STATUS_WIDTH.saturating_sub(status.len() + 2)),
-                );
-                panel_row(&mut lines, &content, index == state.selected_index);
-            }
-            if state.config.bundles.is_empty() {
-                panel_empty(
-                    &mut lines,
-                    "No bundles configured",
-                    "Create one with `nomoreide add bundle`.",
-                );
-            }
-            panel_bottom(&mut lines);
-        }
-        Mode::Logs => {
-            let service = state.selected_service.unwrap_or("No service selected");
-            let effective_offset = state.log_offset.min(state.logs.len().saturating_sub(1));
-            let end = state.logs.len().saturating_sub(effective_offset);
-            let start = end.saturating_sub(LOG_TAIL);
-            let log_state = if effective_offset == 0 {
-                format!("{service}  ·  LIVE")
-            } else {
-                format!("{service}  ·  paused {effective_offset} lines from live")
-            };
-            panel_top(&mut lines, "LOGS", &log_state);
-            for entry in &state.logs[start..end] {
-                let (stream_color, stream_marker) = if entry.stream == "stderr" {
-                    (RED, "!")
-                } else {
-                    (CYAN, "·")
-                };
-                let content = format!(
-                    "{DIM}{MUTED}{}{RESET}  {stream_color}{stream_marker}{RESET}  {}",
-                    fit(compact_timestamp(&entry.timestamp), LOG_TIMESTAMP_WIDTH),
-                    fit(&entry.text, LOG_MESSAGE_WIDTH)
-                );
-                panel_row(&mut lines, &content, false);
-            }
-            if state.logs.is_empty() {
-                panel_empty(
-                    &mut lines,
-                    "Waiting for output",
-                    "Logs will appear here as the service writes them.",
-                );
-            }
-            panel_bottom(&mut lines);
-        }
-        Mode::Services => {
-            panel_top(&mut lines, "SERVICES", "runtime and local ports");
-            panel_header(&mut lines, "SERVICE", "STATUS", "PORT", "DESCRIPTION");
-            for (index, service) in state.config.services.iter().enumerate() {
-                let status = state
-                    .runtime
-                    .get(&service.name)
-                    .map(String::as_str)
-                    .unwrap_or("stopped");
-                let port = service
-                    .port
-                    .map_or_else(|| "—".to_string(), |port| format!(":{port}"));
-                let description = fit(
-                    service.description.as_deref().unwrap_or("—"),
-                    DESCRIPTION_WIDTH,
-                );
-                let (status_color, status_dot) = status_style(status);
-                let status_cell = format!("{status_color}{status_dot} {status}{RESET}");
-                let content = format!(
-                    "{}  {}{}  {CYAN}{}{RESET}  {DIM}{MUTED}{description}{RESET}",
-                    pad_end(&fit(&service.name, NAME_WIDTH), NAME_WIDTH),
-                    status_cell,
-                    " ".repeat(STATUS_WIDTH.saturating_sub(status.len() + 2)),
-                    pad_end(&fit(&port, PORT_WIDTH), PORT_WIDTH),
-                );
-                panel_row(&mut lines, &content, index == state.selected_index);
-            }
-            if state.config.services.is_empty() {
-                panel_empty(
-                    &mut lines,
-                    "No services configured",
-                    "Add one with `nomoreide add service`.",
-                );
-            }
-            panel_bottom(&mut lines);
-        }
+pub async fn run(paths: &RuntimePaths, port: u16) -> CliResult {
+    if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+        return Err(CliError::Failure(
+            "The TUI requires an interactive terminal.".to_string(),
+        ));
     }
 
-    if let Some(notice) = state.notice {
-        let color = if notice.starts_with("Could not") {
+    let store = ConfigStore::new(ConfigStore::default_path());
+    let client = connect(paths, port).await?;
+    let mut terminal = TerminalSession::enter().map_err(terminal_failure)?;
+    let mut events = event_reader();
+    let mut app = App {
+        mode: Mode::Services,
+        selected_index: 0,
+        selected_service: None,
+        log_offset: 0,
+        notice: None,
+    };
+
+    refresh(&mut terminal, &client, &store, &mut app).await?;
+    let mut ticker = tokio::time::interval(Duration::from_secs(1));
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    ticker.tick().await;
+
+    loop {
+        let input = tokio::select! {
+            input = events.recv() => match input {
+                Some(input) => Some(input),
+                None => break,
+            },
+            _ = ticker.tick() => None,
+        };
+
+        match input {
+            None | Some(Input::Resize) => {}
+            Some(Input::Key(key)) => {
+                if is_quit(key) {
+                    break;
+                }
+                handle_key(&client, &store, &terminal, &mut app, key).await?;
+            }
+        }
+        refresh(&mut terminal, &client, &store, &mut app).await?;
+    }
+    Ok(())
+}
+
+async fn handle_key(
+    client: &DaemonClient,
+    store: &ConfigStore,
+    terminal: &TerminalSession,
+    app: &mut App,
+    key: KeyEvent,
+) -> CliResult {
+    let config = store.load().await?;
+    let service = config.services.get(app.selected_index).cloned();
+    let bundle = config.bundles.get(app.selected_index).cloned();
+    let page = terminal.list_page_size();
+
+    match key.code {
+        KeyCode::Up if app.mode == Mode::Logs => app.log_offset = app.log_offset.saturating_add(1),
+        KeyCode::Up => app.selected_index = app.selected_index.saturating_sub(1),
+        KeyCode::Down if app.mode == Mode::Logs => {
+            app.log_offset = app.log_offset.saturating_sub(1)
+        }
+        KeyCode::Down => {
+            let count = selected_count(app.mode, &config);
+            app.selected_index = app
+                .selected_index
+                .saturating_add(1)
+                .min(count.saturating_sub(1));
+        }
+        KeyCode::PageUp if app.mode == Mode::Logs => {
+            app.log_offset = app.log_offset.saturating_add(LOG_PAGE)
+        }
+        KeyCode::PageDown if app.mode == Mode::Logs => {
+            app.log_offset = app.log_offset.saturating_sub(LOG_PAGE)
+        }
+        KeyCode::PageUp => app.selected_index = app.selected_index.saturating_sub(page),
+        KeyCode::PageDown => {
+            let count = selected_count(app.mode, &config);
+            app.selected_index = app
+                .selected_index
+                .saturating_add(page)
+                .min(count.saturating_sub(1));
+        }
+        KeyCode::End if app.mode == Mode::Logs => app.log_offset = 0,
+        KeyCode::Esc => {
+            app.mode = Mode::Services;
+            app.selected_index = 0;
+            app.log_offset = 0;
+        }
+        KeyCode::Char('b' | 'B') => {
+            app.mode = if app.mode == Mode::Bundles {
+                Mode::Services
+            } else {
+                Mode::Bundles
+            };
+            app.selected_index = 0;
+            app.log_offset = 0;
+        }
+        KeyCode::Char('l' | 'L') => {
+            if let Some(service) = &service {
+                app.mode = Mode::Logs;
+                app.selected_service = Some(service.name.clone());
+                app.log_offset = 0;
+            }
+        }
+        KeyCode::Char('s' | 'S') if app.mode != Mode::Logs => {
+            let target = selected_target(app.mode, &service, &bundle);
+            let result = act(client, app.mode, &service, &bundle, ServiceAction::Start).await;
+            app.notice = Some(action_notice(result, "Start", target));
+        }
+        KeyCode::Char('x' | 'X') if app.mode != Mode::Logs => {
+            let target = selected_target(app.mode, &service, &bundle);
+            let result = act(client, app.mode, &service, &bundle, ServiceAction::Stop).await;
+            app.notice = Some(action_notice(result, "Stop", target));
+        }
+        KeyCode::Char('r' | 'R') if app.mode == Mode::Services => {
+            if let Some(service) = &service {
+                let result = client
+                    .service_action_value(&service.name, ServiceAction::Restart)
+                    .await
+                    .map(|_| ())
+                    .map_err(daemon_failure);
+                app.notice = Some(action_notice(result, "Restart", Some(&service.name)));
+            } else {
+                app.notice = Some("No service selected".to_string());
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn selected_count(mode: Mode, config: &Config) -> usize {
+    if mode == Mode::Bundles {
+        config.bundles.len()
+    } else {
+        config.services.len()
+    }
+}
+
+fn is_quit(key: KeyEvent) -> bool {
+    key.code == KeyCode::Char('q')
+        || key.code == KeyCode::Char('Q')
+        || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL))
+}
+
+async fn refresh(
+    terminal: &mut TerminalSession,
+    client: &DaemonClient,
+    store: &ConfigStore,
+    app: &mut App,
+) -> CliResult {
+    let snapshot = snapshot(client, store, app).await?;
+    app.selected_index = app
+        .selected_index
+        .min(selected_count(app.mode, &snapshot.config).saturating_sub(1));
+    terminal
+        .draw(|frame| render_ui(frame, app, &snapshot))
+        .map_err(terminal_failure)?;
+    Ok(())
+}
+
+async fn snapshot(
+    client: &DaemonClient,
+    store: &ConfigStore,
+    app: &App,
+) -> Result<Snapshot, CliError> {
+    let config = store.load().await?;
+    let current_service = app.selected_service.clone().or_else(|| {
+        config
+            .services
+            .get(app.selected_index)
+            .map(|service| service.name.clone())
+    });
+    let statuses = client.status().await.map_err(daemon_failure)?;
+    let runtime = statuses
+        .into_iter()
+        .map(|status| (status.name, state_label(status.state).to_string()))
+        .collect();
+    let logs = match (app.mode, &current_service) {
+        (Mode::Logs, Some(name)) => client.logs(name, 200).await.map_err(daemon_failure)?,
+        _ => Vec::new(),
+    };
+    Ok(Snapshot {
+        config,
+        runtime,
+        logs,
+        current_service,
+    })
+}
+
+fn render_ui(frame: &mut Frame, app: &App, snapshot: &Snapshot) {
+    let notice_height = u16::from(app.notice.is_some()) * 2;
+    let [header, body, notice, footer] = Layout::vertical([
+        Constraint::Length(3),
+        Constraint::Min(1),
+        Constraint::Length(notice_height),
+        Constraint::Length(2),
+    ])
+    .areas(frame.area());
+
+    render_header(frame, header, app.mode, snapshot);
+    match app.mode {
+        Mode::Services => render_services(frame, body, app, snapshot),
+        Mode::Bundles => render_bundles(frame, body, app, snapshot),
+        Mode::Logs => render_logs(frame, body, app, snapshot),
+    }
+    if let Some(message) = &app.notice {
+        let color = if message.starts_with("Could not") {
             RED
         } else {
             ACCENT
         };
-        lines.push(String::new());
-        lines.push(format!(
-            "   {color}◆{RESET}  {WHITE}{}{RESET}",
-            fit(notice, 84)
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled("  ◆  ", Style::default().fg(color)),
+                Span::styled(message, Style::default().fg(Color::White)),
+            ])),
+            notice,
+        );
+    }
+    frame.render_widget(Paragraph::new(footer_lines(app.mode)), footer);
+}
+
+fn render_header(frame: &mut Frame, area: Rect, mode: Mode, snapshot: &Snapshot) {
+    let running = snapshot
+        .runtime
+        .values()
+        .filter(|status| status.as_str() == "running")
+        .count();
+    let title = Line::from(vec![
+        Span::styled(
+            "◆",
+            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("  "),
+        Span::styled(
+            "NoMoreIDE",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("  SERVICE CONTROL", Style::default().fg(MUTED)),
+    ]);
+    let summary = Line::from(vec![
+        Span::raw("   "),
+        tab("SERVICES", mode == Mode::Services),
+        Span::raw(" "),
+        tab("BUNDLES", mode == Mode::Bundles),
+        Span::raw(" "),
+        tab("LOGS", mode == Mode::Logs),
+        Span::styled(
+            format!("   {} services  ·  ", snapshot.config.services.len()),
+            Style::default().fg(MUTED),
+        ),
+        Span::styled(format!("{running} running"), Style::default().fg(GREEN)),
+    ]);
+    frame.render_widget(Paragraph::new(vec![title, summary]), area);
+}
+
+fn tab(label: &'static str, selected: bool) -> Span<'static> {
+    if selected {
+        Span::styled(
+            format!("[ {label} ]"),
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )
+    } else {
+        Span::styled(format!("  {label}  "), Style::default().fg(MUTED))
+    }
+}
+
+fn render_services(frame: &mut Frame, area: Rect, app: &App, snapshot: &Snapshot) {
+    let rows = snapshot.config.services.iter().map(|service| {
+        let status = snapshot
+            .runtime
+            .get(&service.name)
+            .map(String::as_str)
+            .unwrap_or("stopped");
+        let (color, marker) = status_style(status);
+        Row::new(vec![
+            Cell::from(service.name.clone()),
+            Cell::from(Line::from(vec![
+                Span::styled(marker, Style::default().fg(color)),
+                Span::raw(format!(" {status}")),
+            ])),
+            Cell::from(
+                service
+                    .port
+                    .map_or_else(|| "—".to_string(), |port| format!(":{port}")),
+            ),
+            Cell::from(
+                service
+                    .description
+                    .clone()
+                    .unwrap_or_else(|| "—".to_string()),
+            ),
+        ])
+    });
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Length(24),
+            Constraint::Length(12),
+            Constraint::Length(8),
+            Constraint::Min(12),
+        ],
+    )
+    .header(table_header(["SERVICE", "STATUS", "PORT", "DESCRIPTION"]))
+    .block(panel("SERVICES", "runtime and local ports"))
+    .row_highlight_style(Style::default().bg(SELECTED_BG))
+    .highlight_symbol("› ");
+    let mut state = TableState::default()
+        .with_selected((!snapshot.config.services.is_empty()).then_some(app.selected_index));
+    frame.render_stateful_widget(table, area, &mut state);
+
+    if snapshot.config.services.is_empty() {
+        render_empty(
+            frame,
+            area,
+            "No services configured",
+            "Add one with `nomoreide add service`.",
+        );
+    }
+}
+
+fn render_bundles(frame: &mut Frame, area: Rect, app: &App, snapshot: &Snapshot) {
+    let rows = snapshot.config.bundles.iter().map(|bundle| {
+        let status = bundle_status(&bundle.services, &snapshot.runtime);
+        let (color, marker) = status_style(status);
+        let members = if bundle.services.is_empty() {
+            "No services".to_string()
+        } else {
+            bundle.services.join("  ·  ")
+        };
+        Row::new(vec![
+            Cell::from(bundle.name.clone()),
+            Cell::from(Line::from(vec![
+                Span::styled(marker, Style::default().fg(color)),
+                Span::raw(format!(" {status}")),
+            ])),
+            Cell::from(members).style(Style::default().fg(MUTED)),
+        ])
+    });
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Length(24),
+            Constraint::Length(12),
+            Constraint::Min(12),
+        ],
+    )
+    .header(table_header(["BUNDLE", "STATUS", "SERVICES"]))
+    .block(panel("BUNDLES", "coordinated service groups"))
+    .row_highlight_style(Style::default().bg(SELECTED_BG))
+    .highlight_symbol("› ");
+    let mut state = TableState::default()
+        .with_selected((!snapshot.config.bundles.is_empty()).then_some(app.selected_index));
+    frame.render_stateful_widget(table, area, &mut state);
+
+    if snapshot.config.bundles.is_empty() {
+        render_empty(
+            frame,
+            area,
+            "No bundles configured",
+            "Create one with `nomoreide add bundle`.",
+        );
+    }
+}
+
+fn render_logs(frame: &mut Frame, area: Rect, app: &App, snapshot: &Snapshot) {
+    let service = snapshot
+        .current_service
+        .as_deref()
+        .unwrap_or("No service selected");
+    let effective_offset = app.log_offset.min(snapshot.logs.len().saturating_sub(1));
+    let end = snapshot.logs.len().saturating_sub(effective_offset);
+    let capacity = usize::from(area.height.saturating_sub(2)).max(1);
+    let start = end.saturating_sub(capacity);
+    let state = if effective_offset == 0 {
+        format!("{service}  ·  LIVE")
+    } else {
+        format!("{service}  ·  paused {effective_offset} lines from live")
+    };
+    let lines = snapshot.logs[start..end].iter().map(|entry| {
+        let (color, marker) = if entry.stream == "stderr" {
+            (RED, "!")
+        } else {
+            (CYAN, "·")
+        };
+        Line::from(vec![
+            Span::styled(
+                format!("{:<12}", compact_timestamp(&entry.timestamp)),
+                Style::default().fg(MUTED),
+            ),
+            Span::styled(format!("  {marker}  "), Style::default().fg(color)),
+            Span::raw(sanitize(&entry.text)),
+        ])
+    });
+    frame.render_widget(
+        Paragraph::new(lines.collect::<Vec<_>>()).block(panel("LOGS", &state)),
+        area,
+    );
+    if snapshot.logs.is_empty() {
+        render_empty(
+            frame,
+            area,
+            "Waiting for output",
+            "Logs will appear here as the service writes them.",
+        );
+    }
+}
+
+fn panel<'a>(title: &'a str, detail: &'a str) -> Block<'a> {
+    Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(FAINT))
+        .title(Line::from(vec![
+            Span::styled(
+                format!(" {title} "),
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(format!(" {detail} "), Style::default().fg(MUTED)),
+        ]))
+}
+
+fn table_header<const N: usize>(labels: [&'static str; N]) -> Row<'static> {
+    Row::new(labels.map(Cell::from)).style(Style::default().fg(MUTED))
+}
+
+fn render_empty(frame: &mut Frame, area: Rect, title: &str, hint: &str) {
+    let inner = area.inner(Margin {
+        vertical: 2,
+        horizontal: 3,
+    });
+    frame.render_widget(
+        Paragraph::new(vec![
+            Line::styled(
+                title.to_string(),
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Line::styled(hint.to_string(), Style::default().fg(MUTED)),
+        ]),
+        inner,
+    );
+}
+
+fn footer_lines(mode: Mode) -> Vec<Line<'static>> {
+    match mode {
+        Mode::Services => vec![
+            hint_line(&[
+                ("↑↓/Pg", "Navigate"),
+                ("S", "Start"),
+                ("X", "Stop"),
+                ("R", "Restart"),
+            ]),
+            hint_line(&[("L", "Logs"), ("B", "Bundles"), ("Q", "Quit")]),
+        ],
+        Mode::Bundles => vec![hint_line(&[
+            ("↑↓/Pg", "Navigate"),
+            ("S", "Start all"),
+            ("X", "Stop all"),
+            ("Esc", "Services"),
+            ("Q", "Quit"),
+        ])],
+        Mode::Logs => vec![hint_line(&[
+            ("↑↓", "Scroll"),
+            ("PgUp/PgDn", "Page"),
+            ("End", "Live"),
+            ("Esc", "Services"),
+            ("Q", "Quit"),
+        ])],
+    }
+}
+
+fn hint_line(hints: &[(&str, &str)]) -> Line<'static> {
+    let mut spans = vec![Span::raw("  ")];
+    for (index, (key, action)) in hints.iter().enumerate() {
+        if index > 0 {
+            spans.push(Span::styled("  ·  ", Style::default().fg(FAINT)));
+        }
+        spans.push(Span::styled(
+            (*key).to_string(),
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ));
+        spans.push(Span::styled(
+            format!(" {action}"),
+            Style::default().fg(MUTED),
         ));
     }
-    lines.push(String::new());
-    lines.push(render_footer(state.mode));
-
-    // `cfmakeraw` disables output post-processing on the terminal. A bare LF
-    // therefore moves down without returning to column zero, making every row
-    // drift right and eventually wrap. Always emit CRLF while raw mode is on.
-    format!("{}\r\n", lines.join("\r\n"))
+    Line::from(spans)
 }
 
-fn render_tabs(mode: Mode) -> String {
-    [
-        (Mode::Services, "SERVICES"),
-        (Mode::Bundles, "BUNDLES"),
-        (Mode::Logs, "LOGS"),
-    ]
-    .into_iter()
-    .map(|(tab, label)| {
-        if tab == mode {
-            format!("{BOLD}{WHITE}[ {label} ]{RESET}")
-        } else {
-            format!("{DIM}{MUTED}  {label}  {RESET}")
-        }
-    })
-    .collect::<Vec<_>>()
-    .join(" ")
-}
-
-fn panel_top(lines: &mut Vec<String>, title: &str, detail: &str) {
-    let label = format!(" {title} ");
-    let detail = format!(" {} ", fit(detail, 48));
-    let fill = PANEL_WIDTH.saturating_sub(label.chars().count() + detail.chars().count() + 1);
-    lines.push(format!(
-        "{FAINT}╭─{RESET}{BOLD}{WHITE}{label}{RESET}{FAINT}{}{RESET}{DIM}{MUTED}{detail}{RESET}{FAINT}╮{RESET}",
-        "─".repeat(fill)
-    ));
-}
-
-fn panel_header(
-    lines: &mut Vec<String>,
-    service: &str,
-    status: &str,
-    port: &str,
-    description: &str,
-) {
-    let content = format!(
-        "{DIM}{MUTED}{}  {}  {}  {description}{RESET}",
-        pad_end(service, NAME_WIDTH),
-        pad_end(status, STATUS_WIDTH),
-        pad_end(port, PORT_WIDTH),
-    );
-    panel_row(lines, &content, false);
-    lines.push(format!("{FAINT}├{}┤{RESET}", "─".repeat(PANEL_WIDTH)));
-}
-
-fn panel_row(lines: &mut Vec<String>, content: &str, selected: bool) {
-    let marker = if selected {
-        format!("{ACCENT}›{RESET}{SELECTED_BG}")
-    } else {
-        " ".to_string()
-    };
-    let background = if selected { SELECTED_BG } else { "" };
-    let content = if selected {
-        content.replace(RESET, &format!("{RESET}{SELECTED_BG}"))
-    } else {
-        content.to_string()
-    };
-    let padding = " ".repeat(PANEL_WIDTH.saturating_sub(visible_width(&content) + 4));
-    lines.push(format!(
-        "{FAINT}│{RESET}{background} {marker} {content}{padding} {RESET}{FAINT}│{RESET}"
-    ));
-}
-
-fn panel_empty(lines: &mut Vec<String>, title: &str, hint: &str) {
-    panel_row(lines, "", false);
-    panel_row(lines, &format!("{BOLD}{WHITE}{title}{RESET}"), false);
-    panel_row(lines, &format!("{DIM}{MUTED}{hint}{RESET}"), false);
-    panel_row(lines, "", false);
-}
-
-fn panel_bottom(lines: &mut Vec<String>) {
-    lines.push(format!("{FAINT}╰{}╯{RESET}", "─".repeat(PANEL_WIDTH)));
-}
-
-fn render_footer(mode: Mode) -> String {
-    let mut hints = if mode == Mode::Logs {
-        vec![("↑↓", "Scroll"), ("PgUp/PgDn", "Page"), ("End", "Live")]
-    } else {
-        vec![("↑↓", "Navigate")]
-    };
-    if mode == Mode::Services {
-        hints.extend([("S", "Start"), ("X", "Stop")]);
-    } else if mode == Mode::Bundles {
-        hints.extend([("S", "Start all"), ("X", "Stop all")]);
-    }
-    if mode == Mode::Services {
-        hints.extend([("R", "Restart"), ("L", "Logs"), ("B", "Bundles")]);
-    } else {
-        hints.push(("Esc", "Services"));
-    }
-    hints.push(("Q", "Quit"));
-
-    let rendered = hints
-        .into_iter()
-        .map(|(key, action)| format!("{BOLD}{WHITE}{key}{RESET} {DIM}{MUTED}{action}{RESET}"))
-        .collect::<Vec<_>>()
-        .join(&format!("  {FAINT}·{RESET}  "));
-    format!("   {rendered}")
-}
-
-fn status_style(status: &str) -> (&'static str, &'static str) {
+fn status_style(status: &str) -> (Color, &'static str) {
     match status {
         "running" => (GREEN, "●"),
         "starting" | "stopping" | "partial" => (YELLOW, "◐"),
@@ -330,7 +575,6 @@ fn bundle_status(services: &[String], runtime: &HashMap<String, String>) -> &'st
     if services.is_empty() {
         return "empty";
     }
-
     let running = services
         .iter()
         .filter(|service| runtime.get(*service).map(String::as_str) == Some("running"))
@@ -359,290 +603,21 @@ fn compact_timestamp(timestamp: &str) -> &str {
         .unwrap_or(timestamp)
 }
 
-fn visible_width(value: &str) -> usize {
-    let mut in_escape = false;
+fn sanitize(value: &str) -> String {
     value
-        .chars()
-        .filter(|character| {
-            if *character == '\x1b' {
-                in_escape = true;
-                return false;
-            }
-            if in_escape {
-                if *character == 'm' {
-                    in_escape = false;
-                }
-                return false;
-            }
-            true
-        })
-        .count()
-}
-
-fn fit(value: &str, width: usize) -> String {
-    let value = value
         .chars()
         .filter_map(|character| match character {
             '\r' | '\n' | '\t' => Some(' '),
             character if character.is_control() => None,
             character => Some(character),
         })
-        .collect::<String>();
-    if width == 0 {
-        return String::new();
-    }
-    if value.chars().count() <= width {
-        return value;
-    }
-    let mut fitted = value
-        .chars()
-        .take(width.saturating_sub(1))
-        .collect::<String>();
-    fitted.push('…');
-    fitted
-}
-
-/// `String.prototype.padEnd`, which counts **UTF-16 code units** and never
-/// truncates. `{:<width$}` would count `char`s, so a name holding an emoji
-/// would line up differently under the two runtimes.
-fn pad_end(value: &str, width: usize) -> String {
-    let units = value.chars().map(char::len_utf16).sum::<usize>();
-    if units >= width {
-        return value.to_string();
-    }
-    format!("{value}{}", " ".repeat(width - units))
-}
-
-/// One keystroke, named the way Node's `readline` names it — those names are
-/// what the reference's key handling is written against.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Key {
-    Up,
-    Down,
-    PageUp,
-    PageDown,
-    End,
-    Escape,
-    Quit,
-    Char(char),
-    /// A key the screen does nothing with — an unnamed escape sequence such as
-    /// a left or right arrow. It still has to *arrive*, because the reference
-    /// redraws after every keypress whether or not it acted on it, and a
-    /// swallowed key means a frame the reference drew and this did not.
-    Other,
-}
-
-/// Decode one chunk of stdin into keystrokes.
-///
-/// A chunk rather than a byte at a time, because that is how the distinction
-/// between `escape` and an arrow key is actually made: a terminal sends
-/// `ESC [ A` in one burst, so an `ESC` with nothing after it *in the same
-/// read* is the escape key. Node's readline uses the same lookahead.
-fn decode(chunk: &[u8]) -> Vec<Key> {
-    let mut keys = Vec::new();
-    let mut index = 0;
-    while index < chunk.len() {
-        match chunk[index] {
-            // Ctrl-C, which the reference treats exactly as `q`.
-            0x03 => {
-                keys.push(Key::Quit);
-                index += 1;
-            }
-            0x1b => {
-                let remaining = &chunk[index..];
-                if remaining.starts_with(b"\x1b[5~") {
-                    keys.push(Key::PageUp);
-                    index += 4;
-                } else if remaining.starts_with(b"\x1b[6~") {
-                    keys.push(Key::PageDown);
-                    index += 4;
-                } else if remaining.starts_with(b"\x1b[F") || remaining.starts_with(b"\x1b[4~") {
-                    keys.push(Key::End);
-                    index += if remaining.starts_with(b"\x1b[4~") {
-                        4
-                    } else {
-                        3
-                    };
-                } else if remaining.starts_with(b"\x1b[A") {
-                    keys.push(Key::Up);
-                    index += 3;
-                } else if remaining.starts_with(b"\x1b[B") {
-                    keys.push(Key::Down);
-                    index += 3;
-                } else if remaining.len() == 1 {
-                    keys.push(Key::Escape);
-                    index = chunk.len();
-                } else {
-                    // Consume an unknown escape sequence as one inert key so
-                    // its bytes cannot accidentally trigger service actions.
-                    keys.push(Key::Other);
-                    index += remaining.len().min(3);
-                }
-            }
-            byte => {
-                keys.push(Key::Char(byte as char));
-                index += 1;
-            }
-        }
-    }
-    keys
-}
-
-pub async fn run(paths: &RuntimePaths, port: u16) -> CliResult {
-    let store = nomoreide_core::config::ConfigStore::new(
-        nomoreide_core::config::ConfigStore::default_path(),
-    );
-    let mut mode = Mode::Services;
-    let mut selected_index: usize = 0;
-    let mut selected_service: Option<String> = None;
-    let mut log_offset: usize = 0;
-    let mut notice: Option<String> = None;
-
-    // Only on a terminal, matching the reference's `if (process.stdin.isTTY)`.
-    // Piped input needs no raw mode, and asking for it would fail.
-    let _terminal = TerminalSession::enter();
-
-    let mut keys = key_reader();
-    render(
-        paths,
-        port,
-        &store,
-        RenderOptions {
-            mode,
-            selected_index,
-            selected_service: &mut selected_service,
-            log_offset,
-            notice: notice.as_deref(),
-        },
-    )
-    .await?;
-
-    let mut refresh = tokio::time::interval(std::time::Duration::from_secs(1));
-    refresh.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-    // `interval` yields immediately once; the initial frame above already
-    // covers that tick.
-    refresh.tick().await;
-
-    loop {
-        let key = tokio::select! {
-            key = keys.recv() => match key {
-                Some(key) => Some(key),
-                None => break,
-            },
-            _ = refresh.tick() => None,
-        };
-
-        let Some(key) = key else {
-            render(
-                paths,
-                port,
-                &store,
-                RenderOptions {
-                    mode,
-                    selected_index,
-                    selected_service: &mut selected_service,
-                    log_offset,
-                    notice: notice.as_deref(),
-                },
-            )
-            .await?;
-            continue;
-        };
-
-        let config = store.load().await?;
-        let service = config.services.get(selected_index).cloned();
-        let bundle = config.bundles.get(selected_index).cloned();
-
-        if key == Key::Quit || matches!(key, Key::Char('q' | 'Q')) {
-            // Services belong to the daemon and keep running after this exits.
-            break;
-        }
-
-        let client = connect(paths, port).await?;
-        match key {
-            Key::Up if mode == Mode::Logs => log_offset = log_offset.saturating_add(1),
-            Key::Up => selected_index = selected_index.saturating_sub(1),
-            Key::Down if mode == Mode::Logs => log_offset = log_offset.saturating_sub(1),
-            Key::Down => {
-                let count = if mode == Mode::Bundles {
-                    config.bundles.len()
-                } else {
-                    config.services.len()
-                };
-                // `Math.min(Math.max(0, max), index + 1)` where `max` is
-                // `length - 1`: an empty list clamps to 0, not to -1.
-                let max = count.saturating_sub(1);
-                selected_index = (selected_index + 1).min(max);
-            }
-            Key::Char('b' | 'B') => {
-                mode = if mode == Mode::Bundles {
-                    Mode::Services
-                } else {
-                    Mode::Bundles
-                };
-                selected_index = 0;
-                log_offset = 0;
-            }
-            Key::Char('l' | 'L') => {
-                if let Some(service) = &service {
-                    mode = Mode::Logs;
-                    selected_service = Some(service.name.clone());
-                    log_offset = 0;
-                }
-            }
-            Key::PageUp if mode == Mode::Logs => log_offset = log_offset.saturating_add(LOG_TAIL),
-            Key::PageDown if mode == Mode::Logs => log_offset = log_offset.saturating_sub(LOG_TAIL),
-            Key::End if mode == Mode::Logs => log_offset = 0,
-            Key::Escape => {
-                mode = Mode::Services;
-                log_offset = 0;
-            }
-            Key::Char('s' | 'S') if mode != Mode::Logs => {
-                let target = selected_target(mode, &service, &bundle);
-                let result = act(&client, mode, &service, &bundle, ServiceAction::Start).await;
-                notice = Some(action_notice(result, "Start", target));
-            }
-            Key::Char('x' | 'X') if mode != Mode::Logs => {
-                let target = selected_target(mode, &service, &bundle);
-                let result = act(&client, mode, &service, &bundle, ServiceAction::Stop).await;
-                notice = Some(action_notice(result, "Stop", target));
-            }
-            Key::Char('r' | 'R') if mode == Mode::Services => {
-                if let Some(service) = &service {
-                    let result = client
-                        .service_action_value(&service.name, ServiceAction::Restart)
-                        .await
-                        .map(|_| ())
-                        .map_err(daemon_failure);
-                    notice = Some(action_notice(result, "Restart", Some(&service.name)));
-                } else {
-                    notice = Some("No service selected".to_string());
-                }
-            }
-            _ => {}
-        }
-
-        render(
-            paths,
-            port,
-            &store,
-            RenderOptions {
-                mode,
-                selected_index,
-                selected_service: &mut selected_service,
-                log_offset,
-                notice: notice.as_deref(),
-            },
-        )
-        .await?;
-    }
-    Ok(())
+        .collect()
 }
 
 fn selected_target<'a>(
     mode: Mode,
     service: &'a Option<ServiceDef>,
-    bundle: &'a Option<nomoreide_core::config::BundleDef>,
+    bundle: &'a Option<BundleDef>,
 ) -> Option<&'a str> {
     if mode == Mode::Bundles {
         bundle.as_ref().map(|bundle| bundle.name.as_str())
@@ -670,7 +645,7 @@ async fn act(
     client: &DaemonClient,
     mode: Mode,
     service: &Option<ServiceDef>,
-    bundle: &Option<nomoreide_core::config::BundleDef>,
+    bundle: &Option<BundleDef>,
     action: ServiceAction,
 ) -> CliResult {
     if mode == Mode::Bundles {
@@ -680,63 +655,12 @@ async fn act(
                 .await
                 .map_err(daemon_failure)?;
         }
-        return Ok(());
-    }
-    if let Some(service) = service {
+    } else if let Some(service) = service {
         client
             .service_action_value(&service.name, action)
             .await
             .map_err(daemon_failure)?;
     }
-    Ok(())
-}
-
-/// Draw one frame.
-///
-/// Replace the current alternate-screen frame without touching shell history.
-async fn render(
-    paths: &RuntimePaths,
-    port: u16,
-    store: &nomoreide_core::config::ConfigStore,
-    options: RenderOptions<'_>,
-) -> CliResult {
-    use std::io::Write;
-
-    let RenderOptions {
-        mode,
-        selected_index,
-        selected_service,
-        log_offset,
-        notice,
-    } = options;
-    let config = store.load().await?;
-    let client = connect(paths, port).await?;
-    let current = selected_service
-        .clone()
-        .or_else(|| config.services.get(selected_index).map(|s| s.name.clone()));
-    let statuses = client.status().await.map_err(daemon_failure)?;
-    let runtime: HashMap<String, String> = statuses
-        .into_iter()
-        .map(|status| (status.name, state_label(status.state).to_string()))
-        .collect();
-    let logs = match (mode, &current) {
-        (Mode::Logs, Some(name)) => client.logs(name, 200).await.map_err(daemon_failure)?,
-        _ => Vec::new(),
-    };
-    let output = render_screen(&ScreenState {
-        mode,
-        selected_index,
-        selected_service: current.as_deref(),
-        config: &config,
-        runtime: &runtime,
-        logs: &logs,
-        log_offset,
-        notice,
-    });
-    let mut stdout = std::io::stdout().lock();
-    let _ = stdout.write_all(b"\x1b[H\x1b[2J");
-    let _ = stdout.write_all(output.as_bytes());
-    let _ = stdout.flush();
     Ok(())
 }
 
@@ -750,33 +674,6 @@ fn state_label(state: ServiceRuntimeState) -> &'static str {
     }
 }
 
-/// Read stdin on its own thread and hand keystrokes to the async loop.
-///
-/// A thread rather than async stdin because the read has to keep working while
-/// the loop is awaiting the daemon, and because raw-mode stdin has no useful
-/// async form on the platforms this runs on.
-fn key_reader() -> tokio::sync::mpsc::UnboundedReceiver<Key> {
-    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
-    std::thread::spawn(move || {
-        use std::io::Read;
-        let mut stdin = std::io::stdin().lock();
-        let mut buffer = [0u8; 256];
-        loop {
-            match stdin.read(&mut buffer) {
-                Ok(0) | Err(_) => break,
-                Ok(count) => {
-                    for key in decode(&buffer[..count]) {
-                        if sender.send(key).is_err() {
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-    });
-    receiver
-}
-
 async fn connect(paths: &RuntimePaths, port: u16) -> Result<DaemonClient, CliError> {
     DaemonClient::discover(paths, port, env!("CARGO_PKG_VERSION"))
         .await
@@ -787,228 +684,192 @@ fn daemon_failure(error: nomoreide_daemon_client::DaemonClientError) -> CliError
     CliError::Failure(error.to_string())
 }
 
-#[cfg(unix)]
-struct RawMode {
-    original: Option<libc::termios>,
+fn terminal_failure(error: io::Error) -> CliError {
+    CliError::Failure(error.to_string())
 }
 
-#[cfg(unix)]
-impl RawMode {
-    fn enter() -> Self {
-        let fd = libc::STDIN_FILENO;
-        if unsafe { libc::isatty(fd) } != 1 {
-            return Self { original: None };
+enum Input {
+    Key(KeyEvent),
+    Resize,
+}
+
+fn event_reader() -> tokio::sync::mpsc::UnboundedReceiver<Input> {
+    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
+    std::thread::spawn(move || loop {
+        match event::read() {
+            Ok(Event::Key(key))
+                if matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) =>
+            {
+                if sender.send(Input::Key(key)).is_err() {
+                    break;
+                }
+            }
+            Ok(Event::Resize(_, _)) => {
+                if sender.send(Input::Resize).is_err() {
+                    break;
+                }
+            }
+            Ok(_) => {}
+            Err(_) => break,
         }
-        let mut original = unsafe { std::mem::zeroed::<libc::termios>() };
-        if unsafe { libc::tcgetattr(fd, &mut original) } != 0 {
-            return Self { original: None };
-        }
-        let mut raw = original;
-        unsafe { libc::cfmakeraw(&mut raw) };
-        if unsafe { libc::tcsetattr(fd, libc::TCSANOW, &raw) } != 0 {
-            return Self { original: None };
-        }
-        Self {
-            original: Some(original),
-        }
-    }
+    });
+    receiver
 }
 
 struct TerminalSession {
-    _raw: RawMode,
-    interactive: bool,
+    terminal: Terminal<CrosstermBackend<Stdout>>,
 }
 
 impl TerminalSession {
-    fn enter() -> Self {
-        use std::io::{IsTerminal, Write};
+    fn enter() -> io::Result<Self> {
+        enable_raw_mode()?;
+        let mut stdout = io::stdout();
+        if let Err(error) = execute!(stdout, EnterAlternateScreen) {
+            let _ = disable_raw_mode();
+            return Err(error);
+        }
+        let terminal = match Terminal::new(CrosstermBackend::new(stdout)) {
+            Ok(terminal) => terminal,
+            Err(error) => {
+                let _ = disable_raw_mode();
+                let _ = execute!(io::stdout(), LeaveAlternateScreen);
+                return Err(error);
+            }
+        };
+        Ok(Self { terminal })
+    }
 
-        let interactive = std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
-        if interactive {
-            let mut stdout = std::io::stdout().lock();
-            let _ = stdout.write_all(b"\x1b[?1049h\x1b[?25l");
-            let _ = stdout.flush();
-        }
-        Self {
-            _raw: RawMode::enter(),
-            interactive,
-        }
+    fn draw<F>(&mut self, draw: F) -> io::Result<()>
+    where
+        F: FnOnce(&mut Frame),
+    {
+        self.terminal.draw(draw).map(|_| ())
+    }
+
+    fn list_page_size(&self) -> usize {
+        self.terminal
+            .size()
+            .map(|area| usize::from(area.height.saturating_sub(8)).max(1))
+            .unwrap_or(LOG_PAGE)
     }
 }
 
 impl Drop for TerminalSession {
     fn drop(&mut self) {
-        if self.interactive {
-            use std::io::Write;
-
-            let mut stdout = std::io::stdout().lock();
-            let _ = stdout.write_all(b"\x1b[0m\x1b[?25h\x1b[?1049l");
-            let _ = stdout.flush();
-        }
-    }
-}
-
-#[cfg(unix)]
-impl Drop for RawMode {
-    /// Restored on the way out however the loop ended. A TUI that exits
-    /// leaving the terminal in raw mode leaves the *shell* unusable, which is
-    /// worse than anything the TUI itself could get wrong.
-    fn drop(&mut self) {
-        if let Some(original) = self.original {
-            unsafe {
-                libc::tcsetattr(libc::STDIN_FILENO, libc::TCSANOW, &original);
-            }
-        }
-    }
-}
-
-#[cfg(not(unix))]
-struct RawMode;
-
-#[cfg(not(unix))]
-impl RawMode {
-    fn enter() -> Self {
-        Self
+        let _ = disable_raw_mode();
+        let _ = execute!(self.terminal.backend_mut(), LeaveAlternateScreen);
+        let _ = self.terminal.show_cursor();
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::backend::TestBackend;
 
-    #[test]
-    fn an_escape_with_nothing_after_it_is_the_escape_key() {
-        assert_eq!(decode(b"\x1b"), vec![Key::Escape]);
-        assert_eq!(decode(b"\x1b[A"), vec![Key::Up]);
-        assert_eq!(decode(b"\x1b[B"), vec![Key::Down]);
-        assert_eq!(decode(b"\x1b[5~"), vec![Key::PageUp]);
-        assert_eq!(decode(b"\x1b[6~"), vec![Key::PageDown]);
-        assert_eq!(decode(b"\x1b[F"), vec![Key::End]);
-        // An unnamed arrow key is consumed whole — three bytes — so none of it
-        // leaks through as a character that would trigger an action. It is
-        // still reported, because the screen redraws on any key.
-        assert_eq!(decode(b"\x1b[Cq"), vec![Key::Other, Key::Char('q')]);
+    fn buffer_text(app: &App, snapshot: &Snapshot, width: u16, height: u16) -> String {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+        terminal
+            .draw(|frame| render_ui(frame, app, snapshot))
+            .expect("draw frame");
+        terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .fold(String::new(), |mut output, cell| {
+                output.push_str(cell.symbol());
+                output
+            })
     }
 
-    #[test]
-    fn ctrl_c_quits_like_q() {
-        assert_eq!(decode(b"\x03"), vec![Key::Quit]);
-        assert_eq!(decode(b"q"), vec![Key::Char('q')]);
-    }
-
-    #[test]
-    fn pad_end_counts_utf16_code_units_and_never_truncates() {
-        assert_eq!(pad_end("api", 6), "api   ");
-        assert_eq!(
-            pad_end("a-very-long-service-name", 6),
-            "a-very-long-service-name"
-        );
-        // One astral character is two UTF-16 units, so it consumes two columns
-        // of padding the way JavaScript counts them.
-        assert_eq!(pad_end("\u{1F600}", 4), "\u{1F600}  ");
-    }
-
-    #[test]
-    fn fit_truncates_long_cells_without_breaking_the_panel() {
-        assert_eq!(fit("short", 8), "short");
-        assert_eq!(fit("a very long value", 8), "a very …");
-        assert_eq!(fit("line one\nline two\tend", 40), "line one line two end");
-        assert_eq!(fit("anything", 0), "");
-    }
-
-    #[test]
-    fn raw_mode_frames_use_carriage_returns_and_cap_every_table_row() {
-        let mut config = Config::default();
-        config.services.push(
-            serde_json::from_value(serde_json::json!({
-                "name": "a-service-name-that-is-far-too-long-for-the-name-column",
-                "port": 65535,
-                "description": "a description that is much too long and even contains\na forced second line"
-            }))
-            .expect("service fixture"),
-        );
-        let runtime = HashMap::new();
-        let output = render_screen(&ScreenState {
-            mode: Mode::Services,
+    fn app(mode: Mode) -> App {
+        App {
+            mode,
             selected_index: 0,
             selected_service: None,
-            config: &config,
-            runtime: &runtime,
-            logs: &[],
             log_offset: 0,
             notice: None,
-        });
+        }
+    }
 
-        assert!(output.ends_with("\r\n"));
-        assert!(!output.replace("\r\n", "").contains('\n'));
-        assert!(output.contains("a-service-name-that-is-…"));
-        for line in output.split("\r\n").filter(|line| {
-            line.contains('│') || line.contains('╭') || line.contains('├') || line.contains('╰')
-        }) {
-            assert_eq!(visible_width(line), PANEL_WIDTH + 2, "{line:?}");
+    fn snapshot(config: Config) -> Snapshot {
+        Snapshot {
+            config,
+            runtime: HashMap::new(),
+            logs: Vec::new(),
+            current_service: None,
         }
     }
 
     #[test]
-    fn empty_services_screen_has_navigation_color_and_an_actionable_state() {
-        let config = Config::default();
-        let runtime = HashMap::new();
-        let output = render_screen(&ScreenState {
-            mode: Mode::Services,
-            selected_index: 0,
-            selected_service: None,
-            config: &config,
-            runtime: &runtime,
-            logs: &[],
-            log_offset: 0,
-            notice: None,
-        });
-
-        assert!(output.contains("\x1b[38;5;141m"));
-        assert!(output.contains("[ SERVICES ]"));
+    fn services_screen_has_an_actionable_empty_state() {
+        let output = buffer_text(&app(Mode::Services), &snapshot(Config::default()), 100, 24);
+        assert!(output.contains("NoMoreIDE"));
         assert!(output.contains("No services configured"));
         assert!(output.contains("nomoreide add service"));
-        assert!(output.contains('╭'));
-        assert!(output.contains('╯'));
     }
 
     #[test]
-    fn logs_can_pause_behind_the_live_tail() {
-        let config = Config::default();
-        let runtime = HashMap::new();
-        let logs = ["oldest", "middle", "newest"].map(|text| ServiceLogEntry {
-            service: "api".into(),
-            stream: "stdout".into(),
-            text: text.into(),
-            timestamp: "2026-09-02T12:34:56.000Z".into(),
-        });
-        let output = render_screen(&ScreenState {
-            mode: Mode::Logs,
-            selected_index: 0,
-            selected_service: Some("api"),
-            config: &config,
-            runtime: &runtime,
-            logs: &logs,
-            log_offset: 1,
-            notice: None,
-        });
+    fn core_service_controls_fit_an_eighty_column_terminal() {
+        let output = buffer_text(&app(Mode::Services), &snapshot(Config::default()), 80, 24);
+        assert!(output.contains("Navigate"));
+        assert!(output.contains("Restart"));
+        assert!(output.contains("Bundles"));
+        assert!(output.contains("Quit"));
+    }
 
-        assert!(output.contains("paused 1 lines from live"));
-        assert!(output.contains("oldest"));
-        assert!(output.contains("middle"));
-        assert!(!output.contains("newest"));
-        assert!(output.contains("PgUp/PgDn"));
+    #[test]
+    fn a_long_service_list_scrolls_inside_one_frame() {
+        let mut config = Config::default();
+        for index in 0..30 {
+            config.services.push(
+                serde_json::from_value(serde_json::json!({
+                    "name": format!("service-{index:02}")
+                }))
+                .expect("service fixture"),
+            );
+        }
+        let mut app = app(Mode::Services);
+        app.selected_index = 29;
+        let output = buffer_text(&app, &snapshot(config), 100, 16);
+        assert!(!output.contains("service-00"));
+        assert!(output.contains("service-29"));
+        assert_eq!(output.chars().count(), 100 * 16);
+    }
+
+    #[test]
+    fn logs_are_clipped_to_the_panel_height() {
+        let mut snapshot = snapshot(Config::default());
+        snapshot.current_service = Some("api".to_string());
+        snapshot.logs = (0..30)
+            .map(|index| ServiceLogEntry {
+                service: "api".into(),
+                stream: "stdout".into(),
+                text: format!("line-{index:02}"),
+                timestamp: "2026-09-02T12:34:56.000Z".into(),
+            })
+            .collect();
+        let output = buffer_text(&app(Mode::Logs), &snapshot, 100, 16);
+        assert!(!output.contains("line-00"));
+        assert!(output.contains("line-29"));
+        assert_eq!(output.chars().count(), 100 * 16);
     }
 
     #[test]
     fn bundle_health_summarizes_all_members() {
         let services = vec!["api".to_string(), "web".to_string()];
         let mut runtime = HashMap::new();
-
         assert_eq!(bundle_status(&services, &runtime), "stopped");
         runtime.insert("api".into(), "running".into());
         assert_eq!(bundle_status(&services, &runtime), "partial");
         runtime.insert("web".into(), "running".into());
         assert_eq!(bundle_status(&services, &runtime), "running");
+    }
+
+    #[test]
+    fn log_text_cannot_inject_terminal_controls() {
+        assert_eq!(sanitize("one\ntwo\x1b[2J"), "one two[2J");
     }
 }
