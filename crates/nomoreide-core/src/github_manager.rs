@@ -20,6 +20,10 @@ const GITHUB_API: &str = "https://api.github.com";
 const API_VERSION: &str = "2022-11-28";
 const JSON_ACCEPT: &str = "application/vnd.github+json";
 const DIFF_ACCEPT: &str = "application/vnd.github.diff";
+// GitHub rejects API requests that do not identify their client. The former
+// Node transport supplied a user agent implicitly; reqwest does not, so the
+// native client must make it explicit or every valid token looks forbidden.
+const USER_AGENT: &str = concat!("NoMoreIDE/", env!("CARGO_PKG_VERSION"));
 
 /// A base URL an environment variable is allowed to move, which exists so the
 /// parity gates can point a runtime at a stub they control.
@@ -605,6 +609,7 @@ impl GithubManager {
             )
             .header("Authorization", format!("Bearer {}", self.token))
             .header("Accept", accept)
+            .header("User-Agent", USER_AGENT)
             .header("X-GitHub-Api-Version", API_VERSION);
         if let Some(body) = body {
             request = request.json(&body);
@@ -748,6 +753,8 @@ fn derive_state(runs: &[Value]) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
 
     #[test]
     fn both_spellings_of_a_github_remote_name_the_same_repository() {
@@ -766,6 +773,43 @@ mod tests {
                 "{remote}"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn native_requests_identify_nomoreide_to_github() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = Vec::new();
+            let mut chunk = [0_u8; 1024];
+            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                let count = stream.read(&mut chunk).unwrap();
+                if count == 0 {
+                    break;
+                }
+                request.extend_from_slice(&chunk[..count]);
+            }
+            let body = r#"{"login":"octocat"}"#;
+            write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body,
+            )
+            .unwrap();
+            String::from_utf8(request).unwrap()
+        });
+        let manager = GithubManager {
+            token: "valid-token".into(),
+            owner: String::new(),
+            repo: String::new(),
+            base_url: format!("http://{address}"),
+        };
+
+        assert_eq!(manager.viewer().await.unwrap()["login"], "octocat");
+        let request = server.join().unwrap().to_ascii_lowercase();
+        assert!(request.contains(&format!("user-agent: {}", USER_AGENT.to_ascii_lowercase())));
     }
 
     /// A remote on another host is not a GitHub repository, and a token meant

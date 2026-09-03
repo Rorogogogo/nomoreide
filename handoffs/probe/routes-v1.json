@@ -1,0 +1,5 @@
+[
+  { "method": "GET", "path": "/v2/teams?limit=100", "body": { "teams": [ { "id": "team_acme", "slug": "acme", "name": "Acme Inc" } ] } },
+  { "method": "GET", "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme", "body": { "projects": [ { "id": "prj_app", "name": "app", "framework": "nextjs", "accountId": "team_acme", "createdAt": 1700000000000, "link": { "type": "github", "org": "acme", "repo": "app" }, "targets": { "production": { "id": "dpl_prod", "url": "app.vercel.app", "readyState": "READY" } } } ] } },
+  { "method": "GET", "path": "/v10/projects?limit=50&teamId=team_acme", "body": { "projects": [ { "id": "prj_app", "name": "app", "framework": "nextjs", "accountId": "team_acme", "createdAt": 1700000000000, "link": { "type": "github", "org": "acme", "repo": "app" }, "targets": { "production": { "id": "dpl_prod", "url": "app.vercel.app", "readyState": "READY" } } }, { "id": "prj_docs", "name": "docs", "framework": null, "accountId": "team_acme", "createdAt": 1700000001000 } ] } }
+]

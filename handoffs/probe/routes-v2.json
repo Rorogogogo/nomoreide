@@ -1,0 +1,287 @@
+[
+ {
+  "method": "GET",
+  "path": "/v2/teams?limit=100",
+  "body": {
+   "teams": [
+    {
+     "id": "team_acme",
+     "slug": "acme",
+     "name": "Acme Inc"
+    }
+   ]
+  }
+ },
+ {
+  "method": "GET",
+  "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+  "body": {
+   "projects": [
+    {
+     "id": "prj_app",
+     "name": "app",
+     "framework": "nextjs",
+     "accountId": "team_acme",
+     "createdAt": 1700000000000,
+     "link": {
+      "type": "github",
+      "org": "acme",
+      "repo": "app"
+     },
+     "targets": {
+      "production": {
+       "id": "dpl_prod",
+       "url": "app.vercel.app",
+       "readyState": "READY"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "method": "GET",
+  "path": "/v10/projects?limit=50&teamId=team_acme",
+  "body": {
+   "projects": [
+    {
+     "id": "prj_app",
+     "name": "app",
+     "framework": "nextjs",
+     "accountId": "team_acme",
+     "createdAt": 1700000000000,
+     "link": {
+      "type": "github",
+      "org": "acme",
+      "repo": "app"
+     },
+     "targets": {
+      "production": {
+       "id": "dpl_prod",
+       "url": "app.vercel.app",
+       "readyState": "READY"
+      }
+     }
+    },
+    {
+     "id": "prj_docs",
+     "name": "docs",
+     "framework": null,
+     "accountId": "team_acme",
+     "createdAt": 1700000001000
+    }
+   ]
+  }
+ },
+ {
+  "method": "GET",
+  "path": "/v7/deployments?projectId=prj_app&limit=20&teamId=team_acme",
+  "body": {
+   "deployments": [
+    {
+     "uid": "dpl_prod",
+     "name": "app",
+     "url": "app-abc123.vercel.app",
+     "created": 1700000500000,
+     "createdAt": 1700000500000,
+     "buildingAt": 1700000505000,
+     "ready": 1700000560000,
+     "state": "READY",
+     "readyState": "READY",
+     "target": "production",
+     "source": "git",
+     "aliasAssigned": true,
+     "alias": [
+      "app.vercel.app",
+      "www.acme.com"
+     ],
+     "inspectorUrl": "https://vercel.com/acme/app/abc123",
+     "creator": {
+      "uid": "usr_1",
+      "username": "robert",
+      "email": "robert@acme.test"
+     },
+     "meta": {
+      "githubCommitSha": "0123456789abcdef0123456789abcdef01234567",
+      "githubCommitMessage": "feat: ship it",
+      "githubCommitAuthorName": "Robert",
+      "githubCommitRef": "main",
+      "githubOrg": "acme",
+      "githubRepo": "app"
+     }
+    },
+    {
+     "uid": "dpl_failed",
+     "name": "app",
+     "url": "app-def456.vercel.app",
+     "created": 1700000400000,
+     "createdAt": 1700000400000,
+     "buildingAt": 1700000505000,
+     "ready": 1700000560000,
+     "state": "ERROR",
+     "readyState": "ERROR",
+     "target": "preview",
+     "source": "git",
+     "aliasAssigned": false,
+     "alias": [],
+     "inspectorUrl": "https://vercel.com/acme/app/abc123",
+     "creator": {
+      "uid": "usr_1",
+      "username": "robert",
+      "email": "robert@acme.test"
+     },
+     "meta": {
+      "githubCommitSha": "89abcdef0123456789abcdef0123456789abcdef",
+      "githubCommitMessage": "wip: break the build",
+      "githubCommitAuthorName": "Robert",
+      "githubCommitRef": "feature/x"
+     },
+     "errorMessage": "Command \"npm run build\" exited with 1",
+     "errorCode": "BUILD_FAILED"
+    }
+   ]
+  }
+ },
+ {
+  "method": "GET",
+  "path": "/v7/deployments?projectId=prj_app&limit=3&target=production&teamId=team_acme",
+  "body": {
+   "deployments": [
+    {
+     "uid": "dpl_prod",
+     "name": "app",
+     "url": "app-abc123.vercel.app",
+     "created": 1700000500000,
+     "createdAt": 1700000500000,
+     "buildingAt": 1700000505000,
+     "ready": 1700000560000,
+     "state": "READY",
+     "readyState": "READY",
+     "target": "production",
+     "source": "git",
+     "aliasAssigned": true,
+     "alias": [
+      "app.vercel.app",
+      "www.acme.com"
+     ],
+     "inspectorUrl": "https://vercel.com/acme/app/abc123",
+     "creator": {
+      "uid": "usr_1",
+      "username": "robert",
+      "email": "robert@acme.test"
+     },
+     "meta": {
+      "githubCommitSha": "0123456789abcdef0123456789abcdef01234567",
+      "githubCommitMessage": "feat: ship it",
+      "githubCommitAuthorName": "Robert",
+      "githubCommitRef": "main",
+      "githubOrg": "acme",
+      "githubRepo": "app"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "method": "GET",
+  "path": "/v13/deployments/dpl_prod?withGitRepoInfo=true&teamId=team_acme",
+  "body": {
+   "uid": "dpl_prod",
+   "name": "app",
+   "url": "app-abc123.vercel.app",
+   "created": 1700000500000,
+   "createdAt": 1700000500000,
+   "buildingAt": 1700000505000,
+   "ready": 1700000560000,
+   "state": "READY",
+   "readyState": "READY",
+   "target": "production",
+   "source": "git",
+   "aliasAssigned": true,
+   "alias": [
+    "app.vercel.app",
+    "www.acme.com"
+   ],
+   "inspectorUrl": "https://vercel.com/acme/app/abc123",
+   "creator": {
+    "uid": "usr_1",
+    "username": "robert",
+    "email": "robert@acme.test"
+   },
+   "meta": {
+    "githubCommitSha": "0123456789abcdef0123456789abcdef01234567",
+    "githubCommitMessage": "feat: ship it",
+    "githubCommitAuthorName": "Robert",
+    "githubCommitRef": "main",
+    "githubOrg": "acme",
+    "githubRepo": "app"
+   }
+  }
+ },
+ {
+  "method": "GET",
+  "path": "/v13/deployments/dpl_failed?withGitRepoInfo=true&teamId=team_acme",
+  "body": {
+   "uid": "dpl_failed",
+   "name": "app",
+   "url": "app-def456.vercel.app",
+   "created": 1700000400000,
+   "createdAt": 1700000400000,
+   "buildingAt": 1700000505000,
+   "ready": 1700000560000,
+   "state": "ERROR",
+   "readyState": "ERROR",
+   "target": "preview",
+   "source": "git",
+   "aliasAssigned": false,
+   "alias": [],
+   "inspectorUrl": "https://vercel.com/acme/app/abc123",
+   "creator": {
+    "uid": "usr_1",
+    "username": "robert",
+    "email": "robert@acme.test"
+   },
+   "meta": {
+    "githubCommitSha": "89abcdef0123456789abcdef0123456789abcdef",
+    "githubCommitMessage": "wip: break the build",
+    "githubCommitAuthorName": "Robert",
+    "githubCommitRef": "feature/x"
+   },
+   "errorMessage": "Command \"npm run build\" exited with 1",
+   "errorCode": "BUILD_FAILED"
+  }
+ },
+ {
+  "method": "GET",
+  "path": "/v3/deployments/dpl_prod/events?builds=1&direction=backward&limit=10&teamId=team_acme",
+  "body": [
+   {
+    "type": "stdout",
+    "created": 1700000510000,
+    "payload": {
+     "text": "Running \"npm run build\"",
+     "deploymentId": "dpl_prod",
+     "id": "ev1"
+    }
+   },
+   {
+    "type": "stderr",
+    "created": 1700000511000,
+    "payload": {
+     "text": "warning: deprecated api",
+     "deploymentId": "dpl_prod",
+     "id": "ev2"
+    }
+   },
+   {
+    "type": "command",
+    "created": 1700000512000,
+    "payload": {
+     "text": "Build completed",
+     "deploymentId": "dpl_prod",
+     "id": "ev3"
+    }
+   }
+  ]
+ }
+]

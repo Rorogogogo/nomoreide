@@ -143,9 +143,13 @@ platform (the routes are *unmounted*, so it 404s rather than refusing), and
 revocation is the owner's, it writes the row before closing the socket, and it is
 one-way.
 
-The relay hub is in memory, so **the API runs as one replica** while it is on.
-That is logged at startup and unenforced; the extraction triggers are in the
-relay plan.
+**The relay is its own process**, `nomoreide-platform`'s `relay` binary — the
+device sockets are not in the API. Presence is in memory, so whatever holds a
+socket is single-replica and should almost never restart, and that is the
+opposite of what a public catalogue wants; while they shared a process every
+registry deploy dropped every machine's socket. The edge proxy routes
+`/remote/ws/device` to the relay, so the daemon's URL is unchanged. The daemon
+cannot tell the difference, and nothing in this repository had to change for it.
 
 ## Key Patterns
 
