@@ -169,6 +169,18 @@ export const en = {
   "activity.loading": "Reading machine activity…",
   "activity.collecting": "Collecting the first machine sample…",
   "activity.collectingShort": "collecting",
+  "activity.docker.source": "Docker",
+  "activity.docker.sourceDetail": "Containers on this machine",
+  "activity.docker.title": "Docker activity",
+  "activity.docker.subtitle": "Live CPU and memory per container.",
+  "activity.docker.loading": "Reading container stats…",
+  "activity.docker.unavailable":
+    "Docker is not running, so there are no container stats to read. Start Docker and this view fills in.",
+  "activity.docker.empty": "No containers match.",
+  "activity.docker.filter": "Filter containers",
+  "activity.docker.container": "Container",
+  "activity.docker.netIo": "Net I/O",
+  "activity.docker.blockIo": "Block I/O",
   "activity.thisMachine": "This machine",
   "activity.sampled": "sampled {time}",
   "activity.logicalCpus": "{count} logical CPUs",
@@ -236,6 +248,9 @@ export const en = {
   "app.loading": "Loading NoMoreIDE state...",
   "app.localWorkspace": "Local workspace",
   "app.allProjects": "All projects",
+  "app.daemonSkew.message":
+    "The NoMoreIDE daemon is running v{daemon}, but this dashboard was built from v{client}. Features may fail in ways that look like unrelated bugs. Restart it with",
+  "app.daemonSkew.cost": "— this stops the services it manages.",
   "app.serviceOutsideScope":
     "Service is outside the current project — showing all projects.",
 
@@ -2091,6 +2106,10 @@ export const en = {
 
   // Git file viewer
   "git.fileViewer.selectFile": "Select a file to view its contents.",
+  "git.blame.toggle": "Blame",
+  "git.blame.uncommitted": "Not committed yet",
+  "git.blame.short.uncommitted": "Uncommitted",
+  "git.blame.unavailable": "Blame is unavailable for this file: {error}",
   "git.fileViewer.readOnly": "Read-only view of tracked file.",
   "git.fileViewer.truncated": "Truncated — file exceeds 1MB.",
   "git.fileViewer.binary": "Binary file.",

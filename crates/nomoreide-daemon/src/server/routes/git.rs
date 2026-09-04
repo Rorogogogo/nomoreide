@@ -38,6 +38,7 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/git/files", get(files))
         .route("/api/git/file-sizes", get(file_sizes))
         .route("/api/git/file", get(file))
+        .route("/api/git/blame", get(blame))
         .route("/api/git/commit", get(commit_diff))
         .route("/api/git/commit/files", get(commit_files))
         .route("/api/git/branches", get(branches))
@@ -374,6 +375,35 @@ async fn file(State(state): State<AppState>, Query(query): Query<PathQuery>) -> 
         // it never existed or was refused for climbing outside the repo.
         Err(reason) => error(StatusCode::NOT_FOUND, &reason.to_string()),
     }
+}
+
+/// Who last touched each line of one file.
+///
+/// Same `PathQuery` and same repository resolution as `/api/git/file`, so the
+/// gutter blames exactly the file the viewer is showing.
+///
+/// A failure is a 400 rather than the file route's 404: by the time anything
+/// asks for blame the file has already been read successfully, so an error here
+/// is about *history* — a path git does not track, or a repository with no
+/// commits — and reporting it as "not found" would send someone looking for a
+/// file they are already reading.
+async fn blame(State(state): State<AppState>, Query(query): Query<PathQuery>) -> Response {
+    let path = query.path.unwrap_or_default();
+    let path = path.trim();
+    if path.is_empty() {
+        return error(StatusCode::BAD_REQUEST, "path is required");
+    }
+    let cwd = state.workspace_cwd().await;
+    match GitManager::blame(&cwd, path).await {
+        Ok(lines) => Json(BlameEnvelope { ok: true, lines }).into_response(),
+        Err(reason) => error(StatusCode::BAD_REQUEST, &reason.to_string()),
+    }
+}
+
+#[derive(Serialize)]
+struct BlameEnvelope {
+    ok: bool,
+    lines: Vec<nomoreide_core::git_manager::GitBlameLine>,
 }
 
 #[derive(Deserialize)]

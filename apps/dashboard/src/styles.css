@@ -2,6 +2,33 @@
 @import "tw-animate-css";
 @import "@xyflow/react/dist/style.css";
 
+/*
+  Bundled, not fetched.
+
+  The dashboard is served by a local daemon and compiled into the binary, so a
+  Google Fonts link would make a local tool depend on the network to look right
+  — and on a plane or a locked-down network it would silently fall back to a
+  different metric and reflow every table. `@fontsource` ships the woff2 through
+  Vite into `dist/web/client`, so the fonts travel with the app.
+
+  IBM Plex, which is what Zed's own Zed Plex Sans and Zed Plex Mono are drawn
+  from. Warmer and more humanist than a grotesque like Inter — the `a`, `g` and
+  `l` carry actual shape rather than being drawn from the same few strokes,
+  which is the difference between "neutral" and "characterless" at this size.
+
+  Sans is variable — `wght.css` is the weight axis alone, without the width and
+  italic axes this interface never asks for. Mono has no variable build, so only
+  the two weights actually used are pulled in, and only their latin subsets:
+  the full import also ships Cyrillic, Greek and Vietnamese *and* a legacy
+  `.woff` beside every `.woff2`, which is 100KB of files no browser this app
+  runs in will ever request — compiled into the binary for nothing. Anything
+  outside latin falls back to the system face, which is already what happens
+  for the Chinese locale, since Plex carries no CJK either.
+*/
+@import "@fontsource-variable/ibm-plex-sans/wght.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-600.css";
+
 @font-face {
   font-family: "Symbols Nerd Font Mono";
   font-style: normal;
@@ -393,12 +420,25 @@ body {
   overflow: hidden;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  /*
+    The system stack stays behind Inter rather than being replaced by it: the
+    fonts load as files, and until they do — or if they fail — the page still
+    has to render in something with sane metrics.
+  */
   font-family:
+    "IBM Plex Sans Variable",
     ui-sans-serif,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  /*
+    450, not 400. The interface is dense and mostly set at 10–13px, where a
+    regular weight goes wispy against a dark background — the complaint that
+    started this was that it read thin. 450 is the variable axis doing what a
+    static family cannot: more presence without tipping into medium.
+  */
+  font-weight: 450;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -406,8 +446,8 @@ code,
 pre,
 .font-mono {
   font-family:
+    "IBM Plex Mono",
     "SF Mono",
-    "JetBrains Mono",
     ui-monospace,
     Menlo,
     monospace;

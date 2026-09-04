@@ -298,6 +298,7 @@ impl TerminalManager {
         &self,
         sink: SharedEventSink,
         id: &str,
+        app: crate::external_terminal::ExternalTerminalApp,
     ) -> Result<TerminalSession, String> {
         let (control, control_generation) = {
             let registry = self.registry.0.lock().unwrap();
@@ -370,7 +371,7 @@ impl TerminalManager {
 
         let title =
             external_terminal_title(snapshot.provider.as_deref(), snapshot.label.as_deref());
-        if let Err(error) = launch_terminal(&socket_path, &token, &title) {
+        if let Err(error) = launch_terminal(&socket_path, &token, &title, app) {
             let rollback = reset_external_presentation(&self.registry, id, &generation, &lease);
             if let Some(session) = rollback.as_ref() {
                 emit_terminal_session(sink.as_ref(), session);
@@ -398,6 +399,7 @@ impl TerminalManager {
         &self,
         _sink: SharedEventSink,
         _id: &str,
+        _app: crate::external_terminal::ExternalTerminalApp,
     ) -> Result<TerminalSession, String> {
         Err("External Terminal is currently available on macOS only.".to_string())
     }

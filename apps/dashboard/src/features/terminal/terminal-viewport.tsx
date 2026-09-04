@@ -628,8 +628,11 @@ export const TerminalViewport = forwardRef<
       allowProposedApi: true,
       cursorBlink: true,
       cursorStyle: displaySettingsRef.current.cursorStyle,
+      // Nerd Font stays ahead of the text face: it carries the powerline and
+      // icon glyphs a prompt draws, which JetBrains Mono does not, and a
+      // terminal that falls back for those renders boxes through every prompt.
       fontFamily:
-        '"SF Mono", "Symbols Nerd Font Mono", "JetBrains Mono", ui-monospace, Menlo, monospace',
+        '"Symbols Nerd Font Mono", "IBM Plex Mono", "SF Mono", ui-monospace, Menlo, monospace',
       fontSize: displaySettingsRef.current.fontSize,
       lineHeight: 1.25,
       scrollback: displaySettingsRef.current.scrollback,

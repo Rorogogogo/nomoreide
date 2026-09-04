@@ -1,4 +1,4 @@
-import { Activity, Check, ChevronDown, Cpu, Search, Server } from "lucide-react";
+import { Activity, Box, Check, ChevronDown, Cpu, Search, Server } from "lucide-react";
 import {
   type ReactNode,
   useCallback,
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import {
+  getDockerStatus,
   getRemoteHostMetrics,
   listSshServers,
   type DashboardData,
@@ -26,6 +27,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ActivitySortHeader, type SortDirection } from "./activity-sort-header";
 import { ActivityView, HostOverview } from "./activity-view";
+import { DockerActivityView } from "./docker-activity-view";
 import { EnergyImpactBadge, estimateEnergyImpact } from "./energy-impact";
 import {
   metricPressure,
@@ -49,23 +51,46 @@ export function ActivityPage({
   scopeName: string | null;
 }) {
   const [servers, setServers] = useState<SshServerSummary[]>([]);
+  /**
+   * Whether Docker is worth offering, asked once rather than assumed.
+   *
+   * The option is hidden when the daemon is not there. A source that is always
+   * listed and always empty teaches people to ignore the selector, and this one
+   * has to stay worth opening.
+   */
+  const [dockerAvailable, setDockerAvailable] = useState(false);
 
   const loadServers = useCallback(async () => {
     setServers(await listSshServers().catch(() => []));
   }, []);
+  const loadDocker = useCallback(async () => {
+    const status = await getDockerStatus().catch(() => null);
+    setDockerAvailable(status?.available ?? false);
+  }, []);
   useEffect(() => {
     void loadServers();
-  }, [loadServers]);
-  useRegisterRefresh(({ manual }) => manual ? loadServers() : undefined);
+    void loadDocker();
+  }, [loadDocker, loadServers]);
+  useRegisterRefresh(({ manual }) =>
+    manual ? Promise.all([loadServers(), loadDocker()]).then(() => undefined) : undefined,
+  );
 
   const selected = servers.find((server) => server.host === host);
+  // Docker stays selectable once chosen even if the daemon stops answering, so
+  // the view can explain that rather than silently bouncing back to local.
+  const showDocker = host === DOCKER_HOST;
   const hostSelector = (
     <ActivityHostSelect
-      host={selected ? host : "local"}
+      dockerAvailable={dockerAvailable || showDocker}
+      host={showDocker ? DOCKER_HOST : selected ? host : "local"}
       onHostChange={onHostChange}
       servers={servers}
     />
   );
+
+  if (showDocker) {
+    return <DockerActivityView headerControl={hostSelector} />;
+  }
 
   return (
     selected ? (
@@ -85,11 +110,23 @@ export function ActivityPage({
   );
 }
 
+/**
+ * The selector value that means containers rather than a machine.
+ *
+ * Not a hostname, and it cannot collide with one: an SSH host is matched by
+ * exact `server.host`, and no SSH entry is named `docker` without a user
+ * deliberately registering one — in which case they get the containers view,
+ * which is the reading a person who typed `docker` would expect anyway.
+ */
+export const DOCKER_HOST = "docker";
+
 function ActivityHostSelect({
+  dockerAvailable,
   host,
   onHostChange,
   servers,
 }: {
+  dockerAvailable: boolean;
   host: string;
   onHostChange: (host: string) => void;
   servers: SshServerSummary[];
@@ -100,7 +137,10 @@ function ActivityHostSelect({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const selected = servers.find((server) => server.host === host);
-  const label = selected?.name ?? selected?.host ?? t("activity.thisMachine");
+  const label =
+    host === DOCKER_HOST
+      ? t("activity.docker.source")
+      : (selected?.name ?? selected?.host ?? t("activity.thisMachine"));
 
   function toggle() {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -161,7 +201,11 @@ function ActivityHostSelect({
         title={`${t("activity.host")}: ${label}`}
         type="button"
       >
-        <Server aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+        {host === DOCKER_HOST ? (
+          <Box aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+        ) : (
+          <Server aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+        )}
         <span className="truncate">{label}</span>
         <ChevronDown
           aria-hidden="true"
@@ -185,6 +229,14 @@ function ActivityHostSelect({
                 label={t("activity.thisMachine")}
                 onSelect={() => choose("local")}
               />
+              {dockerAvailable ? (
+                <ActivityHostOption
+                  active={host === DOCKER_HOST}
+                  detail={t("activity.docker.sourceDetail")}
+                  label={t("activity.docker.source")}
+                  onSelect={() => choose(DOCKER_HOST)}
+                />
+              ) : null}
               {servers.map((server) => (
                 <ActivityHostOption
                   active={host === server.host}

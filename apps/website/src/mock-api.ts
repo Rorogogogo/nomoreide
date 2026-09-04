@@ -1634,6 +1634,31 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       size: files[filePath]?.length ?? 0,
     });
   }
+  if (path === "/api/git/blame") {
+    // Demo blame for the file the viewer is showing. Two authors in runs, so
+    // the embedded demo shows the column doing the one thing it is for:
+    // marking where authorship changes.
+    const filePath = url.searchParams.get("path") ?? "README.md";
+    const lineCount = (files[filePath] ?? "").split("\n").length;
+    const authors = [
+      { author: "Ada Lovelace", commit: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678", summary: "Add the parser" },
+      { author: "Grace Hopper", commit: "b2c3d4e5f60718293a4b5c6d7e8f901234567890", summary: "Tighten the error path" },
+    ];
+    return json({
+      ok: true,
+      lines: Array.from({ length: lineCount }, (_, index) => {
+        const pick = authors[Math.floor(index / 7) % authors.length];
+        return {
+          line: index + 1,
+          commit: pick.commit,
+          author: pick.author,
+          authorTime: 1_760_000_000 - index * 3_600,
+          summary: pick.summary,
+          uncommitted: false,
+        };
+      }),
+    });
+  }
   if (path === "/api/git/graph") return json({ ok: true, commits: gitGraph() });
   if (path === "/api/git/overview") {
     return json({

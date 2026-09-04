@@ -88,7 +88,7 @@
   padding: 0.2em 0.4em;
   margin: 0;
   font-size: 0.9em;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   background-color: rgba(175, 184, 193, 0.2);
   border-radius: 6px;
 }

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   formatRuntimeDiagnostics,
+  getDaemonVersionSkew,
   getRuntimeConnectionSnapshot,
   probeRuntimeHealth,
   recordRuntimeApiFailure,
@@ -127,5 +128,47 @@ describe("runtime connection state", () => {
     expect(copied).toContain("POST /api/git/diff");
     expect(copied).not.toContain("private");
     expect(copied).not.toContain("secret");
+  });
+});
+
+describe("daemon version skew", () => {
+  /**
+   * The condition that cost a day: a daemon left running across two version
+   * bumps kept serving a freshly built dashboard, and answered `auth_error`
+   * for a GitHub account that was connected and working.
+   */
+  test("reports the pair when the daemon is not the version this build expects", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      healthResponse({ ok: true, app: "nomoreide", version: "0.7.1", pid: 42 }),
+    );
+    await probeRuntimeHealth();
+
+    expect(getDaemonVersionSkew()).toEqual({
+      daemon: "0.7.1",
+      client: __APP_VERSION__,
+    });
+  });
+
+  test("stays quiet when the daemon matches", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      healthResponse({
+        ok: true,
+        app: "nomoreide",
+        version: __APP_VERSION__,
+        pid: 42,
+      }),
+    );
+    await probeRuntimeHealth();
+
+    expect(getDaemonVersionSkew()).toBeNull();
+  });
+
+  /**
+   * `null`, not a warning, before the daemon has said anything. A page that
+   * accused the daemon of being stale on first paint would flash the banner on
+   * every load.
+   */
+  test("says nothing before the version is known", () => {
+    expect(getDaemonVersionSkew()).toBeNull();
   });
 });

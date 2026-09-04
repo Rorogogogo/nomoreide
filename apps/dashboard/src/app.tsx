@@ -77,6 +77,7 @@ import { AppContextMenu } from "@/components/app-context-menu";
 import { ActivityPage } from "@/features/activity/activity-page";
 import { ServersView } from "@/features/servers/servers-view";
 import { GistPopover } from "@/components/gist-popover";
+import { DaemonSkewBanner } from "@/components/daemon-skew-banner";
 import { RuntimeDiagnostics } from "@/components/runtime-diagnostics";
 import {
   getRuntimeConnectionSnapshot,
@@ -875,6 +876,11 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               </div>
             </div>
           </header>
+
+          {/* Above everything: a daemon two versions behind produces failures
+              that read as ordinary bugs, so this has to be seen before they
+              are believed. */}
+          <DaemonSkewBanner />
 
           {/* No wrapper here: OperationStrip renders nothing while idle, and a
               padded wrapper around it left an empty strip under the header on

@@ -18,6 +18,7 @@ export const {
   searchGitContent,
   getFileSizeRanking,
   getGitFile,
+  getGitBlame,
   updateGitFile,
   getGitDiff,
   getGitOverview,
@@ -66,4 +67,5 @@ export type {
   GitCheckoutDefaultAndPullResult,
   GitWorktree,
   GitWorktrees,
+  GitBlameLine,
 } from "./git-api.js";

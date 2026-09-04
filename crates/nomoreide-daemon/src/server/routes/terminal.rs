@@ -36,6 +36,17 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ffi::OsString;
 
+/// The settings file, read fresh per request.
+///
+/// Mirrors `routes/settings.rs`: one path, no cached handle, so a preference
+/// changed in the dashboard takes effect on the next mirror rather than on the
+/// next daemon restart.
+fn settings_store() -> nomoreide_core::app_settings::AppSettingsStore {
+    nomoreide_core::app_settings::AppSettingsStore::new(
+        nomoreide_core::app_settings::default_settings_path(),
+    )
+}
+
 /// Moving a session between the dock and an external terminal is a real change
 /// to where a running agent is being driven from, so it is not something a
 /// stray cross-origin form post should be able to trigger. A custom header
@@ -361,9 +372,21 @@ async fn open_system_terminal(
         Ok(id) => id,
         Err((status, message)) => return error(status, message),
     };
+    // The preference is read here rather than held by the manager: it is a
+    // user setting that can change between one mirror and the next, and the
+    // manager has no business caching one. A settings file that will not load
+    // falls back to `automatic` — refusing to open a terminal because a
+    // preference could not be read would be the wrong end of the trade.
+    let preference = settings_store()
+        .load()
+        .await
+        .map(|settings| settings.terminal.external_terminal)
+        .unwrap_or_else(|_| "automatic".to_string());
+    let app = nomoreide_core::external_terminal::resolve_external_terminal(&preference);
     let manager = state.terminal.clone();
     let sink = state.events.clone();
-    let opened = tokio::task::spawn_blocking(move || manager.open_in_terminal(sink, &id)).await;
+    let opened =
+        tokio::task::spawn_blocking(move || manager.open_in_terminal(sink, &id, app)).await;
     match opened {
         Ok(Ok(session)) => session_response(session),
         Ok(Err(message)) => session_failure(message),

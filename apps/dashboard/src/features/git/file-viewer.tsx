@@ -1,12 +1,18 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import hljs from "highlight.js/lib/common";
-import { Code2, Eye, Pencil, Save, X } from "lucide-react";
+import { Code2, Eye, Pencil, Save, Users, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
-import { getGitFile, type GitFileContent, updateGitFile } from "@/lib/api";
+import {
+  getGitBlame,
+  getGitFile,
+  type GitBlameLine,
+  type GitFileContent,
+  updateGitFile,
+} from "@/lib/api";
 import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { MarkdownPreview } from "./visualizers/markdown-preview";
 import { YamlTree } from "./visualizers/yaml-tree";
@@ -100,10 +106,13 @@ function escapeHtml(value: string): string {
 }
 
 function NumberedContent({
+  blame,
   content,
   focusLine,
   path,
 }: {
+  /** Provenance per line, or `null` while off or still loading. */
+  blame: Map<number, GitBlameLine> | null;
   content: string;
   /** One-based line to scroll to and mark — how a search hit arrives here. */
   focusLine?: number;
@@ -111,7 +120,14 @@ function NumberedContent({
 }) {
   const language = useMemo(() => languageFor(path), [path]);
   const lines = useMemo(() => highlightLines(content, language), [content, language]);
-  const gutterWidth = `${Math.max(2, String(lines.length).length)}ch`;
+  /*
+    Wide enough for the largest line number *plus* the gutter's own padding.
+    `min-width` is border-box here, so a value that counted only the digits
+    would be smaller than the padding itself — the number column would collapse
+    to nothing and `text-right` would have no box to align inside, which reads
+    as the numbers drifting left.
+  */
+  const gutterWidth = `calc(${Math.max(2, String(lines.length).length)}ch + 1.75rem)`;
   const focusRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -128,9 +144,18 @@ function NumberedContent({
           key={index}
           ref={focusLine === index + 1 ? focusRef : undefined}
         >
+          {blame ? <BlameCell entry={blame.get(index + 1)} /> : null}
           <span
-            className="shrink-0 select-none border-r border-zinc-200 bg-zinc-100 px-2 text-right text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500"
-            style={{ minWidth: `calc(${gutterWidth} + 1rem)` }}
+            /*
+              No rule and no slab behind the numbers.
+              A gutter separated by a border *and* a different background is two
+              devices doing one job, and at this type size the pair reads as a
+              scrollbar rather than as line numbers. Alignment and a lower
+              contrast do it on their own — which is where every editor worth
+              copying ended up.
+            */
+            className="shrink-0 select-none pl-3 pr-4 text-right text-muted-foreground/50"
+            style={{ minWidth: gutterWidth }}
           >
             {index + 1}
           </span>
@@ -142,6 +167,74 @@ function NumberedContent({
       ))}
     </div>
   );
+}
+
+/**
+ * One line's author, in the gutter.
+ *
+ * Only the *first* line of each run shows a name. Blame repeats the same commit
+ * down every line it touched, and printing it on all of them turns the gutter
+ * into a wall of one name — the eye then has to find where authorship changes,
+ * which is the only thing the column is there to show. Consecutive lines from
+ * one commit are left blank, so a change of author is the only thing that draws
+ * attention.
+ *
+ * The run detection lives in the parent's map lookup rather than here; this
+ * receives the entry and decides only how to draw it.
+ */
+function BlameCell({ entry }: { entry?: GitBlameLine & { runStart?: boolean } }) {
+  const t = useT();
+  if (!entry) {
+    return <span className="w-28 shrink-0 select-none" />;
+  }
+  const label = entry.uncommitted
+    ? t("git.blame.short.uncommitted")
+    : `${shortAuthor(entry.author)} · ${formatBlameDate(entry.authorTime)}`;
+  return (
+    <span
+      className={cn(
+        "w-28 shrink-0 select-none truncate pl-3 pr-2 text-[10px]",
+        entry.uncommitted
+          ? "text-amber-700 dark:text-amber-500"
+          : "text-muted-foreground/70",
+        !entry.runStart && "opacity-0",
+      )}
+      title={
+        entry.uncommitted
+          ? t("git.blame.uncommitted")
+          : `${entry.commit.slice(0, 8)} · ${entry.author} · ${entry.summary}`
+      }
+    >
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Short and absolute. "3 months ago" is worse here: the gutter is scanned, and
+ * a relative date has to be decoded before it can be compared to the one above.
+ *
+ * No day. The column sits beside the code it annotates and is competing with it
+ * for width — the month and year answer "how old is this line" perfectly well,
+ * and the exact date is a hover away.
+ */
+function formatBlameDate(seconds: number): string {
+  return new Date(seconds * 1000).toLocaleDateString(undefined, {
+    month: "short",
+    year: "2-digit",
+  });
+}
+
+/**
+ * The first word of a name.
+ *
+ * The column exists to show *where authorship changes*, and a first name does
+ * that as well as a full one in a third of the width. The full name, the commit
+ * and the summary are all in the title, which is where someone who actually
+ * wants them will look.
+ */
+function shortAuthor(author: string): string {
+  return author.split(/\s+/)[0] || author;
 }
 
 export function FileViewer({
@@ -171,6 +264,9 @@ export function FileViewer({
 
   const visualKind = useMemo(() => visualKindFor(path), [path]);
   const [mode, setMode] = useState<ViewMode>("preview");
+  const [showBlame, setShowBlame] = useState(false);
+  const [blame, setBlame] = useState<GitBlameLine[] | null>(null);
+  const [blameError, setBlameError] = useState<string | null>(null);
   const canEdit = Boolean(file && !file.binary && !file.truncated);
   const dirty = file ? draft !== file.content : false;
 
@@ -207,6 +303,59 @@ export function FileViewer({
       active = false;
     };
   }, [path]);
+
+  /**
+   * Blame is fetched only while the column is showing.
+   *
+   * `git blame` walks history for the whole file, so it is far more expensive
+   * than reading the file — paying that on every open, for a column most visits
+   * never want, would make opening a file feel slow to serve a minority case.
+   */
+  useEffect(() => {
+    if (!showBlame || !path) {
+      return;
+    }
+    let active = true;
+    setBlameError(null);
+    void getGitBlame(path)
+      .then((lines) => {
+        if (active) setBlame(lines);
+      })
+      .catch((caught) => {
+        if (active) {
+          setBlame(null);
+          setBlameError(caught instanceof Error ? caught.message : String(caught));
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [path, showBlame]);
+
+  // A different file's blame is not this file's. Cleared on the path rather
+  // than left stale behind the toggle, which would blame the wrong lines for
+  // as long as the fetch takes.
+  useEffect(() => {
+    setBlame(null);
+    setBlameError(null);
+  }, [path]);
+
+  /**
+   * Blame by line, with the first line of each commit's run marked.
+   *
+   * Built here rather than in the row so the whole file is walked once instead
+   * of once per rendered line.
+   */
+  const blameByLine = useMemo(() => {
+    if (!blame) return null;
+    const map = new Map<number, GitBlameLine & { runStart?: boolean }>();
+    let previous: string | null = null;
+    for (const entry of blame) {
+      map.set(entry.line, { ...entry, runStart: entry.commit !== previous });
+      previous = entry.commit;
+    }
+    return map;
+  }, [blame]);
 
   async function saveDraft() {
     if (!path || !file || !dirty || saving) return;
@@ -298,6 +447,22 @@ export function FileViewer({
               </button>
             </div>
           ) : null}
+          {/*
+            Only for source. A rendered markdown preview has no lines to blame,
+            and offering the toggle there would be a control that does nothing.
+          */}
+          {mode === "source" && !file?.binary ? (
+            <Button
+              aria-pressed={showBlame}
+              onClick={() => setShowBlame((value) => !value)}
+              size="sm"
+              type="button"
+              variant={showBlame ? "default" : "outline"}
+            >
+              <Users />
+              {t("git.blame.toggle")}
+            </Button>
+          ) : null}
           {isModified ? (
             <Button onClick={onViewDiff} size="sm" type="button" variant="outline">
               {t("git.fileViewer.viewDiff")}
@@ -370,7 +535,19 @@ export function FileViewer({
               <YamlTree content={file.content} />
             )
           ) : (
-            <NumberedContent content={file.content} focusLine={focusLine} path={path} />
+            <>
+            {showBlame && blameError ? (
+              <Alert className="m-3" variant="muted">
+                {t("git.blame.unavailable", { error: blameError })}
+              </Alert>
+            ) : null}
+            <NumberedContent
+              blame={showBlame ? blameByLine : null}
+              content={file.content}
+              focusLine={focusLine}
+              path={path}
+            />
+            </>
           )
         ) : null}
       </div>
