@@ -320,8 +320,11 @@ async fn service_action(
     Ok(())
 }
 
+/// Every command here came to act on the runtime, so a missing daemon is a
+/// thing to fix rather than report. `daemon status` and `daemon stop` do not
+/// come through here, and must not.
 async fn connect(paths: &RuntimePaths, port: u16) -> Result<DaemonClient, CliError> {
-    DaemonClient::discover(paths, port, env!("CARGO_PKG_VERSION"))
+    DaemonClient::ensure(paths, port, env!("CARGO_PKG_VERSION"))
         .await
         .map_err(daemon_failure)
 }

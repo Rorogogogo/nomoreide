@@ -310,9 +310,15 @@ impl ToolExecutor for NativeToolExecutor {
 
 impl NativeToolExecutor {
     /// Everything the daemon owns. The daemon has to be reachable first,
-    /// because none of these questions has an answer without it.
+    /// because none of these questions has an answer without it — so this
+    /// *starts* one when there is none rather than reporting its absence.
+    ///
+    /// An agent has no good move when told the daemon is not running: the fix
+    /// is a shell command it may not be able to run, in a process that outlives
+    /// the session, and restarting the MCP server does not help because nothing
+    /// on this path ever started a daemon.
     async fn serve_runtime(&self, tool: NativeTool<'_>) -> Result<String, String> {
-        let client = DaemonClient::discover(&self.paths, self.port, env!("CARGO_PKG_VERSION"))
+        let client = DaemonClient::ensure(&self.paths, self.port, env!("CARGO_PKG_VERSION"))
             .await
             .map_err(|error| error.to_string())?;
         match tool {

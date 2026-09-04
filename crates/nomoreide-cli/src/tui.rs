@@ -674,8 +674,11 @@ fn state_label(state: ServiceRuntimeState) -> &'static str {
     }
 }
 
+/// Opening the TUI with no daemon starts one, the same way `nomoreide web`
+/// does. Anything else makes the interface's first screen an error about a
+/// process the user did not ask about and cannot start from here.
 async fn connect(paths: &RuntimePaths, port: u16) -> Result<DaemonClient, CliError> {
-    DaemonClient::discover(paths, port, env!("CARGO_PKG_VERSION"))
+    DaemonClient::ensure(paths, port, env!("CARGO_PKG_VERSION"))
         .await
         .map_err(daemon_failure)
 }
