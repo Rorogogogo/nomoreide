@@ -160,3 +160,41 @@ jobs:
       # at which point they stop replaying on a developer's machine. One set of
       # recordings cannot serve both; that is a decision to take deliberately,
       # not a line to add here.
+
+  # A Linux compile, so a macOS-only symbol cannot reach a tag.
+  #
+  # Every other Rust gate here runs on `macos-latest`, because the desktop app
+  # and the external-terminal work are macOS-specific. The consequence is that
+  # nothing compiled this workspace for Linux until `cli-release.yml` built the
+  # release archives — *after* a version had been bumped and tagged. A type
+  # defined inside a `#[cfg(target_os = "macos")]` module and referenced from a
+  # `#[cfg(not(target_os = "macos"))]` stub passed every check on a Mac and
+  # failed the release, which is the worst possible place to find it.
+  #
+  # `cargo check` rather than a full build: this is here to resolve names and
+  # types across the cfg boundary, and the release workflow still does the real
+  # build. Cheap enough to run on every PR, which is the point.
+  linux-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: .
+
+      # The daemon vendors the dashboard at build time, so the assets have to
+      # exist before the crate is checked.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # The desktop app is deliberately excluded: Tauri needs GTK and webkit2gtk
+      # system libraries, and it is not shipped for Linux. Everything the CLI
+      # release actually builds is covered.
+      - run: cargo check --workspace --exclude nomoreide-tauri --all-targets
