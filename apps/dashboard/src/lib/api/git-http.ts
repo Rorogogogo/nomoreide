@@ -8,6 +8,7 @@ import type {
   GitApi,
   GitBranch,
   GitCheckoutDefaultAndPullResult,
+  GitBlameLine,
   GitFileContent,
   GitFileStatus,
   GitGraphCommit,
@@ -135,6 +136,13 @@ export const httpGitApi: GitApi = {
       binary: response.binary,
       size: response.size,
     };
+  },
+
+  async getGitBlame(path) {
+    const response = await requestJson<{ ok: true; lines: GitBlameLine[] }>(
+      `/api/git/blame?path=${encodeURIComponent(path)}`,
+    );
+    return response.lines;
   },
 
   async updateGitFile(path, content) {

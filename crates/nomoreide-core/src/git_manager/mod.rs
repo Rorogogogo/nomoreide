@@ -13,6 +13,7 @@
 //! The implementation is spread over sibling modules by responsibility. They
 //! all add methods to the same [`GitManager`].
 
+mod blame;
 mod branches;
 mod compare;
 mod exec;
@@ -23,6 +24,7 @@ mod search;
 mod types;
 mod worktrees;
 
+pub use blame::GitBlameLine;
 pub use worktrees::worktree_at;
 
 pub use search::ContentSearchOptions;

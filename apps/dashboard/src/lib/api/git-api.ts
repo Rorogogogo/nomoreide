@@ -69,6 +69,19 @@ export interface GitFileContent {
   size: number;
 }
 
+/** One line's provenance, as the file viewer's gutter shows it. */
+export interface GitBlameLine {
+  /** One-based, the way an editor's gutter counts. */
+  line: number;
+  commit: string;
+  author: string;
+  /** Seconds since the epoch, UTC. Formatting is the locale's business. */
+  authorTime: number;
+  summary: string;
+  /** Not yet committed — git reports these under an all-zero hash. */
+  uncommitted: boolean;
+}
+
 export interface FileSizeRank {
   path: string;
   lines: number;
@@ -194,6 +207,7 @@ export interface GitApi {
   searchGitContent(query: string, options?: ContentSearchOptions): Promise<ContentSearchResult>;
   getFileSizeRanking(): Promise<FileSizeRank[]>;
   getGitFile(path: string): Promise<GitFileContent>;
+  getGitBlame(path: string): Promise<GitBlameLine[]>;
   updateGitFile(path: string, content: string): Promise<void>;
   getGitDiff(path: string, repo?: string): Promise<string>;
   getGitOverview(): Promise<GitOverview>;

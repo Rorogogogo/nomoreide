@@ -221,7 +221,7 @@ const editorTheme = EditorView.theme({
   },
   ".cm-scroller": {
     fontFamily:
-      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
     lineHeight: "1.5",
   },
   ".cm-content": {
@@ -245,10 +245,13 @@ const editorTheme = EditorView.theme({
   "&.cm-focused .cm-cursor": {
     borderLeft: "2px solid hsl(var(--accent))",
   },
+  // No `borderRight`: the gutter shares the editor's background and is set
+  // apart by contrast alone, like the file and diff viewers.
   ".cm-gutters": {
     backgroundColor: "hsl(var(--background))",
-    borderRight: "1px solid hsl(var(--border))",
-    color: "hsl(var(--muted-foreground))",
+    border: "none",
+    color: "hsl(var(--muted-foreground) / 0.6)",
+    paddingRight: "0.5rem",
   },
   ".cm-activeLine": {
     backgroundColor: "hsl(var(--muted) / 0.45)",

@@ -318,7 +318,9 @@ function LineNumber({ value }: { value: number | null }) {
   return (
     <span
       className={cn(
-        "select-none border-r border-border/70 px-2 text-right text-muted-foreground",
+        // No rule: the number column is set apart by alignment and contrast,
+        // matching the file viewer and the editor.
+        "select-none pl-3 pr-4 text-right text-muted-foreground/60",
         value === null && "text-transparent",
       )}
     >

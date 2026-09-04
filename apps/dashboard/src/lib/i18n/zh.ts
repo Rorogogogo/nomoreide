@@ -238,6 +238,17 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "activity.loading": "正在读取机器活动…",
   "activity.collecting": "正在收集第一组机器数据…",
   "activity.collectingShort": "采集中",
+  "activity.docker.source": "Docker",
+  "activity.docker.sourceDetail": "本机上的容器",
+  "activity.docker.title": "Docker 活动",
+  "activity.docker.subtitle": "各容器的实时 CPU 与内存。",
+  "activity.docker.loading": "正在读取容器统计…",
+  "activity.docker.unavailable": "Docker 未运行，因此没有容器统计数据。启动 Docker 后此视图会自动填充。",
+  "activity.docker.empty": "没有匹配的容器。",
+  "activity.docker.filter": "筛选容器",
+  "activity.docker.container": "容器",
+  "activity.docker.netIo": "网络 I/O",
+  "activity.docker.blockIo": "块 I/O",
   "activity.thisMachine": "本机",
   "activity.sampled": "采样于 {time}",
   "activity.logicalCpus": "{count} 个逻辑 CPU",
@@ -303,6 +314,9 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "app.loading": "正在加载 NoMoreIDE 状态…",
   "app.localWorkspace": "本地工作区",
   "app.allProjects": "所有项目",
+  "app.daemonSkew.message":
+    "NoMoreIDE 守护进程运行的是 v{daemon}，但此仪表板由 v{client} 构建。功能可能以看似无关的方式出错。请运行以下命令重启：",
+  "app.daemonSkew.cost": "— 这会停止它管理的所有服务。",
   "app.serviceOutsideScope": "该服务不在当前项目范围内 — 已切换为显示所有项目。",
 
   "operation.multiple": "{count} 个操作正在进行",
@@ -1990,6 +2004,10 @@ export const zh: Partial<Record<TranslationKey, string>> = {
 
   // Git file viewer
   "git.fileViewer.selectFile": "选择一个文件以查看其内容。",
+  "git.blame.toggle": "追溯",
+  "git.blame.uncommitted": "尚未提交",
+  "git.blame.short.uncommitted": "未提交",
+  "git.blame.unavailable": "无法获取此文件的追溯信息：{error}",
   "git.fileViewer.readOnly": "已跟踪文件的只读视图。",
   "git.fileViewer.truncated": "已截断 — 文件超过 1MB。",
   "git.fileViewer.binary": "二进制文件。",

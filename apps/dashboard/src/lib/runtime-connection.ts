@@ -51,6 +51,34 @@ export function getRuntimeConnectionSnapshot(): RuntimeConnectionSnapshot {
   return snapshot;
 }
 
+/**
+ * Whether the daemon answering this page is the one this page was built for.
+ *
+ * The daemon prefers dashboard files on disk over the copy embedded in it at
+ * compile time, which is what lets a `npm run build` take effect without
+ * recompiling Rust. The cost is that an *old* daemon will happily serve a newly
+ * built dashboard: the browser then runs new client code against a server two
+ * versions behind, and the failures look like ordinary bugs rather than skew.
+ * That is not hypothetical — a daemon left running for two days answered
+ * `auth_error` for a GitHub account that was connected and working.
+ *
+ * `ensure` in `nomoreide-daemon-client` already replaces an outdated daemon
+ * when it is idle, but only the CLI and MCP paths call it. A browser never
+ * does, so this is the only place the skew can be noticed from a tab.
+ *
+ * `null` while the version is still unknown — a page that accused the daemon of
+ * being stale before it had heard from it would flash on every load.
+ */
+export function getDaemonVersionSkew(
+  current: RuntimeConnectionSnapshot = snapshot,
+): { daemon: string; client: string } | null {
+  const daemon = current.daemonVersion;
+  if (!daemon || daemon === __APP_VERSION__) {
+    return null;
+  }
+  return { daemon, client: __APP_VERSION__ };
+}
+
 export function subscribeToRuntimeConnection(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
