@@ -1,5 +1,112 @@
+//! Presenting a running agent session in an external terminal.
+//!
+//! The preference and how it resolves live at the top level, on every platform:
+//! the daemon reads the setting and passes it down before it knows or cares
+//! whether anything can act on it. Only the *launching* is macOS-only, and that
+//! is what the `macos` module below holds.
+//!
+//! Getting this boundary wrong does not fail on a Mac. It fails on Linux, in a
+//! release build, after everything green has already been merged.
+
+/// Which terminal application a mirror opens in.
+///
+/// The settings key offers `automatic`, `ghostty`, `iterm2` and `terminal`,
+/// and for a long time this module honoured none of them: it said
+/// `tell application "Terminal"` and that was that. Choosing Ghostty and
+/// getting Terminal.app is the visible half of the bug. The invisible half
+/// is worse — see [`ExternalTerminalApp::renders_truecolor`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExternalTerminalApp {
+    Ghostty,
+    ITerm2,
+    TerminalApp,
+}
+
+impl ExternalTerminalApp {
+    /// The name LaunchServices and AppleScript know it by.
+    pub fn app_name(self) -> &'static str {
+        match self {
+            Self::Ghostty => "Ghostty",
+            // The bundle is `iTerm.app`; only the product is called iTerm2.
+            Self::ITerm2 => "iTerm",
+            Self::TerminalApp => "Terminal",
+        }
+    }
+
+    /// Whether it can draw 24-bit colour.
+    ///
+    /// Terminal.app cannot, and it does not degrade politely: handed
+    /// `ESC[38;2;R;G;Bm` it reads the components as separate SGR codes and
+    /// paints backgrounds out of them. An agent's output arrives as blocks
+    /// of green, blue and magenta — which looks like a corrupted mirror
+    /// rather than a terminal that is missing a feature.
+    ///
+    /// The PTY is spawned once, with `COLORTERM=truecolor`, and the dock's
+    /// xterm renders it correctly. So this cannot be fixed by choosing
+    /// different bytes; it is fixed by preferring a terminal that can read
+    /// the ones already being sent.
+    pub fn renders_truecolor(self) -> bool {
+        !matches!(self, Self::TerminalApp)
+    }
+}
+
+/// Whether the app is installed, asked of LaunchServices rather than of
+/// `/Applications` — an app is perfectly allowed to live somewhere else.
+///
+/// Always false off macOS, where there is no `open` to ask and nothing this
+/// module could launch anyway.
+#[cfg(target_os = "macos")]
+pub fn terminal_installed(app: ExternalTerminalApp) -> bool {
+    std::process::Command::new("/usr/bin/open")
+        .args(["-Ra", app.app_name()])
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn terminal_installed(_app: ExternalTerminalApp) -> bool {
+    false
+}
+
+/// The terminal to open, given the settings value.
+///
+/// A named choice that is not installed falls back rather than failing: the
+/// setting is a preference, and refusing to mirror an agent because a
+/// terminal was uninstalled two months ago helps nobody.
+///
+/// `automatic` prefers truecolor, which is the whole reason it is not just
+/// "Terminal.app". Terminal.app is last because it is the only one that
+/// mangles what the agent already emits, and it is always present, so it is
+/// the floor rather than the default.
+pub fn resolve_external_terminal(preference: &str) -> ExternalTerminalApp {
+    let ordered = [
+        ExternalTerminalApp::Ghostty,
+        ExternalTerminalApp::ITerm2,
+        ExternalTerminalApp::TerminalApp,
+    ];
+    let named = match preference {
+        "ghostty" => Some(ExternalTerminalApp::Ghostty),
+        "iterm2" => Some(ExternalTerminalApp::ITerm2),
+        "terminal" => Some(ExternalTerminalApp::TerminalApp),
+        _ => None,
+    };
+    if let Some(named) = named {
+        if named == ExternalTerminalApp::TerminalApp || terminal_installed(named) {
+            return named;
+        }
+    }
+    ordered
+        .into_iter()
+        .find(|candidate| {
+            *candidate != ExternalTerminalApp::TerminalApp && terminal_installed(*candidate)
+        })
+        .unwrap_or(ExternalTerminalApp::TerminalApp)
+}
+
 #[cfg(target_os = "macos")]
 mod macos {
+    use super::ExternalTerminalApp;
     use std::env;
     use std::fs;
     use std::io::{self, Read, Write};
@@ -159,93 +266,6 @@ mod macos {
             task_label
         };
         format!("{marker} {provider_label} · {task_label} · NoMoreIDE")
-    }
-
-    /// Which terminal application a mirror opens in.
-    ///
-    /// The settings key offers `automatic`, `ghostty`, `iterm2` and `terminal`,
-    /// and for a long time this module honoured none of them: it said
-    /// `tell application "Terminal"` and that was that. Choosing Ghostty and
-    /// getting Terminal.app is the visible half of the bug. The invisible half
-    /// is worse — see [`ExternalTerminalApp::renders_truecolor`].
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub enum ExternalTerminalApp {
-        Ghostty,
-        ITerm2,
-        TerminalApp,
-    }
-
-    impl ExternalTerminalApp {
-        /// The name LaunchServices and AppleScript know it by.
-        pub fn app_name(self) -> &'static str {
-            match self {
-                Self::Ghostty => "Ghostty",
-                // The bundle is `iTerm.app`; only the product is called iTerm2.
-                Self::ITerm2 => "iTerm",
-                Self::TerminalApp => "Terminal",
-            }
-        }
-
-        /// Whether it can draw 24-bit colour.
-        ///
-        /// Terminal.app cannot, and it does not degrade politely: handed
-        /// `ESC[38;2;R;G;Bm` it reads the components as separate SGR codes and
-        /// paints backgrounds out of them. An agent's output arrives as blocks
-        /// of green, blue and magenta — which looks like a corrupted mirror
-        /// rather than a terminal that is missing a feature.
-        ///
-        /// The PTY is spawned once, with `COLORTERM=truecolor`, and the dock's
-        /// xterm renders it correctly. So this cannot be fixed by choosing
-        /// different bytes; it is fixed by preferring a terminal that can read
-        /// the ones already being sent.
-        pub fn renders_truecolor(self) -> bool {
-            !matches!(self, Self::TerminalApp)
-        }
-    }
-
-    /// Whether the app is installed, asked of LaunchServices rather than of
-    /// `/Applications` — an app is perfectly allowed to live somewhere else.
-    pub fn terminal_installed(app: ExternalTerminalApp) -> bool {
-        Command::new("/usr/bin/open")
-            .args(["-Ra", app.app_name()])
-            .status()
-            .map(|status| status.success())
-            .unwrap_or(false)
-    }
-
-    /// The terminal to open, given the settings value.
-    ///
-    /// A named choice that is not installed falls back rather than failing: the
-    /// setting is a preference, and refusing to mirror an agent because a
-    /// terminal was uninstalled two months ago helps nobody.
-    ///
-    /// `automatic` prefers truecolor, which is the whole reason it is not just
-    /// "Terminal.app". Terminal.app is last because it is the only one that
-    /// mangles what the agent already emits, and it is always present, so it is
-    /// the floor rather than the default.
-    pub fn resolve_external_terminal(preference: &str) -> ExternalTerminalApp {
-        let ordered = [
-            ExternalTerminalApp::Ghostty,
-            ExternalTerminalApp::ITerm2,
-            ExternalTerminalApp::TerminalApp,
-        ];
-        let named = match preference {
-            "ghostty" => Some(ExternalTerminalApp::Ghostty),
-            "iterm2" => Some(ExternalTerminalApp::ITerm2),
-            "terminal" => Some(ExternalTerminalApp::TerminalApp),
-            _ => None,
-        };
-        if let Some(named) = named {
-            if named == ExternalTerminalApp::TerminalApp || terminal_installed(named) {
-                return named;
-            }
-        }
-        ordered
-            .into_iter()
-            .find(|candidate| {
-                *candidate != ExternalTerminalApp::TerminalApp && terminal_installed(*candidate)
-            })
-            .unwrap_or(ExternalTerminalApp::TerminalApp)
     }
 
     /// The command the terminal is asked to run.
@@ -470,8 +490,10 @@ mod macos {
     mod tests {
         use super::{
             accept_authenticated, external_terminal_title, new_socket_path, posix_quote,
-            read_frame, resolve_external_terminal, terminal_installed, write_frame,
-            ExternalTerminalApp, SocketPathGuard, AUTH, ERROR, INPUT,
+            read_frame, write_frame, SocketPathGuard, AUTH, ERROR, INPUT,
+        };
+        use crate::external_terminal::{
+            resolve_external_terminal, terminal_installed, ExternalTerminalApp,
         };
         use std::io::ErrorKind;
         use std::os::unix::fs::PermissionsExt;
