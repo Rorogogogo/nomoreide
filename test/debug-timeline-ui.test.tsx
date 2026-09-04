@@ -11,9 +11,9 @@ describe("DebugTimeline UI", () => {
         id: "event-1",
         timestamp: new Date(now - 12 * 60 * 1000).toISOString(),
         kind: "service.lifecycle",
-        service: "brainctl-platform-frontend",
+        service: "storefront-web",
         severity: "info",
-        title: "brainctl-platform-frontend started",
+        title: "storefront-web started",
       },
       {
         id: "event-2",
@@ -44,7 +44,7 @@ describe("DebugTimeline UI", () => {
     // Density buckets render per row
     expect(markup).toContain("timeline-density");
     // Full service names should be readable (not truncated in markup)
-    expect(markup).toContain("brainctl-platform-frontend");
+    expect(markup).toContain("storefront-web");
     expect(markup).toContain("jobjourney-api");
     // Latest error/warning message surfaces inline
     expect(markup).toContain("EADDRINUSE");

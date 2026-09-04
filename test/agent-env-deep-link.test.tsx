@@ -46,8 +46,8 @@ beforeEach(() => {
   getRegistryAuthStatus.mockResolvedValue({
     signedIn: true,
     apiMode: "prod",
-    apiBaseUrl: "https://api.brainctl.net",
-    apiFrontendUrl: "https://www.brainctl.net",
+    apiBaseUrl: "https://api.nomoreide.com",
+    apiFrontendUrl: "https://registry.nomoreide.com",
     user: { displayName: "Roro", email: "roro@example.com" },
   });
   installAgentEnvProfileFromRegistry.mockResolvedValue({
@@ -173,7 +173,7 @@ describe("registry deep link (?install=<slug>)", () => {
     });
 
     expect(open).toHaveBeenCalledWith(
-      "https://www.brainctl.net",
+      "https://registry.nomoreide.com",
       "_blank",
       "noopener,noreferrer",
     );

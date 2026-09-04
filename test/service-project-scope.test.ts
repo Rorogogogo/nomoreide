@@ -65,13 +65,13 @@ describe("unassignedServices", () => {
   test("returns only services no project claims", () => {
     const services = [
       service({ name: "web", cwd: "/Users/dev/work/nomoreide" }),
-      service({ name: "brainctl-logs", cwd: "/root" }),
+      service({ name: "storefront-logs", cwd: "/root" }),
       service({ name: "portfolio", cwd: "/Users/dev/work/builder-island" }),
       service({ name: "pinned", cwd: "/root", projectPath: "/Users/dev/work/nomoreide" }),
     ];
 
     expect(unassignedServices(services, REPOS).map((entry) => entry.name)).toEqual([
-      "brainctl-logs",
+      "storefront-logs",
       "portfolio",
     ]);
   });

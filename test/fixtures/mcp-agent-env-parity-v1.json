@@ -14,7 +14,7 @@
               ".codex/config.toml": "[mcp_servers.project-codex]\ncommand = \"true\"\n",
               ".mcp.json": "{\n  \"mcpServers\": {\n    \"dot-mcp\": {\n      \"command\": \"true\"\n    }\n  }\n}\n",
               ".agents/skills/project-codex-skill/SKILL.md": "---\nname: project-codex-skill\ndescription: P.\n---\n\nP.\n",
-              ".brainctl/project-mcps.json": "{\n  \"claude\": {\n    \"mcpServers\": {\n      \"store-claude\": {\n        \"command\": \"true\"\n      }\n    }\n  },\n  \"codex\": {\n    \"mcpServers\": {\n      \"store-codex\": {\n        \"command\": \"true\"\n      },\n      \"store-codex-remote\": {\n        \"transport\": \"sse\",\n        \"url\": \"https://sc.example.test/mcp\"\n      },\n      \"store-codex-plain\": {\n        \"url\": \"https://sp.example.test/mcp\"\n      }\n    }\n  },\n  \"antigravity\": {\n    \"mcpServers\": {\n      \"store-ag\": {\n        \"command\": \"true\"\n      }\n    }\n  }\n}\n"
+              ".nomoreide/project-mcps.json": "{\n  \"claude\": {\n    \"mcpServers\": {\n      \"store-claude\": {\n        \"command\": \"true\"\n      }\n    }\n  },\n  \"codex\": {\n    \"mcpServers\": {\n      \"store-codex\": {\n        \"command\": \"true\"\n      },\n      \"store-codex-remote\": {\n        \"transport\": \"sse\",\n        \"url\": \"https://sc.example.test/mcp\"\n      },\n      \"store-codex-plain\": {\n        \"url\": \"https://sp.example.test/mcp\"\n      }\n    }\n  },\n  \"antigravity\": {\n    \"mcpServers\": {\n      \"store-ag\": {\n        \"command\": \"true\"\n      }\n    }\n  }\n}\n"
             },
             "message": "init"
           }

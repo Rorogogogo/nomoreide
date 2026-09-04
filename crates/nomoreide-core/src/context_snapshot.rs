@@ -30,7 +30,6 @@ const IGNORED_DIRS: &[&str] = &[
     ".obsidian",
     ".trash",
     ".nomoreide",
-    ".brainctl",
     ".next",
     ".turbo",
     ".vercel",

@@ -11,8 +11,13 @@ use super::ordered::{Json, OrderedMap};
 use super::{backup, Agent};
 use std::path::{Path, PathBuf};
 
+/// `.nomoreide/project-mcps.json`, beside the logs.
+///
+/// This lived under a directory named for the old brand until the cleanup — one
+/// project-local dotdir per product is the point, and there was no reason for
+/// this to be the exception.
 pub(super) fn path(project: &Path) -> PathBuf {
-    project.join(".brainctl").join("project-mcps.json")
+    project.join(".nomoreide").join("project-mcps.json")
 }
 
 fn load(path: &Path) -> Json {

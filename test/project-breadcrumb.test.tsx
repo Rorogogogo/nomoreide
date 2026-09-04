@@ -19,8 +19,8 @@ vi.mock("../apps/dashboard/src/features/git/project-switcher", () => ({
 }));
 
 const REPOSITORIES = [
-  "brainctl",
-  "brainctl-platform",
+  "storefront",
+  "storefront-platform",
   "nomoreide",
   "JobJourney",
   "laimio-amazon-ads-ppc-dashboard",
