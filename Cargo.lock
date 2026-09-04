@@ -2456,7 +2456,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "libc",
  "nomoreide-cli",
@@ -2466,7 +2466,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide-actions"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "nomoreide-core",
@@ -2480,7 +2480,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide-cli"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "crossterm",
@@ -2497,7 +2497,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide-core"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2528,7 +2528,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide-daemon"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -2551,7 +2551,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide-daemon-client"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "dirs 5.0.1",
  "libc",
@@ -2565,7 +2565,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide-mcp"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "chrono",
  "nomoreide-actions",
@@ -2578,7 +2578,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide-remote-protocol"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -2588,7 +2588,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide-tauri"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "nomoreide-core",

@@ -1,6 +1,6 @@
 {
   "name": "nomoreide",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "description": "An AI-native terminal workbench for services, Git review, logs, and MCP workflows.",
   "repository": {
