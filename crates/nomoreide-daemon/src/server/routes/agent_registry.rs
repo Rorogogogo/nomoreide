@@ -77,11 +77,10 @@ fn install_status(message: &str) -> StatusCode {
     if message.contains("already exists") {
         return StatusCode::CONFLICT;
     }
-    const UNPROCESSABLE: [&str; 5] = [
+    const UNPROCESSABLE: [&str; 4] = [
         "Profile archive contains",
         "Archive has",
         "Archive is missing",
-        "This is a brainctl-era profile archive",
         "Could not extract the archive",
     ];
     if UNPROCESSABLE.iter().any(|start| message.starts_with(start)) {

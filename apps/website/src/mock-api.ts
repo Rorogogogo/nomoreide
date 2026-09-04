@@ -1349,14 +1349,14 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       signedIn: true,
       source: "config",
       user: { email: "demo@nomoreide.dev", displayName: "Demo User" },
-      apiBaseUrl: "https://api.brainctl.net",
+      apiBaseUrl: "https://api.nomoreide.com",
       apiMode: "prod",
       apiSource: "default",
-      apiFrontendUrl: "https://www.brainctl.net",
+      apiFrontendUrl: "https://registry.nomoreide.com",
     });
   }
   if (path === "/api/agent-env/auth/start") {
-    return json({ ok: true, url: "https://www.brainctl.net/cli-login", state: "demo-state" });
+    return json({ ok: true, url: "https://registry.nomoreide.com/cli-login", state: "demo-state" });
   }
   if (path === "/api/agent-env/auth/outcome") return json({ ok: true, status: "success" });
   if (path === "/api/agent-env/auth/logout") return json({ ok: true });
@@ -1369,7 +1369,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       pluginCount: 1,
       missingCredentials: [],
       version: "1.0.0",
-      sourceKind: "brainctl",
+      sourceKind: "hosted",
     });
   }
   if (path === "/api/agent-env/profiles/register-github") {

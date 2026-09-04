@@ -239,7 +239,7 @@ export interface AgentEnvProfileImportResult {
   missingCredentials: Array<{ key: string; required: boolean; description?: string }>;
 }
 
-/* ---- Registry (ROR-63): the hosted profile registry (brainctl platform) ---- */
+/* ---- Registry (ROR-63): the hosted profile registry ---- */
 
 export interface AgentEnvRegistryStatus {
   signedIn: boolean;

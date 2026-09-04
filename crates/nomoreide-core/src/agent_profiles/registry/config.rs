@@ -1,14 +1,9 @@
 //! Where the registry lives and who this machine is to it.
 //!
-//! The registry began life as the brainctl platform, so every lookup falls back
-//! to the old `~/.brainctl/config.json` and `BRAINCTL_*` names — an existing
-//! brainctl sign-in keeps working. The old names are the *fallback*, never the
-//! override: a stale `BRAINCTL_API_BASE_URL` in a shell profile must not win
-//! over the current one.
-//!
-//! Reads fall back to the legacy file; writes never do. That asymmetry is the
-//! migration: the first token saved after an upgrade lands in the new path and
-//! the old file stops being consulted.
+//! This used to carry a whole second set of names — a pre-rename config file, a
+//! pre-rename environment prefix, and a pre-rename pair of hosts — so that a
+//! sign-in from before the rename kept working. All of it is gone: the hosts it
+//! pointed at no longer exist, and nothing was ever installed against them.
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -16,27 +11,13 @@ use std::path::PathBuf;
 pub const DEFAULT_API_BASE_URL: &str = "https://api.nomoreide.com";
 pub const DEFAULT_FRONTEND_URL: &str = "https://registry.nomoreide.com";
 
-/// The pre-rename defaults. Still serving the same API — every CLI published
-/// before the rename has them compiled in — so they are real production
-/// targets, not custom ones.
-pub const LEGACY_API_BASE_URL: &str = "https://api.brainctl.net";
-pub const LEGACY_FRONTEND_URL: &str = "https://www.brainctl.net";
-
 /// API base → registry web UI, for the hosts we actually run.
-///
-/// Without the legacy pair, an `api.brainctl.net` left in a config would fall
-/// through to the `api.` → `app.` guess below and resolve to
-/// `app.brainctl.net`, which does not exist.
-const KNOWN_FRONTENDS: [(&str, &str); 2] = [
-    (DEFAULT_API_BASE_URL, DEFAULT_FRONTEND_URL),
-    (LEGACY_API_BASE_URL, LEGACY_FRONTEND_URL),
-];
+const KNOWN_FRONTENDS: [(&str, &str); 1] = [(DEFAULT_API_BASE_URL, DEFAULT_FRONTEND_URL)];
 
-/// `NOMOREIDE_<suffix>`, falling back to the pre-rename `BRAINCTL_<suffix>`.
+/// `NOMOREIDE_<suffix>`.
 fn branded_env(suffix: &str) -> Option<String> {
     std::env::var(format!("NOMOREIDE_{suffix}"))
         .ok()
-        .or_else(|| std::env::var(format!("BRAINCTL_{suffix}")).ok())
         .filter(|value| !value.trim().is_empty())
 }
 
@@ -68,15 +49,6 @@ pub fn config_path() -> PathBuf {
         return PathBuf::from(explicit);
     }
     home().join(".nomoreide").join("config.json")
-}
-
-/// `None` when the current path was set explicitly — there is nothing older to
-/// fall back to.
-fn legacy_config_path() -> Option<PathBuf> {
-    if branded_env("CONFIG_PATH").is_some() {
-        return None;
-    }
-    Some(home().join(".brainctl").join("config.json"))
 }
 
 /// Trim, drop trailing slashes, and insist on http(s).
@@ -123,16 +95,12 @@ fn non_empty(value: String) -> Option<String> {
     (!trimmed.is_empty()).then(|| trimmed.to_string())
 }
 
-/// The config as it reads today: the current file, else the pre-rename one.
+/// The config as it reads today.
 pub fn stored() -> StoredConfig {
-    let read = |path: PathBuf| {
-        std::fs::read_to_string(path)
-            .ok()
-            .and_then(|text| serde_json::from_str::<StoredConfig>(&text).ok())
-            .map(normalize)
-    };
-    read(config_path())
-        .or_else(|| legacy_config_path().and_then(read))
+    std::fs::read_to_string(config_path())
+        .ok()
+        .and_then(|text| serde_json::from_str::<StoredConfig>(&text).ok())
+        .map(normalize)
         .unwrap_or_default()
 }
 
@@ -329,6 +297,21 @@ mod tests {
         );
     }
 
+    /// One location, and only one.
+    ///
+    /// This replaces a parity case that covered reading a *second*, pre-rename
+    /// file when the first was absent. That fallback is gone, so what is worth
+    /// pinning is that there is nothing to fall back to.
+    #[test]
+    fn the_config_lives_in_exactly_one_place() {
+        let path = config_path();
+        assert!(
+            path.ends_with(".nomoreide/config.json"),
+            "unexpected config path: {}",
+            path.display()
+        );
+    }
+
     #[test]
     fn a_non_http_url_is_not_a_registry() {
         assert_eq!(normalize_base_url("file:///etc/passwd"), None);
@@ -338,7 +321,6 @@ mod tests {
     #[test]
     fn the_published_bases_read_as_production() {
         assert_eq!(mode_of(DEFAULT_API_BASE_URL), "prod");
-        assert_eq!(mode_of(LEGACY_API_BASE_URL), "prod");
         assert_eq!(mode_of("http://127.0.0.1:8787"), "local");
         assert_eq!(mode_of("http://localhost:8787"), "local");
         assert_eq!(mode_of("https://api.someone-else.dev"), "custom");
@@ -365,8 +347,8 @@ mod tests {
             Some("http://127.0.0.1:5173")
         );
         assert_eq!(
-            derive_frontend_url(LEGACY_API_BASE_URL).as_deref(),
-            Some(LEGACY_FRONTEND_URL)
+            derive_frontend_url(DEFAULT_API_BASE_URL).as_deref(),
+            Some(DEFAULT_FRONTEND_URL)
         );
         assert_eq!(derive_frontend_url("https://example.com"), None);
     }

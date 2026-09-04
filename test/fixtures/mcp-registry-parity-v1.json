@@ -656,28 +656,6 @@
         {
           "path": ".nomoreide/config.json",
           "contents": "{}\n"
-        },
-        {
-          "path": ".brainctl/config.json",
-          "contents": "{\n  \"apiToken\": \"token-from-the-brainctl-file\"\n}\n"
-        }
-      ]
-    },
-    {
-      "id": "registry/fall-back-to-the-pre-rename-file",
-      "tool": "nomoreide_profiles_register_github",
-      "arguments": {
-        "repoUrl": "https://github.com/owner/repo",
-        "slug": "from-repo",
-        "title": "From Repo"
-      },
-      "removeHomeFiles": [
-        ".nomoreide/config.json"
-      ],
-      "writeHomeFiles": [
-        {
-          "path": ".brainctl/config.json",
-          "contents": "{\n  \"apiToken\": \"token-from-the-brainctl-file\"\n}\n"
         }
       ]
     }

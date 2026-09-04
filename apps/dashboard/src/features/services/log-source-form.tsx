@@ -131,7 +131,7 @@ export function LogSourceForm({
           <Field label={t("services.log.container")}>
             <Input
               onChange={(event) => setContainer(event.target.value)}
-              placeholder="brainctl-api"
+              placeholder="nomoreide-api"
               value={container}
             />
           </Field>

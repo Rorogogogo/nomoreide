@@ -51,7 +51,7 @@ describe("capabilityCountsFor", () => {
         skills: [
           { name: "commit-push", scope: "user" },
           { name: "verify", scope: "project", kind: "skill" },
-          { name: "brainctl-board", scope: "user", kind: "plugin" },
+          { name: "notes-board", scope: "user", kind: "plugin" },
         ],
         mcpServers: { linear: local },
       }),
@@ -110,7 +110,7 @@ describe("capabilityItemsFor", () => {
       config({
         skills: [
           {
-            name: "brainctl",
+            name: "notes",
             scope: "user",
             kind: "plugin",
             pluginSkills: ["board"],
@@ -122,16 +122,16 @@ describe("capabilityItemsFor", () => {
       "claude",
     );
     expect(items.plugins).toEqual([
-      { name: "brainctl", detail: "user", insert: 'Use the "brainctl" plugin: ' },
+      { name: "notes", detail: "user", insert: 'Use the "notes" plugin: ' },
       {
-        name: "brainctl:board",
-        insert: "/brainctl:board ",
+        name: "notes:board",
+        insert: "/notes:board ",
         sub: true,
         childKind: "skill",
       },
       {
-        name: "brainctl:sync",
-        insert: "/brainctl:sync ",
+        name: "notes:sync",
+        insert: "/notes:sync ",
         sub: true,
         childKind: "command",
       },

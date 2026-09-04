@@ -130,9 +130,6 @@ try {
     // neither must the pre-rename names the reference still falls back to.
     for (const name of [
       "NOMOREIDE_API_TOKEN",
-      "BRAINCTL_API_TOKEN",
-      "BRAINCTL_API_BASE_URL",
-      "BRAINCTL_API_URL",
       "NOMOREIDE_API_URL",
     ]) {
       delete runtime.env[name];

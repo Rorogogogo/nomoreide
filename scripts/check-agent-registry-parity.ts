@@ -400,7 +400,6 @@ try {
         NOMOREIDE_FRONTEND_URL: `${registryBase}/app`,
         // Cleared so a developer's own signed-in shell cannot leak in.
         NOMOREIDE_API_TOKEN: "",
-        BRAINCTL_API_TOKEN: "",
       },
       runtime.workspace,
     );

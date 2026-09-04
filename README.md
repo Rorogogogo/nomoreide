@@ -444,9 +444,7 @@ nomoreide git select-repo app
 ### Agent Environments & Profiles
 
 Inspect and manage your coding agents' MCP servers and skills (Claude Code,
-Codex CLI, Antigravity), and bundle them into portable profiles. Formerly the
-standalone `brainctl` package — see the
-[migration guide](docs/brainctl-migration.md).
+Codex CLI, Antigravity), and bundle them into portable profiles.
 
 ```bash
 # Live agent configuration (read-only)
@@ -462,7 +460,7 @@ nomoreide profile apply my-setup codex        # backs up the config first
 nomoreide profile export my-setup             # credential-redacted .tar.gz
 nomoreide profile import my-setup.tar.gz --as teammate-setup
 
-# Hosted registry (sign in via the web UI, or set BRAINCTL_API_TOKEN)
+# Hosted registry (sign in via the web UI, or set NOMOREIDE_API_TOKEN)
 nomoreide profile publish my-setup --slug my-setup --title "My Setup"
 nomoreide profile install my-setup
 ```
