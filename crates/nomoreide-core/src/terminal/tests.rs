@@ -391,6 +391,11 @@ fn an_unknown_session_has_nothing_to_replay() {
     assert_eq!(manager.attach_output("never-existed"), None);
 }
 
+// `validate_external_launch` and the gate's `closed` flag are both macOS-only,
+// like the five tests above that already say so. Without this the file compiles
+// on a Mac and fails `cargo test` on Linux — which nothing ran until CI grew a
+// Linux job.
+#[cfg(target_os = "macos")]
 #[test]
 fn closed_output_gate_rejects_a_new_external_launch() {
     let manager = TerminalManager::new();
