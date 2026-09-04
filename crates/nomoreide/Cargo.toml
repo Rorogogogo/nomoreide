@@ -16,7 +16,7 @@ name = "nomoreide"
 path = "src/main.rs"
 
 [dependencies]
-nomoreide-cli = { path = "../nomoreide-cli", version = "0.9.1" }
+nomoreide-cli = { path = "../nomoreide-cli", version = "0.10.0" }
 tokio.workspace = true
 
 # For restoring the default SIGPIPE disposition — see `main`.
