@@ -31,6 +31,56 @@ fn mcp_runtime_fixture_child() {
 
 /// Reading logs has to reach the daemon that owns the process, so a session
 /// that did not start a service can still see what it printed.
+/// A runtime tool with no daemon anywhere starts one instead of refusing.
+///
+/// **The bug this pins down.** Every service-runtime tool reached the daemon
+/// through *discovery*, which reports a missing daemon rather than starting
+/// one — only `nomoreide web`, `daemon restart` and the MCP's `open_ui` ever
+/// spawned it. The daemon is machine-global and outlives the session that
+/// started it, so the ordinary way to have none is a reboot; from there every
+/// tool failed identically, and restarting the agent changed nothing, because
+/// nothing on this path had ever started a daemon.
+///
+/// Deliberately spawns no daemon of its own: the absence is the fixture.
+#[test]
+fn a_runtime_tool_starts_the_daemon_when_there_is_none() {
+    let home = temp_home();
+    write_config(&home);
+    let port = reserved_port();
+
+    let responses = call_tools(&home, port, &[("nomoreide_list_services", json!({}))]);
+
+    let text = responses[0]["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap_or_else(|| panic!("expected tool text content: {}", responses[0]));
+    assert!(
+        !text.contains("daemon is not running"),
+        "the tool reported a missing daemon instead of starting one: {text}"
+    );
+
+    // And it is a real daemon, reachable and owning this home — not merely an
+    // answer that happened to avoid the error string.
+    let state: Value = {
+        let path = home.join(".nomoreide").join("daemon.json");
+        let body = std::fs::read_to_string(&path)
+            .unwrap_or_else(|error| panic!("no daemon state at {}: {error}", path.display()));
+        serde_json::from_str(&body).unwrap()
+    };
+    let pid = state["pid"].as_u64().expect("a pid in the daemon state") as u32;
+    assert!(
+        process_exists(pid),
+        "the state names a daemon that is not alive"
+    );
+
+    // Started by the tool, so the test owns it.
+    let _ = command(env!("CARGO_BIN_EXE_nomoreide"), &home, port)
+        .arg("daemon")
+        .arg("stop")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
+
 #[test]
 fn mcp_tools_read_logs_from_the_shared_daemon() {
     let home = temp_home();

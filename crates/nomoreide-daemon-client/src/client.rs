@@ -41,6 +41,8 @@ pub enum DaemonClientError {
     ForeignDaemon,
     #[error("the NoMoreIDE daemon is not running")]
     DaemonDown,
+    #[error("the NoMoreIDE daemon could not be started: {0}")]
+    Start(String),
     #[error("the NoMoreIDE daemon identity could not be verified")]
     IdentityUnverified,
 }
@@ -90,6 +92,46 @@ impl DaemonClient {
             .await
             .map_err(DaemonClientError::Credential)?;
         Self::new(endpoint, paths.clone(), owner_id, credential, http)
+    }
+
+    /// Reach the daemon, starting one if there is none.
+    ///
+    /// **The difference from [`Self::discover`] is what happens when nothing is
+    /// running: `discover` reports it, this repairs it.** That is the right
+    /// default for anything that came here to *do* something — a tool asked for
+    /// logs wants logs, not a sentence about a process the caller did not know
+    /// existed and has no obvious way to start.
+    ///
+    /// It also fixes the case this was written for. The daemon is machine-global
+    /// and outlives the session that started it, so the usual way to end up with
+    /// none is that the machine rebooted or the process was killed. Every
+    /// service-runtime tool then failed identically, and restarting the agent
+    /// changed nothing, because nothing on that path had ever started a daemon —
+    /// only `nomoreide web`, `daemon restart` and the MCP's `open_ui` did.
+    ///
+    /// `daemon status` and `daemon stop` deliberately keep using discovery:
+    /// starting a daemon in order to report that none is running would be a
+    /// lie, and starting one in order to stop it is worse.
+    pub async fn ensure(
+        paths: &RuntimePaths,
+        configured_port: u16,
+        client_version: &str,
+    ) -> Result<Self, DaemonClientError> {
+        match Self::discover(paths, configured_port, client_version).await {
+            // The only failure worth acting on. A foreign listener, an
+            // unverifiable identity or a broken credential are all *answers* —
+            // spawning a second daemon would not improve any of them.
+            Err(DaemonClientError::DaemonDown) => {}
+            other => return other,
+        }
+        crate::lifecycle::ensure(paths, configured_port, client_version)
+            .await
+            .map_err(|error| DaemonClientError::Start(error.to_string()))?;
+        // Discovered again rather than built from what the spawn returned: the
+        // state file and the credential are what every later request is
+        // authenticated against, and the daemon writes both before it serves
+        // its first response.
+        Self::discover(paths, configured_port, client_version).await
     }
 
     pub async fn connect(
