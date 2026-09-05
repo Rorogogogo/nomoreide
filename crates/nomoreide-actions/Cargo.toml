@@ -21,7 +21,7 @@ serde_json.workspace = true
 # the read half uses, so this crate needs the HTTP client and the encoder.
 reqwest.workspace = true
 urlencoding.workspace = true
-nomoreide-core = { path = "../nomoreide-core", version = "0.12.0" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.12.1" }
 
 # Only the parity probe in `examples/` needs to print JSON; the crate itself
 # does not serialise anything on its own.
