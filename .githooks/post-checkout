@@ -1,0 +1,6 @@
+#!/bin/sh
+# $3 is 1 for a branch switch and 0 for a file checkout. Only the first is
+# worth acting on: `git checkout -- some/file` changes nothing about what is
+# built, and running on it would fire this hook constantly.
+[ "$3" = "1" ] || exit 0
+exec "$(git rev-parse --show-toplevel)/.githooks/maintain-target"

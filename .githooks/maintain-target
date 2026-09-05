@@ -1,0 +1,48 @@
+#!/bin/sh
+# Keep `target/` in check, at the moments it grows.
+#
+# Called by post-merge and post-checkout. Those are the natural boundaries: a
+# pull or a branch switch is exactly when artifacts for code that no longer
+# exists start piling up, and it costs nothing to look then.
+#
+# **Three rules, and all three are about never being in the way.**
+#
+#   1. **It never blocks git.** The work runs detached, so `git checkout`
+#      returns immediately even if a 100 GiB tree is about to be removed.
+#   2. **It never fails a git operation.** Every path exits 0. A hook that can
+#      break `git pull` because Node is missing is a worse problem than a full
+#      disk.
+#   3. **It never runs twice at once.** A lock directory, because `mkdir` is
+#      atomic where `test -f` then `touch` is not — and two concurrent removals
+#      of the same tree is how you get confusing errors in a log nobody reads.
+#
+# Set NOMOREIDE_SKIP_TARGET_CLEAN=1 to turn it off for a session.
+
+[ "${NOMOREIDE_SKIP_TARGET_CLEAN:-}" = "1" ] && exit 0
+command -v node >/dev/null 2>&1 || exit 0
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cleaner="$root/scripts/clean-target.mjs"
+[ -f "$cleaner" ] || exit 0
+
+git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+lock="$git_dir/clean-target.lock"
+log="$git_dir/clean-target.log"
+
+# Atomic. A stale lock from a killed run is cleared after an hour rather than
+# wedging the hook forever.
+if ! mkdir "$lock" 2>/dev/null; then
+  if [ -d "$lock" ] && [ -z "$(find "$lock" -maxdepth 0 -mmin -60 2>/dev/null)" ]; then
+    rm -rf "$lock" 2>/dev/null
+    mkdir "$lock" 2>/dev/null || exit 0
+  else
+    exit 0
+  fi
+fi
+
+(
+  node "$cleaner" >"$log" 2>&1
+  rm -rf "$lock" 2>/dev/null
+) >/dev/null 2>&1 &
+
+exit 0
