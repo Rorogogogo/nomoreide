@@ -28,7 +28,7 @@ chrono.workspace = true
 dirs.workspace = true
 flate2.workspace = true
 futures-util.workspace = true
-nomoreide-remote-protocol = { path = "../nomoreide-remote-protocol", version = "0.11.0" }
+nomoreide-remote-protocol = { path = "../nomoreide-remote-protocol", version = "0.12.0" }
 qrcode.workspace = true
 tar.workspace = true
 regex.workspace = true
