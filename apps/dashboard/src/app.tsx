@@ -29,8 +29,6 @@ import { ContextView } from "@/features/context/context-view";
 import { AgentEnvView } from "@/features/agent-env/agent-env-view";
 import { AgentProvider, useAgentDock } from "@/features/agent/chat/agent-context";
 import { AiContextMenuProvider } from "@/features/agent/context-menu/ai-context-menu";
-import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
-import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-context";
 import { AgentTerminalDock, type AgentDockPage } from "@/features/agent/terminal/agent-terminal-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { SettingsView } from "@/features/settings/settings-view";
@@ -44,7 +42,6 @@ import { ServicesView } from "@/features/services/services-view";
 import { DockerView } from "@/features/docker/docker-view";
 import { RunningStripe } from "@/features/services/running-stripe";
 import { GitReviewView } from "@/features/git/git-review-view";
-import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
 import { GlobalSearch } from "@/features/global-search/global-search";
@@ -115,7 +112,6 @@ export const PAGE_PATHS: Record<Page, string> = {
   docker: "/docker",
   git: "/git",
   github: "/github",
-  workflows: "/workflows",
   errors: "/errors",
   database: "/database",
   agent: "/agent",
@@ -156,7 +152,6 @@ const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   remote: "nav.remote",
   git: "nav.git",
   github: "nav.github",
-  workflows: "nav.workflows",
   errors: "nav.errors",
   database: "nav.database",
   agent: "pageTitle.agent",
@@ -710,7 +705,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               <ExtensionsView onOpen={(id) => setExtensionId(id)} />
             ) : null}
             {page === "remote" ? <RemoteView /> : null}
-            {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? (
               <AgentView
                 focusChanges={changesFocusNonce}
@@ -770,8 +764,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       selectProject={selectProject}
     />
     <RefreshRegistryProvider value={refreshRegistry}>
-    <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
-    <WorkflowTriggerProvider>
     <AppContextMenu onRefresh={refreshAll}>
     <div className="flex flex-col h-screen overflow-hidden">
     <ScrollProgressBar key={page} type="bar" strokeSize={2} />
@@ -1088,8 +1080,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     </div>
     </div>
     </AppContextMenu>
-    </WorkflowTriggerProvider>
-    </WorkflowRunProvider>
     </RefreshRegistryProvider>
     </AiContextMenuProvider>
     </AgentProvider>

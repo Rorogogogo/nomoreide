@@ -6,7 +6,6 @@ import {
   PanelsTopLeft,
   ScrollText,
   Server,
-  Workflow,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -41,11 +40,6 @@ const FEATURES: Feature[] = [
     icon: GitPullRequestArrow,
     title: "Integrate GitHub workflows",
     body: "Bring GitHub Actions and repo workflows into local development so you can trigger and inspect them from one place.",
-  },
-  {
-    icon: Workflow,
-    title: "Assemble workflows like building blocks",
-    body: "Combine terminal, Git, databases, logs, services, and GitHub into reusable workflows triggered by a click or a prompt.",
   },
   {
     icon: Bot,

@@ -305,8 +305,6 @@ struct PublicConfig<'a> {
     github_tokens: Vec<PublicGithubTokenDef<'a>>,
     github_identities: &'a [GithubIdentityDef],
     connections: BTreeMap<String, PublicProviderConnectionDef<'a>>,
-    workflows: &'a [serde_json::Value],
-    workflow_triggers: &'a [serde_json::Value],
     #[serde(skip_serializing_if = "Option::is_none")]
     chat_provider: Option<&'a String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -357,13 +355,6 @@ pub struct Config {
     /// Pre-registry Vercel connection, lifted into `connections` on load.
     #[serde(default, rename = "vercel", skip_serializing)]
     pub legacy_vercel: Option<ProviderConnectionDef>,
-    #[serde(default)]
-    pub workflows: Vec<serde_json::Value>,
-    /// Node-owned keys the desktop never reads but must not destroy. `save()`
-    /// serializes this whole struct, so a field missing here is a field deleted
-    /// from the shared config the next time the desktop writes it.
-    #[serde(default)]
-    pub workflow_triggers: Vec<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preferences: Option<serde_json::Value>,
     /// Which CLI the in-dock agent chat drives ("claude" | "codex"). None = never
@@ -451,8 +442,6 @@ impl Config {
                 .iter()
                 .map(|(id, connection)| (id.clone(), PublicProviderConnectionDef::new(connection)))
                 .collect(),
-            workflows: &self.workflows,
-            workflow_triggers: &self.workflow_triggers,
             preferences: self.preferences.as_ref(),
             chat_provider: self.chat_provider.as_ref(),
             chat_models: self.chat_models.as_ref(),
@@ -515,8 +504,6 @@ impl Default for Config {
             github_identities: vec![],
             connections: BTreeMap::new(),
             legacy_vercel: None,
-            workflows: vec![],
-            workflow_triggers: vec![],
             preferences: None,
             chat_provider: None,
             chat_models: None,
@@ -1166,62 +1153,6 @@ impl ConfigStore {
         self.save(&config).await?;
         Ok(config)
     }
-
-    pub async fn save_workflow(&self, workflow: serde_json::Value) -> Result<Config> {
-        let mut config = self.load().await?;
-        let id = workflow
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-        config
-            .workflows
-            .retain(|w| w.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
-        config.workflows.push(workflow);
-        self.save(&config).await?;
-        Ok(config)
-    }
-
-    pub async fn remove_workflow(&self, id: &str) -> Result<Config> {
-        let mut config = self.load().await?;
-        config
-            .workflows
-            .retain(|w| w.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
-        self.save(&config).await?;
-        Ok(config)
-    }
-
-    /// Store a trigger, replacing one that already had its id.
-    ///
-    /// The record is appended rather than written in place, so re-saving a
-    /// trigger moves it to the end of the list — which is the order the
-    /// dashboard shows them in.
-    pub async fn save_workflow_trigger(&self, trigger: serde_json::Value) -> Result<Config> {
-        let mut config = self.load().await?;
-        let id = trigger
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-        config
-            .workflow_triggers
-            .retain(|t| t.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
-        config.workflow_triggers.push(trigger);
-        self.save(&config).await?;
-        Ok(config)
-    }
-
-    /// Drop a trigger. An id that is not there is **not** an error: the caller
-    /// asked for it to be gone and it is gone.
-    pub async fn remove_workflow_trigger(&self, id: &str) -> Result<Config> {
-        let id = id.trim();
-        let mut config = self.load().await?;
-        config
-            .workflow_triggers
-            .retain(|t| t.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
-        self.save(&config).await?;
-        Ok(config)
-    }
 }
 
 fn mask_database_url(url: &str) -> String {
@@ -1725,8 +1656,6 @@ mod tests {
             "githubIdentities": [
                 { "host": "github.com", "login": "work", "name": "Work", "email": "work@example.test" }
             ],
-            "workflows": [],
-            "workflowTriggers": [{ "id": "t1", "event": "service.crashed" }],
             "preferences": { "logs": { "showTimestamps": true, "wrapLines": false } },
             "chatModels": { "claude": "claude-opus-4-1", "codex": "gpt-5.3-codex" },
             "vercel": { "source": "oauth", "token": "at", "refreshToken": "rt", "clientId": "cl_1", "teamId": "team_1" }
@@ -1755,7 +1684,6 @@ mod tests {
         store.save(&config).await.unwrap();
         let written: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
-        assert_eq!(written["workflowTriggers"][0]["id"], "t1");
         assert_eq!(written["preferences"]["logs"]["showTimestamps"], true);
         assert_eq!(written["githubIdentities"][0]["login"], "work");
         assert_eq!(written["chatModels"]["codex"], "gpt-5.3-codex");

@@ -13,7 +13,6 @@ import {
   Puzzle,
   Server,
   Smartphone,
-  Workflow,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
 import { GitHubLogo } from "@/features/github/github-logo";
@@ -27,7 +26,6 @@ export type AppPage =
   | "docker"
   | "git"
   | "github"
-  | "workflows"
   | "agent"
   | "agent-env"
   | "context"
@@ -80,7 +78,6 @@ export const APP_NAV_SECTIONS: Array<{
     items: [
       { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
       { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
-      { page: "workflows", labelKey: "nav.workflows", icon: <Workflow /> },
     ],
   },
   {
