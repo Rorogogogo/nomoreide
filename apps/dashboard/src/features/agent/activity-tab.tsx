@@ -11,12 +11,14 @@ import type { AgentProfile } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { AgentId } from "./agent-types";
+import { AgentWorkGraph } from "./agent-work-graph";
 import { ToolCallFeed } from "./tool-call-feed";
 
 export function ActivityTab({ agent }: { agent: AgentProfile; agentId: AgentId }) {
   const t = useT();
   return (
     <>
+      <AgentWorkGraph />
       <ToolCallFeed />
 
       <Card className="min-w-0 rounded-none border-0 bg-transparent">

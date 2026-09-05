@@ -16,9 +16,9 @@ import { cn } from "@/lib/utils";
 import { ChangedFilesWithDiff } from "../git/snapshots/snapshots-view";
 
 /**
- * "What did the AI touch": each agent session is pinned to the snapshot taken
- * before its first tool call; the change-set is the diff between that
- * snapshot and the working tree as it is now.
+ * "What did the AI touch": each recorded agent session is pinned to the
+ * snapshot taken before its work starts; the change-set is the diff between
+ * that snapshot and the working tree as it is now.
  */
 export function ChangesTab() {
   const [sessions, setSessions] = useState<AgentChangeSession[]>([]);
@@ -101,9 +101,10 @@ export function ChangesTab() {
                   )}
                 >
                   <span className="block truncate text-xs font-medium">
-                    {new Date(session.startedAt).toLocaleString()}
+                    {session.label ?? new Date(session.startedAt).toLocaleString()}
                   </span>
                   <span className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+                    {session.label ? <span>{new Date(session.startedAt).toLocaleString()}</span> : null}
                     <span>{t("agent.changes.toolCalls", { count: session.toolCount })}</span>
                     {session.snapshotSha ? (
                       <span className="font-mono">

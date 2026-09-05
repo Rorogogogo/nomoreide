@@ -1523,6 +1523,17 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "agent.activity.recentProjects": "近期项目",
   "agent.activity.recentDesc": "Agent 已知的最近活跃项目。",
   "agent.activity.noProjects": "暂无已知项目。",
+  "agent.workGraph.title": "Agent 工作图",
+  "agent.workGraph.desc": "实时显示工作区、Agent 与任务的关系。选择任务可在停靠栏中打开。",
+  "agent.workGraph.active": "{count} 个活跃",
+  "agent.workGraph.empty": "暂无正在运行或已连接的 Agent 任务。",
+  "agent.workGraph.workspace": "工作区",
+  "agent.workGraph.agent": "Agent",
+  "agent.workGraph.task": "正在处理",
+  "agent.workGraph.open": "在 Agent 停靠栏中打开 {name}",
+  "agent.workGraph.running": "运行中",
+  "agent.workGraph.finished": "已完成",
+  "agent.workGraph.failed": "失败",
 
   "agent.memory.title": "项目记忆",
   "agent.memory.noCodexDir": "未找到此项目的 Codex 记忆目录。",
@@ -1530,7 +1541,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "agent.memory.noFiles": "此项目尚未持久化任何记忆文件。",
 
   "agent.changes.empty":
-    "尚未记录任何 Agent 会话。当 Agent 调用 nomoreide MCP 工具后，会话会显示在此处；每个会话都以一次工作区快照开始，你可以回滚到该快照。",
+    "尚未记录任何 Agent 会话。新的停靠栏会话会先创建工作区快照，之后可以回滚到该快照。",
   "agent.changes.restored": "已恢复 {count} 个文件",
   "agent.changes.restoring": "正在恢复更改集…",
   "agent.changes.restoredRemoved": "，移除了会话创建的 {count} 个文件",

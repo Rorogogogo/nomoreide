@@ -1,10 +1,10 @@
 //! Agent change-sets: what an agent session touched, pinned to the snapshot
 //! taken before its first tool call.
 //!
-//! The MCP recording wrapper writes these; nothing here does. That asymmetry is
-//! why the store is read fresh on every call rather than cached: the writer is
-//! usually a *different process* — an agent's MCP adapter — and the dashboard
-//! has to see a session it did not record.
+//! The daemon records dock sessions and other runtimes may record MCP sessions.
+//! The store is therefore read fresh on every call rather than cached: a writer
+//! may be a *different process*, and the dashboard has to see work it did not
+//! record itself.
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -13,6 +13,11 @@ use std::path::{Path, PathBuf};
 #[serde(rename_all = "camelCase")]
 pub struct AgentSession {
     pub id: String,
+    /// Human-readable task name, normally derived from the first prompt line.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
     /// Repository the session's snapshot was taken in, which need not be the
     /// one currently selected — a restore has to run where the work happened.
     pub repo_path: String,
@@ -62,10 +67,9 @@ const MAX_SESSIONS: usize = 50;
 
 /// Record a session, newest first, replacing any earlier one with the same id.
 ///
-/// The only writer in this runtime — the daemon's fix loop. It rewrites the
-/// whole file rather than appending because the order is the content: the
-/// dashboard reads the list as it stands, and an append-only log would need a
-/// reader that knew to fold it.
+/// Rewrites the whole file rather than appending because the order is the
+/// content: the dashboard reads the list as it stands, and an append-only log
+/// would need a reader that knew to fold it.
 pub fn save_agent_session(path: &Path, session: AgentSession) -> std::io::Result<()> {
     let mut sessions = list_agent_sessions(path);
     sessions.retain(|existing| existing.id != session.id);

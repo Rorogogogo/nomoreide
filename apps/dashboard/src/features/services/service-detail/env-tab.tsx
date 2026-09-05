@@ -172,7 +172,7 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
       ) : loaded?.text !== undefined ? (
         <div
           className={cn(
-            "h-[420px] overflow-hidden rounded border border-border/60",
+            "h-[min(520px,calc(100vh-18rem))] min-h-64 overflow-hidden rounded border border-border/60",
             loadingFile && "opacity-60 transition-opacity",
           )}
         >

@@ -1607,6 +1607,17 @@ export const en = {
   "agent.activity.recentProjects": "Recent Projects",
   "agent.activity.recentDesc": "Most recently active projects known to the agent.",
   "agent.activity.noProjects": "No known projects.",
+  "agent.workGraph.title": "Agent work graph",
+  "agent.workGraph.desc": "Live workspace, agent, and task relationships. Select a task to open it in the dock.",
+  "agent.workGraph.active": "{count} active",
+  "agent.workGraph.empty": "No agent tasks are running or attached.",
+  "agent.workGraph.workspace": "Workspace",
+  "agent.workGraph.agent": "Agent",
+  "agent.workGraph.task": "Working on",
+  "agent.workGraph.open": "Open {name} in the agent dock",
+  "agent.workGraph.running": "running",
+  "agent.workGraph.finished": "finished",
+  "agent.workGraph.failed": "failed",
 
   "agent.memory.title": "Project Memory",
   "agent.memory.noCodexDir": "No Codex memory directory found for this project.",
@@ -1614,7 +1625,7 @@ export const en = {
   "agent.memory.noFiles": "No memory files persisted yet for this project.",
 
   "agent.changes.empty":
-    "No agent sessions recorded yet. Sessions appear here once an agent calls a nomoreide MCP tool; each one starts with a working-tree snapshot you can roll back to.",
+    "No agent sessions recorded yet. New dock sessions start with a working-tree snapshot you can roll back to.",
   "agent.changes.restored": "Restored {count} file(s)",
   "agent.changes.restoring": "Restoring change set…",
   "agent.changes.restoredRemoved": ", removed {count} created by the session",
