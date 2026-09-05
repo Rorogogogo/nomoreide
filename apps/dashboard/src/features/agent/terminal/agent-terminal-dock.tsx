@@ -22,6 +22,7 @@ import { AgentTerminalTabs } from "./agent-terminal-tabs";
 import { playAgentCompletionChime } from "./agent-completion-sound";
 import { DockStatusStrip } from "./dock-status-strip";
 import { COMPOSE_TAB_ID } from "./compose-tab";
+import { beginPointerDrag } from "./pointer-drag";
 import { requestGitHubActions } from "../../github/github-navigation";
 import { isTauri } from "@/lib/tauri";
 import { useOptionalSettings } from "@/features/settings/settings-context";
@@ -242,109 +243,79 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     navigate("github");
   };
   function resizeStart(event: ReactPointerEvent<HTMLDivElement>) {
-    event.preventDefault();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
     setResizing(true);
-    const move = (nextEvent: PointerEvent) => {
-      if (sideDocked) {
-        const next = clampAgentDockWidth(
-          window.innerWidth - nextEvent.clientX,
-          window.innerWidth,
+    beginPointerDrag(event, resizeCleanupRef, {
+      move: (nextEvent) => {
+        if (sideDocked) {
+          const next = clampAgentDockWidth(
+            window.innerWidth - nextEvent.clientX,
+            window.innerWidth,
+          );
+          widthRef.current = next;
+          setWidth(next);
+        } else {
+          const next = clampAgentDockHeight(
+            window.innerHeight - nextEvent.clientY,
+            window.innerHeight,
+          );
+          heightRef.current = next;
+          setHeight(next);
+        }
+      },
+      up: () => {
+        setResizing(false);
+        updateDockLayout(
+          sideDocked
+            ? { rightWidth: widthRef.current }
+            : { bottomHeight: heightRef.current },
         );
-        widthRef.current = next;
-        setWidth(next);
-      } else {
-        const next = clampAgentDockHeight(
-          window.innerHeight - nextEvent.clientY,
-          window.innerHeight,
-        );
-        heightRef.current = next;
-        setHeight(next);
-      }
-    };
-    const cleanup = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      resizeCleanupRef.current = null;
-    };
-    const up = () => {
-      setResizing(false);
-      updateDockLayout(
-        sideDocked
-          ? { rightWidth: widthRef.current }
-          : { bottomHeight: heightRef.current },
-      );
-      cleanup();
-    };
-    resizeCleanupRef.current?.();
-    resizeCleanupRef.current = cleanup;
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+      },
+    });
   }
   function setPlacement(next: DockPlacement) {
     settings?.updateUi({ agentDockPlacement: next });
   }
   function positionDragStart(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.preventDefault();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
     const origin = { x: event.clientX, y: event.clientY };
     let dragged = false;
     setPositionDragging(true);
     setSnapCandidate(placement);
     const candidateFor = (nextEvent: PointerEvent): DockPlacement =>
       wideEnoughForSide && nextEvent.clientX >= window.innerWidth * 0.72 ? "right" : "bottom";
-    const move = (nextEvent: PointerEvent) => {
-      if (Math.hypot(nextEvent.clientX - origin.x, nextEvent.clientY - origin.y) > 5) {
-        dragged = true;
-      }
-      setSnapCandidate(candidateFor(nextEvent));
-    };
-    const cleanup = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      positionCleanupRef.current = null;
-    };
-    const up = (nextEvent: PointerEvent) => {
-      if (dragged) {
-        suppressPositionClickRef.current = true;
-        window.setTimeout(() => {
-          suppressPositionClickRef.current = false;
-        }, 0);
-      }
-      setPlacement(candidateFor(nextEvent));
-      setPositionDragging(false);
-      setSnapCandidate(null);
-      cleanup();
-    };
-    positionCleanupRef.current?.();
-    positionCleanupRef.current = cleanup;
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    beginPointerDrag(event, positionCleanupRef, {
+      move: (nextEvent) => {
+        if (Math.hypot(nextEvent.clientX - origin.x, nextEvent.clientY - origin.y) > 5) {
+          dragged = true;
+        }
+        setSnapCandidate(candidateFor(nextEvent));
+      },
+      up: (nextEvent) => {
+        // A drag that moved has to swallow the click the release would
+        // otherwise fire on the handle, which would toggle the dock.
+        if (dragged) {
+          suppressPositionClickRef.current = true;
+          window.setTimeout(() => {
+            suppressPositionClickRef.current = false;
+          }, 0);
+        }
+        setPlacement(candidateFor(nextEvent));
+        setPositionDragging(false);
+        setSnapCandidate(null);
+      },
+    });
   }
   function splitResizeStart(event: ReactPointerEvent<HTMLDivElement>) {
-    event.preventDefault();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    const move = (nextEvent: PointerEvent) => {
-      const bounds = splitContainerRef.current?.getBoundingClientRect();
-      if (!bounds?.width) return;
-      const percent = ((nextEvent.clientX - bounds.left) / bounds.width) * 100;
-      const next = Math.max(25, Math.min(75, percent));
-      splitPercentRef.current = next;
-      setSplitPercent(next);
-    };
-    const cleanup = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      splitResizeCleanupRef.current = null;
-    };
-    const up = () => {
-      updateDockLayout({ splitPercent: splitPercentRef.current });
-      cleanup();
-    };
-    splitResizeCleanupRef.current?.();
-    splitResizeCleanupRef.current = cleanup;
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    beginPointerDrag(event, splitResizeCleanupRef, {
+      move: (nextEvent) => {
+        const bounds = splitContainerRef.current?.getBoundingClientRect();
+        if (!bounds?.width) return;
+        const percent = ((nextEvent.clientX - bounds.left) / bounds.width) * 100;
+        const next = Math.max(25, Math.min(75, percent));
+        splitPercentRef.current = next;
+        setSplitPercent(next);
+      },
+      up: () => updateDockLayout({ splitPercent: splitPercentRef.current }),
+    });
   }
   const composing = activeTaskId === COMPOSE_TAB_ID || tasks.length === 0;
   const rightTasks = tasks.filter((task) => rightTaskIds.has(task.id));
