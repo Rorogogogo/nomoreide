@@ -26,7 +26,8 @@ import {
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ActivitySortHeader, type SortDirection } from "./activity-sort-header";
-import { ActivityView, HostOverview } from "./activity-view";
+import { ActivityView } from "./activity-view";
+import { HostOverview } from "./host-overview";
 import { DockerActivityView } from "./docker-activity-view";
 import { EnergyImpactBadge, estimateEnergyImpact } from "./energy-impact";
 import {
