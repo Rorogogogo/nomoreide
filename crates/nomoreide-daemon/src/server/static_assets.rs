@@ -44,6 +44,7 @@ const SHELL_PATHS: &[&str] = &[
     "/",
     "/services",
     "/activity",
+    "/remote",
     "/servers",
     "/docker",
     "/git",
@@ -343,6 +344,36 @@ mod tests {
         assert!(serves_shell("/"));
         assert!(serves_shell("/services"));
         assert!(serves_shell("/agent-env"));
+        assert!(serves_shell("/remote"));
+    }
+
+    /// Every client route has to be in `SHELL_PATHS`, and the failure mode is
+    /// quiet: the page works when you click to it and 404s when you refresh on
+    /// it or open a bookmark. This is that list, written out again so adding a
+    /// page to the client without adding it here fails a test rather than
+    /// waiting for somebody to hit reload.
+    #[test]
+    fn every_client_page_serves_the_shell() {
+        for path in [
+            "/",
+            "/services",
+            "/activity",
+            "/remote",
+            "/servers",
+            "/docker",
+            "/git",
+            "/github",
+            "/workflows",
+            "/agent",
+            "/agent-env",
+            "/context",
+            "/extensions",
+            "/errors",
+            "/database",
+            "/settings",
+        ] {
+            assert!(serves_shell(path), "{path} would 404 on refresh");
+        }
     }
 
     #[test]

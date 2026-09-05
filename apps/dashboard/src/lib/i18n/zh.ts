@@ -2867,6 +2867,12 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "provider.logs.runtime": "运行时",
   "provider.logs.runtimeEmpty": "没有运行时日志。可能是没有输出，也可能是当前套餐不包含该功能。",
   "remote.title": "在手机上控制这台机器",
+  "nav.remote": "远程",
+  "settingsHub.remoteTitle": "远程控制",
+  "settingsHub.openRemote": "打开远程",
+  "settingsHub.remoteMovedDescription": "配对已移至独立页面：运行 \u2192 远程。",
+  "remote.pageIntro":
+    "将这台机器与手机配对，即可随时随地启动或停止服务、查看日志、关注 CI 与智能体用量，并驱动智能体。连接由你的机器主动发起，本机不会监听任何入站连接。",
   "remote.intro": "将这台机器与你的 NoMoreIDE 账号配对，即可在手机上启动或停止服务、查看日志，并观看智能体终端。",
   "remote.pair": "配对这台机器",
   "remote.pairing": "等待批准…",
