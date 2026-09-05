@@ -27,6 +27,11 @@ dirs = "5"
 # reference already writes — so these read and write someone else's archives,
 # not just our own.
 flate2 = "1"
+# QR codes for the remote pairing link. `default-features = false` because
+# the defaults pull `image` and an SVG renderer, and this only ever needs the
+# module matrix — the terminal draws it in half-blocks and the dashboard draws
+# it as its own SVG.
+qrcode = { version = "0.14", default-features = false }
 tar = "0.4"
 futures-util = "0.3"
 regex = "1"

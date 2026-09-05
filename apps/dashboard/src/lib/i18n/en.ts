@@ -2989,6 +2989,8 @@ export const en = {
     "Pairing lets your account start and stop services on this machine, read their logs, and open terminals on it — including a shell, which can run anything you could run yourself. Set NOMOREIDE_REMOTE_SHELL=0 to withhold the shell and keep the rest.",
   "remote.approve": "Approve in your account",
   "remote.approveHint": "Opens NoMoreIDE in a new tab. If you are already signed in there, that is the whole of it — no code to type.",
+  "remote.scan": "Point your phone's camera at this",
+  "remote.scanAlt": "QR code linking to the pairing page for this machine",
   "remote.orType": "Or type this code on your phone",
 } as const;
 

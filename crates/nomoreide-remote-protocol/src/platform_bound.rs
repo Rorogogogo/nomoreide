@@ -13,7 +13,10 @@
 //! command happened, not what was in it.
 
 use super::errors::ProtocolError;
-use super::snapshot::{DeviceSnapshot, LogLine, RemoteAgentProvider, RemoteBundle, RemoteService};
+use super::snapshot::{
+    DeviceSnapshot, LogLine, RemoteAgentProvider, RemoteAgentUsage, RemoteBundle, RemoteIncident,
+    RemotePullRequest, RemoteService, RemoteTimelineEntry, RemoteWorkflowJob, RemoteWorkflowRun,
+};
 use super::version::CapabilitySet;
 use serde::{Deserialize, Serialize};
 
@@ -74,10 +77,96 @@ pub enum PlatformBound {
     #[serde(rename = "terminal.closed")]
     TerminalClosed(TerminalClosed),
 
+    /// Recent GitHub Actions runs.
+    #[serde(rename = "github.runs.response")]
+    GithubRuns(GithubRunsResponse),
+    /// One run's jobs.
+    #[serde(rename = "github.run.jobs.response")]
+    GithubRunJobs(GithubRunJobsResponse),
+    /// Pull requests on the selected repository.
+    #[serde(rename = "github.prs.response")]
+    GithubPulls(GithubPullsResponse),
+    /// One pull request.
+    #[serde(rename = "github.pr.response")]
+    GithubPull(GithubPullResponse),
+    /// What the agents have spent.
+    #[serde(rename = "agent.usage.response")]
+    AgentUsage(AgentUsageResponse),
+    /// The error inbox.
+    #[serde(rename = "errors.response")]
+    Errors(ErrorsResponse),
+    /// The runtime timeline.
+    #[serde(rename = "timeline.response")]
+    Timeline(TimelineResponse),
+
     /// A refusal. Always carries `replyTo`, because an error with nothing to
     /// answer is a log line, not a frame.
     #[serde(rename = "command.error")]
     CommandError(CommandErrorResponse),
+}
+
+/// Every list answer here carries `truncated` for the same reason
+/// [`ServiceLogsResponse`] does: a phone showing thirty runs must be able to say
+/// "the most recent thirty" rather than implying the repository has thirty.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GithubRunsResponse {
+    pub runs: Vec<RemoteWorkflowRun>,
+    /// Echoed back, so an answer that arrives after the filter changed can be
+    /// told apart from one for the branch now on screen.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub truncated: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GithubRunJobsResponse {
+    pub run_id: String,
+    pub jobs: Vec<RemoteWorkflowJob>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub truncated: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GithubPullsResponse {
+    pub pulls: Vec<RemotePullRequest>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub truncated: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GithubPullResponse {
+    pub pull: RemotePullRequest,
+}
+
+/// Both agents' readings, or as many of them as this machine has.
+///
+/// An empty answer is a real answer — "no agent has ever run here" — and is not
+/// an error. The phone renders that as a state, not as a failure.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AgentUsageResponse {
+    pub usage: RemoteAgentUsage,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ErrorsResponse {
+    pub incidents: Vec<RemoteIncident>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub truncated: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TimelineResponse {
+    pub entries: Vec<RemoteTimelineEntry>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub truncated: bool,
 }
 
 /// The session a spawn produced, described exactly like any other.
@@ -279,6 +368,13 @@ impl PlatformBound {
         "terminal.geometry",
         "terminal.ack",
         "terminal.closed",
+        "github.runs.response",
+        "github.run.jobs.response",
+        "github.prs.response",
+        "github.pr.response",
+        "agent.usage.response",
+        "errors.response",
+        "timeline.response",
         "command.error",
     ];
 
@@ -301,6 +397,13 @@ impl PlatformBound {
             Self::TerminalGeometry(_) => "terminal.geometry",
             Self::TerminalAck(_) => "terminal.ack",
             Self::TerminalClosed(_) => "terminal.closed",
+            Self::GithubRuns(_) => "github.runs.response",
+            Self::GithubRunJobs(_) => "github.run.jobs.response",
+            Self::GithubPulls(_) => "github.prs.response",
+            Self::GithubPull(_) => "github.pr.response",
+            Self::AgentUsage(_) => "agent.usage.response",
+            Self::Errors(_) => "errors.response",
+            Self::Timeline(_) => "timeline.response",
             Self::CommandError(_) => "command.error",
         }
     }
@@ -337,6 +440,13 @@ impl PlatformBound {
             | Self::TerminalSessions(_)
             | Self::TerminalAttachAccepted(_)
             | Self::TerminalAck(_)
+            | Self::GithubRuns(_)
+            | Self::GithubRunJobs(_)
+            | Self::GithubPulls(_)
+            | Self::GithubPull(_)
+            | Self::AgentUsage(_)
+            | Self::Errors(_)
+            | Self::Timeline(_)
             | Self::CommandError(_) => true,
         }
     }

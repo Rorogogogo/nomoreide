@@ -51,6 +51,15 @@ async fn pair(args: &[String]) -> CliResult {
     let ticket = flow.start(&proposal).await.map_err(failure)?;
 
     println!("Pair this machine with your NoMoreIDE account.\n");
+    // The picture first, because it is the only one of the three a phone can
+    // act on without retyping anything. The code and the link stay underneath:
+    // a terminal that renders half-blocks badly, a screen being shared, or a
+    // phone with no camera all still have a way through.
+    if let Some(matrix) = nomoreide_core::remote::qr::encode(&ticket.verification_url) {
+        println!("Point your phone's camera at this:\n");
+        print!("{}", matrix.to_half_blocks());
+        println!();
+    }
     println!("  Code: {}", ticket.user_code);
     println!("  Open: {}\n", ticket.verification_url);
     println!("Waiting for approval… (Ctrl-C to cancel)");

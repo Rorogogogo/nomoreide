@@ -152,6 +152,324 @@ pub enum LogStream {
     System,
 }
 
+// --- GitHub Actions ----------------------------------------------------------
+
+/// How far along a workflow run or one of its jobs is.
+///
+/// Deliberately not GitHub's full vocabulary. `requested`, `pending` and
+/// `queued` all mean "it has not started", and a phone that renders three
+/// spellings of waiting is showing GitHub's internals rather than the answer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RunStatus {
+    /// Accepted, not started. Covers GitHub's `queued`, `requested`, `pending`.
+    Queued,
+    InProgress,
+    /// Blocked on something a human must do — a deployment gate, most often.
+    Waiting,
+    Completed,
+    /// A status this build has not heard of. Never a parse failure: GitHub adds
+    /// these, and one new word must not blank a phone's whole CI list.
+    #[serde(other)]
+    Unknown,
+}
+
+/// How a completed run or job turned out. Absent while it is still running —
+/// which is the distinction the two enums exist to keep: "no conclusion yet" is
+/// not "neutral".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RunConclusion {
+    Success,
+    Failure,
+    Cancelled,
+    Skipped,
+    TimedOut,
+    /// Waiting on a human — an approval, or a manual step.
+    ActionRequired,
+    Neutral,
+    Stale,
+    #[serde(other)]
+    Unknown,
+}
+
+/// One GitHub Actions run, as much of it as a phone needs.
+///
+/// **The URL is the deliberate exception to this module's rule**, and it is
+/// worth saying why. Everything else here refuses to name the machine's world:
+/// no paths, no commands, no hostnames. A run URL names the *repository*, which
+/// is not the machine's secret — it is the thing the user pointed NoMoreIDE at,
+/// and it is already implied by the fact that these runs exist at all. Without
+/// it a red run on a phone is a dead end: the one useful action, "open it and
+/// read the log", becomes retyping a URL from memory. So it crosses, and it
+/// crosses as GitHub's own `html_url` rather than as anything this side builds.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteWorkflowRun {
+    /// GitHub's run id, as a string. It is an identifier, not a quantity, and
+    /// a JSON number large enough to lose precision in a browser is a bug
+    /// waiting for a repository old enough to have one.
+    pub id: String,
+    /// The workflow's name — "CI", "Release".
+    pub name: String,
+    /// The commit or pull request title the run is for, when GitHub gives one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    /// What triggered it — `push`, `pull_request`, `workflow_dispatch`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event: Option<String>,
+    /// The run number a person would quote: "CI #412".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number: Option<u64>,
+    pub status: RunStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conclusion: Option<RunConclusion>,
+    /// RFC 3339, as GitHub wrote it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+/// One job inside a run. The row that says *which step* went red.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteWorkflowJob {
+    pub id: String,
+    pub name: String,
+    pub status: RunStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conclusion: Option<RunConclusion>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+// --- Pull requests -----------------------------------------------------------
+
+/// Merged is its own state rather than a flag on `closed`.
+///
+/// GitHub reports a merged pull request as closed and puts the difference in a
+/// separate timestamp, which means every reader has to know the trick. The
+/// daemon already collapses the two locally; the wire does the same, so a phone
+/// does not have to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PullRequestState {
+    Open,
+    Closed,
+    Merged,
+    #[serde(other)]
+    Unknown,
+}
+
+/// One pull request, flattened to what fits on a phone.
+///
+/// **No body.** A description is arbitrary prose of arbitrary length, written
+/// by anyone who can open a pull request against a public repository, and it is
+/// the one field here that nobody scanning a list reads. The title carries the
+/// meaning; the URL carries the rest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemotePullRequest {
+    pub number: u64,
+    pub title: String,
+    pub state: PullRequestState,
+    /// A draft is still `Open`. The two are different questions — "can it
+    /// merge" and "is it ready" — and collapsing them loses the second.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub draft: bool,
+    /// The login that opened it. A handle, never a name or an email.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_branch: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_branch: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+// --- Agent usage -------------------------------------------------------------
+
+/// One rate-limit window: how much of it is gone, and when it comes back.
+///
+/// Not `Eq`, and none of the usage types are: a percentage is a fraction and
+/// rounding it to an integer to keep a derive would be inventing precision the
+/// source does not have.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteUsageWindow {
+    /// 0–100, as the agent reports it. Not clamped here: a provider that says
+    /// 103 is telling the user something true about their account, and a phone
+    /// showing a full bar is a better answer than one showing a wrong number.
+    pub used_percent: f64,
+    /// Unix seconds. Absent when the agent did not say — which is how both
+    /// agents spell "no window is active" and must not read as "resets at the
+    /// epoch".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resets_at_unix: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window_minutes: Option<u32>,
+}
+
+/// What one model cost, within a provider's reading.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteModelUsage {
+    pub model: String,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub cost_usd: f64,
+}
+
+/// Claude Code's own reading of what it has spent.
+///
+/// **Two fields the local panel shows are missing on purpose.** `cwd` is an
+/// absolute path on the user's disk, and `sessionId` is a handle into a
+/// transcript. Neither is needed to answer "how much is left", which is the
+/// only question a phone is asking.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteClaudeUsage {
+    /// The rolling five-hour window.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub five_hour: Option<RemoteUsageWindow>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weekly: Option<RemoteUsageWindow>,
+    pub cost_usd: f64,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub cache_read_input_tokens: u64,
+    pub cache_creation_input_tokens: u64,
+    pub lines_added: u64,
+    pub lines_removed: u64,
+    /// Dearest first, already bounded by the daemon.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub models: Vec<RemoteModelUsage>,
+}
+
+/// Codex's reading, out of its own session rollout.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteCodexUsage {
+    /// Codex names its windows rather than describing them, so the names are
+    /// carried through rather than guessed at.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub primary: Option<RemoteUsageWindow>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secondary: Option<RemoteUsageWindow>,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub total_tokens: u64,
+    /// The model's context window, when the rollout named one — what the
+    /// "how full is this session" bar is drawn against.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<u64>,
+    /// When the reading was taken. A rollout can be days old, and a usage bar
+    /// with no date is a bar that quietly stops being true.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
+}
+
+/// Both agents' readings. A provider that has never run is an absent key rather
+/// than a zeroed one — zero spent and never installed are different answers.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteAgentUsage {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claude: Option<RemoteClaudeUsage>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codex: Option<RemoteCodexUsage>,
+}
+
+// --- The error inbox and the timeline ----------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IncidentLevel {
+    Error,
+    Warning,
+    Info,
+    #[serde(other)]
+    Unknown,
+}
+
+/// One deduped incident from the error inbox.
+///
+/// **No log excerpt.** The local inbox carries the surrounding lines, and they
+/// are raw service output — the exact bytes the log capability redacts a
+/// credential out of before sending. Rather than run that redaction twice, the
+/// excerpt does not cross: a phone that wants the lines asks for the service's
+/// logs, which is a capability of its own and already bounded.
+///
+/// `file` is the **basename**. A stack trace names somebody's whole home
+/// directory, and "which file" is the part that helps.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteIncident {
+    pub id: String,
+    /// The registered service it was seen in.
+    pub service: String,
+    pub level: IncidentLevel,
+    /// The first line of the error, already cut to
+    /// [`super::limits::MAX_SUMMARY_BYTES`].
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<u32>,
+    pub first_seen: String,
+    pub last_seen: String,
+    /// How many times this signature has been seen. The number that tells a
+    /// loop from an incident.
+    pub count: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TimelineSeverity {
+    Info,
+    Warning,
+    Error,
+    #[serde(other)]
+    Unknown,
+}
+
+/// One thing the runtime did.
+///
+/// **No `data`.** The local event carries a free-form JSON blob whose contents
+/// depend on the event kind — and for a process event that blob is a pid, an
+/// exit code and a command line. A wire type with a `serde_json::Value` in it
+/// is a wire type with nowhere it *cannot* put those, which is exactly what
+/// this module exists to prevent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteTimelineEntry {
+    pub id: String,
+    /// RFC 3339, as the daemon recorded it.
+    pub at: String,
+    /// The event kind as the daemon spells it — `service_started`,
+    /// `health_check`. A string rather than an enum for the usual reason: a
+    /// kind added later must not fail an older reader's parse.
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
+    pub severity: TimelineSeverity,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

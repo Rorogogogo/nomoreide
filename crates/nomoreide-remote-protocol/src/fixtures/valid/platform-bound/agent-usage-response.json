@@ -1,0 +1,49 @@
+{
+  "v": 2,
+  "id": "evt_agent_usage_response",
+  "type": "agent.usage.response",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "usage": {
+      "claude": {
+        "fiveHour": {
+          "usedPercent": 42.5,
+          "resetsAtUnix": 1788220800
+        },
+        "weekly": {
+          "usedPercent": 11.0,
+          "resetsAtUnix": 1788566400
+        },
+        "costUsd": 3.42,
+        "inputTokens": 18204,
+        "outputTokens": 41882,
+        "cacheReadInputTokens": 1204882,
+        "cacheCreationInputTokens": 88120,
+        "linesAdded": 412,
+        "linesRemoved": 118,
+        "models": [
+          {
+            "model": "claude-opus-5",
+            "inputTokens": 18204,
+            "outputTokens": 41882,
+            "costUsd": 3.42
+          }
+        ]
+      },
+      "codex": {
+        "primary": {
+          "usedPercent": 8.0,
+          "resetsAtUnix": 1788220800,
+          "windowMinutes": 300
+        },
+        "inputTokens": 9100,
+        "outputTokens": 2400,
+        "totalTokens": 11500,
+        "contextWindow": 272000,
+        "at": "2026-09-01T00:00:00.000Z"
+      }
+    }
+  }
+}

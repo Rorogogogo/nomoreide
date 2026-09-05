@@ -123,6 +123,39 @@ pub mod capabilities {
     /// a phone *that* an agent is running without handing over its screen.
     pub const TERMINAL_ATTACH: &str = "terminal.attach";
 
+    // --- The read-only inspection surface -----------------------------------
+    //
+    // Everything below answers "what is going on?" and nothing below changes
+    // anything. They are separate capabilities rather than one `inspect`
+    // because they need different things of the machine — two of them need a
+    // GitHub account, one needs an agent to have run at least once, and two
+    // need only the daemon itself. A phone must be able to tell "this machine
+    // has no GitHub connected" from "this build is too old", and one
+    // capability covering all five could not say either.
+
+    /// Listing GitHub Actions workflow runs, and one run's jobs.
+    ///
+    /// Read-only: there is no re-run, no cancel, and no dispatch. Watching CI
+    /// from a phone is a different permission from steering it, and only the
+    /// first is here.
+    pub const GITHUB_ACTIONS: &str = "github.actions";
+    /// Listing pull requests, and reading one.
+    ///
+    /// Read-only in the same sense: no merge, no create, no review. Those live
+    /// in `nomoreide-actions` locally and have no frame here.
+    pub const GITHUB_PULLS: &str = "github.pulls";
+    /// What Claude and Codex have spent, and how close their rate-limit
+    /// windows are.
+    ///
+    /// The one thing a phone can answer that a laptop cannot: whether starting
+    /// a turn now is worth it. Reported without the working directory or the
+    /// session id the local panel shows — see [`super::snapshot`].
+    pub const AGENT_USAGE: &str = "agent.usage";
+    /// The deduped error inbox: what is broken, in which service, how often.
+    pub const DEVICE_ERRORS: &str = "device.errors";
+    /// The runtime timeline: what the daemon did, across every service.
+    pub const DEVICE_TIMELINE: &str = "device.timeline";
+
     /// Everything a fully-featured v1 daemon offers.
     pub const V1: &[&str] = &[
         DEVICE_SNAPSHOT,
@@ -135,10 +168,18 @@ pub mod capabilities {
         AGENT_APPROVALS,
     ];
 
-    /// Everything a fully-featured v2 daemon offers: v1, plus the terminal.
+    /// Everything a fully-featured v2 daemon offers: v1, plus the terminal,
+    /// plus the read-only inspection surface.
     ///
     /// Additive by construction — v2 removed nothing, so this is `V1` with the
     /// new names appended rather than a second list to keep in step.
+    ///
+    /// **This list grows without a version bump, and that is the design.** A
+    /// capability is what *this machine* offers, not what its protocol era
+    /// defined; `PROTOCOL_VERSION` versions the payload union's frame rules,
+    /// and a name a peer has not heard of is an omission rather than a failure.
+    /// So a daemon built today advertises more than one built when v2 shipped,
+    /// both are v2, and an older phone simply never asks for the extra names.
     pub const V2: &[&str] = &[
         DEVICE_SNAPSHOT,
         SERVICE_LIST,
@@ -152,12 +193,17 @@ pub mod capabilities {
         TERMINAL_ATTACH,
         TERMINAL_SPAWN,
         TERMINAL_SHELL,
+        GITHUB_ACTIONS,
+        GITHUB_PULLS,
+        AGENT_USAGE,
+        DEVICE_ERRORS,
+        DEVICE_TIMELINE,
     ];
 
     /// `V2` must extend `V1` rather than diverge from it. Checked here because
     /// the two lists are written out separately for readability.
     const _: () = {
-        assert!(V2.len() == V1.len() + 4);
+        assert!(V2.len() == V1.len() + 9);
     };
 }
 

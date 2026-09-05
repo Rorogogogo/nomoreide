@@ -12,6 +12,15 @@
 //! port-holder killing, and generic HTTP forwarding. The exclusion list is not
 //! commentary — [`DeviceBound::KINDS`] is exhaustive and the parser refuses
 //! everything else by name.
+//!
+//! The union has since grown a **read-only inspection surface** — Actions runs,
+//! pull requests, agent usage, the error inbox, the timeline. It grew without a
+//! version bump because each is gated by a capability the daemon advertises,
+//! which is what capabilities are for; and it widened the attack surface by
+//! nothing, because not one of those frames can change the state of anything.
+//! The exclusion list above is unchanged, and the same rule applied to each
+//! addition: a phone names *what to look at* on the machine it already paired,
+//! never *where* — there is no repository, path or command in any of them.
 
 use super::errors::{ErrorCode, ProtocolError};
 use serde::{Deserialize, Serialize};
@@ -88,6 +97,31 @@ pub enum DeviceBound {
     /// Stop mirroring. The PTY keeps running; only the mirror ends. **v2.**
     #[serde(rename = "terminal.detach")]
     TerminalDetach(TerminalDetach),
+
+    /// Recent GitHub Actions runs for the selected repository.
+    #[serde(rename = "github.runs.request")]
+    GithubRuns(GithubRunsRequest),
+    /// The jobs inside one run — which step went red.
+    #[serde(rename = "github.run.jobs.request")]
+    GithubRunJobs(GithubRunJobsRequest),
+    /// Pull requests on the selected repository.
+    #[serde(rename = "github.prs.request")]
+    GithubPulls(GithubPullsRequest),
+    /// One pull request by number.
+    #[serde(rename = "github.pr.request")]
+    GithubPull(GithubPullRequestRef),
+
+    /// What Claude and Codex have spent, and how full their rate-limit windows
+    /// are.
+    #[serde(rename = "agent.usage.request")]
+    AgentUsage(Empty),
+
+    /// The deduped error inbox.
+    #[serde(rename = "errors.request")]
+    Errors(ErrorsRequest),
+    /// What the runtime did, across every service.
+    #[serde(rename = "timeline.request")]
+    Timeline(TimelineRequest),
 }
 
 /// A payload with no fields.
@@ -243,6 +277,79 @@ pub struct TerminalDetach {
     pub stream_id: String,
 }
 
+/// Which runs to list.
+///
+/// **There is no repository here, and that is the point.** The daemon answers
+/// for the repository it already has selected — the same one the dashboard is
+/// looking at. A caller-supplied `owner/repo` would turn remote control into a
+/// general-purpose GitHub client running under the user's token, which is a
+/// much larger thing than "show me my CI".
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GithubRunsRequest {
+    /// Only runs on this branch. Absent means every branch, which is what a
+    /// phone opening the screen cold wants.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    /// Clamped to [`super::limits::MAX_WORKFLOW_RUNS`]. Absent means the
+    /// maximum — an omitted bound is the safest bound, not an unbounded one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GithubRunJobsRequest {
+    /// GitHub's run id, as a string, exactly as a listing reported it. The
+    /// daemon refuses anything that is not digits — it becomes part of a URL,
+    /// and a run id is the only caller-supplied value on this surface that
+    /// does.
+    pub run_id: String,
+}
+
+/// Which pull requests to list. Mirrors GitHub's own filter and nothing more.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PullRequestFilter {
+    #[default]
+    Open,
+    Closed,
+    All,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GithubPullsRequest {
+    /// Absent means [`PullRequestFilter::Open`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<PullRequestFilter>,
+    /// Clamped to [`super::limits::MAX_PULL_REQUESTS`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GithubPullRequestRef {
+    pub number: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ErrorsRequest {
+    /// Clamped to [`super::limits::MAX_INCIDENTS`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TimelineRequest {
+    /// Clamped to [`super::limits::MAX_TIMELINE_ENTRIES`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+}
+
 impl DeviceBound {
     /// Every accepted `type`, in the order the union declares them.
     ///
@@ -267,6 +374,13 @@ impl DeviceBound {
         "terminal.input",
         "terminal.resize",
         "terminal.detach",
+        "github.runs.request",
+        "github.run.jobs.request",
+        "github.prs.request",
+        "github.pr.request",
+        "agent.usage.request",
+        "errors.request",
+        "timeline.request",
     ];
 
     pub fn kind(&self) -> &'static str {
@@ -289,6 +403,13 @@ impl DeviceBound {
             Self::TerminalInput(_) => "terminal.input",
             Self::TerminalResize(_) => "terminal.resize",
             Self::TerminalDetach(_) => "terminal.detach",
+            Self::GithubRuns(_) => "github.runs.request",
+            Self::GithubRunJobs(_) => "github.run.jobs.request",
+            Self::GithubPulls(_) => "github.prs.request",
+            Self::GithubPull(_) => "github.pr.request",
+            Self::AgentUsage(_) => "agent.usage.request",
+            Self::Errors(_) => "errors.request",
+            Self::Timeline(_) => "timeline.request",
         }
     }
 
@@ -321,7 +442,17 @@ impl DeviceBound {
             | Self::TerminalSessions(_)
             | Self::TerminalAttach(_)
             | Self::TerminalResize(_)
-            | Self::TerminalDetach(_) => false,
+            | Self::TerminalDetach(_)
+            // The whole inspection surface. Nothing below changes anything on
+            // the machine or on GitHub, which is what makes a retry harmless
+            // and a degraded session still useful.
+            | Self::GithubRuns(_)
+            | Self::GithubRunJobs(_)
+            | Self::GithubPulls(_)
+            | Self::GithubPull(_)
+            | Self::AgentUsage(_)
+            | Self::Errors(_)
+            | Self::Timeline(_) => false,
         }
     }
 
@@ -346,6 +477,11 @@ impl DeviceBound {
             | Self::TerminalInput(_)
             | Self::TerminalResize(_)
             | Self::TerminalDetach(_) => Some(capability::TERMINAL_ATTACH),
+            Self::GithubRuns(_) | Self::GithubRunJobs(_) => Some(capability::GITHUB_ACTIONS),
+            Self::GithubPulls(_) | Self::GithubPull(_) => Some(capability::GITHUB_PULLS),
+            Self::AgentUsage(_) => Some(capability::AGENT_USAGE),
+            Self::Errors(_) => Some(capability::DEVICE_ERRORS),
+            Self::Timeline(_) => Some(capability::DEVICE_TIMELINE),
         }
     }
 

@@ -828,12 +828,11 @@ async fn create_agent_session(state: &AppState, agent: &Value, workspace: String
     }
 
     let task_label = agent_task_label(&request.provider, request.label.as_deref(), &request.prompt);
-    let snapshot_label = request
-        .prompt
-        .lines()
-        .any(|line| !line.trim().is_empty())
-        .then(|| agent_task_label(&request.provider, None, &request.prompt))
-        .unwrap_or_else(|| task_label.clone());
+    let snapshot_label = if request.prompt.lines().any(|line| !line.trim().is_empty()) {
+        agent_task_label(&request.provider, None, &request.prompt)
+    } else {
+        task_label.clone()
+    };
     let mut prompt = request.prompt;
     // **A validated context attachment is not yet assembled into the prompt.**
     // `assemble_prompt` needs the library's full item list — notes *and* the

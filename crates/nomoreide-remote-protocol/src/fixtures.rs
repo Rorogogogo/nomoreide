@@ -34,19 +34,26 @@ use super::agent_event::{
 };
 use super::device_bound::{
     AgentApprovalResolve, AgentTurnCancel, AgentTurnStart, ApprovalVerdict, DeviceBound, Empty,
-    ServiceAction, ServiceActionRequest, ServiceLogsRequest, SessionRevoke, SessionWelcome,
-    TerminalAttachRequest, TerminalDetach, TerminalInput, TerminalResize, TerminalSpawnRequest,
+    ErrorsRequest, GithubPullRequestRef, GithubPullsRequest, GithubRunJobsRequest,
+    GithubRunsRequest, PullRequestFilter, ServiceAction, ServiceActionRequest, ServiceLogsRequest,
+    SessionRevoke, SessionWelcome, TerminalAttachRequest, TerminalDetach, TerminalInput,
+    TerminalResize, TerminalSpawnRequest, TimelineRequest,
 };
 use super::errors::{ErrorCode, ProtocolError};
 use super::platform_bound::{
-    AgentProvidersResponse, AgentTurnAccepted, BundleListResponse, CommandErrorResponse,
-    DeviceSnapshotResponse, PlatformBound, ServiceActionResponse, ServiceListResponse,
-    ServiceLogsResponse, SessionHello, TerminalAck, TerminalAttachAccepted, TerminalCloseReason,
-    TerminalClosed, TerminalGeometry, TerminalOutput, TerminalSessionsResponse, TerminalSpawned,
+    AgentProvidersResponse, AgentTurnAccepted, AgentUsageResponse, BundleListResponse,
+    CommandErrorResponse, DeviceSnapshotResponse, ErrorsResponse, GithubPullResponse,
+    GithubPullsResponse, GithubRunJobsResponse, GithubRunsResponse, PlatformBound,
+    ServiceActionResponse, ServiceListResponse, ServiceLogsResponse, SessionHello, TerminalAck,
+    TerminalAttachAccepted, TerminalCloseReason, TerminalClosed, TerminalGeometry, TerminalOutput,
+    TerminalSessionsResponse, TerminalSpawned, TimelineResponse,
 };
 use super::snapshot::{
-    BundleState, DeviceSnapshot, LogLine, LogStream, RemoteAgentProvider, RemoteBundle,
-    RemoteService, RemoteTerminalSession, ServiceState,
+    BundleState, DeviceSnapshot, IncidentLevel, LogLine, LogStream, PullRequestState,
+    RemoteAgentProvider, RemoteAgentUsage, RemoteBundle, RemoteClaudeUsage, RemoteCodexUsage,
+    RemoteIncident, RemoteModelUsage, RemotePullRequest, RemoteService, RemoteTerminalSession,
+    RemoteTimelineEntry, RemoteUsageWindow, RemoteWorkflowJob, RemoteWorkflowRun, RunConclusion,
+    RunStatus, ServiceState, TimelineSeverity,
 };
 use super::terminal_bytes::TerminalBytes;
 use super::version::{CapabilitySet, SessionMode, SUPPORTED_VERSIONS};
@@ -118,6 +125,21 @@ pub fn every_command() -> Vec<DeviceBound> {
         DeviceBound::TerminalDetach(TerminalDetach {
             stream_id: "stream_1".to_string(),
         }),
+        DeviceBound::GithubRuns(GithubRunsRequest {
+            branch: Some("main".to_string()),
+            limit: Some(10),
+        }),
+        DeviceBound::GithubRunJobs(GithubRunJobsRequest {
+            run_id: "1874200193".to_string(),
+        }),
+        DeviceBound::GithubPulls(GithubPullsRequest {
+            state: Some(PullRequestFilter::Open),
+            limit: Some(10),
+        }),
+        DeviceBound::GithubPull(GithubPullRequestRef { number: 268 }),
+        DeviceBound::AgentUsage(Empty {}),
+        DeviceBound::Errors(ErrorsRequest { limit: Some(20) }),
+        DeviceBound::Timeline(TimelineRequest { limit: Some(20) }),
     ]
 }
 
@@ -230,6 +252,136 @@ pub fn every_event() -> Vec<PlatformBound> {
         PlatformBound::TerminalClosed(TerminalClosed {
             stream_id: "stream_1".to_string(),
             reason: TerminalCloseReason::Exited,
+        }),
+        PlatformBound::GithubRuns(GithubRunsResponse {
+            runs: vec![RemoteWorkflowRun {
+                id: "1874200193".to_string(),
+                name: "CI".to_string(),
+                title: Some("fix: the CLI release could not compile for Linux".to_string()),
+                branch: Some("main".to_string()),
+                event: Some("push".to_string()),
+                number: Some(412),
+                status: RunStatus::Completed,
+                conclusion: Some(RunConclusion::Failure),
+                started_at: Some(FIXTURE_SENT_AT.to_string()),
+                updated_at: Some(FIXTURE_SENT_AT.to_string()),
+                url: Some(
+                    "https://github.com/nomoreide/nomoreide/actions/runs/1874200193".to_string(),
+                ),
+            }],
+            branch: Some("main".to_string()),
+            truncated: true,
+        }),
+        PlatformBound::GithubRunJobs(GithubRunJobsResponse {
+            run_id: "1874200193".to_string(),
+            jobs: vec![RemoteWorkflowJob {
+                id: "5512900001".to_string(),
+                name: "desktop-check".to_string(),
+                status: RunStatus::Completed,
+                conclusion: Some(RunConclusion::Failure),
+                started_at: Some(FIXTURE_SENT_AT.to_string()),
+                completed_at: Some(FIXTURE_SENT_AT.to_string()),
+                url: Some(
+                    "https://github.com/nomoreide/nomoreide/actions/runs/1874200193/job/5512900001"
+                        .to_string(),
+                ),
+            }],
+            truncated: false,
+        }),
+        PlatformBound::GithubPulls(GithubPullsResponse {
+            pulls: vec![RemotePullRequest {
+                number: 268,
+                title: "fix: the CLI release could not compile for Linux".to_string(),
+                state: PullRequestState::Merged,
+                draft: false,
+                author: Some("roro".to_string()),
+                head_branch: Some("fix/linux-release".to_string()),
+                base_branch: Some("main".to_string()),
+                updated_at: Some(FIXTURE_SENT_AT.to_string()),
+                url: Some("https://github.com/nomoreide/nomoreide/pull/268".to_string()),
+            }],
+            truncated: false,
+        }),
+        PlatformBound::GithubPull(GithubPullResponse {
+            pull: RemotePullRequest {
+                number: 269,
+                title: "feat(remote): CI, pull requests and agent usage from a phone".to_string(),
+                state: PullRequestState::Open,
+                draft: true,
+                author: Some("roro".to_string()),
+                head_branch: Some("feat/remote-inspection".to_string()),
+                base_branch: Some("main".to_string()),
+                updated_at: Some(FIXTURE_SENT_AT.to_string()),
+                url: Some("https://github.com/nomoreide/nomoreide/pull/269".to_string()),
+            },
+        }),
+        PlatformBound::AgentUsage(AgentUsageResponse {
+            usage: RemoteAgentUsage {
+                claude: Some(RemoteClaudeUsage {
+                    five_hour: Some(RemoteUsageWindow {
+                        used_percent: 42.5,
+                        resets_at_unix: Some(1_788_220_800),
+                        window_minutes: None,
+                    }),
+                    weekly: Some(RemoteUsageWindow {
+                        used_percent: 11.0,
+                        resets_at_unix: Some(1_788_566_400),
+                        window_minutes: None,
+                    }),
+                    cost_usd: 3.42,
+                    input_tokens: 18_204,
+                    output_tokens: 41_882,
+                    cache_read_input_tokens: 1_204_882,
+                    cache_creation_input_tokens: 88_120,
+                    lines_added: 412,
+                    lines_removed: 118,
+                    models: vec![RemoteModelUsage {
+                        model: "claude-opus-5".to_string(),
+                        input_tokens: 18_204,
+                        output_tokens: 41_882,
+                        cost_usd: 3.42,
+                    }],
+                }),
+                codex: Some(RemoteCodexUsage {
+                    primary: Some(RemoteUsageWindow {
+                        used_percent: 8.0,
+                        resets_at_unix: Some(1_788_220_800),
+                        window_minutes: Some(300),
+                    }),
+                    secondary: None,
+                    input_tokens: 9_100,
+                    output_tokens: 2_400,
+                    total_tokens: 11_500,
+                    context_window: Some(272_000),
+                    at: Some(FIXTURE_SENT_AT.to_string()),
+                }),
+            },
+        }),
+        PlatformBound::Errors(ErrorsResponse {
+            incidents: vec![RemoteIncident {
+                id: "17".to_string(),
+                service: "api".to_string(),
+                level: IncidentLevel::Error,
+                title: "TypeError: cannot read properties of undefined".to_string(),
+                file: Some("server.js".to_string()),
+                line: Some(42),
+                first_seen: FIXTURE_SENT_AT.to_string(),
+                last_seen: FIXTURE_SENT_AT.to_string(),
+                count: 3,
+            }],
+            truncated: false,
+        }),
+        PlatformBound::Timeline(TimelineResponse {
+            entries: vec![RemoteTimelineEntry {
+                id: "tl_1".to_string(),
+                at: FIXTURE_SENT_AT.to_string(),
+                kind: "service_exited".to_string(),
+                service: Some("api".to_string()),
+                severity: TimelineSeverity::Error,
+                title: "api exited with code 1".to_string(),
+                detail: Some("restarting in 2s".to_string()),
+            }],
+            truncated: true,
         }),
     ];
     // One frame per run-event kind, because `agent.turn.event` is a union in
