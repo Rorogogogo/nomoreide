@@ -49,6 +49,77 @@ export function closeTab(layout: WorkspaceLayout, paneIndex: number, index: numb
   return { ...layout, panes: layout.panes.map((entry, i) => i === paneIndex ? { ...entry, tabs, active } : entry) };
 }
 
+/**
+ * Move a tab, within a pane or across to the other one.
+ *
+ * The one operation dragging needs, and it carries every rule the drag itself
+ * cannot: a tab never lands on top of another, a pane that loses its last tab
+ * collapses, and the *only* tab of the *only* pane cannot be dragged anywhere
+ * — there would be nothing left to show.
+ *
+ * `to` may name a pane that does not exist yet (index 1 while there is one
+ * pane). That is how a drag to the right-hand edge creates the split, so it is
+ * handled here rather than at the drop site.
+ */
+export function moveTab(layout: WorkspaceLayout, from: number, fromIndex: number, to: number, toIndex?: number): WorkspaceLayout {
+  const source = layout.panes[from];
+  const tab = source?.tabs[fromIndex];
+  if (!tab) return layout;
+
+  if (from === to) {
+    const tabs = [...source.tabs];
+    tabs.splice(fromIndex, 1);
+    const at = Math.max(0, Math.min(tabs.length, toIndex ?? tabs.length));
+    tabs.splice(at, 0, tab);
+    return { ...layout, focused: from, panes: layout.panes.map((pane, i) => i === from ? { ...pane, tabs, active: at } : pane) };
+  }
+
+  // Emptying the last pane would leave nothing rendered at all.
+  if (source.tabs.length === 1 && layout.panes.length === 1) return layout;
+  // A destination already open elsewhere is a focus, not a second copy —
+  // `tabId` uniqueness is what `parseLayout` enforces on the way back in.
+  const target = layout.panes[to];
+  if (target?.tabs.some((entry) => tabId(entry) === tabId(tab))) return layout;
+
+  const remaining = source.tabs.filter((_, i) => i !== fromIndex);
+  const landed = target
+    ? { ...target, tabs: [...target.tabs.slice(0, toIndex ?? target.tabs.length), tab, ...target.tabs.slice(toIndex ?? target.tabs.length)] }
+    : { id: (source.id === "primary" ? "secondary" : "primary") as WorkspacePane["id"], tabs: [tab], active: 0 };
+  const active = target ? Math.max(0, Math.min(landed.tabs.length - 1, toIndex ?? landed.tabs.length - 1)) : 0;
+
+  const panes: WorkspacePane[] = [];
+  for (const [index, pane] of layout.panes.entries()) {
+    if (index === from) {
+      // The source keeps its selection where it can, and steps back when the
+      // tab it was showing is the one that just left.
+      if (remaining.length) panes.push({ ...pane, tabs: remaining, active: Math.max(0, Math.min(remaining.length - 1, pane.active - (fromIndex <= pane.active ? 1 : 0))) });
+      continue;
+    }
+    panes.push(index === to ? { ...landed, active } : pane);
+  }
+  if (!layout.panes[to]) panes.splice(Math.min(to, panes.length), 0, { ...landed, active });
+
+  const focused = panes.findIndex((pane) => pane.tabs.some((entry) => tabId(entry) === tabId(tab)));
+  return { ...layout, panes, focused: Math.max(0, focused) };
+}
+
+/**
+ * Split, from a single button.
+ *
+ * Two behaviours, because one click has to do something useful either way:
+ * with more than one tab the active one moves beside — "pull this one out",
+ * which is what split means to anybody who has used an editor. With a single
+ * tab there is nothing to pull out without emptying the pane, so the first
+ * destination that is not already open joins it instead. Both end in a split.
+ */
+export function splitActive(layout: WorkspaceLayout, options: WorkspaceTab[]): WorkspaceLayout {
+  if (layout.panes.length > 1) return layout;
+  const pane = layout.panes[0];
+  if (pane.tabs.length > 1) return moveTab(layout, 0, pane.active, 1);
+  const spare = options.find((tab) => !pane.tabs.some((entry) => tabId(entry) === tabId(tab)));
+  return spare ? openTab(layout, spare, 1) : layout;
+}
+
 export function mergePanes(layout: WorkspaceLayout): WorkspaceLayout {
   const current = layout.panes[layout.focused].tabs[layout.panes[layout.focused].active];
   const tabs = layout.panes.flatMap((pane) => pane.tabs);
