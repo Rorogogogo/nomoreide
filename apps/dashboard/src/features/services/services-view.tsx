@@ -293,8 +293,8 @@ export function ServicesView({
         className={cn(
           "grid h-full min-h-0 overflow-hidden bg-background",
           railCollapsed || composing
-            ? "lg:grid-cols-[320px_minmax(0,1fr)]"
-            : "lg:grid-cols-[320px_minmax(0,1fr)_340px]",
+            ? "grid-rows-[minmax(100px,0.35fr)_minmax(0,1fr)] @min-[640px]/workspace:grid-cols-[240px_minmax(0,1fr)] @min-[640px]/workspace:grid-rows-1 @min-[1100px]/workspace:grid-cols-[320px_minmax(0,1fr)]"
+            : "grid-rows-[minmax(100px,0.35fr)_minmax(0,1fr)_minmax(100px,0.35fr)] @min-[640px]/workspace:grid-cols-[240px_minmax(0,1fr)] @min-[640px]/workspace:grid-rows-[minmax(0,1fr)_160px] @min-[1100px]/workspace:grid-cols-[320px_minmax(0,1fr)_340px] @min-[1100px]/workspace:grid-rows-1",
         )}
       >
         <div className="min-h-0 min-w-0 overflow-auto border-r border-border">
@@ -580,7 +580,7 @@ export function ServicesView({
         </div>
 
         {!railCollapsed && !composing ? (
-          <div className="min-h-0 overflow-auto border-l border-border">
+          <div className="min-h-0 overflow-auto border-t border-border @min-[640px]/workspace:col-span-2 @min-[1100px]/workspace:col-span-1 @min-[1100px]/workspace:border-l @min-[1100px]/workspace:border-t-0">
             <PortsOverview ports={data.ports} />
             <DebugTimeline events={data.timeline ?? []} />
           </div>

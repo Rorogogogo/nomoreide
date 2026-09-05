@@ -4,6 +4,14 @@
  * so partial translations degrade to English rather than showing raw keys.
  */
 export const en = {
+  "workspace.resize": "Resize panes",
+  "workspace.primary": "Primary pane",
+  "workspace.secondary": "Secondary pane",
+  "workspace.tabs": "Workspace tabs",
+  "workspace.closeTab": "Close {name}",
+  "workspace.openTab": "Open tab",
+  "workspace.openBeside": "Open beside",
+  "workspace.singlePane": "Return to one pane",
   "nav.home": "Home",
   "nav.services": "Services",
   "nav.activity": "Activity",

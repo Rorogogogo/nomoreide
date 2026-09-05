@@ -89,8 +89,12 @@ import {
 import { isTauri } from "@/lib/tauri";
 import {
   APP_NAV_SECTIONS,
+  APP_NAV_ITEMS,
   type AppPage,
 } from "@/components/app-navigation";
+
+import { useWorkspaceLayout, type WorkspaceTab } from "@/features/workspace/workspace-layout";
+import { WorkspaceView } from "@/features/workspace/workspace-view";
 
 type Page = AppPage;
 
@@ -322,21 +326,27 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     show the workbench managing real services. Changing what the site leads
     with is a marketing decision, not a consequence of Home taking "/".
   */
-  const [page, setPage] = useState<Page>(() =>
-    syncLocation ? initialPage(window.location) : "services",
-  );
-  /**
-   * The plugin whose page is open, or null for the installed list.
-   *
-   * Kept beside `page` rather than inside it: `AppPage` is a closed union the
-   * client owns, while which plugins exist is data the server answers with.
-   */
-  const [extensionId, setExtensionId] = useState<string | null>(() =>
-    syncLocation ? extensionIdFromPath(window.location.pathname) : null,
-  );
+  const [initialTab] = useState<WorkspaceTab>(() => ({
+    page: syncLocation ? initialPage(window.location) : "services",
+    extensionId: syncLocation ? extensionIdFromPath(window.location.pathname) : null,
+  }));
   const { extensions } = useInstalledExtensions();
   const [activityHost, setActivityHost] = useState("local");
   const [data, setData] = useState<DashboardData | null>(null);
+  const workspace = useWorkspaceLayout(
+    data ? data.git.selectedRepository?.path ?? data.git.cwd ?? "all" : null,
+    initialTab,
+    syncLocation,
+  );
+  useEffect(() => {
+    if (!syncLocation) return;
+    const onPopState = () => workspace.navigate(pageFromPath(window.location.pathname), extensionIdFromPath(window.location.pathname));
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [syncLocation, workspace.navigate]);
+  const { page, extensionId } = workspace.current;
+  const setPage = (next: Page) => workspace.navigate(next);
+  const setExtensionId = (id: string | null) => workspace.navigate("extensions", id);
   // Set when the dock's "Open" shortcut should jump to a service on the Services page.
   const [focusService, setFocusService] = useState<string | null>(null);
   // Set when the dock stages an agent-drafted write for the SQL console. The
@@ -615,6 +625,143 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     void refreshGitHubToken();
   }, [repoScopeKey]);
 
+  const renderWorkspacePage = (tab: WorkspaceTab, pane: number) => {
+    const { page, extensionId } = tab;
+    const setPage = (next: Page) => workspace.navigate(next, null, pane);
+    const setExtensionId = (id: string | null) => workspace.navigate("extensions", id, pane);
+    const activeExtension = extensions.find((entry) => entry.id === extensionId) ?? null;
+    const overviewDomain: OverviewDomain | null = !scopeAll ? null
+      : page === "git" || page === "github" ? page
+      : page === "extensions" && activeExtension?.kind === "deploy" && extensionId === "vercel" ? "vercel" : null;
+    return <>
+            {page === "home" && (scopedData || loading) ? (
+              <HomeView
+                data={scopedData}
+                onOpen={setPage}
+                onRefresh={refreshView}
+                scopeName={activeProject?.name ?? null}
+              />
+            ) : null}
+            {scopedData && page === "services" ? (
+              <ServicesView
+                data={scopedData}
+                onRefresh={refreshView}
+                focusService={focusService}
+                onServiceFocused={() => setFocusService(null)}
+                scopeName={activeProject?.name ?? null}
+              />
+            ) : null}
+            {scopedData && page === "activity" ? (
+              <ActivityPage
+                data={scopedData}
+                host={activityHost}
+                onHostChange={setActivityHost}
+                onOpenService={(name) => {
+                  setFocusService(name);
+                  setPage("services");
+                }}
+                scopeName={activeProject?.name ?? null}
+              />
+            ) : null}
+            {page === "servers" ? (
+              <ServersPage
+                onOpenActivity={(host) => {
+                  setActivityHost(host);
+                  setPage("activity");
+                }}
+              />
+            ) : null}
+            {page === "docker" ? <DockerView /> : null}
+            {overviewDomain ? (
+              <ProjectOverviewTable
+                domain={overviewDomain}
+                key={overviewDomain}
+                onEnterProject={() => {
+                  setScopeAll(false);
+                  void refresh({ silent: true });
+                }}
+              />
+            ) : null}
+            {!overviewDomain && data && page === "git" ? (
+              <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
+            ) : null}
+            {!overviewDomain && page === "github" ? (
+              <GitHubView key={repoScopeKey} scope={repoScopeKey} />
+            ) : null}
+            {/*
+              Extensions is two destinations behind one page id: the section's
+              own page at `/extensions`, and one plugin's page at
+              `/extensions/<id>`. `repoScopeKey` stays in the key because a
+              deploy plugin's page follows the selected repository, exactly as
+              the Deploy page did.
+            */}
+            {!overviewDomain && page === "extensions" && extensionId ? (
+              activeExtension ? (
+                <ExtensionPage
+                  extension={activeExtension}
+                  key={`${activeExtension.id}:${repoScopeKey}`}
+                  onOpenServers={() => setPage("servers")}
+                />
+              ) : extensions.length > 0 ? (
+                <UnknownExtensionPage id={extensionId} />
+              ) : null
+            ) : null}
+            {!overviewDomain && page === "extensions" && !extensionId ? (
+              <ExtensionsView onOpen={(id) => setExtensionId(id)} />
+            ) : null}
+            {page === "remote" ? <RemoteView /> : null}
+            {page === "workflows" ? <WorkflowPanel /> : null}
+            {page === "agent" ? (
+              <AgentView
+                focusChanges={changesFocusNonce}
+                onOpenAgentEnv={() => setPage("agent-env")}
+              />
+            ) : null}
+            {page === "context" ? <ContextView projectPath={activeProject?.path ?? null} /> : null}
+            {page === "agent-env" ? (
+              <AgentEnvView
+                installSlug={pendingInstall}
+                onInstallHandled={() => setPendingInstall(null)}
+              />
+            ) : null}
+            {page === "errors" ? (
+              <ErrorInboxView
+                inScope={
+                  scopedServiceNames
+                    ? (service) => scopedServiceNames.has(service)
+                    : undefined
+                }
+                onReviewChanges={() => {
+                  setChangesFocusNonce((nonce) => nonce + 1);
+                  setPage("agent");
+                }}
+              />
+            ) : null}
+            {page === "database" ? (
+              <DatabaseView
+                projects={data?.config.gitRepositories ?? []}
+                scopePath={activeProject?.path ?? null}
+                staged={stagedSql}
+                onStageConsumed={() => setStagedSql(null)}
+              />
+            ) : null}
+            {page === "settings" ? (
+              <SettingsView
+                activeProject={data?.git.selectedRepository ?? null}
+                onNavigate={(nextPage) => setPage(nextPage)}
+              />
+            ) : null}
+    </>;
+  };
+  const workspaceOptions: WorkspaceTab[] = [
+    ...APP_NAV_ITEMS.map((item) => ({ page: item.page, extensionId: null })),
+    ...extensions.map((extension) => ({ page: "extensions" as const, extensionId: extension.id })),
+    { page: "settings", extensionId: null },
+  ];
+  const workspaceTitle = (tab: WorkspaceTab) => tab.extensionId
+    ? extensions.find((entry) => entry.id === tab.extensionId)?.name ?? tab.extensionId
+    : t(PAGE_TITLE_KEY[tab.page]);
+
   return (
     <AgentProvider>
     <AiContextMenuProvider>
@@ -735,7 +882,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                           icon={<LayoutGrid />}
                           label={t("nav.extensionsOverview")}
                           onClick={() => {
-                            setPage("extensions");
                             setExtensionId(null);
                           }}
                         />
@@ -750,7 +896,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                               key={extension.id}
                               label={extension.name}
                               onClick={() => {
-                                setPage("extensions");
                                 setExtensionId(extension.id);
                               }}
                             />
@@ -914,123 +1059,8 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
           ) : null}
 
           <div className="min-h-0 flex-1 overflow-hidden">
-            {page === "home" && (scopedData || loading) ? (
-              <HomeView
-                data={scopedData}
-                onOpen={setPage}
-                onRefresh={refreshView}
-                scopeName={activeProject?.name ?? null}
-              />
-            ) : null}
-            {scopedData && page === "services" ? (
-              <ServicesView
-                data={scopedData}
-                onRefresh={refreshView}
-                focusService={focusService}
-                onServiceFocused={() => setFocusService(null)}
-                scopeName={activeProject?.name ?? null}
-              />
-            ) : null}
-            {scopedData && page === "activity" ? (
-              <ActivityPage
-                data={scopedData}
-                host={activityHost}
-                onHostChange={setActivityHost}
-                onOpenService={(name) => {
-                  setFocusService(name);
-                  setPage("services");
-                }}
-                scopeName={activeProject?.name ?? null}
-              />
-            ) : null}
-            {page === "servers" ? (
-              <ServersPage
-                onOpenActivity={(host) => {
-                  setActivityHost(host);
-                  setPage("activity");
-                }}
-              />
-            ) : null}
-            {page === "docker" ? <DockerView /> : null}
-            {overviewDomain ? (
-              <ProjectOverviewTable
-                domain={overviewDomain}
-                key={overviewDomain}
-                onEnterProject={() => {
-                  setScopeAll(false);
-                  void refresh({ silent: true });
-                }}
-              />
-            ) : null}
-            {!overviewDomain && data && page === "git" ? (
-              <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
-            ) : null}
-            {!overviewDomain && page === "github" ? (
-              <GitHubView key={repoScopeKey} scope={repoScopeKey} />
-            ) : null}
-            {/*
-              Extensions is two destinations behind one page id: the section's
-              own page at `/extensions`, and one plugin's page at
-              `/extensions/<id>`. `repoScopeKey` stays in the key because a
-              deploy plugin's page follows the selected repository, exactly as
-              the Deploy page did.
-            */}
-            {!overviewDomain && page === "extensions" && extensionId ? (
-              activeExtension ? (
-                <ExtensionPage
-                  extension={activeExtension}
-                  key={`${activeExtension.id}:${repoScopeKey}`}
-                  onOpenServers={() => setPage("servers")}
-                />
-              ) : extensions.length > 0 ? (
-                <UnknownExtensionPage id={extensionId} />
-              ) : null
-            ) : null}
-            {!overviewDomain && page === "extensions" && !extensionId ? (
-              <ExtensionsView onOpen={(id) => setExtensionId(id)} />
-            ) : null}
-            {page === "remote" ? <RemoteView /> : null}
-            {page === "workflows" ? <WorkflowPanel /> : null}
-            {page === "agent" ? (
-              <AgentView
-                focusChanges={changesFocusNonce}
-                onOpenAgentEnv={() => setPage("agent-env")}
-              />
-            ) : null}
-            {page === "context" ? <ContextView projectPath={activeProject?.path ?? null} /> : null}
-            {page === "agent-env" ? (
-              <AgentEnvView
-                installSlug={pendingInstall}
-                onInstallHandled={() => setPendingInstall(null)}
-              />
-            ) : null}
-            {page === "errors" ? (
-              <ErrorInboxView
-                inScope={
-                  scopedServiceNames
-                    ? (service) => scopedServiceNames.has(service)
-                    : undefined
-                }
-                onReviewChanges={() => {
-                  setChangesFocusNonce((nonce) => nonce + 1);
-                  setPage("agent");
-                }}
-              />
-            ) : null}
-            {page === "database" ? (
-              <DatabaseView
-                projects={data?.config.gitRepositories ?? []}
-                scopePath={activeProject?.path ?? null}
-                staged={stagedSql}
-                onStageConsumed={() => setStagedSql(null)}
-              />
-            ) : null}
-            {page === "settings" ? (
-              <SettingsView
-                activeProject={data?.git.selectedRepository ?? null}
-                onNavigate={(nextPage) => setPage(nextPage)}
-              />
-            ) : null}
+            <WorkspaceView layout={workspace.layout} update={workspace.update}
+              options={workspaceOptions} title={workspaceTitle} render={renderWorkspacePage} />
           </div>
         </main>
       </div>

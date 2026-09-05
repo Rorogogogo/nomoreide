@@ -69,7 +69,7 @@ export function ActionsView({
         ) : runs.length === 0 ? (
           <div className="p-4 text-[12px] text-muted-foreground">{t("github.actions.noRuns")}</div>
         ) : (
-          <div className="grid h-full min-h-0 grid-cols-[minmax(280px,380px)_minmax(0,1fr)] divide-x divide-border">
+          <div className="grid h-full min-h-0 grid-rows-2 divide-y divide-border @min-[640px]/workspace:grid-cols-[minmax(240px,0.55fr)_minmax(0,0.45fr)] @min-[640px]/workspace:grid-rows-1 @min-[640px]/workspace:divide-x @min-[640px]/workspace:divide-y-0">
             <div className="min-h-0 overflow-auto">
             <ul className="divide-y divide-border">
               {runs.map((run) => (
