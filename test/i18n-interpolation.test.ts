@@ -1,10 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
+import { catalogSource } from "./support/i18n-source";
 
 const root = resolve(__dirname, "..");
 const clientSrc = resolve(root, "apps/dashboard/src");
-const enPath = resolve(clientSrc, "lib/i18n/en.ts");
 
 /**
  * Keys whose English copy carries a `{placeholder}`, mapped to the parameter
@@ -15,7 +15,7 @@ const enPath = resolve(clientSrc, "lib/i18n/en.ts");
  * missing there renders English rather than failing.
  */
 function interpolatedKeys(): Map<string, string[]> {
-  const source = readFileSync(enPath, "utf8");
+  const source = catalogSource("en");
   const keys = new Map<string, string[]>();
   // Values may be wrapped onto the next line by the formatter, so the value is
   // matched across the newline that Biome inserts after `":"`.
@@ -78,7 +78,7 @@ describe("i18n interpolation", () => {
   });
 
   test("zh keeps the same placeholders as en, so neither renders a literal brace", () => {
-    const zh = readFileSync(resolve(clientSrc, "lib/i18n/zh.ts"), "utf8");
+    const zh = catalogSource("zh");
     const zhEntry = /^\s*"([^"]+)":\s*\n?\s*"((?:[^"\\]|\\.)*)"/gm;
     const zhValues = new Map(
       [...zh.matchAll(zhEntry)].map((match) => [match[1], match[2]] as const),

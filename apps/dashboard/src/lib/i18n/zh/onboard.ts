@@ -1,0 +1,32 @@
+import type { TranslationKey } from "../en";
+
+export const zh_onboard: Partial<Record<TranslationKey, string>> = {
+  // Onboard dialog (Add from GitHub)
+  "onboard.title": "从 GitHub 添加",
+  "onboard.urlIntro": "粘贴仓库 URL。NoMoreIDE 会克隆它、检测其运行方式并建议一个服务。",
+  "onboard.refineWithAi": "用 AI 优化",
+  "onboard.cloning": "正在克隆…",
+  "onboard.cloneDetect": "克隆并检测",
+  "onboard.scanNoDetect": "已克隆，但无法检测该仓库的运行方式。请用 AI 优化或手动添加。",
+  "onboard.registeredToast": "已注册 {name}{extras}。",
+  "onboard.extraDb": "（含数据库）",
+  "onboard.extraStart": "，并启动中",
+  "onboard.refineLabel": "接入并运行此仓库：{url}",
+  "onboard.detectedServices": "检测到的服务",
+  "onboard.alsoRegistersPre": "同时注册数据库",
+  "onboard.alsoRegistersPost": "使其显示在数据库标签页中。",
+  "onboard.envFrom": "来自 .env.example 的环境变量：",
+  "onboard.readmeExcerpt": "README 摘录",
+  "onboard.continue": "继续",
+  "onboard.serviceName": "服务名称",
+  "onboard.portOptional": "端口（可选）",
+  "onboard.composeService": "Compose 服务",
+  "onboard.runCommand": "运行命令",
+  "onboard.installComplete": "✓ 安装完成",
+  "onboard.installExited": "✗ 安装退出，代码 {code}",
+  "onboard.installCommand": "安装命令（可选）",
+  "onboard.install": "安装",
+  "onboard.registerOnly": "仅注册",
+  "onboard.registerStart": "注册并启动",
+  "onboard.skipInstallStart": "跳过安装并启动",
+};

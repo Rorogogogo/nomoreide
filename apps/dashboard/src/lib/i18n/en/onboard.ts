@@ -1,0 +1,32 @@
+export const en_onboard = {
+  // Onboard dialog (Add from GitHub)
+  "onboard.title": "Add from GitHub",
+  "onboard.urlIntro":
+    "Paste a repository URL. NoMoreIDE clones it, detects how it runs, and proposes a service.",
+  "onboard.refineWithAi": "Refine with AI",
+  "onboard.cloning": "Cloning…",
+  "onboard.cloneDetect": "Clone & detect",
+  "onboard.scanNoDetect":
+    "Cloned, but couldn't detect how to run this repo. Refine with AI or add it manually.",
+  "onboard.registeredToast": "{name} registered{extras}.",
+  "onboard.extraDb": " (+ database)",
+  "onboard.extraStart": " and starting",
+  "onboard.refineLabel": "Onboard and run this repo: {url}",
+  "onboard.detectedServices": "Detected services",
+  "onboard.alsoRegistersPre": "Also registers database",
+  "onboard.alsoRegistersPost": "so it shows in the Database tab.",
+  "onboard.envFrom": "Env from .env.example:",
+  "onboard.readmeExcerpt": "README excerpt",
+  "onboard.continue": "Continue",
+  "onboard.serviceName": "Service name",
+  "onboard.portOptional": "Port (optional)",
+  "onboard.composeService": "Compose service",
+  "onboard.runCommand": "Run command",
+  "onboard.installComplete": "✓ install complete",
+  "onboard.installExited": "✗ install exited {code}",
+  "onboard.installCommand": "Install command (optional)",
+  "onboard.install": "Install",
+  "onboard.registerOnly": "Register only",
+  "onboard.registerStart": "Register & start",
+  "onboard.skipInstallStart": "Skip install & start",
+} as const;

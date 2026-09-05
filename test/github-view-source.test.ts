@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
+import { catalogSource } from "./support/i18n-source";
 
 const viewSource = readFileSync(
   "apps/dashboard/src/features/github/github-view.tsx",
@@ -53,7 +54,7 @@ const issueDetailSource = readFileSync(
 );
 // UI copy now lives in the i18n catalog (t("...")), so text the views render is
 // asserted against en.ts rather than the component source.
-const catalog = readFileSync("apps/dashboard/src/lib/i18n/en.ts", "utf8");
+const catalog = catalogSource("en");
 
 describe("GitHub connection recovery UI", () => {
   test("announces account selection failures accessibly", () => {

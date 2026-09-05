@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
+import { catalogSource } from "./support/i18n-source";
 
 const root = resolve(__dirname, "..");
 const appSource = readFileSync(resolve(root, "apps/dashboard/src/app.tsx"), "utf8");
@@ -37,10 +38,7 @@ const shellRoutesSource = readFileSync(
 );
 // UI copy now lives in the i18n catalog (t("...")), so rendered text is asserted
 // against en.ts rather than the component source.
-const catalog = readFileSync(
-  resolve(root, "apps/dashboard/src/lib/i18n/en.ts"),
-  "utf8",
-);
+const catalog = catalogSource("en");
 
 describe("product header action dock", () => {
   test("groups refresh, theme, and docs as fixed-width icon controls", () => {
