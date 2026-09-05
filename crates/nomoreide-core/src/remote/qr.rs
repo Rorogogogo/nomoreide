@@ -117,7 +117,8 @@ pub fn encode(text: &str) -> Option<QrMatrix> {
                 && row < QUIET_ZONE + width
                 && column < QUIET_ZONE + width;
             let dark = inside
-                && colors[(row - QUIET_ZONE) * width + (column - QUIET_ZONE)] == qrcode::Color::Dark;
+                && colors[(row - QUIET_ZONE) * width + (column - QUIET_ZONE)]
+                    == qrcode::Color::Dark;
             line.push(if dark { '1' } else { '0' });
         }
         rows.push(line);
@@ -209,4 +210,3 @@ mod tests {
         assert!(encode(&"x".repeat(8_000)).is_none());
     }
 }
-
