@@ -23,7 +23,7 @@ vi.mock("@/lib/api", async (importOriginal) => ({
 }));
 
 import { AgentEnvView } from "../apps/dashboard/src/features/agent-env/agent-env-view";
-import { initialPage, installSlugFromSearch } from "../apps/dashboard/src/app";
+import { initialPage, installSlugFromSearch } from "../apps/dashboard/src/app-routing";
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;

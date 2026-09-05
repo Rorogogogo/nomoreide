@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 
 const appSource = readFileSync("apps/dashboard/src/app.tsx", "utf8");
+// The page→path map moved to its own feature-agnostic module.
+const appRoutingSource = readFileSync("apps/dashboard/src/app-routing.ts", "utf8");
 const appNavigationSource = readFileSync(
   "apps/dashboard/src/components/app-navigation.tsx",
   "utf8",
@@ -14,7 +16,7 @@ const gitReviewSource = readFileSync(
 describe("GitHub top-level navigation", () => {
   test("app owns the GitHub page route", () => {
     expect(appNavigationSource).toContain('| "github"');
-    expect(appSource).toContain('github: "/github"');
+    expect(appRoutingSource).toContain('github: "/github"');
     expect(appSource).toContain('page === "github"');
     expect(appSource).toContain("<GitHubView");
   });

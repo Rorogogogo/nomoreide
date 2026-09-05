@@ -8,7 +8,7 @@ import {
   navButtonClassName,
   navButtonIconClassName,
   navButtonLabelClassName,
-} from "../apps/dashboard/src/app";
+} from "../apps/dashboard/src/components/app-sidebar";
 import { AppCredit } from "../apps/dashboard/src/components/app-credit";
 
 afterEach(() => {

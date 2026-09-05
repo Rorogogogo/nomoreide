@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { pageFromPath } from "../apps/dashboard/src/app";
+import { pageFromPath } from "../apps/dashboard/src/app-routing";
 
 describe("activity navigation", () => {
   test("recognizes the Activity Monitor route without prefix overmatching", () => {
