@@ -16,6 +16,7 @@ import { useProfiles } from "./use-profiles";
 import { useRegistry } from "./use-registry";
 import { useStagedChanges } from "./use-staged-changes";
 import { useT } from "@/lib/i18n";
+import { AgentWorkGraph } from "../agent/agent-work-graph";
 
 /**
  * Agent Environments: a side-by-side view of each coding agent's live MCP
@@ -43,7 +44,7 @@ export function AgentEnvView({
   const profilesState = useProfiles(refresh);
   const registry = useRegistry(profilesState.refresh);
   const [publishing, setPublishing] = useState<string | null>(null);
-  const [tab, setTab] = useState<"agents" | "profiles">(installSlug ? "profiles" : "agents");
+  const [tab, setTab] = useState<"agents" | "profiles" | "activity">(installSlug ? "profiles" : "agents");
 
   // One install per slug. `registry.install` is rebuilt whenever `busy` flips,
   // so the effect re-runs mid-install; the ref is what keeps it to a single
@@ -70,7 +71,7 @@ export function AgentEnvView({
           className="ml-1 flex items-center gap-1"
           role="tablist"
         >
-          {(["agents", "profiles"] as const).map((id) => (
+          {(["agents", "profiles", "activity"] as const).map((id) => (
             <button
               aria-selected={tab === id}
               className={cn(
@@ -84,7 +85,7 @@ export function AgentEnvView({
               role="tab"
               type="button"
             >
-              {id === "agents" ? t("agentEnv.tabAgents") : t("agentEnv.tabProfiles")}
+              {id === "agents" ? t("agentEnv.tabAgents") : id === "activity" ? t("agent.tab.activity") : t("agentEnv.tabProfiles")}
               {id === "profiles" && profilesState.profiles.length > 0 ? (
                 <span className="text-[10px] tabular-nums text-muted-foreground">
                   {profilesState.profiles.length}
@@ -122,7 +123,9 @@ export function AgentEnvView({
         </Alert>
       ) : null}
 
-      {tab === "profiles" ? (
+      {tab === "activity" ? (
+        <div className="min-h-0 flex-1 overflow-auto"><AgentWorkGraph /></div>
+      ) : tab === "profiles" ? (
         <div className="flex min-h-0 flex-1">
           <ProfilesPanel
             busy={profilesState.busy}
