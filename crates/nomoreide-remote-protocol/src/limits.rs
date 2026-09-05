@@ -132,6 +132,60 @@ pub const MAX_TERMINAL_STREAMS: usize = 4;
 /// it gets there rather than trusted.
 pub const MAX_TERMINAL_DIMENSION: u16 = 1_000;
 
+// --- The inspection surface --------------------------------------------------
+//
+// Every list below is bounded twice: by the count, and by the prose budget the
+// count multiplies against. A GitHub payload and a service's own error text are
+// both written by somebody else, so neither the number of rows nor the length
+// of a row is something this side gets to assume.
+
+/// The most workflow runs one response may carry, whatever was asked for.
+///
+/// One page of GitHub's own listing. A phone scrolling further is a request for
+/// a second page, which this protocol does not have — and deliberately: an
+/// endless CI history is a website's job, and the phone's job is "is it green".
+pub const MAX_WORKFLOW_RUNS: usize = 30;
+
+/// The most jobs one workflow run's response may carry.
+///
+/// Larger than the run bound because a matrix build is genuinely wide, and a
+/// truncated job list is the one case where the missing row is the failing one.
+pub const MAX_WORKFLOW_JOBS: usize = 100;
+
+/// The most pull requests one response may carry.
+pub const MAX_PULL_REQUESTS: usize = 30;
+
+/// The most incidents one response may carry.
+pub const MAX_INCIDENTS: usize = 50;
+
+/// The most timeline entries one response may carry.
+pub const MAX_TIMELINE_ENTRIES: usize = 100;
+
+/// Where any single piece of prose on the inspection surface is cut — a run
+/// title, a pull request title, an incident title, a timeline detail.
+///
+/// These strings come from GitHub and from the user's own build output, so they
+/// are unbounded at the source. Cutting each one keeps a single pathological
+/// value from consuming the whole response, and the count bounds above then cap
+/// the total.
+pub const MAX_SUMMARY_BYTES: usize = 512;
+
+/// The ceiling on a whole inspection response, applied after per-field
+/// truncation, for the same reason [`MAX_LOG_RESPONSE_BYTES`] exists: the
+/// per-item bounds multiplied out are much larger than anything worth sending.
+pub const MAX_INSPECTION_RESPONSE_BYTES: usize = 128 * 1024;
+
+/// The per-item cuts multiplied out must not overflow the response budget on
+/// their own — otherwise the byte ceiling would be the only thing doing the
+/// work, and it truncates a list without being asked. Checked at compile time,
+/// like the prompt/frame relationship above, because nothing should build with
+/// it broken.
+const _: () = {
+    assert!(MAX_WORKFLOW_JOBS * MAX_SUMMARY_BYTES <= MAX_INSPECTION_RESPONSE_BYTES);
+    assert!(MAX_TIMELINE_ENTRIES * MAX_SUMMARY_BYTES <= MAX_INSPECTION_RESPONSE_BYTES);
+    assert!(MAX_INSPECTION_RESPONSE_BYTES < MAX_FRAME_BYTES);
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,6 +211,19 @@ mod tests {
         assert_eq!(MAX_TERMINAL_STREAMS, 4);
         assert_eq!(MAX_TERMINAL_DIMENSION, 1_000);
         assert_eq!(TERMINAL_COALESCE_INTERVAL.as_millis(), 16);
+    }
+
+    /// The inspection bounds are frozen too, for the same reason: a phone that
+    /// sizes a list against one of these numbers is relying on it.
+    #[test]
+    fn inspection_limits_are_frozen() {
+        assert_eq!(MAX_WORKFLOW_RUNS, 30);
+        assert_eq!(MAX_WORKFLOW_JOBS, 100);
+        assert_eq!(MAX_PULL_REQUESTS, 30);
+        assert_eq!(MAX_INCIDENTS, 50);
+        assert_eq!(MAX_TIMELINE_ENTRIES, 100);
+        assert_eq!(MAX_SUMMARY_BYTES, 512);
+        assert_eq!(MAX_INSPECTION_RESPONSE_BYTES, 131_072);
     }
 
     /// A coalesced chunk must still fit a frame once base64 has added its

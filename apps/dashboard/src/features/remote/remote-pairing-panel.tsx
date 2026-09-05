@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Smartphone } from "lucide-react";
 
+import { PairingQr } from "./pairing-qr";
 import {
   getRemoteStatus,
   pollRemotePairing,
   startRemotePairing,
   unpairRemote,
+  type QrMatrix,
   type RemoteStatus,
 } from "@/lib/api/remote";
 import { useT } from "@/lib/i18n";
@@ -26,6 +28,7 @@ export function RemotePairingPanel() {
   const [status, setStatus] = useState<RemoteStatus | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
+  const [qr, setQr] = useState<QrMatrix | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** Stops a poll that outlived the panel from setting state after unmount. */
@@ -70,16 +73,19 @@ export function RemotePairingPanel() {
         if (progress.status === "paired") {
           setCode(null);
           setLink(null);
+          setQr(null);
           void refresh();
         }
         if (progress.status === "expired") {
           setCode(null);
           setLink(null);
+          setQr(null);
           setProblem(t("remote.expired"));
         }
         if (progress.status === "failed") {
           setCode(null);
           setLink(null);
+          setQr(null);
           setProblem(progress.error ?? t("remote.failed"));
         }
       } catch {
@@ -100,6 +106,7 @@ export function RemotePairingPanel() {
       }
       setCode(started.userCode);
       setLink(started.verificationUrl ?? null);
+      setQr(started.verificationQr ?? null);
     } catch {
       setProblem(t("remote.failed"));
     } finally {
@@ -158,6 +165,19 @@ export function RemotePairingPanel() {
             most people this is one click and no typing. The code stays visible
             underneath because the other browser is sometimes a phone.
           */}
+          {/*
+            The QR first, because it is the only one of the three a phone can
+            act on without retyping anything — and getting onto a phone is the
+            entire point of the panel. The link and the code stay underneath
+            for the browser that is already signed in, and for the phone with
+            no camera.
+          */}
+          {qr ? (
+            <div className="mb-4">
+              <p className="mb-2 text-muted-foreground">{t("remote.scan")}</p>
+              <PairingQr label={t("remote.scanAlt")} matrix={qr} />
+            </div>
+          ) : null}
           {link ? (
             <>
               <a

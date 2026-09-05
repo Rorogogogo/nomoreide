@@ -1,9 +1,9 @@
 //! Agent change-sets: what a recorded agent session touched, and putting it
 //! back.
 //!
-//! A change-set is a session the MCP recording wrapper wrote, pinned to the
-//! snapshot taken before its first tool call. Nothing here writes one — these
-//! four routes read the store and hand its sha to a `SnapshotManager`.
+//! A change-set is a recorded session pinned to the snapshot taken before its
+//! work starts. The dock and MCP recording paths write them; these four routes
+//! read the shared store and hand its sha to a `SnapshotManager`.
 //!
 //! **The manager is built from the session's own `repoPath`**, not from the
 //! selected repository. An agent works where it works, and the dashboard may

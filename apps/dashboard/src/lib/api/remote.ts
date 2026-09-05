@@ -22,9 +22,22 @@ export interface RemotePairingStart {
   /** The short code a human types on their phone. */
   userCode?: string;
   verificationUrl?: string;
+  /**
+   * The verification link as a QR module grid, already encoded by the daemon.
+   *
+   * Absent when the link would not fit a code — the picture is an accelerant,
+   * never the only way in, so the panel still shows the link and the code.
+   */
+  verificationQr?: QrMatrix | null;
   expiresAt?: string;
   deviceName?: string;
   error?: string;
+}
+
+/** One QR code, as squares. See `features/remote/pairing-qr.tsx`. */
+export interface QrMatrix {
+  size: number;
+  rows: string[];
 }
 
 /**

@@ -80,6 +80,12 @@ else
 fi
 case "$out" in *"checksum ok"*) ok "it verified the archive before unpacking it" ;;
   *) bad "checksum reported" "no 'checksum ok' in the output" ;; esac
+case "$out" in
+  *"==> Downloading "*"==> Verifying the download"*"==> Installing the binary and dashboard"*)
+    ok "it explains the download, verification, and install stages"
+    ;;
+  *) bad "installer progress" "the major install stages were not reported: $out" ;;
+esac
 [ -f "$PREFIX/share/nomoreide/web/client/index.html" ] \
   && ok "the dashboard is installed beside it under share/" \
   || bad "dashboard files" "no index.html under $PREFIX/share/nomoreide/web/client"

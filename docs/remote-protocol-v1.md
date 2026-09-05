@@ -104,6 +104,13 @@ anything that is not listed here.
 | `terminal.input` | **yes** | `terminal.attach` |
 | `terminal.resize` | **yes** | `terminal.attach` |
 | `terminal.detach` | **yes** | `terminal.attach` |
+| `github.runs.request` | no | `github.actions` |
+| `github.run.jobs.request` | no | `github.actions` |
+| `github.prs.request` | no | `github.pulls` |
+| `github.pr.request` | no | `github.pulls` |
+| `agent.usage.request` | no | `agent.usage` |
+| `errors.request` | no | `device.errors` |
+| `timeline.request` | no | `device.timeline` |
 
 No payload carries a command, argument, working directory, environment, port
 override, SSH host, process id or kill strategy. `terminal.spawn.request`
@@ -123,6 +130,36 @@ and `terminal.shell` is genuinely arbitrary command execution, gated by
 off. While it is advertised, "remote control cannot run arbitrary commands" is
 false, and the pairing copy says so rather than keeping a promise the code
 stopped making.
+
+**The read-only inspection surface.** The last seven rows above answer "what is
+going on?" and change nothing: GitHub Actions runs and their jobs, pull
+requests, what Claude and Codex have spent, the error inbox, and the runtime
+timeline. They arrived after v2 shipped and needed no version bump, which is
+what capabilities are for — a daemon advertises what it has, and a name an
+older platform has not heard of is an omission rather than a failure.
+
+Three rules held while adding them, and they are why this is not a widening:
+
+- **No mutation.** There is no re-run, cancel, dispatch, merge, create, review
+  or dismiss anywhere in it. The local product has all of those; they stay in
+  `nomoreide-actions`, behind a person at the machine.
+- **A phone names what to look at, never where.** No payload carries a
+  repository, an owner, a path or a working directory — the daemon answers for
+  the repository and workspace it already has selected. A general-purpose GitHub
+  client running under the user's token is a much larger thing than "show me my
+  CI", and the wire types have nowhere to express it.
+- **The sanitized shapes drop what the local ones carry.** An incident crosses
+  without its log excerpt (raw service output, which the log capability redacts
+  separately) and with the *basename* of its file rather than the path. A
+  timeline entry crosses without its `data` blob, which for a process event is a
+  pid, an exit code and a command line. Agent usage crosses without the working
+  directory and session id the local panel shows. A pull request crosses without
+  its body.
+
+The one thing that does cross and names the outside world is a **`github.com`
+URL** on a run, a job and a pull request — validated to that host, because it is
+the field a phone puts in front of somebody to tap. Without it a red run on a
+phone is a dead end.
 
 ## Events — daemon → platform
 
@@ -145,6 +182,13 @@ stopped making.
 | `terminal.output` | absent |
 | `terminal.geometry` | absent |
 | `terminal.closed` | absent |
+| `github.runs.response` | required |
+| `github.run.jobs.response` | required |
+| `github.prs.response` | required |
+| `github.pr.response` | required |
+| `agent.usage.response` | required |
+| `errors.response` | required |
+| `timeline.response` | required |
 | `command.error` | required |
 
 An answer that arrives with no correlation is one the relay would have to guess
@@ -212,6 +256,13 @@ making it look boring.
 | Approval expiry | 120 s |
 | Agent event replay | 300 s / 2048 events |
 | Identifier length | 128 bytes |
+| Workflow runs per response | 30 |
+| Workflow jobs per response | 100 |
+| Pull requests per response | 30 |
+| Incidents per response | 50 |
+| Timeline entries per response | 100 |
+| Any single summary string | 512 bytes |
+| Inspection response | 128 KiB |
 
 All byte counts are UTF-8 bytes, not characters — a limit counted in characters
 is a limit an attacker picks the units of.

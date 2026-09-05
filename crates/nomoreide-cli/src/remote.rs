@@ -51,6 +51,18 @@ async fn pair(args: &[String]) -> CliResult {
     let ticket = flow.start(&proposal).await.map_err(failure)?;
 
     println!("Pair this machine with your NoMoreIDE account.\n");
+    // The picture first, because it is the only one of the three a phone can
+    // act on without retyping anything. The code and the link stay underneath:
+    // a terminal that renders half-blocks badly, a screen being shared, or a
+    // phone with no camera all still have a way through.
+    // The *scan* URL, not the typed one. It carries the token that lets a phone
+    // claim this pairing with no account, and the camera is the only place that
+    // token is ever meant to travel — see `PairingTicket::scan_url`.
+    if let Some(matrix) = nomoreide_core::remote::qr::encode(ticket.qr_payload()) {
+        println!("Point your phone's camera at this:\n");
+        print!("{}", matrix.to_half_blocks());
+        println!();
+    }
     println!("  Code: {}", ticket.user_code);
     println!("  Open: {}\n", ticket.verification_url);
     println!("Waiting for approval… (Ctrl-C to cancel)");

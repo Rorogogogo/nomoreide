@@ -16,7 +16,11 @@ use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
+use chrono::{SecondsFormat, Utc};
 use futures_util::StreamExt;
+use nomoreide_core::agent_sessions::{
+    default_store_path, save_agent_session, AgentSession as RecordedAgentSession,
+};
 use nomoreide_core::agent_transcripts::{
     default_transcript_homes, list_agent_transcripts, AgentTranscript, DEFAULT_TRANSCRIPT_LIMIT,
 };
@@ -24,6 +28,7 @@ use nomoreide_core::context_library::{ContextAttachment, ContextRef, CONTEXT_KIN
 use nomoreide_core::one_time_skills::{
     compose_one_time_skill_prompt, resolve_one_time_skill, OneTimeSkillSelection,
 };
+use nomoreide_core::snapshot_manager::{SnapshotManager, DEFAULT_KEEP};
 use nomoreide_core::terminal::{
     agent_binary, derive_agent_invocation, encode_agent_prompt_paste, normalize_agent_label,
     resolve_service_terminal, ServiceTerminal, TerminalSession, TerminalSpawnSpec,
@@ -822,6 +827,12 @@ async fn create_agent_session(state: &AppState, agent: &Value, workspace: String
         );
     }
 
+    let task_label = agent_task_label(&request.provider, request.label.as_deref(), &request.prompt);
+    let snapshot_label = if request.prompt.lines().any(|line| !line.trim().is_empty()) {
+        agent_task_label(&request.provider, None, &request.prompt)
+    } else {
+        task_label.clone()
+    };
     let mut prompt = request.prompt;
     // **A validated context attachment is not yet assembled into the prompt.**
     // `assemble_prompt` needs the library's full item list — notes *and* the
@@ -872,23 +883,71 @@ async fn create_agent_session(state: &AppState, agent: &Value, workspace: String
         Err(message) => return error(StatusCode::BAD_REQUEST, &message),
     };
 
-    spawn(
-        state,
+    let session_id = state.next_session_id();
+    let manager = SnapshotManager::new(workspace.clone());
+    let checkpoint = manager.snapshot(&snapshot_label).await.ok();
+    if checkpoint.is_some() {
+        let _ = manager.prune(DEFAULT_KEEP).await;
+    }
+
+    let created = state.terminal.create(
+        state.events.clone(),
         TerminalSpawnSpec {
-            id: state.next_session_id(),
+            id: session_id.clone(),
             service_name: None,
-            cwd: workspace,
+            cwd: workspace.clone(),
             shell: OsString::from(invocation.executable),
             args: invocation.args,
             env: Vec::new(),
-            label: Some(normalize_agent_label(
-                &request.provider,
-                request.label.as_deref(),
-            )),
+            label: Some(task_label.clone()),
             kind: Some("agent".to_string()),
-            provider: Some(request.provider),
+            provider: Some(request.provider.clone()),
         },
-    )
+    );
+
+    match created {
+        Ok(session) => {
+            if let Some(snapshot) = checkpoint {
+                let started_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+                let _ = save_agent_session(
+                    &default_store_path(),
+                    RecordedAgentSession {
+                        id: session_id,
+                        label: Some(snapshot_label),
+                        provider: Some(request.provider),
+                        repo_path: workspace,
+                        snapshot_sha: Some(snapshot.sha),
+                        snapshot_ref: Some(snapshot.reference),
+                        started_at: started_at.clone(),
+                        last_tool_at: started_at,
+                        tool_count: 0,
+                    },
+                );
+            }
+            (
+                StatusCode::CREATED,
+                Json(TerminalSessionEnvelope {
+                    ok: true,
+                    session: wire(session),
+                }),
+            )
+                .into_response()
+        }
+        Err(message) => {
+            if let Some(snapshot) = checkpoint {
+                let _ = manager.delete(&snapshot.sha).await;
+            }
+            error(StatusCode::INTERNAL_SERVER_ERROR, &message)
+        }
+    }
+}
+
+/// Keep the terminal tab, restore point, and change-set on one readable name.
+/// API clients do not have to supply `label`: the first meaningful prompt line
+/// is what the user recognises as the work they requested.
+fn agent_task_label(provider: &str, explicit: Option<&str>, prompt: &str) -> String {
+    let prompt_line = prompt.lines().map(str::trim).find(|line| !line.is_empty());
+    normalize_agent_label(provider, explicit.or(prompt_line))
 }
 
 /// The reference's `agentSessionSchema`, checked in its declaration order.
@@ -1054,5 +1113,23 @@ fn wire(session: TerminalSession) -> TerminalSessionInfo {
             nomoreide_core::terminal::TerminalPresentation::Terminal => "terminal",
         }
         .to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::agent_task_label;
+
+    #[test]
+    fn agent_task_names_follow_the_first_prompt_line() {
+        assert_eq!(
+            agent_task_label("codex", None, "\n  Fix service env scrolling\nMore context"),
+            "Fix service env scrolling"
+        );
+        assert_eq!(
+            agent_task_label("claude", Some("  Dependency graph  "), "ignored"),
+            "Dependency graph"
+        );
+        assert_eq!(agent_task_label("codex", None, "\n\t"), "Codex task");
     }
 }

@@ -160,6 +160,45 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
         capability: capabilities::TERMINAL_ATTACH,
         routes: "(the terminal manager)",
     },
+    // The read-only inspection surface. Every row below routes to a GET, and
+    // there is no re-run, cancel, merge or dismiss anywhere in it — the local
+    // product has all four, and they stay where a person at the machine is the
+    // one pressing them.
+    Allowed {
+        kind: "github.runs.request",
+        capability: capabilities::GITHUB_ACTIONS,
+        routes: "GET /api/github/runs",
+    },
+    Allowed {
+        kind: "github.run.jobs.request",
+        capability: capabilities::GITHUB_ACTIONS,
+        routes: "GET /api/github/runs/:run_id/jobs",
+    },
+    Allowed {
+        kind: "github.prs.request",
+        capability: capabilities::GITHUB_PULLS,
+        routes: "GET /api/github/prs",
+    },
+    Allowed {
+        kind: "github.pr.request",
+        capability: capabilities::GITHUB_PULLS,
+        routes: "GET /api/github/prs/:number",
+    },
+    Allowed {
+        kind: "agent.usage.request",
+        capability: capabilities::AGENT_USAGE,
+        routes: "GET /api/agent/usage",
+    },
+    Allowed {
+        kind: "errors.request",
+        capability: capabilities::DEVICE_ERRORS,
+        routes: "GET /api/errors",
+    },
+    Allowed {
+        kind: "timeline.request",
+        capability: capabilities::DEVICE_TIMELINE,
+        routes: "GET /api/timeline",
+    },
 ];
 
 /// What this daemon tells the relay it can do.
@@ -228,7 +267,11 @@ impl RouterDispatcher {
     }
 
     /// One in-process request. Returns the status and the parsed JSON body.
-    async fn call(&self, method: Method, path: &str) -> Result<(StatusCode, Value), ProtocolError> {
+    pub(super) async fn call(
+        &self,
+        method: Method,
+        path: &str,
+    ) -> Result<(StatusCode, Value), ProtocolError> {
         let request = Request::builder()
             .method(method)
             .uri(path)
@@ -256,7 +299,7 @@ impl RouterDispatcher {
     /// place a traversal could be attempted. Everything outside an unreserved
     /// set is escaped, which means a name containing `/` or `..` addresses a
     /// service with that name — and no other route.
-    fn segment(name: &str) -> String {
+    pub(super) fn segment(name: &str) -> String {
         let mut encoded = String::with_capacity(name.len());
         for byte in name.bytes() {
             match byte {
@@ -661,6 +704,21 @@ impl CommandSink for RouterDispatcher {
                     self.mirrors.resize(&self.terminal, request)
                 }
                 DeviceBound::TerminalDetach(request) => self.mirrors.detach(request),
+                DeviceBound::GithubRuns(request) => {
+                    super::inspection::workflow_runs(self, request).await
+                }
+                DeviceBound::GithubRunJobs(request) => {
+                    super::inspection::workflow_run_jobs(self, request).await
+                }
+                DeviceBound::GithubPulls(request) => {
+                    super::inspection::pull_requests(self, request).await
+                }
+                DeviceBound::GithubPull(request) => {
+                    super::inspection::pull_request_detail(self, request).await
+                }
+                DeviceBound::AgentUsage(_) => super::inspection::agent_usage(self).await,
+                DeviceBound::Errors(request) => super::inspection::errors(self, request).await,
+                DeviceBound::Timeline(request) => super::inspection::timeline(self, request).await,
                 // Unreachable: the gate above refuses anything with no row,
                 // and every row has an arm. Kept as a refusal rather than an
                 // `unreachable!` because a panic here would take the socket
@@ -1599,6 +1657,15 @@ mod tests {
     /// is no longer true that nothing here reaches a PTY; what is true is that
     /// only an *agent* PTY can be reached, and that rule is asserted directly
     /// below rather than inferred from a word not appearing in a string.
+    ///
+    /// **`git` had to stop being a bare substring, and it is worth saying why
+    /// rather than quietly loosening it.** `/api/github/runs` contains the
+    /// letters, and the rule this test was written to hold was never about
+    /// letters — it was "the git manager and the guarded write surface are not
+    /// reachable". So the check is now the routes those actually live on. The
+    /// GitHub rows are a proxy of somebody else's read-only API; they cannot
+    /// commit, push, merge or rewrite anything, and
+    /// [`the_inspection_surface_only_reads`] is what holds that.
     #[test]
     fn the_allowlist_names_nothing_dangerous() {
         let rendered = ALLOWLIST
@@ -1607,17 +1674,72 @@ mod tests {
             .collect::<Vec<_>>()
             .join(" ");
         for forbidden in [
-            "shutdown", "database", "git", "fs", "exec", "env", "kill", "config",
+            "shutdown",
+            "database",
+            "/api/git/",
+            "git.",
+            "fs",
+            "exec",
+            "env",
+            "kill",
+            "config",
         ] {
             assert!(
                 !rendered.contains(forbidden),
                 "the allowlist mentions {forbidden}: {rendered}"
             );
         }
-        // Sixteen rows: five service, four agent, seven terminal. Pinned so
-        // growing the remote surface is a deliberate edit to a test rather than
-        // a quiet addition.
-        assert_eq!(ALLOWLIST.len(), 16);
+        // Twenty-three rows: five service, four agent, seven terminal, seven
+        // read-only inspection. Pinned so growing the remote surface is a
+        // deliberate edit to a test rather than a quiet addition.
+        assert_eq!(ALLOWLIST.len(), 23);
+    }
+
+    /// Everything added for CI, pull requests, usage, errors and the timeline
+    /// reads and nothing more.
+    ///
+    /// Two independent halves, because either alone would be satisfiable by
+    /// accident: the protocol must class every one of them as non-mutating, and
+    /// the table must route every one of them at a `GET`. A row that grew a
+    /// `POST` would pass the first; a command that grew a side effect would
+    /// pass the second.
+    #[test]
+    fn the_inspection_surface_only_reads() {
+        use nomoreide_core::remote::protocol::version::capabilities as capability;
+
+        let read_only = [
+            capability::GITHUB_ACTIONS,
+            capability::GITHUB_PULLS,
+            capability::AGENT_USAGE,
+            capability::DEVICE_ERRORS,
+            capability::DEVICE_TIMELINE,
+        ];
+        let rows: Vec<&Allowed> = ALLOWLIST
+            .iter()
+            .filter(|entry| read_only.contains(&entry.capability))
+            .collect();
+        assert_eq!(rows.len(), 7, "the inspection rows moved");
+
+        for row in &rows {
+            assert!(
+                row.routes.starts_with("GET "),
+                "{} does not route at a GET: {}",
+                row.kind,
+                row.routes
+            );
+        }
+        for command in every_command() {
+            let Some(required) = command.required_capability() else {
+                continue;
+            };
+            if read_only.contains(&required) {
+                assert!(
+                    !command.mutating(),
+                    "{} is on the read-only surface but says it mutates",
+                    command.kind()
+                );
+            }
+        }
     }
 
     /// What a phone may mirror, on both sides of the shell switch.

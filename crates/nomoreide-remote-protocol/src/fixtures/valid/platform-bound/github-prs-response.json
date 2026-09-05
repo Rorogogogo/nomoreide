@@ -1,0 +1,22 @@
+{
+  "v": 2,
+  "id": "evt_github_prs_response",
+  "type": "github.prs.response",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "pulls": [
+      {
+        "number": 268,
+        "title": "fix: the CLI release could not compile for Linux",
+        "state": "merged",
+        "author": "roro",
+        "headBranch": "fix/linux-release",
+        "baseBranch": "main",
+        "updatedAt": "2026-09-01T00:00:00.000Z",
+        "url": "https://github.com/nomoreide/nomoreide/pull/268"
+      }
+    ]
+  }
+}

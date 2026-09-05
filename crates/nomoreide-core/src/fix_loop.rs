@@ -56,6 +56,8 @@ pub async fn prepare(
     let started_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
     let mut session = AgentSession {
         id: session_id(),
+        label: snapshot_label(&bundle.markdown),
+        provider: None,
         repo_path: repo_path.to_string(),
         snapshot_sha: None,
         snapshot_ref: None,
@@ -65,10 +67,8 @@ pub async fn prepare(
     };
 
     let manager = SnapshotManager::new(repo_path);
-    if let Ok(snapshot) = manager
-        .snapshot(&format!("fix incident {}", bundle.incident_id))
-        .await
-    {
+    let label = session.label.as_deref().unwrap_or("Fix reported incident");
+    if let Ok(snapshot) = manager.snapshot(label).await {
         session.snapshot_sha = Some(snapshot.sha.clone());
         session.snapshot_ref = Some(snapshot.reference.clone());
         let _ = manager.prune(SNAPSHOT_KEEP).await;
@@ -84,6 +84,22 @@ pub async fn prepare(
         repo_path: repo_path.to_string(),
         snapshot_sha,
     }
+}
+
+/// The bundle's first heading is the user's error prompt, so it makes a much
+/// better restore-point name than the internal random session identifier.
+fn snapshot_label(markdown: &str) -> Option<String> {
+    let heading = markdown
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("# Bug report: "))?
+        .trim();
+    if heading.is_empty() {
+        return None;
+    }
+    Some(format!(
+        "Fix: {}",
+        heading.chars().take(72).collect::<String>()
+    ))
 }
 
 /// `s-<millis in base 36>-<six random base-36 digits>`, the reference's
@@ -176,5 +192,14 @@ mod tests {
         let prompt = fix_prompt("# Bug report: x");
         assert!(prompt.starts_with("A bug was detected in this workspace."));
         assert!(prompt.ends_with("\n---\n\n# Bug report: x"));
+    }
+
+    #[test]
+    fn snapshot_names_use_the_prompt_heading_instead_of_the_session_id() {
+        assert_eq!(
+            snapshot_label("# Bug report: API returns 500\n\n## Error"),
+            Some("Fix: API returns 500".to_string())
+        );
+        assert_eq!(snapshot_label("# Bug report:   \n"), None);
     }
 }

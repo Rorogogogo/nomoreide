@@ -11,6 +11,7 @@
 //! runtime lock is the one that speaks for the machine.
 
 pub(crate) mod dispatcher;
+pub(crate) mod inspection;
 pub(crate) mod supervisor;
 pub(crate) mod terminal;
 

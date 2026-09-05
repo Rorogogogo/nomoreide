@@ -1,0 +1,27 @@
+{
+  "v": 2,
+  "id": "evt_github_runs_response",
+  "type": "github.runs.response",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "runs": [
+      {
+        "id": "1874200193",
+        "name": "CI",
+        "title": "fix: the CLI release could not compile for Linux",
+        "branch": "main",
+        "event": "push",
+        "number": 412,
+        "status": "completed",
+        "conclusion": "failure",
+        "startedAt": "2026-09-01T00:00:00.000Z",
+        "updatedAt": "2026-09-01T00:00:00.000Z",
+        "url": "https://github.com/nomoreide/nomoreide/actions/runs/1874200193"
+      }
+    ],
+    "branch": "main",
+    "truncated": true
+  }
+}

@@ -25,6 +25,8 @@ export interface RestoreResult {
 
 export interface AgentChangeSession {
   id: string;
+  label?: string;
+  provider?: "claude" | "codex";
   repoPath: string;
   snapshotSha?: string;
   snapshotRef?: string;

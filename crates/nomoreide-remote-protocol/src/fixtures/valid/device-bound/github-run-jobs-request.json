@@ -1,0 +1,11 @@
+{
+  "v": 2,
+  "id": "req_github_run_jobs_request",
+  "type": "github.run.jobs.request",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": null,
+  "payload": {
+    "runId": "1874200193"
+  }
+}

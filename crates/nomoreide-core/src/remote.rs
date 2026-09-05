@@ -24,6 +24,7 @@ pub mod agent_runs;
 pub mod connector;
 pub mod credentials;
 pub mod pairing;
+pub mod qr;
 pub mod redaction;
 
 pub use nomoreide_remote_protocol as protocol;

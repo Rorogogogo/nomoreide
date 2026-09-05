@@ -1,0 +1,22 @@
+{
+  "v": 2,
+  "id": "evt_github_run_jobs_response",
+  "type": "github.run.jobs.response",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "runId": "1874200193",
+    "jobs": [
+      {
+        "id": "5512900001",
+        "name": "desktop-check",
+        "status": "completed",
+        "conclusion": "failure",
+        "startedAt": "2026-09-01T00:00:00.000Z",
+        "completedAt": "2026-09-01T00:00:00.000Z",
+        "url": "https://github.com/nomoreide/nomoreide/actions/runs/1874200193/job/5512900001"
+      }
+    ]
+  }
+}

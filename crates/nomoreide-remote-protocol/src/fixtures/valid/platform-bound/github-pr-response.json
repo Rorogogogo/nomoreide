@@ -1,0 +1,21 @@
+{
+  "v": 2,
+  "id": "evt_github_pr_response",
+  "type": "github.pr.response",
+  "deviceId": "11111111-2222-3333-4444-555555555555",
+  "sentAt": "2026-09-01T00:00:00.000Z",
+  "replyTo": "req_1",
+  "payload": {
+    "pull": {
+      "number": 269,
+      "title": "feat(remote): CI, pull requests and agent usage from a phone",
+      "state": "open",
+      "draft": true,
+      "author": "roro",
+      "headBranch": "feat/remote-inspection",
+      "baseBranch": "main",
+      "updatedAt": "2026-09-01T00:00:00.000Z",
+      "url": "https://github.com/nomoreide/nomoreide/pull/269"
+    }
+  }
+}

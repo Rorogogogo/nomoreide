@@ -38,6 +38,7 @@ ACTION=install
 
 say() { printf '%s\n' "$*"; }
 note() { printf '  %s\n' "$*"; }
+step() { printf '==> %s\n' "$*"; }
 die() { printf 'install.sh: %s\n' "$*" >&2; exit 1; }
 # Spelled out rather than read back out of "$0": piped through `sh` there is
 # no file to read, and a `--help` that printed nothing would be the one case
@@ -159,6 +160,7 @@ else
 fi
 
 if [ -z "$VERSION" ]; then
+  step "Finding the latest NoMoreIDE release"
   # The API answers with the release object; the tag is all that is wanted and
   # a dependency on jq is not.
   VERSION=$(read_url "$API_URL" \
@@ -181,11 +183,14 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 
 say "Installing NoMoreIDE $VERSION ($TARGET) into $PREFIX"
 
+step "Downloading $ARCHIVE"
 fetch "$BASE_URL/download/v$VERSION/$ARCHIVE" "$WORK/$ARCHIVE" \
   || die "could not download $ARCHIVE for version $VERSION. Check that the release exists."
+step "Downloading checksums"
 fetch "$BASE_URL/download/v$VERSION/SHA256SUMS" "$WORK/SHA256SUMS" \
   || die "could not download SHA256SUMS for version $VERSION."
 
+step "Verifying the download"
 expected=$(sed -n "s/^\([0-9a-f]\{64\}\)[ *]*$ARCHIVE\$/\1/p" "$WORK/SHA256SUMS" | head -1)
 [ -n "$expected" ] || die "SHA256SUMS does not list $ARCHIVE, so this download cannot be verified."
 actual=$(digest "$WORK/$ARCHIVE")
@@ -198,10 +203,13 @@ if [ "$expected" != "$actual" ]; then
 fi
 note "checksum ok ($actual)"
 
+step "Unpacking the release"
 tar -xzf "$WORK/$ARCHIVE" -C "$WORK" || die "the archive did not unpack."
 [ -x "$WORK/$NAME/bin/nomoreide" ] || die "the archive did not contain bin/nomoreide."
 
 # ------------------------------------------------------------ install
+
+step "Installing the binary and dashboard"
 
 # A prefix that cannot be written to is the most common way this fails, and
 # `set -e` would report it as a bare mkdir error from a script the user piped
@@ -295,6 +303,7 @@ esac
 
 if [ -n "$wanted" ]; then
   say ""
+  step "Configuring detected agents"
   # Failure here is reported, not fatal: the binary is installed and working,
   # and `setup` refuses rather than clobbers when it finds a different
   # nomoreide entry already in an agent's config. Turning that into a failed
