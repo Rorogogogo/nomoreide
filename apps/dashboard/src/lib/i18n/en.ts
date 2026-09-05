@@ -2978,6 +2978,13 @@ export const en = {
   "provider.logs.runtimeEmpty":
     "No runtime logs. Either nothing was logged, or this plan does not include them.",
   "remote.title": "Control this machine from your phone",
+  "nav.remote": "Remote",
+  "settingsHub.remoteTitle": "Remote control",
+  "settingsHub.openRemote": "Open Remote",
+  "settingsHub.remoteMovedDescription":
+    "Pairing lives in its own page now, under Run \u2192 Remote.",
+  "remote.pageIntro":
+    "Pair this machine with your phone to start and stop its services, read logs, watch CI and agent usage, and drive an agent — from anywhere. Your machine dials out; nothing listens for incoming connections.",
   "remote.intro": "Pair this machine with your NoMoreIDE account to start and stop services, read logs, and watch an agent terminal from your phone.",
   "remote.pair": "Pair this machine",
   "remote.pairing": "Waiting for approval…",

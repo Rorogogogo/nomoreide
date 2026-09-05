@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { RemotePairingPanel } from "@/features/remote/remote-pairing-panel";
 import { BookOpen, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
@@ -33,7 +32,7 @@ import {
 
 export interface SettingsViewProps {
   activeProject?: { name: string; path?: string } | null;
-  onNavigate?: (page: "github" | "agent-env" | "database") => void;
+  onNavigate?: (page: "github" | "agent-env" | "database" | "remote") => void;
 }
 
 function ScopeSection({ scope, title, children }: {
@@ -371,10 +370,33 @@ function CategoryContent({
         </ScopeSection>
       );
     }
+    /*
+      A pointer, not the panel.
+
+      Remote control moved to its own page in the Run section, because it is a
+      capability to discover rather than a preference to adjust. The row stays
+      here so the settings *search* still finds it — "phone", "pair", "mobile"
+      are all words somebody would reasonably type into Settings — and sends
+      them to the page instead of dead-ending.
+    */
     case "remote":
       return (
         <ScopeSection scope="global">
-          <RemotePairingPanel />
+          <ManagementRow
+            action={
+              <Button
+                onClick={() => onNavigate?.("remote")}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {t("settingsHub.openRemote")}
+              </Button>
+            }
+            description={t("settingsHub.remoteMovedDescription")}
+            id="setting-remote"
+            title={t("settingsHub.remoteTitle")}
+          />
         </ScopeSection>
       );
     case "data-privacy":

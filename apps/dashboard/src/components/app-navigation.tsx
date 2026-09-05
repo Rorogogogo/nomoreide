@@ -3,8 +3,8 @@ import {
   Activity,
   Blocks,
   Bot,
-  Container,
   Brain,
+  Container,
   Database,
   GitBranch,
   House,
@@ -12,6 +12,7 @@ import {
   Network,
   Puzzle,
   Server,
+  Smartphone,
   Workflow,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
@@ -21,6 +22,7 @@ export type AppPage =
   | "home"
   | "services"
   | "activity"
+  | "remote"
   | "servers"
   | "docker"
   | "git"
@@ -65,6 +67,9 @@ export const APP_NAV_SECTIONS: Array<{
       { page: "home", labelKey: "nav.home", icon: <House /> },
       { page: "services", labelKey: "nav.services", icon: <Server /> },
       { page: "activity", labelKey: "nav.activity", icon: <Activity /> },
+      // In Run rather than Settings: "can I reach this machine from my
+      // phone" is a capability to discover, not a preference to adjust.
+      { page: "remote", labelKey: "nav.remote", icon: <Smartphone /> },
       { page: "servers", labelKey: "nav.servers", icon: <Network /> },
       { page: "docker", labelKey: "nav.docker", icon: <Container /> },
       { page: "errors", labelKey: "nav.errors", icon: <Inbox /> },

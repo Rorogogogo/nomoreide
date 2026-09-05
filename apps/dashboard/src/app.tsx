@@ -76,6 +76,7 @@ import { ScrollProgressBar } from "@/components/ui/scroll-progress-bar";
 import { AppContextMenu } from "@/components/app-context-menu";
 import { ActivityPage } from "@/features/activity/activity-page";
 import { ServersView } from "@/features/servers/servers-view";
+import { RemoteView } from "@/features/remote/remote-view";
 import { GistPopover } from "@/components/gist-popover";
 import { DaemonSkewBanner } from "@/components/daemon-skew-banner";
 import { RuntimeDiagnostics } from "@/components/runtime-diagnostics";
@@ -105,6 +106,7 @@ export const PAGE_PATHS: Record<Page, string> = {
   home: "/",
   services: "/services",
   activity: "/activity",
+  remote: "/remote",
   servers: "/servers",
   docker: "/docker",
   git: "/git",
@@ -147,6 +149,7 @@ const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   activity: "nav.activity",
   servers: "nav.servers",
   docker: "nav.docker",
+  remote: "nav.remote",
   git: "nav.git",
   github: "nav.github",
   workflows: "nav.workflows",
@@ -986,6 +989,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             {!overviewDomain && page === "extensions" && !extensionId ? (
               <ExtensionsView onOpen={(id) => setExtensionId(id)} />
             ) : null}
+            {page === "remote" ? <RemoteView /> : null}
             {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? (
               <AgentView
