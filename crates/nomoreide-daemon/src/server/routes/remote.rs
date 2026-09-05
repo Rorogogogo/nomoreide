@@ -77,7 +77,12 @@ async fn start_pairing(State(state): State<AppState>) -> Response {
                 // happens once — see `nomoreide_core::remote::qr`. Absent when
                 // the link would not fit a code, which costs the picture and
                 // not the pairing.
-                "verificationQr": nomoreide_core::remote::qr::encode(&ticket.verification_url),
+                //
+                // Encodes the *scan* URL, which carries the token that claims
+                // this pairing with no account. That token never reaches the
+                // browser as text: `verificationUrl` above is the typed link,
+                // and only the picture holds the other one.
+                "verificationQr": nomoreide_core::remote::qr::encode(ticket.qr_payload()),
                 "expiresAt": ticket.expires_at,
                 "deviceName": proposal.name,
             }))

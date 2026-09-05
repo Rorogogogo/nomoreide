@@ -85,8 +85,36 @@ pub struct PairingTicket {
     pub session_id: String,
     pub pairing_secret: String,
     pub user_code: String,
+    /// Where a signed-in person goes to claim this. Carries the short code and
+    /// nothing else, because this is the one meant to be read aloud, printed
+    /// in a terminal and typed.
     pub verification_url: String,
+    /// The same page plus the scan token — **the QR payload, and only ever a
+    /// QR payload.**
+    ///
+    /// The token is 32 random bytes in the URL's *fragment*, and it is what
+    /// lets a phone claim this pairing with no account at all. That makes it a
+    /// credential: it is never printed, never shown as text, and never what
+    /// [`Self::verification_url`] resolves to. A fragment also never reaches an
+    /// access log, a proxy or a `Referer`, which a query string does.
+    ///
+    /// `Option`, because a platform older than the scan flow does not send one
+    /// — and a machine talking to one still pairs perfectly well by code. The
+    /// QR falls back to the typed link, which is what it encoded before.
+    #[serde(default)]
+    pub scan_url: Option<String>,
     pub expires_at: String,
+}
+
+impl PairingTicket {
+    /// What belongs in the QR code.
+    ///
+    /// The scan URL when the platform minted one, and the plain verification
+    /// link otherwise. Both are pages that claim this pairing; only the first
+    /// can do it without an account.
+    pub fn qr_payload(&self) -> &str {
+        self.scan_url.as_deref().unwrap_or(&self.verification_url)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -341,6 +369,32 @@ mod tests {
         .expect("parse");
 
         assert_eq!(ticket.user_code, "ABCD-EFGH");
+        // A platform older than the scan flow sends no `scan_url`, and that
+        // pairing still works — by code, the way it always did.
+        assert_eq!(ticket.scan_url, None);
+        assert_eq!(ticket.qr_payload(), ticket.verification_url);
+    }
+
+    /// The QR carries the scan URL when there is one, because that is the only
+    /// one a phone can claim with no account. The typed link stays what it was.
+    #[test]
+    fn the_qr_payload_is_the_scan_url_when_the_platform_sends_one() {
+        let ticket: PairingTicket = serde_json::from_str(
+            r#"{
+                "session_id": "11111111-2222-3333-4444-555555555555",
+                "pairing_secret": "secret",
+                "user_code": "ABCD-EFGH",
+                "verification_url": "https://www.nomoreide.com/app/remote/pair?code=ABCD-EFGH",
+                "scan_url": "https://www.nomoreide.com/app/remote/pair?code=ABCD-EFGH#t=abc",
+                "expires_at": "2026-09-02T00:10:00Z"
+            }"#,
+        )
+        .expect("parse");
+
+        assert!(ticket.qr_payload().contains("#t=abc"));
+        // ...and the token is *only* in the picture. The link a person reads
+        // off a terminal, shares on a screen or types must not carry it.
+        assert!(!ticket.verification_url.contains("#t="));
     }
 
     #[test]
