@@ -160,6 +160,11 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
         capability: capabilities::TERMINAL_ATTACH,
         routes: "(the terminal manager)",
     },
+    Allowed {
+        kind: "linear.request",
+        capability: capabilities::LINEAR,
+        routes: "POST /api/linear/request",
+    },
     // The read-only inspection surface. Every row below routes to a GET, and
     // there is no re-run, cancel, merge or dismiss anywhere in it — the local
     // product has all four, and they stay where a person at the machine is the
@@ -272,11 +277,21 @@ impl RouterDispatcher {
         method: Method,
         path: &str,
     ) -> Result<(StatusCode, Value), ProtocolError> {
+        self.call_body(method, path, Body::empty()).await
+    }
+
+    async fn call_body(
+        &self,
+        method: Method,
+        path: &str,
+        body: Body,
+    ) -> Result<(StatusCode, Value), ProtocolError> {
         let request = Request::builder()
+            .header("content-type", "application/json")
             .method(method)
             .uri(path)
             .header("authorization", format!("Bearer {}", self.credential))
-            .body(Body::empty())
+            .body(body)
             .map_err(|error| internal(format!("could not build a local request: {error}")))?;
 
         let response = self
@@ -291,6 +306,32 @@ impl RouterDispatcher {
             .map_err(|error| internal(format!("could not read the local response: {error}")))?;
         let parsed = serde_json::from_slice(&body).unwrap_or(Value::Null);
         Ok((status, parsed))
+    }
+
+    async fn linear(
+        &self,
+        request: &nomoreide_core::remote::protocol::linear::LinearRequest,
+    ) -> Result<PlatformBound, ProtocolError> {
+        request
+            .validate()
+            .map_err(|e| ProtocolError::new(ErrorCode::MalformedFrame, e))?;
+        let body =
+            serde_json::to_vec(&request).map_err(|_| internal("Invalid Linear request".into()))?;
+        let (status, body) = self
+            .call_body(Method::POST, "/api/linear/request", Body::from(body))
+            .await?;
+        if !status.is_success() {
+            return Err(ProtocolError::new(
+                ErrorCode::ServiceActionFailed,
+                body["error"].as_str().unwrap_or("Linear request failed"),
+            ));
+        }
+        Ok(PlatformBound::Linear(Box::new(
+            nomoreide_core::remote::protocol::linear::LinearResponse {
+                data: serde_json::from_value(body["data"].clone())
+                    .map_err(|_| internal("Invalid Linear response".into()))?,
+            },
+        )))
     }
 
     /// Percent-encode a caller-supplied name into exactly one path segment.
@@ -704,6 +745,7 @@ impl CommandSink for RouterDispatcher {
                     self.mirrors.resize(&self.terminal, request)
                 }
                 DeviceBound::TerminalDetach(request) => self.mirrors.detach(request),
+                DeviceBound::Linear(request) => self.linear(request).await,
                 DeviceBound::GithubRuns(request) => {
                     super::inspection::workflow_runs(self, request).await
                 }
@@ -1214,6 +1256,11 @@ mod tests {
         let agent_status_note = note.clone();
 
         Router::new()
+            .route("/api/linear/request", post(|headers: HeaderMap, Json(request): Json<nomoreide_core::remote::protocol::linear::LinearRequest>| async move {
+                require(&headers);
+                assert!(matches!(request, nomoreide_core::remote::protocol::linear::LinearRequest::Metadata {}));
+                Json(serde_json::json!({"ok": true, "data": {"teams": {"nodes": []}, "token": "never-relay-this"}}))
+            }))
             .route(
                 "/api/services",
                 get(move |headers: HeaderMap| {
@@ -1423,6 +1470,24 @@ mod tests {
                 "{secret} reached the wire: {rendered}"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn linear_uses_the_authenticated_route_and_projects_the_response() {
+        let (dispatcher, _) = dispatcher();
+        let answer = dispatcher
+            .dispatch(
+                "linear-1",
+                DeviceBound::Linear(
+                    nomoreide_core::remote::protocol::linear::LinearRequest::Metadata {},
+                ),
+                events(),
+            )
+            .await;
+        assert!(matches!(answer, PlatformBound::Linear(_)));
+        assert!(!serde_json::to_string(&answer)
+            .unwrap()
+            .contains("never-relay-this"));
     }
 
     #[tokio::test]
@@ -1689,10 +1754,10 @@ mod tests {
                 "the allowlist mentions {forbidden}: {rendered}"
             );
         }
-        // Twenty-three rows: five service, four agent, seven terminal, seven
+        // Twenty-four rows: one Linear, five service, four agent, seven terminal, seven
         // read-only inspection. Pinned so growing the remote surface is a
         // deliberate edit to a test rather than a quiet addition.
-        assert_eq!(ALLOWLIST.len(), 23);
+        assert_eq!(ALLOWLIST.len(), 24);
     }
 
     /// Everything added for CI, pull requests, usage, errors and the timeline

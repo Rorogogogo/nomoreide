@@ -38,6 +38,7 @@ import { ServicesView } from "@/features/services/services-view";
 import { DockerView } from "@/features/docker/docker-view";
 import { RunningStripe } from "@/features/services/running-stripe";
 import { GitReviewView } from "@/features/git/git-review-view";
+import { LinearView } from "@/features/linear/linear-view";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
 import { GlobalSearch } from "@/features/global-search/global-search";
@@ -417,7 +418,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     : null;
   /** A deploy plugin's page follows the selected repository, exactly as Deploy did. */
   const onDeployExtension = page === "extensions" && activeExtension?.kind === "deploy";
-  const repoScopedPage = page === "git" || page === "github" || onDeployExtension;
+  const repoScopedPage = page === "git" || page === "github" || page === "linear" || onDeployExtension;
   /**
    * Page → overview domain.
    *
@@ -507,6 +508,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             {!overviewDomain && page === "github" ? (
               <GitHubView key={repoScopeKey} scope={repoScopeKey} />
             ) : null}
+            {page === "linear" ? <LinearView key={repoScopeKey} /> : null}
             {/*
               Extensions is two destinations behind one page id: the section's
               own page at `/extensions`, and one plugin's page at

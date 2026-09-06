@@ -780,6 +780,60 @@ const vercelBuildLogs: ProviderLogLine[] = [
   text: textLine,
 }));
 
+/** Linear demo data. One team, one project, three tasks in three states. */
+const linearTeam = {
+  id: "team_web",
+  name: "Web",
+  states: {
+    nodes: [
+      { id: "state_todo", name: "Todo" },
+      { id: "state_doing", name: "In Progress" },
+      { id: "state_done", name: "Done" },
+    ],
+  },
+  projects: { nodes: [{ id: "proj_q3", name: "Q3 Platform" }] },
+};
+
+const linearIssues = [
+  {
+    id: "iss_1",
+    identifier: "WEB-214",
+    title: "Checkout retries the same card twice on a slow network",
+    description:
+      "A timeout is being treated as a failure, so the retry charges again. Make the submit idempotent with the key the API already accepts.",
+    url: "https://linear.app/acme/issue/WEB-214",
+    branchName: "web-214-checkout-double-charge",
+    priority: 1,
+    state: { id: "state_doing", name: "In Progress" },
+    team: { id: "team_web", name: "Web" },
+    assignee: { id: "user_1", name: "Robert" },
+  },
+  {
+    id: "iss_2",
+    identifier: "WEB-208",
+    title: "Session expiry logs people out mid-form",
+    description: "Refresh the token in the background instead of redirecting.",
+    url: "https://linear.app/acme/issue/WEB-208",
+    branchName: "web-208-silent-refresh",
+    priority: 2,
+    state: { id: "state_todo", name: "Todo" },
+    team: { id: "team_web", name: "Web" },
+    assignee: null,
+  },
+  {
+    id: "iss_3",
+    identifier: "WEB-197",
+    title: "Ship the empty-state illustration",
+    description: "Design is in Figma; only the dashboard list is missing it.",
+    url: "https://linear.app/acme/issue/WEB-197",
+    branchName: "web-197-empty-state",
+    priority: 3,
+    state: { id: "state_done", name: "Done" },
+    team: { id: "team_web", name: "Web" },
+    assignee: { id: "user_2", name: "Sam" },
+  },
+];
+
 const githubRepo = {
   full_name: "acme/web",
   html_url: "https://github.com/acme/web",
@@ -1637,6 +1691,57 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       branch: gitStatus.branch,
       setUpstream: false,
     });
+  }
+
+  /*
+    Linear tasks.
+
+    The view reads `/api/linear/connection` on mount and the task hook reads
+    `.data` off every `/api/linear/request`, so without these the fallback's
+    `{ ok: true }` reaches `data.teams` as `undefined` and the demo shows an
+    error where the feature should be. Demo data, never a real key: the
+    connection reports connected and the token routes do nothing.
+  */
+  if (path === "/api/linear/connection") {
+    if (method === "DELETE") return json({ ok: true });
+    if (method === "POST") return json({ ok: true });
+    return json({ ok: true, connected: true });
+  }
+  if (path === "/api/linear/request") {
+    const sent = init?.body
+      ? (JSON.parse(String(init.body)) as { operation?: string; id?: string })
+      : {};
+    const operation = sent.operation;
+    if (operation === "metadata") {
+      return json({
+        ok: true,
+        data: {
+          teams: { nodes: [linearTeam] },
+          binding: { team: linearTeam.id, project: null },
+        },
+      });
+    }
+    if (operation === "issues") {
+      return json({
+        ok: true,
+        data: {
+          issues: {
+            nodes: linearIssues,
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      });
+    }
+    if (operation === "issue") {
+      const wanted = sent.id;
+      const found = linearIssues.find((issue) => issue.id === wanted) ?? linearIssues[0];
+      return json({ ok: true, data: { issue: found } });
+    }
+    if (operation === "create") {
+      return json({ ok: true, data: { issueCreate: { issue: linearIssues[0] } } });
+    }
+    // binding, update and comment answer with nothing to render.
+    return json({ ok: true, data: {} });
   }
 
   // Snapshots (IDEAS #6). List + per-snapshot files/diff/restore/rename/delete.

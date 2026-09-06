@@ -6,6 +6,7 @@ import { en_servers } from "./servers";
 import { en_docker } from "./docker";
 import { en_errors } from "./errors";
 import { en_git } from "./git";
+import { en_linear } from "./linear";
 import { en_github } from "./github";
 import { en_database } from "./database";
 import { en_provider } from "./provider";
@@ -40,6 +41,7 @@ export const en = {
   ...en_errors,
   ...en_git,
   ...en_github,
+  ...en_linear,
   ...en_database,
   ...en_provider,
   ...en_agent,

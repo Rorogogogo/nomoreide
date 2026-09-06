@@ -55,6 +55,7 @@ pub mod errors;
 pub mod fixtures;
 pub mod idempotency;
 pub mod limits;
+pub mod linear;
 pub mod platform_bound;
 pub mod snapshot;
 pub mod terminal_bytes;

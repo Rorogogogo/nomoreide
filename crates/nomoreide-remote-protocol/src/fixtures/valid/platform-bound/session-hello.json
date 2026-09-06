@@ -23,6 +23,7 @@
       "device.timeline",
       "github.actions",
       "github.pulls",
+      "linear.tasks",
       "service.action",
       "service.list",
       "service.logs",

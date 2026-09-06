@@ -10,6 +10,7 @@ export const zh_shell: Partial<Record<TranslationKey, string>> = {
   "nav.docker": "Docker",
   "nav.git": "Git 审阅",
   "nav.github": "GitHub",
+  "nav.linear": "Linear",
   "nav.errors": "错误收件箱",
   "nav.database": "数据库",
   "nav.terminal": "终端",
