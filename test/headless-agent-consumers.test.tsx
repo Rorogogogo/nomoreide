@@ -4,7 +4,6 @@ import { act, StrictMode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { useSqlGenerate } from "../apps/dashboard/src/features/database/use-sql-generate";
-import { useWorkflowRunner } from "../apps/dashboard/src/features/workflows/use-workflow-runner";
 
 const api = vi.hoisted(() => ({
   approveAgentTool: vi.fn(),
@@ -80,58 +79,6 @@ afterEach(() => {
 });
 
 describe("headless result consumers", () => {
-  test("completes a workflow agent step from its headless streamed result", async () => {
-    api.streamAgentChat.mockImplementation(
-      async (_prompt, _resume, onEvent: (event: unknown) => void) => {
-        onEvent({ type: "session", sessionId: "workflow-headless" });
-        onEvent({ type: "text", text: "Implemented the change\nWORKFLOW_STATUS: ok" });
-      },
-    );
-    const mounted = await mountHarness(() => useWorkflowRunner());
-
-    act(() => {
-      mounted.value.start({
-        id: "headless-workflow",
-        name: "Headless workflow",
-        steps: [{ kind: "agent", id: "agent-1", title: "Implement", prompt: "Do it" }],
-      });
-    });
-    await act(async () => {});
-
-    expect(mounted.value.run?.outcome).toBe("done");
-    expect(mounted.value.run?.outputs[0]).toBe("Implemented the change");
-    expect(api.streamAgentChat).toHaveBeenCalledWith(
-      expect.stringContaining("Do it"),
-      undefined,
-      expect.any(Function),
-      expect.any(AbortSignal),
-      false,
-      "codex",
-    );
-    await unmount(mounted.root, mounted.host);
-  });
-
-  test("completes a workflow after Strict Mode replays its effects", async () => {
-    api.streamAgentChat.mockImplementation(
-      async (_prompt, _resume, onEvent: (event: unknown) => void) => {
-        onEvent({ type: "text", text: "Done\nWORKFLOW_STATUS: ok" });
-      },
-    );
-    const mounted = await mountHarness(() => useWorkflowRunner(), true);
-
-    act(() => {
-      mounted.value.start({
-        id: "strict-workflow",
-        name: "Strict workflow",
-        steps: [{ kind: "agent", id: "agent-1", title: "Implement", prompt: "Do it" }],
-      });
-    });
-    await act(async () => {});
-
-    expect(mounted.value.run?.outcome).toBe("done");
-    expect(api.streamAgentChat).toHaveBeenCalledOnce();
-    await unmount(mounted.root, mounted.host);
-  });
 
   test("generates SQL directly from headless streamed text", async () => {
     api.streamAgentChat.mockImplementation(
@@ -210,33 +157,4 @@ describe("headless result consumers", () => {
     await unmount(mounted.root, mounted.host);
   });
 
-  test("aborts a running workflow agent and does not refresh after unmount", async () => {
-    const onRefresh = vi.fn();
-    let capturedSignal!: AbortSignal;
-    api.streamAgentChat.mockImplementation(
-      async (_prompt, _resume, _onEvent, signal: AbortSignal) => {
-        capturedSignal = signal;
-        await new Promise<void>((_resolve, reject) => {
-          signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), {
-            once: true,
-          });
-        });
-      },
-    );
-    const mounted = await mountHarness(() => useWorkflowRunner(onRefresh), true);
-
-    act(() => {
-      mounted.value.start({
-        id: "unmount-workflow",
-        name: "Unmount workflow",
-        steps: [{ kind: "agent", id: "agent-1", title: "Wait", prompt: "Wait" }],
-      });
-    });
-    await act(async () => Promise.resolve());
-    await unmount(mounted.root, mounted.host);
-    await Promise.resolve();
-
-    expect(capturedSignal.aborted).toBe(true);
-    expect(onRefresh).not.toHaveBeenCalled();
-  });
 });

@@ -73,10 +73,15 @@ describe("GitHub token client status", () => {
   });
 
   test("repo_access renders its own notice, not the failure card", () => {
-    const viewSource = readFileSync(
-      "apps/dashboard/src/features/github/github-view.tsx",
-      "utf8",
-    );
+    // Both halves of the GitHub page: the tabs, and the recovery paths that
+    // moved to their own module.
+    const viewSource = [
+      readFileSync("apps/dashboard/src/features/github/github-view.tsx", "utf8"),
+      readFileSync(
+        "apps/dashboard/src/features/github/github-connection-recovery.tsx",
+        "utf8",
+      ),
+    ].join("\n");
     const noticeSource = readFileSync(
       "apps/dashboard/src/features/github/github-repo-access.tsx",
       "utf8",
@@ -105,10 +110,15 @@ describe("GitHub token client status", () => {
   });
 
   test("the account menu lives in the header, not the GitHub page's tab row", () => {
-    const viewSource = readFileSync(
-      "apps/dashboard/src/features/github/github-view.tsx",
-      "utf8",
-    );
+    // Both halves of the GitHub page: the tabs, and the recovery paths that
+    // moved to their own module.
+    const viewSource = [
+      readFileSync("apps/dashboard/src/features/github/github-view.tsx", "utf8"),
+      readFileSync(
+        "apps/dashboard/src/features/github/github-connection-recovery.tsx",
+        "utf8",
+      ),
+    ].join("\n");
     // The credential is stored per repository, so identity belongs beside the
     // project crumb — and switching account or adding a token must not require
     // navigating to the GitHub page first.

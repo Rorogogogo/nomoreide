@@ -1,0 +1,20 @@
+export const en_extensions = {
+  "extensions.kind.deploy": "Deploy",
+  "extensions.kind.host": "Host",
+  "extensions.source.builtIn": "Built-in",
+  "extensions.capabilities": "Reads",
+  "extensions.actions": "Actions",
+  "extensions.hosts": "May reach",
+  "extensions.where.servers": "Its machines also appear in your server list, beside machines no extension owns.",
+  "extensions.open": "Open {name}",
+  "extensions.page.hostWhere": "{name}'s machines appear in your server list, beside machines no extension owns — so they keep one list rather than being split by vendor. This page is for the extension itself.",
+  "extensions.page.openServers": "Open server list",
+  "extensions.page.unknown": "No extension named \"{id}\" is installed.",
+  "extensions.builtInOnly": "Every extension here ships with NoMoreIDE, so there is nothing to install or remove yet. Actions marked * change what production serves and are confirmed first. \u201cMay reach\u201d is enforced, not advisory: a request to any other host is refused before it is sent.",
+  "extensions.error": "Could not load extensions: {error}",
+  "extensions.section.downloaded": "Downloaded ({count})",
+  "extensions.section.market": "Market",
+  "extensions.market.title": "Nothing to browse yet",
+  "extensions.market.body":
+    "Every extension ships inside NoMoreIDE, so there is nothing to download. Browsing opens once plugins can be loaded at runtime — the registry that already distributes agent profiles is the same one they will come from.",
+} as const;

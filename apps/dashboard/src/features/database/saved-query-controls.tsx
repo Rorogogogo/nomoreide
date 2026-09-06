@@ -3,29 +3,22 @@ import { Bookmark, ChevronDown, Plus, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToasts } from "@/components/ui/toast";
-import { ComposerDialog } from "@/features/services/service-form/composer-dialog";
 import { useT } from "@/lib/i18n";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { cn } from "@/lib/utils";
-
-interface SavedDatabaseQuery {
-  connection: string;
-  id: string;
-  name: string;
-  sql: string;
-  updatedAt: number;
-}
-
-interface OpenQueryTab {
-  id: string;
-  savedQueryId: string | null;
-  sql: string;
-}
-
-interface QueryWorkspace {
-  activeId: string;
-  tabs: OpenQueryTab[];
-}
+import { SaveQueryDialog, UnsavedQueryDialog } from "./query-dialogs";
+import {
+  createOpenQueryId,
+  createSavedQueryId,
+  defaultSavedQueryName,
+  normalizeSavedQueries,
+  normalizeWorkspace,
+} from "./query-storage";
+import type {
+  OpenQueryTab,
+  QueryWorkspace,
+  SavedDatabaseQuery,
+} from "./query-types";
 
 export function SqlQueryTabs({
   connection,
@@ -442,132 +435,4 @@ export function SqlQueryTabs({
       ) : null}
     </>
   );
-}
-
-function UnsavedQueryDialog({
-  onCancel,
-  onDiscard,
-  onSave,
-}: {
-  onCancel: () => void;
-  onDiscard: () => void;
-  onSave: () => void;
-}) {
-  const t = useT();
-  return (
-    <ComposerDialog
-      icon={<X className="text-destructive" />}
-      onClose={onCancel}
-      title={t("database.sql.closeUnsavedQueryTitle")}
-    >
-      <p className="text-sm text-muted-foreground">{t("database.sql.closeUnsavedQueryBody")}</p>
-      <div className="mt-4 flex justify-end gap-2 border-t border-border pt-3">
-        <Button onClick={onCancel} size="sm" type="button" variant="outline">
-          {t("common.cancel")}
-        </Button>
-        <Button onClick={onDiscard} size="sm" type="button" variant="destructive">
-          {t("database.sql.discardChanges")}
-        </Button>
-        <Button onClick={onSave} size="sm" type="button">
-          <Save />
-          {t("common.save")}
-        </Button>
-      </div>
-    </ComposerDialog>
-  );
-}
-
-function SaveQueryDialog({
-  defaultName,
-  onClose,
-  onSave,
-}: {
-  defaultName: string;
-  onClose: () => void;
-  onSave: (name: string) => void;
-}) {
-  const t = useT();
-  const [name, setName] = useState(defaultName);
-  const trimmedName = name.trim();
-
-  return (
-    <ComposerDialog
-      icon={<Bookmark />}
-      onClose={onClose}
-      title={t("database.sql.saveQueryTitle")}
-    >
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (trimmedName) onSave(trimmedName);
-        }}
-      >
-        <label className="block space-y-1.5 text-xs font-medium">
-          <span>{t("database.sql.queryName")}</span>
-          <input
-            className="h-9 w-full rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-ring"
-            maxLength={80}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={t("database.sql.queryNamePlaceholder")}
-            value={name}
-          />
-        </label>
-        <div className="flex justify-end gap-2 border-t border-border pt-3">
-          <Button onClick={onClose} size="sm" type="button" variant="outline">
-            {t("common.cancel")}
-          </Button>
-          <Button disabled={!trimmedName} size="sm" type="submit">
-            <Save />
-            {t("database.sql.saveQuery")}
-          </Button>
-        </div>
-      </form>
-    </ComposerDialog>
-  );
-}
-
-function createOpenQueryId(): string {
-  return `tab-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function createSavedQueryId(): string {
-  return `query-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function defaultSavedQueryName(sql: string, fallback: string): string {
-  const firstLine = sql.trim().split(/\r?\n/, 1)[0]?.replace(/\s+/g, " ") ?? "";
-  return firstLine.slice(0, 60) || fallback;
-}
-
-function normalizeWorkspace(value: unknown, fallback: QueryWorkspace): QueryWorkspace {
-  if (!value || typeof value !== "object") return fallback;
-  const candidate = value as Partial<QueryWorkspace>;
-  if (!Array.isArray(candidate.tabs)) return fallback;
-  const tabs = candidate.tabs.filter((tab): tab is OpenQueryTab => {
-    if (!tab || typeof tab !== "object") return false;
-    const entry = tab as Partial<OpenQueryTab>;
-    return typeof entry.id === "string"
-      && (entry.savedQueryId === null || typeof entry.savedQueryId === "string")
-      && typeof entry.sql === "string";
-  });
-  if (tabs.length === 0) return fallback;
-  const activeId = typeof candidate.activeId === "string"
-    && tabs.some((tab) => tab.id === candidate.activeId)
-    ? candidate.activeId
-    : tabs[0].id;
-  return { activeId, tabs };
-}
-
-function normalizeSavedQueries(value: unknown): SavedDatabaseQuery[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((query): query is SavedDatabaseQuery => {
-    if (!query || typeof query !== "object") return false;
-    const candidate = query as Partial<SavedDatabaseQuery>;
-    return typeof candidate.connection === "string"
-      && typeof candidate.id === "string"
-      && typeof candidate.name === "string"
-      && typeof candidate.sql === "string"
-      && typeof candidate.updatedAt === "number";
-  });
 }

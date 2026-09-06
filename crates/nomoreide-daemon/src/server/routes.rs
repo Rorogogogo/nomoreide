@@ -46,8 +46,6 @@ mod timeline;
 mod usage;
 
 pub(crate) use usage::daemon_cwd;
-mod workflow_triggers;
-mod workflows;
 
 use crate::server::app::{require_credential, AppState};
 use axum::http::header::{
@@ -224,8 +222,6 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(snapshots::routes())
         .merge(settings::routes())
         .merge(skills::routes())
-        .merge(workflows::routes())
-        .merge(workflow_triggers::routes())
         .merge(bundles::routes())
         .merge(change_sets::routes())
         .merge(context::routes())

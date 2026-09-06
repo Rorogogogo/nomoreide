@@ -29,7 +29,6 @@ import type {
   ProviderLogLine,
   ProviderManifest,
   ProviderProject,
-  Workflow,
 } from "@/lib/api";
 
 const startedAt = new Date(Date.now() - 1000 * 60 * 18).toISOString();
@@ -411,87 +410,6 @@ let mockAgentProviderId: "claude" | "codex" = "claude";
 const mockAgentModels: Partial<Record<"claude" | "codex", string>> = {};
 
 let databaseWriteUnlocked = false;
-
-const workflows: Workflow[] = [
-  {
-    id: "commit-push",
-    name: "Commit & push",
-    description: "Pause for approval, make one AI-written commit, then push the branch.",
-    builtin: true,
-    steps: [
-      {
-        kind: "gate",
-        id: "gate-commit",
-        title: "Approve commit",
-        message: "Stage the current changes and create one AI-written commit?",
-      },
-      {
-        kind: "agent",
-        id: "commit",
-        title: "Commit all changes",
-        prompt: "Stage reviewed files, inspect the staged diff, and create one conventional commit.",
-        verify: "committed",
-      },
-      {
-        kind: "gate",
-        id: "gate-push",
-        title: "Approve push",
-        message: "Push to the remote?",
-      },
-      { kind: "action", id: "push", title: "Push", op: "push" },
-    ],
-  },
-  {
-    id: "ship-it",
-    name: "Ship it",
-    description: "Commit, push, open a pull request, then squash-merge after approval.",
-    builtin: true,
-    steps: [
-      {
-        kind: "gate",
-        id: "gate-commit",
-        title: "Approve commit",
-        message: "Commit and open a PR?",
-      },
-      {
-        kind: "agent",
-        id: "commit",
-        title: "Commit all changes",
-        prompt: "Make one AI-written commit from the current diff.",
-        verify: "committed",
-      },
-      { kind: "action", id: "push", title: "Push", op: "push" },
-      {
-        kind: "agent",
-        id: "open-pr",
-        title: "Open a PR",
-        prompt: "Open a GitHub PR for the current branch using the NoMoreIDE GitHub tools.",
-      },
-      {
-        kind: "gate",
-        id: "gate-merge",
-        title: "Approve merge",
-        message: "Squash-merge the pull request?",
-      },
-    ],
-  },
-  {
-    id: "demo-sql-review",
-    name: "Review SQL change",
-    description: "Ask the agent to draft a SQL update, then stage it for the human SQL console.",
-    steps: [
-      {
-        kind: "agent",
-        id: "draft-sql",
-        title: "Draft SQL",
-        prompt: "Draft the SQL update in a sql-write block so the human can preview it before commit.",
-      },
-    ],
-  },
-];
-
-// No live event bus in the website demo, so there are no configured triggers.
-const workflowTriggers: never[] = [];
 
 // Working-tree checkpoints (IDEAS #6). Demo data so the Snapshots tab renders
 // with content; the diffs reuse the same mock git diffs as the Git view.
@@ -1719,30 +1637,6 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       branch: gitStatus.branch,
       setUpstream: false,
     });
-  }
-
-  if (path === "/api/workflows") {
-    if (method === "POST") return json({ ok: true, workflows });
-    return json({ ok: true, workflows });
-  }
-  if (path.match(/^\/api\/workflows\/[^/]+$/)) {
-    return json({ ok: true, workflows });
-  }
-
-  // Event-driven workflow triggers (IDEAS #16). The demo has no live event
-  // bus, so triggers/pending start empty — but the shapes must match so the
-  // app-root WorkflowTriggerProvider doesn't choke on a missing array.
-  if (path === "/api/workflow-triggers") {
-    return json({ ok: true, triggers: workflowTriggers });
-  }
-  if (path === "/api/workflow-triggers/pending") {
-    return json({ ok: true, pending: [] });
-  }
-  if (path.match(/^\/api\/workflow-triggers\/pending\/[^/]+\/ack$/)) {
-    return json({ ok: true });
-  }
-  if (path.match(/^\/api\/workflow-triggers\/[^/]+$/)) {
-    return json({ ok: true, triggers: workflowTriggers });
   }
 
   // Snapshots (IDEAS #6). List + per-snapshot files/diff/restore/rename/delete.

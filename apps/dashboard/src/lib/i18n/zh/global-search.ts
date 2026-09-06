@@ -1,0 +1,27 @@
+import type { TranslationKey } from "../en";
+
+export const zh_global_search: Partial<Record<TranslationKey, string>> = {
+  "globalSearch.open": "打开全局搜索",
+  "globalSearch.close": "关闭全局搜索",
+  "globalSearch.title": "全局搜索",
+  "globalSearch.inputAria": "搜索 NoMoreIDE",
+  "globalSearch.placeholder": "搜索页面、项目、服务、文件和任务…",
+  "globalSearch.results": "全局搜索结果",
+  "globalSearch.empty": "未找到“{query}”的结果。",
+  "globalSearch.opening": "正在打开…",
+  "globalSearch.hint": "使用 ↑↓ 移动 · Enter 打开 · Esc 关闭",
+  "globalSearch.resultCount": "{count} 个结果",
+  "globalSearch.agentFallback": "Agent",
+  "globalSearch.taskFallback": "任务",
+  "globalSearch.branchCurrent": "当前分支",
+  "globalSearch.branchRemote": "远程分支",
+  "globalSearch.branchLocal": "分支",
+  "globalSearch.group.pages": "页面",
+  "globalSearch.group.settings": "设置",
+  "globalSearch.group.projects": "项目",
+  "globalSearch.group.services": "服务",
+  "globalSearch.group.bundles": "组合",
+  "globalSearch.group.branches": "分支",
+  "globalSearch.group.files": "已更改文件",
+  "globalSearch.group.tasks": "活动 Agent 任务",
+};

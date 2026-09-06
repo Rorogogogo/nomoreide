@@ -1,10 +1,18 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
+import { catalogSource } from "./support/i18n-source";
 
-const viewSource = readFileSync(
-  "apps/dashboard/src/features/github/github-view.tsx",
-  "utf8",
-);
+// The GitHub page's rendering now spans three files — the tabs and data in
+// github-view.tsx, the failure paths in github-connection-recovery.tsx, and the
+// new-PR prompt in branch-to-pr-assistant.tsx. These assertions are about what
+// the *page* renders, so they read all three.
+const viewSource = [
+  "github-view.tsx",
+  "github-connection-recovery.tsx",
+  "branch-to-pr-assistant.tsx",
+]
+  .map((file) => readFileSync(`apps/dashboard/src/features/github/${file}`, "utf8"))
+  .join("\n");
 const setupSource = readFileSync(
   "apps/dashboard/src/features/github/github-token-setup.tsx",
   "utf8",
@@ -29,10 +37,14 @@ const branchesSource = readFileSync(
   "apps/dashboard/src/features/github/branches-view.tsx",
   "utf8",
 );
-const prDetailSource = readFileSync(
-  "apps/dashboard/src/features/github/pr-detail.tsx",
-  "utf8",
-);
+// The PR view is the header and conversation plus the review cockpit beside
+// it; these assertions are about what the PR page renders, so they read both.
+const prDetailSource = [
+  "pr-detail.tsx",
+  "pr-review-cockpit.tsx",
+]
+  .map((file) => readFileSync(`apps/dashboard/src/features/github/${file}`, "utf8"))
+  .join("\n");
 const tabsSource = readFileSync(
   // Shared with the Vercel view, so it lives in components/ui rather than
   // inside the GitHub feature.
@@ -53,7 +65,7 @@ const issueDetailSource = readFileSync(
 );
 // UI copy now lives in the i18n catalog (t("...")), so text the views render is
 // asserted against en.ts rather than the component source.
-const catalog = readFileSync("apps/dashboard/src/lib/i18n/en.ts", "utf8");
+const catalog = catalogSource("en");
 
 describe("GitHub connection recovery UI", () => {
   test("announces account selection failures accessibly", () => {

@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { ReactNode } from "react";
 import {
   BookOpen,
   ChevronRight,
   LayoutGrid,
   PanelLeft,
-  PanelLeftClose,
-  PanelLeftOpen,
   Settings,
 } from "lucide-react";
 import {
@@ -15,7 +12,6 @@ import {
   type DashboardData,
   type OverviewDomain,
 } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/ui/loading";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -29,8 +25,6 @@ import { ContextView } from "@/features/context/context-view";
 import { AgentEnvView } from "@/features/agent-env/agent-env-view";
 import { AgentProvider, useAgentDock } from "@/features/agent/chat/agent-context";
 import { AiContextMenuProvider } from "@/features/agent/context-menu/ai-context-menu";
-import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
-import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-context";
 import { AgentTerminalDock, type AgentDockPage } from "@/features/agent/terminal/agent-terminal-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { SettingsView } from "@/features/settings/settings-view";
@@ -44,7 +38,6 @@ import { ServicesView } from "@/features/services/services-view";
 import { DockerView } from "@/features/docker/docker-view";
 import { RunningStripe } from "@/features/services/running-stripe";
 import { GitReviewView } from "@/features/git/git-review-view";
-import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
 import { GlobalSearch } from "@/features/global-search/global-search";
@@ -69,7 +62,7 @@ import {
 } from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
 import { TauriTitleBar } from "@/components/tauri-titlebar";
-import { useT, type TranslationKey } from "@/lib/i18n";
+import { useT, } from "@/lib/i18n";
 import { OperationProvider } from "@/components/operations/operation-context";
 import { OperationStrip } from "@/components/operations/operation-strip";
 import { ScrollProgressBar } from "@/components/ui/scroll-progress-bar";
@@ -95,198 +88,24 @@ import {
 
 import { useWorkspaceLayout, type WorkspaceTab } from "@/features/workspace/workspace-layout";
 import { WorkspaceView } from "@/features/workspace/workspace-view";
+import {
+  AppIdentity,
+  NavButton,
+  NavSectionLabel,
+  SidebarDockToggle,
+  sidebarShellClassName,
+} from "@/components/app-sidebar";
+import {
+  extensionIdFromPath,
+  extensionPath,
+  initialPage,
+  installSlugFromSearch,
+  PAGE_PATHS,
+  PAGE_TITLE_KEY,
+  pageFromPath,
+} from "@/app-routing";
 
 type Page = AppPage;
-
-/** Client-side route per page. The server mirrors these in `shell-routes.ts`. */
-export const PAGE_PATHS: Record<Page, string> = {
-  /*
-    Home owns "/", and Services moved to a path of its own.
-    §8.2 of the Home design: a Home that is one more nav row is a page nobody
-    lands on, and it would make the sidebar longer without giving anything back.
-    `test/shell-paths.test.ts` asserts this map and `shellPaths` agree, so a
-    half-done move fails CI rather than 404ing on refresh.
-  */
-  home: "/",
-  services: "/services",
-  activity: "/activity",
-  remote: "/remote",
-  servers: "/servers",
-  docker: "/docker",
-  git: "/git",
-  github: "/github",
-  workflows: "/workflows",
-  errors: "/errors",
-  database: "/database",
-  agent: "/agent",
-  "agent-env": "/agent-env",
-  context: "/context",
-  extensions: "/extensions",
-  settings: "/settings",
-};
-
-/**
- * One installed plugin's page, the nav's second layer.
- *
- * A child of `/extensions` rather than a page id of its own, because the set of
- * plugins is *data* — `AppPage` is a closed union and a downloaded plugin
- * cannot add a member to it. The id lives beside `page` in state instead, which
- * is what keeps a fourth provider from needing an edit here.
- */
-export const EXTENSION_PATH_PREFIX = "/extensions/";
-
-export function extensionPath(id: string): string {
-  return `${EXTENSION_PATH_PREFIX}${encodeURIComponent(id)}`;
-}
-
-/** The plugin a path addresses, or null when it is not an extension page. */
-export function extensionIdFromPath(pathname: string): string | null {
-  if (!pathname.startsWith(EXTENSION_PATH_PREFIX)) return null;
-  const id = decodeURIComponent(pathname.slice(EXTENSION_PATH_PREFIX.length)).trim();
-  return id || null;
-}
-
-/** Header title translation key per page. */
-const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
-  home: "nav.home",
-  services: "nav.services",
-  activity: "nav.activity",
-  servers: "nav.servers",
-  docker: "nav.docker",
-  remote: "nav.remote",
-  git: "nav.git",
-  github: "nav.github",
-  workflows: "nav.workflows",
-  errors: "nav.errors",
-  database: "nav.database",
-  agent: "pageTitle.agent",
-  "agent-env": "pageTitle.agentEnv",
-  context: "pageTitle.context",
-  extensions: "pageTitle.extensions",
-  settings: "nav.settings",
-};
-
-// Longest prefix wins so "/agent-env" is matched before "/agent".
-const PAGE_PATH_MATCHERS = (Object.entries(PAGE_PATHS) as Array<[Page, string]>)
-  .filter(([, path]) => path !== "/")
-  .sort(([, a], [, b]) => b.length - a.length);
-
-export function pageFromPath(pathname: string): Page {
-  // `/extensions/<id>` is the extensions page with a plugin selected, so the
-  // prefix has to be checked before the exact matches — otherwise a deep link
-  // to a plugin silently lands on Services.
-  if (extensionIdFromPath(pathname)) return "extensions";
-  for (const [page, path] of PAGE_PATH_MATCHERS) {
-    if (pathname === path) return page;
-  }
-  // "/" and anything unrecognised land on Home, which is what "/" now means.
-  return "home";
-}
-
-/**
- * The registry's "Open in NoMoreIDE" button links to `/?install=<slug>` (see
- * the platform's public-profile-page.tsx). Returns the slug to install, or null
- * when the param is absent or empty.
- *
- * The value is only ever handed to the install endpoint as a slug, never
- * interpolated into markup or a URL path, so no escaping is needed here —
- * `URLSearchParams` has already decoded it.
- */
-export function installSlugFromSearch(search: string): string | null {
-  const slug = new URLSearchParams(search).get("install")?.trim();
-  return slug ? slug : null;
-}
-
-/**
- * Page to open on first paint. A registry deep link lands on "/" — which would
- * otherwise route to Home — but means "go install this", so the install param
- * outranks the path.
- */
-export function initialPage(location: { pathname: string; search: string }): Page {
-  if (installSlugFromSearch(location.search)) return "agent-env";
-  return pageFromPath(location.pathname);
-}
-
-export function sidebarShellClassName(docked = false) {
-  return cn(
-    "group/sidebar hidden h-full shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-2 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
-    docked ? "w-64 px-4" : "w-16 px-2 hover:w-64 hover:px-4",
-  );
-}
-
-export function navButtonClassName(active: boolean, docked = false) {
-  return cn(
-    // h-9 rather than h-10: thirteen destinations plus their group labels have
-    // to clear a laptop viewport without the rail turning into a scroller.
-    "relative grid h-9 grid-cols-[48px_minmax(0,1fr)] items-center justify-start gap-0 overflow-hidden rounded-md px-0 text-sm font-medium transition-[background-color,color,width] duration-150",
-    docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
-    active
-      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-      : "hover:bg-muted",
-  );
-}
-
-export function navButtonLabelClassName(docked = false, hasBadge = false) {
-  return cn(
-    "min-w-0 overflow-hidden text-left text-current transition duration-150 whitespace-pre",
-    docked
-      ? "translate-x-1 opacity-100"
-      : "opacity-0 group-hover/sidebar:translate-x-1 group-hover/sidebar:opacity-100",
-    hasBadge ? "pr-10" : "pr-3",
-  );
-}
-
-export function navButtonIconClassName(docked = false) {
-  return cn(
-    "flex h-9 w-12 items-center justify-center text-current transition-transform duration-150 [&_svg]:size-[18px]",
-    docked ? "translate-x-0" : "-translate-x-px group-hover/sidebar:translate-x-0",
-  );
-}
-
-/**
- * Dock toggle. It rides in the sidebar's identity row instead of a footer of
- * its own — the rail only expands on hover anyway, which is exactly when the
- * toggle is reachable, and the reclaimed row goes to navigation.
- */
-export function SidebarDockToggle({
-  docked,
-  onToggleDock,
-}: {
-  docked: boolean;
-  onToggleDock?: () => void;
-}) {
-  return (
-    <button
-      aria-label={docked ? "Undock sidebar" : "Dock sidebar"}
-      aria-pressed={docked}
-      className={cn(
-        "flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,opacity] duration-150 hover:bg-muted hover:text-foreground [&_svg]:size-4",
-        docked
-          ? "bg-muted text-foreground opacity-100"
-          : "opacity-0 group-hover/sidebar:opacity-100",
-      )}
-      onClick={onToggleDock}
-      title={docked ? "Undock sidebar" : "Dock sidebar"}
-      type="button"
-    >
-      {docked ? <PanelLeftClose /> : <PanelLeftOpen />}
-    </button>
-  );
-}
-
-export function AppIdentity({ className }: { className?: string }) {
-  return (
-    <div className={cn("min-w-0", className)}>
-      <div className="flex items-baseline gap-1.5">
-        <div className="text-sm font-semibold">NoMoreIDE</div>
-        <div className="font-mono text-[10px] text-muted-foreground">v{__APP_VERSION__}</div>
-      </div>
-      <div className="font-mono text-[11px] text-muted-foreground">
-        127.0.0.1 console
-      </div>
-    </div>
-  );
-}
 
 export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   return (
@@ -710,7 +529,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               <ExtensionsView onOpen={(id) => setExtensionId(id)} />
             ) : null}
             {page === "remote" ? <RemoteView /> : null}
-            {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? (
               <AgentView
                 focusChanges={changesFocusNonce}
@@ -770,8 +588,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       selectProject={selectProject}
     />
     <RefreshRegistryProvider value={refreshRegistry}>
-    <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
-    <WorkflowTriggerProvider>
     <AppContextMenu onRefresh={refreshAll}>
     <div className="flex flex-col h-screen overflow-hidden">
     <ScrollProgressBar key={page} type="bar" strokeSize={2} />
@@ -1088,8 +904,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     </div>
     </div>
     </AppContextMenu>
-    </WorkflowTriggerProvider>
-    </WorkflowRunProvider>
     </RefreshRegistryProvider>
     </AiContextMenuProvider>
     </AgentProvider>
@@ -1103,109 +917,5 @@ function ServersPage({ onOpenActivity }: { onOpenActivity: (host: string) => voi
       onOpenActivity={onOpenActivity}
       onOpenTerminal={() => setOpen(true)}
     />
-  );
-}
-
-function NavSectionLabel({ docked, label }: { docked: boolean; label: string }) {
-  // Fixed height so the collapsed rail doesn't shift when labels fade in.
-  //
-  // The separating rule shares this row instead of sitting on the section
-  // above it — one row per heading rather than two, which is the whole point
-  // of the change. The label collapses to zero width on the rail, so the rule
-  // spans the full width there and still reads as the group separator it was.
-  return (
-    <div className="flex h-4 items-center overflow-hidden px-3">
-      <span
-        className={cn(
-          "overflow-hidden whitespace-pre text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-all duration-150",
-          docked
-            ? "max-w-40 pr-2 opacity-100"
-            : "max-w-0 pr-0 opacity-0 group-hover/sidebar:max-w-40 group-hover/sidebar:pr-2 group-hover/sidebar:opacity-100",
-        )}
-      >
-        {label}
-      </span>
-      <span aria-hidden className="h-px flex-1 bg-border/60" />
-    </div>
-  );
-}
-
-function NavButton({
-  active,
-  badge,
-  child,
-  docked,
-  expanded,
-  icon,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  badge?: number;
-  /** A second-layer row: indented, so the hierarchy is visible at a glance. */
-  child?: boolean;
-  docked: boolean;
-  /**
-   * Set only on a row that discloses children instead of navigating. The row
-   * itself is the control, so the chevron is an indicator rather than a second
-   * focusable button sitting on top of the first.
-   */
-  expanded?: boolean;
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  // Only render the count badge when there's something to count — a "0" is noise.
-  const showBadge = badge !== undefined && badge > 0;
-  return (
-    <Button
-      aria-expanded={expanded}
-      aria-label={label}
-      title={label}
-      className={cn(
-        navButtonClassName(active, docked),
-        // Indent only when the labels are visible. On the collapsed rail there
-        // is nothing but icons, and shifting them would break the icon column.
-        child && (docked ? "pl-7" : "group-hover/sidebar:pl-7"),
-      )}
-      variant="ghost"
-      onClick={onClick}
-      type="button"
-    >
-      <span className={navButtonIconClassName(docked)}>
-        {icon}
-      </span>
-      <span className={navButtonLabelClassName(docked, showBadge)}>{label}</span>
-      {badge !== undefined && badge > 0 ? (
-        <Badge
-          appearance="solid"
-          className={cn(
-            "min-w-4 justify-center rounded-full border-transparent px-1 font-mono text-[10px] leading-none shadow-none",
-            active
-              ? "bg-primary-foreground text-primary"
-              : "bg-foreground text-background",
-            "absolute right-1.5 top-1.5 h-4 group-hover/sidebar:right-2 group-hover/sidebar:top-1/2 group-hover/sidebar:-translate-y-1/2 group-hover/sidebar:text-xs",
-            docked && "right-2 top-1/2 -translate-y-1/2 text-xs",
-          )}
-          size="small"
-          variant="secondary"
-        >
-          {badge}
-        </Badge>
-      ) : null}
-      {expanded === undefined ? null : (
-        <ChevronRight
-          aria-hidden
-          className={cn(
-            // The trailing edge, centred on the row — this is inside the row,
-            // so it centres on the row and not on the expanded group below it.
-            "absolute right-2 top-1/2 size-3 -translate-y-1/2 transition-transform",
-            expanded && "rotate-90",
-            // Nothing but icons fits on the collapsed rail.
-            docked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
-          )}
-        />
-      )}
-    </Button>
   );
 }
