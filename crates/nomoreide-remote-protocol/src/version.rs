@@ -144,6 +144,15 @@ pub mod capabilities {
     /// Read-only in the same sense: no merge, no create, no review. Those live
     /// in `nomoreide-actions` locally and have no frame here.
     pub const GITHUB_PULLS: &str = "github.pulls";
+    /// Linear tasks: reading them, and — unlike the two above — writing them.
+    ///
+    /// The exception to the read-only rule the rest of this list follows, and
+    /// deliberately: binding a repository, creating an issue, changing a state
+    /// and commenting are classified as mutations in `linear.rs`, so a degraded
+    /// session refuses them and nothing ever retries one. The key itself stays
+    /// on the host — it is never sent to a device, and a scanned guest link
+    /// does not carry this capability at all.
+    pub const LINEAR: &str = "linear.tasks";
     /// What Claude and Codex have spent, and how close their rate-limit
     /// windows are.
     ///
@@ -195,6 +204,7 @@ pub mod capabilities {
         TERMINAL_SHELL,
         GITHUB_ACTIONS,
         GITHUB_PULLS,
+        LINEAR,
         AGENT_USAGE,
         DEVICE_ERRORS,
         DEVICE_TIMELINE,
@@ -203,7 +213,7 @@ pub mod capabilities {
     /// `V2` must extend `V1` rather than diverge from it. Checked here because
     /// the two lists are written out separately for readability.
     const _: () = {
-        assert!(V2.len() == V1.len() + 9);
+        assert!(V2.len() == V1.len() + 10);
     };
 }
 

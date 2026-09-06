@@ -6,6 +6,7 @@ export const en_shell = {
   "nav.docker": "Docker",
   "nav.git": "Git Review",
   "nav.github": "GitHub",
+  "nav.linear": "Linear",
   "nav.errors": "Error Inbox",
   "nav.database": "Database",
   "nav.terminal": "Terminal",

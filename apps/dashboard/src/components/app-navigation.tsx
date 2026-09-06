@@ -26,6 +26,7 @@ export type AppPage =
   | "docker"
   | "git"
   | "github"
+  | "linear"
   | "agent"
   | "agent-env"
   | "context"
@@ -78,6 +79,7 @@ export const APP_NAV_SECTIONS: Array<{
     items: [
       { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
       { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
+      { page: "linear", labelKey: "nav.linear", icon: <Inbox /> },
     ],
   },
   {

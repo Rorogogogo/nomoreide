@@ -110,6 +110,8 @@ pub enum DeviceBound {
     /// One pull request by number.
     #[serde(rename = "github.pr.request")]
     GithubPull(GithubPullRequestRef),
+    #[serde(rename = "linear.request")]
+    Linear(super::linear::LinearRequest),
 
     /// What Claude and Codex have spent, and how full their rate-limit windows
     /// are.
@@ -378,6 +380,7 @@ impl DeviceBound {
         "github.run.jobs.request",
         "github.prs.request",
         "github.pr.request",
+        "linear.request",
         "agent.usage.request",
         "errors.request",
         "timeline.request",
@@ -407,6 +410,7 @@ impl DeviceBound {
             Self::GithubRunJobs(_) => "github.run.jobs.request",
             Self::GithubPulls(_) => "github.prs.request",
             Self::GithubPull(_) => "github.pr.request",
+            Self::Linear(_) => "linear.request",
             Self::AgentUsage(_) => "agent.usage.request",
             Self::Errors(_) => "errors.request",
             Self::Timeline(_) => "timeline.request",
@@ -420,6 +424,7 @@ impl DeviceBound {
     /// [`super::version::SessionMode::Degraded`].
     pub fn mutating(&self) -> bool {
         match self {
+            Self::Linear(request) => request.is_mutating(),
             Self::ServiceAction(_)
             | Self::AgentTurnStart(_)
             | Self::AgentTurnCancel(_)
@@ -477,6 +482,7 @@ impl DeviceBound {
             | Self::TerminalInput(_)
             | Self::TerminalResize(_)
             | Self::TerminalDetach(_) => Some(capability::TERMINAL_ATTACH),
+            Self::Linear(_) => Some(capability::LINEAR),
             Self::GithubRuns(_) | Self::GithubRunJobs(_) => Some(capability::GITHUB_ACTIONS),
             Self::GithubPulls(_) | Self::GithubPull(_) => Some(capability::GITHUB_PULLS),
             Self::AgentUsage(_) => Some(capability::AGENT_USAGE),

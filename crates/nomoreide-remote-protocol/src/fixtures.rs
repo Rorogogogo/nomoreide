@@ -125,6 +125,7 @@ pub fn every_command() -> Vec<DeviceBound> {
         DeviceBound::TerminalDetach(TerminalDetach {
             stream_id: "stream_1".to_string(),
         }),
+        DeviceBound::Linear(crate::linear::LinearRequest::Metadata {}),
         DeviceBound::GithubRuns(GithubRunsRequest {
             branch: Some("main".to_string()),
             limit: Some(10),
@@ -253,6 +254,9 @@ pub fn every_event() -> Vec<PlatformBound> {
             stream_id: "stream_1".to_string(),
             reason: TerminalCloseReason::Exited,
         }),
+        PlatformBound::Linear(Box::new(crate::linear::LinearResponse {
+            data: serde_json::from_value(serde_json::json!({"teams": {"nodes": []}})).unwrap(),
+        })),
         PlatformBound::GithubRuns(GithubRunsResponse {
             runs: vec![RemoteWorkflowRun {
                 id: "1874200193".to_string(),

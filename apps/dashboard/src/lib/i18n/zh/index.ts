@@ -7,6 +7,7 @@ import { zh_servers } from "./servers";
 import { zh_docker } from "./docker";
 import { zh_errors } from "./errors";
 import { zh_git } from "./git";
+import { zh_linear } from "./linear";
 import { zh_github } from "./github";
 import { zh_database } from "./database";
 import { zh_provider } from "./provider";
@@ -37,6 +38,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   ...zh_errors,
   ...zh_git,
   ...zh_github,
+  ...zh_linear,
   ...zh_database,
   ...zh_provider,
   ...zh_agent,

@@ -25,6 +25,7 @@ mod git;
 mod github;
 mod host_providers;
 mod jetbrains;
+mod linear;
 mod log_sources;
 mod meta;
 mod metrics;
@@ -229,5 +230,6 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(terminal::routes())
         .merge(git::routes())
         .merge(github::routes())
+        .merge(linear::routes())
         .route_layer(middleware::from_fn_with_state(state, require_credential))
 }

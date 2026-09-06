@@ -89,6 +89,11 @@ pub enum PlatformBound {
     /// One pull request.
     #[serde(rename = "github.pr.response")]
     GithubPull(GithubPullResponse),
+    #[serde(rename = "linear.response")]
+    /// Boxed: the variant is ~1500 bytes against ~270 for the next largest, so
+    /// every `PlatformBound` on the socket would carry that width. `Box` is
+    /// transparent to serde, so the wire format is unchanged.
+    Linear(Box<super::linear::LinearResponse>),
     /// What the agents have spent.
     #[serde(rename = "agent.usage.response")]
     AgentUsage(AgentUsageResponse),
@@ -372,6 +377,7 @@ impl PlatformBound {
         "github.run.jobs.response",
         "github.prs.response",
         "github.pr.response",
+        "linear.response",
         "agent.usage.response",
         "errors.response",
         "timeline.response",
@@ -401,6 +407,7 @@ impl PlatformBound {
             Self::GithubRunJobs(_) => "github.run.jobs.response",
             Self::GithubPulls(_) => "github.prs.response",
             Self::GithubPull(_) => "github.pr.response",
+            Self::Linear(_) => "linear.response",
             Self::AgentUsage(_) => "agent.usage.response",
             Self::Errors(_) => "errors.response",
             Self::Timeline(_) => "timeline.response",
@@ -440,6 +447,7 @@ impl PlatformBound {
             | Self::TerminalSessions(_)
             | Self::TerminalAttachAccepted(_)
             | Self::TerminalAck(_)
+            | Self::Linear(_)
             | Self::GithubRuns(_)
             | Self::GithubRunJobs(_)
             | Self::GithubPulls(_)
