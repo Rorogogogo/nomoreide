@@ -21,4 +21,8 @@ export const en_remote = {
   "remote.scan": "Point your phone's camera at this",
   "remote.scanAlt": "QR code linking to the pairing page for this machine",
   "remote.orType": "Or type this code on your phone",
+
+  "remote.openOnPhone": "Open this machine on your phone",
+  "remote.copyLink": "Copy link",
+  "remote.openMachine": "Open in a new tab",
 } as const;
