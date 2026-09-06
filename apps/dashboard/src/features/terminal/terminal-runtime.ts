@@ -1,4 +1,4 @@
-import { FitAddon } from "@xterm/addon-fit";
+
 import { WebglAddon } from "@xterm/addon-webgl";
 import type { Terminal } from "@xterm/xterm";
 import { translate } from "@/lib/i18n";
@@ -8,16 +8,12 @@ import {
 } from "@/lib/api/desktop-runtime";
 import type { ResolvedTheme } from "@/lib/theme";
 import {
-  INITIAL_STATUS,
   OUTPUT_BATCH_DELAY_MS,
-  SMOOTH_SCROLL_DURATION_MS,
-  TERMINAL_RESIZE_SETTLE_MS,
   WEB_SOCKET_OPEN,
   type DisposableRenderer,
   type FitDimensionsLike,
   type ServerMessage,
   type StatusUpdate,
-  type TerminalConnectionState,
   type TerminalControl,
   type TerminalSocketLike,
   type TerminalViewportHandle,

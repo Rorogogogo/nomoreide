@@ -1,27 +1,19 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
   Plug,
   Puzzle,
-  Search,
-  Settings2,
   Sparkles,
   Webhook,
 } from "lucide-react";
-import {
-  searchSkills,
-  type OneTimeSkillSelection,
-  type RemoteSkillResult,
+import type {
+  OneTimeSkillSelection,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useT, type Translate } from "@/lib/i18n";
+import { useT, } from "@/lib/i18n";
 import { useAgentDock } from "../chat/agent-context";
 import type { AgentDockPage } from "./agent-terminal-dock";
-import { CapabilityItemList, type CapabilityKey } from "./agent-capability-items";
-import type { AgentCapabilities, McpAuthSummary } from "./agent-capability-data";
+import type { CapabilityKey } from "./agent-capability-items";
+import type { AgentCapabilities, } from "./agent-capability-data";
 import { McpAuthDot, mcpAuthTitle } from "./capability-mcp-auth";
 import {
   anchorFor,
@@ -30,7 +22,6 @@ import {
   type DropdownAnchor,
 } from "./capability-anchor";
 import {
-  ALL_CAPABILITIES,
   CapabilityAllPanel,
   CapabilityDropdown,
 } from "./capability-panels";

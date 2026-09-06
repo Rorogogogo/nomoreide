@@ -1,60 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
-import hljs from "highlight.js/lib/common";
+import { useEffect, useState } from "react";
 import {
-  Braces,
-  ChevronDown,
-  ChevronRight,
-  Code2,
-  Columns3,
-  Copy,
-  ExternalLink,
-  Eye,
-  FunctionSquare,
-  KeyRound,
   ListTree,
-  Loader2,
   Pencil,
-  Play,
-  RefreshCw,
-  Table2,
   Trash2,
-  Workflow,
 } from "lucide-react";
-import {
-  siMysql,
-  siPostgresql,
-  siSqlite,
-  type SimpleIcon,
-} from "simple-icons";
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Loading } from "@/components/ui/loading";
-import { Tooltip } from "@/components/ui/tooltip";
-import { useToasts } from "@/components/ui/toast";
 import { AiContextTarget } from "@/features/agent/context-menu/ai-context-menu";
 import {
   getDatabaseCapabilities,
-  getDatabaseObjectDetails,
-  getDatabaseObjectRows,
   getDatabaseObjects,
   getDatabaseSchemas,
-  type DatabaseCapabilities,
   type DatabaseConnection,
   type DatabaseObject,
-  type DatabaseObjectDetails,
-  type DatabaseObjectKind,
-  type DatabaseSchema,
-  type RowBrowseQuery,
-  type RowFilter,
-  type RowSample,
 } from "@/lib/api";
-import { useT, type TranslationKey } from "@/lib/i18n";
+import { useT, } from "@/lib/i18n";
 import { usePersistentState } from "@/lib/use-persistent-state";
-import { cn } from "@/lib/utils";
-import { TableGrid } from "./table-grid";
 import {
-  CatalogObjectRow,
   DatabaseEngineIcon,
   ErrorRow,
   LoadingRow,
@@ -63,20 +24,14 @@ import {
 } from "./catalog-tree";
 import { ObjectDetailsPanel } from "./object-details-panel";
 import { addToList, hasConnectionPrefix, pruneList, schemaKey, toggleList } from "./catalog-helpers";
-import {
-  CATEGORY_ORDER,
-  SAMPLEABLE,
-  type ConnectionCatalog,
-  type LoadState,
-  type ExplorerSurface,
-  type ObjectDetailTab,
-  type SelectedCatalogObject,
+import type {
+  ConnectionCatalog,
+  LoadState,
+  ExplorerSurface,
+  SelectedCatalogObject,
 } from "./catalog-model";
 export type { SelectedCatalogObject } from "./catalog-model";
-import { DatabaseRowFilters } from "./database-row-filters";
-import { DatabaseExportMenu } from "./database-export-menu";
 import { DbAddMenu } from "./db-add-menu";
-import { databaseLimitOptions } from "./use-databases";
 import "../git/file-viewer-theme.css";
 
 const NOOP = () => {};

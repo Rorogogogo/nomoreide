@@ -3,9 +3,8 @@ import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Plug, Puzzle, Settings2, Sparkles, Webhook } from "lucide-react";
 import type { OneTimeSkillSelection } from "@/lib/api";
 import { useT, type Translate } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import { CapabilityItemList, type CapabilityKey } from "./agent-capability-items";
-import type { AgentCapabilities, McpAuthSummary } from "./agent-capability-data";
+import type { AgentCapabilities, } from "./agent-capability-data";
 import { McpAuthDot } from "./capability-mcp-auth";
 import {
   MANAGE_PAGE,

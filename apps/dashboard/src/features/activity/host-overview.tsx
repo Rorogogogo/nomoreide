@@ -1,6 +1,5 @@
-import { ChartPie, CircleGauge, Clock3, Database, Gauge, Server } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
+import { ChartPie, CircleGauge, Clock3, Database, Gauge, } from "lucide-react";
+import { useState, } from "react";
 import type { HostMetricSample } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";

@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { siMysql, siPostgresql, siSqlite, type SimpleIcon } from "simple-icons";
-import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   getDatabaseObjectDetails,
@@ -26,8 +25,6 @@ import { AiContextTarget } from "@/features/agent/context-menu/ai-context-menu";
 import { categoryIcon, schemaKey } from "./catalog-helpers";
 import {
   CATEGORY_ORDER,
-  SAMPLEABLE,
-  type ConnectionCatalog,
   type ExplorerSurface,
   type LoadState,
   type SelectedCatalogObject,

@@ -1,6 +1,5 @@
-import { ArrowUpRight, ExternalLink } from "lucide-react";
+import { ArrowUpRight, } from "lucide-react";
 import {
-  createContext,
   type CSSProperties,
   type ReactNode,
   type RefObject,
@@ -11,10 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Loading } from "@/components/ui/loading";
-import { openExternal } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
-import type { WidgetTone } from "./widget-tone";
-import { DOT_TONE } from "./widget-tone";
 import {
   WidgetDisclosureContext,
   WidgetStatsDockContext,

@@ -2,10 +2,17 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { catalogSource } from "./support/i18n-source";
 
-const viewSource = readFileSync(
-  "apps/dashboard/src/features/github/github-view.tsx",
-  "utf8",
-);
+// The GitHub page's rendering now spans three files — the tabs and data in
+// github-view.tsx, the failure paths in github-connection-recovery.tsx, and the
+// new-PR prompt in branch-to-pr-assistant.tsx. These assertions are about what
+// the *page* renders, so they read all three.
+const viewSource = [
+  "github-view.tsx",
+  "github-connection-recovery.tsx",
+  "branch-to-pr-assistant.tsx",
+]
+  .map((file) => readFileSync(`apps/dashboard/src/features/github/${file}`, "utf8"))
+  .join("\n");
 const setupSource = readFileSync(
   "apps/dashboard/src/features/github/github-token-setup.tsx",
   "utf8",

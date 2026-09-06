@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { ReactNode } from "react";
 import {
   BookOpen,
   ChevronRight,
   LayoutGrid,
   PanelLeft,
-  PanelLeftClose,
-  PanelLeftOpen,
   Settings,
 } from "lucide-react";
 import {
@@ -15,7 +12,6 @@ import {
   type DashboardData,
   type OverviewDomain,
 } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/ui/loading";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -66,7 +62,7 @@ import {
 } from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
 import { TauriTitleBar } from "@/components/tauri-titlebar";
-import { useT, type TranslationKey } from "@/lib/i18n";
+import { useT, } from "@/lib/i18n";
 import { OperationProvider } from "@/components/operations/operation-context";
 import { OperationStrip } from "@/components/operations/operation-strip";
 import { ScrollProgressBar } from "@/components/ui/scroll-progress-bar";
@@ -96,9 +92,6 @@ import {
   AppIdentity,
   NavButton,
   NavSectionLabel,
-  navButtonClassName,
-  navButtonIconClassName,
-  navButtonLabelClassName,
   SidebarDockToggle,
   sidebarShellClassName,
 } from "@/components/app-sidebar";

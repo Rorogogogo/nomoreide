@@ -1,11 +1,10 @@
 import hljs from "highlight.js/lib/common";
 import { useEffect, useMemo, useState } from "react";
-import { Braces, Columns3, Copy, KeyRound, ListTree, Play, Workflow } from "lucide-react";
+import { Columns3, Copy, KeyRound, Play, Workflow } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
-import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
 import {
   getDatabaseObjectDetails,
@@ -24,7 +23,7 @@ import { TableGrid } from "./table-grid";
 import { DatabaseRowFilters } from "./database-row-filters";
 import { DatabaseExportMenu } from "./database-export-menu";
 import { databaseLimitOptions } from "./use-databases";
-import { SAMPLEABLE, type LoadState, type ObjectDetailTab } from "./catalog-model";
+import { SAMPLEABLE, type ObjectDetailTab } from "./catalog-model";
 import "../git/file-viewer-theme.css";
 
 /**

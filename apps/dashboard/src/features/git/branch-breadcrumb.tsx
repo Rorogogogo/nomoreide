@@ -1,21 +1,15 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowDown,
   ArrowUp,
-  Check,
   ChevronDown,
-  ChevronRight,
   GitBranch,
-  GitCompareArrows,
-  GitMerge,
   Loader2,
   Plus,
   RefreshCw,
   Search,
-  Trash2,
 } from "lucide-react";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToasts } from "@/components/ui/toast";
 import {
   gitCreateBranch,
@@ -28,14 +22,12 @@ import {
   gitSwitchBranch,
   type GitBranch as GitBranchInfo,
 } from "@/lib/api";
-import { useT, useTNodes } from "@/lib/i18n";
+import { useT, } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   BranchActionMenu,
   BranchConfirm,
-  BranchMenuAction,
   BranchMenuSection,
-  BranchName,
   QuickAction,
 } from "./branch-menu";
 

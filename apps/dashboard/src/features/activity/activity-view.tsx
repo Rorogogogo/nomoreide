@@ -1,12 +1,5 @@
 import {
   Activity,
-  ArrowUp,
-  ChartPie,
-  CircleGauge,
-  Clock3,
-  Database,
-  Gauge,
-  Server,
 } from "lucide-react";
 import {
   lazy,
@@ -27,26 +20,13 @@ import {
   type ActivityMetrics,
   type DashboardData,
   type HostMetricSample,
-  type ServiceActivityMetric,
-  type ServiceDefinition,
-  type ServiceStatus,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import {
-  ActivitySortHeader,
-  type SortDirection,
+import type {
+  SortDirection,
 } from "./activity-sort-header";
-import {
-  metricPressure,
-  metricPressureBarClass,
-  metricPressureTextClass,
-} from "./metric-pressure";
-import {
-  EnergyImpactBadge,
-  estimateEnergyImpact,
-} from "./energy-impact";
-import { chartPath, historyPlotY, toneClassName, formatBytes, formatMb, formatDuration } from "./activity-format";
+import { formatMb, } from "./activity-format";
 import { HostOverview } from "./host-overview";
 import { ServiceActivityTable } from "./service-activity-table";
 

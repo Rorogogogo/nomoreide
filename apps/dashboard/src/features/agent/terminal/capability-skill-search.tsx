@@ -6,7 +6,6 @@ import {
   type RemoteSkillResult,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 
 /** Registry skill search, as it appears inside the skills dropdown. */
 

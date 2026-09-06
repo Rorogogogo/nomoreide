@@ -1,43 +1,24 @@
-import { Activity, Box, Check, ChevronDown, Cpu, Search, Server } from "lucide-react";
+import { Box, Check, ChevronDown, Server } from "lucide-react";
 import {
-  type ReactNode,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/cvui-badge";
-import { Input } from "@/components/ui/input";
-import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import {
   getDockerStatus,
-  getRemoteHostMetrics,
   listSshServers,
   type DashboardData,
-  type HostMetricSample,
-  type RemoteProcessMetric,
-  type RemoteHostMetrics,
   type SshServerSummary,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { ActivitySortHeader, type SortDirection } from "./activity-sort-header";
 import { ActivityView } from "./activity-view";
-import { HostOverview } from "./host-overview";
 import { DockerActivityView } from "./docker-activity-view";
 import { RemoteActivityView } from "./remote-activity-view";
-import { EnergyImpactBadge, estimateEnergyImpact } from "./energy-impact";
-import {
-  metricPressure,
-  metricPressureTextClass,
-} from "./metric-pressure";
 
-const REMOTE_REFRESH_MS = 5_000;
-const REMOTE_PROCESS_BATCH_SIZE = 50;
 
 export function ActivityPage({
   data,

@@ -10,7 +10,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ActivitySortHeader, type SortDirection } from "./activity-sort-header";
 import type { SortKey } from "./activity-sort-keys";
-import { formatDuration, formatMb, toneClassName } from "./activity-format";
+import { formatDuration, formatMb, } from "./activity-format";
 import { EnergyImpactBadge, estimateEnergyImpact } from "./energy-impact";
 import {
   metricPressure,
