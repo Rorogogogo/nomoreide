@@ -16,10 +16,10 @@ readme = "README.md"
 # cargo warns that the collision may become a hard error.
 
 [dependencies]
-nomoreide-core = { path = "../nomoreide-core", version = "0.13.0" }
-nomoreide-daemon = { path = "../nomoreide-daemon", version = "0.13.0" }
-nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.13.0" }
-nomoreide-mcp = { path = "../nomoreide-mcp", version = "0.13.0" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.13.1" }
+nomoreide-daemon = { path = "../nomoreide-daemon", version = "0.13.1" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.13.1" }
+nomoreide-mcp = { path = "../nomoreide-mcp", version = "0.13.1" }
 anyhow.workspace = true
 crossterm.workspace = true
 ratatui.workspace = true
