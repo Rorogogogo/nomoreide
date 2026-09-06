@@ -17,9 +17,9 @@ tauri-build.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-nomoreide-core = { path = "../nomoreide-core", version = "0.13.1" }
-nomoreide-daemon = { path = "../nomoreide-daemon", version = "0.13.1" }
-nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.13.1" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.14.0" }
+nomoreide-daemon = { path = "../nomoreide-daemon", version = "0.14.0" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.14.0" }
 reqwest.workspace = true
 serde_json.workspace = true
 tauri.workspace = true
