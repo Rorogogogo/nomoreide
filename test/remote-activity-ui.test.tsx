@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { RemoteActivityView } from "../apps/dashboard/src/features/activity/activity-page";
+import { RemoteActivityView } from "../apps/dashboard/src/features/activity/remote-activity-view";
 import type { RemoteHostMetrics, SshServerSummary } from "../apps/dashboard/src/lib/api";
 
 const api = vi.hoisted(() => ({
