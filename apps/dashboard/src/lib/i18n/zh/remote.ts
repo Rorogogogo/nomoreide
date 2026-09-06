@@ -22,4 +22,8 @@ export const zh_remote: Partial<Record<TranslationKey, string>> = {
   "remote.scan": "用手机摄像头扫描此二维码",
   "remote.scanAlt": "指向这台机器配对页面的二维码",
   "remote.orType": "或在手机上输入此代码",
+
+  "remote.openOnPhone": "在手机上打开这台机器",
+  "remote.copyLink": "复制链接",
+  "remote.openMachine": "在新标签页中打开",
 };
