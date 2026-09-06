@@ -2,10 +2,16 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
-const fileViewerSource = readFileSync(
-  resolve(__dirname, "../apps/dashboard/src/features/git/file-viewer.tsx"),
-  "utf8",
-);
+// The viewer's chrome and the highlighted text it wraps are two modules now.
+// These assertions are about what the viewer renders, so they read both.
+const fileViewerSource = ["file-viewer.tsx", "file-viewer-content.tsx"]
+  .map((file) =>
+    readFileSync(
+      resolve(__dirname, `../apps/dashboard/src/features/git/${file}`),
+      "utf8",
+    ),
+  )
+  .join("\n");
 
 describe("file viewer theme", () => {
   test("keeps the tracked-file source view dark in dark mode", () => {

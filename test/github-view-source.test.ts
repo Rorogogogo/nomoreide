@@ -37,10 +37,14 @@ const branchesSource = readFileSync(
   "apps/dashboard/src/features/github/branches-view.tsx",
   "utf8",
 );
-const prDetailSource = readFileSync(
-  "apps/dashboard/src/features/github/pr-detail.tsx",
-  "utf8",
-);
+// The PR view is the header and conversation plus the review cockpit beside
+// it; these assertions are about what the PR page renders, so they read both.
+const prDetailSource = [
+  "pr-detail.tsx",
+  "pr-review-cockpit.tsx",
+]
+  .map((file) => readFileSync(`apps/dashboard/src/features/github/${file}`, "utf8"))
+  .join("\n");
 const tabsSource = readFileSync(
   // Shared with the Vercel view, so it lives in components/ui rather than
   // inside the GitHub feature.
