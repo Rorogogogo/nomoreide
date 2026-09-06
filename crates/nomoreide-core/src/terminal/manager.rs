@@ -35,8 +35,18 @@ const PROCESS_GROUP_EXIT_TIMEOUT: Duration = Duration::from_secs(5);
 /// How long the waiter is given to publish the exited state once the group has
 /// been signalled. The waiter confirms every descendant is gone before it
 /// publishes, which is what can take seconds.
+///
+/// Derived from `PROCESS_GROUP_EXIT_TIMEOUT` rather than written beside it: the
+/// waiter cannot publish until it has finished waiting for the group, so this
+/// is really "however long the group is allowed to take, plus time to publish".
+/// The two were 5s and 6s, leaving one second for the publish itself — enough
+/// on an idle machine, not enough on a loaded one.
+///
+/// The extra time costs nothing on the happy path, which returns as soon as the
+/// state is published. It is only ever reached by a close that is struggling.
 #[cfg(unix)]
-const TERMINAL_CLEANUP_CONFIRM_TIMEOUT: Duration = Duration::from_secs(6);
+const TERMINAL_CLEANUP_CONFIRM_TIMEOUT: Duration =
+    Duration::from_secs(PROCESS_GROUP_EXIT_TIMEOUT.as_secs() + 10);
 
 #[cfg(unix)]
 fn cleanup_process_group_after_wait(pid: Option<u32>) -> bool {
@@ -73,6 +83,22 @@ fn signal_process_group(pid: u32, signal: libc::c_int) -> std::io::Result<()> {
 fn process_group_exists(pid: u32) -> bool {
     let result = unsafe { libc::kill(-(pid as libc::pid_t), 0) };
     result == 0 || std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
+}
+
+/// Whether the OS says this process group is gone.
+///
+/// `None` when the platform cannot answer, which is every non-unix build: there
+/// is no process-group concept to consult, so the waiter's own record stands.
+fn process_group_is_gone(pid: Option<u32>) -> Option<bool> {
+    #[cfg(unix)]
+    {
+        pid.map(|pid| !process_group_exists(pid))
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = pid;
+        None
+    }
 }
 
 #[cfg(unix)]
@@ -612,9 +638,22 @@ impl TerminalManager {
                 .sessions
                 .get(id)
                 .map(|session| {
-                    session.generation == generation
-                        && session.metadata.state == "exited"
-                        && session.group_cleanup_complete
+                    if session.generation != generation {
+                        return false;
+                    }
+                    if session.metadata.state == "exited" && session.group_cleanup_complete {
+                        return true;
+                    }
+                    // The waiter gives the group a bounded time to disappear
+                    // and records `error` when it runs out. A timeout is not
+                    // proof the group survived — under load it usually means
+                    // "not yet" — and that record is written once and never
+                    // revisited, so a caller waiting on the flag alone can
+                    // never succeed however long it waits. Ask the OS instead:
+                    // if the group is gone, the session is closed, whichever
+                    // signal turned out to be the one that did it.
+                    session.metadata.state == "error"
+                        && process_group_is_gone(session.pid).unwrap_or(false)
                 })
                 .unwrap_or(false);
             if confirmed {
