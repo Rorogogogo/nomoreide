@@ -1,11 +1,18 @@
 //! Fixed Linear GraphQL operations. Tokens stay in the host's connection store.
+//!
+//! Both entry points take an **`Authorization` header value**, not a token. The
+//! two kinds of Linear credential are presented differently — a personal API
+//! key raw, an OAuth access token as a bearer — and a function taking a bare
+//! token would have to guess which it holds. Building the header is
+//! [`crate::linear_oauth::authorization_header`]'s job, which knows because it
+//! is told how the connection was made.
 use crate::remote::protocol::linear::LinearRequest;
 use serde_json::{json, Value};
 use std::time::Duration;
 
 const ISSUE: &str = "id identifier title description url branchName priority state { id name type } assignee { id name } team { id name } project { id name }";
 
-pub async fn query(token: &str, query: &str, variables: Value) -> Result<Value, String> {
+pub async fn query(authorization: &str, query: &str, variables: Value) -> Result<Value, String> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(25))
         .redirect(reqwest::redirect::Policy::none())
@@ -13,7 +20,7 @@ pub async fn query(token: &str, query: &str, variables: Value) -> Result<Value, 
         .map_err(|_| "Could not create Linear client")?;
     let response = client
         .post("https://api.linear.app/graphql")
-        .header("Authorization", token)
+        .header("Authorization", authorization)
         .json(&json!({"query": query, "variables": variables}))
         .send()
         .await
@@ -55,7 +62,7 @@ fn decode(value: Value) -> Result<Value, String> {
     }
     Ok(data.clone())
 }
-pub async fn execute(token: &str, request: &LinearRequest) -> Result<Value, String> {
+pub async fn execute(authorization: &str, request: &LinearRequest) -> Result<Value, String> {
     request.validate()?;
     let (document, variables) = match request {
         LinearRequest::Binding { .. } => return Err("Binding must be handled by the host".into()),
@@ -70,7 +77,7 @@ pub async fn execute(token: &str, request: &LinearRequest) -> Result<Value, Stri
         LinearRequest::Update { id, state } => (format!("mutation($id: String!, $input: IssueUpdateInput!) {{ issueUpdate(id: $id, input: $input) {{ success issue {{ {ISSUE} }} }} }}"), json!({"id": id, "input": {"stateId": state}})),
         LinearRequest::Comment { id, body } => ("mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id body user { name } } } }".into(), json!({"input": {"issueId": id, "body": body}})),
     };
-    query(token, &document, variables).await
+    query(authorization, &document, variables).await
 }
 #[cfg(test)]
 mod tests {

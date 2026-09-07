@@ -31,5 +31,13 @@ export const en_linear = {
   "linear.priority2": "High",
   "linear.priority3": "Normal",
   "linear.priority4": "Low",
+  "linear.oauth": "Continue with Linear",
+  "linear.oauthHint": "Sign in in your browser. Nothing is pasted, and the grant can be revoked from Linear.",
+  "linear.oauthWaiting": "Waiting for Linear in your browser…",
+  "linear.oauthFailed": "That sign-in did not finish.",
+  "linear.orKey": "or use an API key",
+  "linear.connectedVia": "Connected",
+  "linear.viaOauth": "via Linear sign-in",
+  "linear.viaKey": "via API key",
   "linear.back": "Back to tasks"
 } as const;

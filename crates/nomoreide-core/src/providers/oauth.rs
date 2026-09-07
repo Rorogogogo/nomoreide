@@ -44,13 +44,21 @@ const DEFAULT_CLIENT_NAME: &str = "NoMoreIDE";
 
 /// The vendor-specific half of a browser sign-in.
 ///
-/// Deliberately four plain values and no behaviour: this is the shape that has
-/// to survive being read out of a provider manifest rather than compiled in.
+/// Deliberately plain values and no behaviour: this is the shape that has to
+/// survive being read out of a provider manifest rather than compiled in.
+///
+/// The last two fields are the escape hatch for an authorization server that
+/// does less than Vercel's. Discovery and dynamic client registration are both
+/// *optional* parts of OAuth, and a vendor is free to ship neither — Linear
+/// ships neither. Rather than let that vendor grow a second PKCE
+/// implementation, it states its endpoints and its client id up front and the
+/// same [`begin_login`] serves both.
 #[derive(Debug, Clone)]
 pub struct ProviderOAuthSpec {
     /// Display name, used verbatim in every message the user may see.
     pub name: String,
-    /// Issuer whose `/.well-known/openid-configuration` is read.
+    /// Issuer whose `/.well-known/openid-configuration` is read, when
+    /// [`Self::endpoints`] is `None`. Still the cache key either way.
     pub issuer: String,
     /// Scopes requested at authorize time, space-separated.
     pub scope: String,
@@ -59,6 +67,18 @@ pub struct ProviderOAuthSpec {
     pub callback_path: String,
     /// Name registered with the authorization server.
     pub client_name: Option<String>,
+    /// Endpoints stated outright, for a vendor that publishes no discovery
+    /// document. When set, [`discover`] answers with these and never makes a
+    /// request — so a vendor without `/.well-known/openid-configuration` is a
+    /// spec that fills this in, not a second code path.
+    pub endpoints: Option<OAuthMetadata>,
+    /// A client id registered by hand, for a vendor with no registration
+    /// endpoint. When set, [`begin_login`] skips registration and uses it.
+    ///
+    /// Public by design: under PKCE the client id identifies the app and
+    /// authorizes nothing on its own, which is the same reason
+    /// [`crate::github_oauth`] ships its device-flow id as a constant.
+    pub client_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -122,6 +142,13 @@ pub fn reset_discovery_cache(issuer: Option<&str>) {
 /// The issuer's advertised endpoints. Discovered rather than hard-coded so a
 /// move of the token or registration endpoint doesn't silently break sign-in.
 pub async fn discover(spec: &ProviderOAuthSpec) -> Result<OAuthMetadata, String> {
+    // A spec that states its endpoints has nothing to discover. Checked before
+    // the cache as well as before the request: caching a constant would only
+    // create a way for it to go stale.
+    if let Some(endpoints) = &spec.endpoints {
+        return Ok(endpoints.clone());
+    }
+
     let now = now_ms();
     if let Some((cached, fetched_at)) = lock(discovery_cache()).get(&spec.issuer) {
         if now - fetched_at < DISCOVERY_TTL_MS {
@@ -213,7 +240,12 @@ pub async fn begin_login(
     redirect_uri: &str,
 ) -> Result<PendingLogin, String> {
     let metadata = discover(spec).await?;
-    let client_id = register_client(spec, &metadata, redirect_uri).await?;
+    // A stated client id is one somebody registered by hand, which is the only
+    // option when the vendor has no registration endpoint.
+    let client_id = match &spec.client_id {
+        Some(client_id) => client_id.clone(),
+        None => register_client(spec, &metadata, redirect_uri).await?,
+    };
 
     let verifier = random_base64url(32);
     let state = random_base64url(16);
@@ -472,7 +504,27 @@ mod tests {
             scope: "offline_access".into(),
             callback_path: "/api/providers/vendor/oauth/callback".into(),
             client_name: None,
+            endpoints: None,
+            client_id: None,
         }
+    }
+
+    /// A spec that states its endpoints must never reach the network, because
+    /// the vendor it exists for publishes nothing to reach. `vendor.test` does
+    /// not resolve, so a request here would fail rather than pass quietly.
+    #[tokio::test]
+    async fn stated_endpoints_are_answered_without_discovery() {
+        let mut spec = spec();
+        spec.endpoints = Some(OAuthMetadata {
+            authorization_endpoint: "https://vendor.test/authorize".into(),
+            token_endpoint: "https://api.vendor.test/token".into(),
+            registration_endpoint: None,
+            userinfo_endpoint: None,
+        });
+        let metadata = discover(&spec).await.expect("no request is made");
+        assert_eq!(metadata.token_endpoint, "https://api.vendor.test/token");
+        // ...and it is not cached, so it cannot go stale against the constant.
+        assert!(!lock(discovery_cache()).contains_key(&spec.issuer));
     }
 
     #[test]
