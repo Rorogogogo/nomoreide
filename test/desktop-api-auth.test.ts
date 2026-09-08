@@ -65,7 +65,16 @@ describe("desktop daemon authentication", () => {
         stream = controller;
       },
     });
-    const fetch = vi.fn(async () => new Response(body, { status: 200 }));
+    // The content type is part of the fixture because it is part of the
+    // contract: the client refuses a 200 that is not a stream, and all three
+    // daemon stream routes send `text/event-stream`.
+    const fetch = vi.fn(
+      async () =>
+        new Response(body, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        }),
+    );
     vi.stubGlobal("fetch", fetch);
 
     const source = openApiEventSource("/api/terminal/events");
@@ -87,6 +96,42 @@ describe("desktop daemon authentication", () => {
     expect(new Headers(init?.headers).get("authorization")).toBe(
       "Bearer desktop-secret",
     );
+  });
+
+  /**
+   * The regression this replaced. A browser used to get a native
+   * `EventSource`, which cannot set an `Authorization` header — so every
+   * stream answered 401 and the terminal, the error inbox and the agent feed
+   * silently never updated. The credential is injected into the document as
+   * `__NOMOREIDE_WEB__`, and the stream has to use it.
+   */
+  test("a browser stream carries the injected credential, not a bare EventSource", async () => {
+    vi.stubGlobal("__NOMOREIDE_DESKTOP__", undefined);
+    (window as unknown as { __NOMOREIDE_WEB__?: unknown }).__NOMOREIDE_WEB__ = {
+      credential: "browser-secret",
+    };
+    const body = new ReadableStream<Uint8Array>({ start: () => {} });
+    const fetch = vi.fn(
+      async () =>
+        new Response(body, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    const source = openApiEventSource("/api/errors/stream");
+    await new Promise<void>((resolve) => source.addEventListener("open", () => resolve()));
+    source.close();
+
+    const [url, init] = fetch.mock.calls[0];
+    // Resolved against the page's own origin — in a browser the daemon *is*
+    // where the document came from.
+    expect(url).toBe(`${window.location.origin}/api/errors/stream`);
+    // Never in the URL: a query credential lands in access logs and referrers.
+    expect(String(url)).not.toContain("browser-secret");
+    expect(new Headers(init?.headers).get("authorization")).toBe("Bearer browser-secret");
+    delete (window as unknown as { __NOMOREIDE_WEB__?: unknown }).__NOMOREIDE_WEB__;
   });
 
   test("uses a header-capable WebSocket subprotocol instead of a query credential", () => {

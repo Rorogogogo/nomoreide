@@ -5,9 +5,15 @@ export type ApiEventSource = Pick<
   "addEventListener" | "removeEventListener" | "close"
 >;
 
+/** First reconnect delay, and the ceiling it backs off to. */
+const RETRY_MIN_MS = 1_000;
+const RETRY_MAX_MS = 30_000;
+
 class AuthenticatedEventSource extends EventTarget {
   private readonly controller = new AbortController();
-  private retryMs = 1_000;
+  private retryMs = RETRY_MIN_MS;
+  /** Set by a `retry:` field, which pins the delay rather than backing off. */
+  private serverRetryMs: number | null = null;
 
   constructor(private readonly url: string) {
     super();
@@ -28,6 +34,17 @@ class AuthenticatedEventSource extends EventTarget {
         if (!response.ok || !response.body) {
           throw new Error(`Event stream failed (${response.status}).`);
         }
+        // A 200 that is not a stream is not a stream. Without this check a JSON
+        // body reads as zero frames and ends immediately, which looks like a
+        // clean disconnect and reconnects at once — a busy loop against
+        // whatever answered.
+        const kind = response.headers.get("content-type") ?? "";
+        if (!kind.includes("text/event-stream")) {
+          throw new Error(`Event stream returned ${kind || "no content type"}.`);
+        }
+        // Connected, so the next failure starts its backoff from the floor
+        // rather than from wherever the last outage climbed to.
+        this.retryMs = RETRY_MIN_MS;
         this.dispatchEvent(new Event("open"));
         await this.read(response.body);
       } catch (caught) {
@@ -35,7 +52,12 @@ class AuthenticatedEventSource extends EventTarget {
         this.dispatchEvent(new Event("error"));
         void caught;
       }
-      await waitForRetry(this.retryMs, this.controller.signal);
+      await waitForRetry(this.serverRetryMs ?? this.retryMs, this.controller.signal);
+      // Back off, so a stream that is refused — a daemon that stopped, a route
+      // that 401s — is retried at a widening interval rather than once a second
+      // forever. `EventSource` does this for us; doing it ourselves is part of
+      // the cost of replacing it.
+      this.retryMs = Math.min(this.retryMs * 2, RETRY_MAX_MS);
     }
   }
 
@@ -74,7 +96,7 @@ class AuthenticatedEventSource extends EventTarget {
       if (field === "event" && value) event = value;
       else if (field === "data") data.push(value);
       else if (field === "id") lastEventId = value;
-      else if (field === "retry" && /^\d+$/.test(value)) this.retryMs = Number(value);
+      else if (field === "retry" && /^\d+$/.test(value)) this.serverRetryMs = Number(value);
     }
     if (!data.length) return;
     this.dispatchEvent(
@@ -106,9 +128,22 @@ function waitForRetry(delay: number, signal: AbortSignal): Promise<void> {
   });
 }
 
+/**
+ * A server-sent-event stream that can authenticate.
+ *
+ * **Always the fetch-backed one, never the native `EventSource`.** This used to
+ * hand a browser `new EventSource(url)` and keep the authenticated path for the
+ * desktop app — but every `/api/*` route is behind `require_credential`, and an
+ * `EventSource` cannot set an `Authorization` header. So in a browser the
+ * terminal, the error inbox and the agent tool-call feed all answered
+ * `401 Unauthorized` and silently never updated, while the console filled with
+ * reconnects.
+ *
+ * The credential is available in both places — `__NOMOREIDE_DESKTOP__` in the
+ * app, `__NOMOREIDE_WEB__` injected into the document by the daemon's shell —
+ * and `apiFetch` reads whichever is there. There was never a reason for the
+ * browser to take a different path.
+ */
 export function openApiEventSource(url: string): ApiEventSource {
-  if (typeof window === "undefined" || !window.__NOMOREIDE_DESKTOP__) {
-    return new EventSource(url);
-  }
   return new AuthenticatedEventSource(url) as ApiEventSource;
 }

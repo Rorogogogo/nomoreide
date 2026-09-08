@@ -1702,6 +1702,35 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     error where the feature should be. Demo data, never a real key: the
     connection reports connected and the token routes do nothing.
   */
+  /*
+    The live streams.
+
+    These reach the mock at all only since the dashboard stopped using a native
+    `EventSource` — that bypassed `window.fetch` entirely, so the demo never saw
+    them. Now they arrive here, and the `{ ok: true }` fallback would answer
+    JSON: not a stream, so the client would treat it as a connection that ended
+    immediately and reconnect, forever.
+
+    An event stream that stays open and says nothing is the honest answer. The
+    demo has no daemon, so there are no events — and a socket parked open costs
+    nothing, where a reconnect loop costs a core.
+  */
+  if (
+    path === "/api/terminal/events" ||
+    path === "/api/errors/stream" ||
+    path === "/api/agent/tool-calls/stream"
+  ) {
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          // A comment frame, so the connection is unambiguously established.
+          controller.enqueue(new TextEncoder().encode(": demo\n\n"));
+        },
+      }),
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+  }
+
   if (path === "/api/linear/connection") {
     if (method === "DELETE") return json({ ok: true });
     if (method === "POST") return json({ ok: true });
