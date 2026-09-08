@@ -18,6 +18,7 @@ mod daemon_cli;
 mod database;
 mod flags;
 mod git;
+mod linear;
 mod profile;
 mod remote;
 mod setup;

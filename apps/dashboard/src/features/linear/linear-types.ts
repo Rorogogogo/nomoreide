@@ -1,9 +1,11 @@
 export interface LinearChoice { id: string; name: string }
-export interface LinearTeam extends LinearChoice { states: { nodes: LinearChoice[] }; projects: { nodes: LinearChoice[] } }
+/** A workflow state. `type` is Linear's fixed enum — see `linear-states.ts`. */
+export interface LinearState extends LinearChoice { type: string }
+export interface LinearTeam extends LinearChoice { states: { nodes: LinearState[] }; projects: { nodes: LinearChoice[] } }
 export interface LinearIssue {
   id: string;
   identifier: string; title: string; description: string | null; url: string; branchName: string;
-  priority: number; state: LinearChoice; team: LinearChoice; assignee: LinearChoice | null;
+  priority: number; state: LinearState; team: LinearChoice; assignee: LinearChoice | null;
   comments?: { nodes: { id: string; body: string; user: { name: string } | null }[]; pageInfo: { hasNextPage: boolean } };
 }
 export type LinearRequest =

@@ -1705,7 +1705,16 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   if (path === "/api/linear/connection") {
     if (method === "DELETE") return json({ ok: true });
     if (method === "POST") return json({ ok: true });
-    return json({ ok: true, connected: true });
+    // `source` drives the "connected via" line. `oauthAvailable` is false: the
+    // demo has no daemon to run a browser sign-in against, and offering the
+    // button here would open a consent screen for a machine that is not there.
+    return json({ ok: true, connected: true, source: "stored", oauthAvailable: false });
+  }
+  if (path === "/api/linear/oauth/status") {
+    return json({ ok: true, phase: "idle" });
+  }
+  if (path === "/api/linear/oauth/start") {
+    return json({ ok: false, error: "The demo has no machine to sign in on." }, 400);
   }
   if (path === "/api/linear/request") {
     const sent = init?.body

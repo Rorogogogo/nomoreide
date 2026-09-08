@@ -125,6 +125,25 @@ pub(super) enum ArgumentContract {
     /// inbox still holds it is the executor's question — an inbox keeps only
     /// the most recent hundred, so a valid id can stop existing.
     IncidentPrompt,
+    /// `nomoreide_linear_teams`: nothing. Which teams exist is the workspace's
+    /// question, not the caller's.
+    ///
+    /// (Kept as its own variant rather than folded into `Empty` so the Linear
+    /// group reads as a group here.)
+    LinearTeams,
+    /// `nomoreide_linear_issues`: a required team, an optional project, and a
+    /// page size bounded by what one Linear page actually holds — asking for
+    /// more than the API returns would promise a page that cannot arrive.
+    LinearIssues,
+    /// `nomoreide_linear_issue`: the id or identifier of one issue.
+    LinearIssue,
+    /// `nomoreide_linear_move`: an issue and the state to move it to. Both
+    /// required — a move with no destination is not a move, and defaulting one
+    /// would pick a column on the user's behalf.
+    LinearMove,
+    /// `nomoreide_linear_comment`: an issue and a non-empty body. An empty
+    /// comment is a no-op that still notifies everyone watching the issue.
+    LinearComment,
     /// `nomoreide_docs`: one optional topic from a fixed set. Absent asks for
     /// the index, so — unlike a database engine — nothing is missing when it
     /// is not given.
@@ -244,6 +263,9 @@ const SERVICE_KINDS: &[&str] = &["local", "docker-compose", "ssh"];
 const DATABASE_ENGINES: &[&str] = &["postgres", "mysql", "sqlite"];
 /// The reference's `z.number().int().positive().max(200)`, for incidents.
 const INCIDENT_LIMIT_MAX: f64 = 200.0;
+/// One Linear page. Asking for more than the API returns would promise a page
+/// that cannot arrive, so the ceiling is the page rather than a round number.
+const LINEAR_ISSUE_LIMIT_MAX: f64 = 30.0;
 /// The reference's `z.number().int().positive().max(1000)`, for rows rather
 /// than for log lines.
 const ROW_LIMIT_MAX: f64 = 1000.0;
@@ -322,6 +344,11 @@ impl ArgumentContract {
             "nomoreide_db_query" => Some(Self::DatabaseQuery),
             "nomoreide_list_errors" => Some(Self::IncidentList),
             "nomoreide_error_prompt" => Some(Self::IncidentPrompt),
+            "nomoreide_linear_teams" => Some(Self::LinearTeams),
+            "nomoreide_linear_issues" => Some(Self::LinearIssues),
+            "nomoreide_linear_issue" => Some(Self::LinearIssue),
+            "nomoreide_linear_move" => Some(Self::LinearMove),
+            "nomoreide_linear_comment" => Some(Self::LinearComment),
             "nomoreide_docs" => Some(Self::DocsTopic),
             "nomoreide_deploy_list_projects" => Some(Self::DeployProjects),
             "nomoreide_deploy_list_deployments" => Some(Self::DeployDeployments),
@@ -415,6 +442,24 @@ impl ArgumentContract {
             }
             Self::IncidentList => collect(bounded_integer(arguments, "limit", INCIDENT_LIMIT_MAX)),
             Self::IncidentPrompt => collect(required_integer(arguments, "id")),
+            Self::LinearTeams => collect(Vec::new()),
+            Self::LinearIssues => {
+                let mut failures = required_string_of(arguments, "team", 1);
+                failures.extend(optional_string(arguments, "project"));
+                failures.extend(bounded_integer(arguments, "limit", LINEAR_ISSUE_LIMIT_MAX));
+                collect(failures)
+            }
+            Self::LinearIssue => collect(required_string_of(arguments, "id", 1)),
+            Self::LinearMove => {
+                let mut failures = required_string_of(arguments, "id", 1);
+                failures.extend(required_string_of(arguments, "state", 1));
+                collect(failures)
+            }
+            Self::LinearComment => {
+                let mut failures = required_string_of(arguments, "id", 1);
+                failures.extend(required_string_of(arguments, "body", 1));
+                collect(failures)
+            }
             Self::DocsTopic => collect(enumerated(
                 arguments,
                 "topic",

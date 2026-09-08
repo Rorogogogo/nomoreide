@@ -17,7 +17,18 @@ function sanitize(html: string): string {
     .replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '$1=$2#$2');
 }
 
-export function MarkdownPreview({ content }: { content: string }) {
+export function MarkdownPreview({
+  className = "px-6 py-5",
+  content,
+}: {
+  /**
+   * The padding this preview sits in. Defaults to the file viewer's, which is
+   * a document-reading measure; a dense panel passes something tighter rather
+   * than fighting it with a negative margin.
+   */
+  className?: string;
+  content: string;
+}) {
   const html = useMemo(() => {
     const parsed = marked.parse(content, { async: false, gfm: true, breaks: false });
     return sanitize(parsed as string);
@@ -36,7 +47,7 @@ export function MarkdownPreview({ content }: { content: string }) {
   return (
     <div
       ref={containerRef}
-      className="md-preview min-w-0 px-6 py-5"
+      className={`md-preview min-w-0 ${className}`}
       // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized above
       dangerouslySetInnerHTML={{ __html: html }}
     />

@@ -88,3 +88,4 @@ pub mod vultr_provider;
 pub mod zod_report;
 
 pub mod linear;
+pub mod linear_oauth;

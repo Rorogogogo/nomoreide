@@ -55,7 +55,7 @@ pub(crate) fn routes() -> Router<AppState> {
 
 /// Where a provider's sign-in has got to, as the dashboard's poll reads it.
 #[derive(Debug, Clone)]
-enum LoginPhase {
+pub(crate) enum LoginPhase {
     Idle,
     Pending,
     Connected,
@@ -65,7 +65,7 @@ enum LoginPhase {
 impl LoginPhase {
     /// Flattened into the answer rather than nested, because the reference
     /// spreads it: `{ ok: true, phase, error? }`.
-    fn into_body(self) -> Value {
+    pub(crate) fn into_body(self) -> Value {
         match self {
             Self::Idle => json!({ "ok": true, "phase": "idle" }),
             Self::Pending => json!({ "ok": true, "phase": "pending" }),
@@ -77,6 +77,11 @@ impl LoginPhase {
 
 /// Sign-ins awaiting their browser callback, plus the outcome of the most
 /// recent one, per provider.
+///
+/// **Keyed by a connection id, not by a deploy provider.** `linear` files its
+/// sign-in here too: the three-map dance below is about OAuth's shape rather
+/// than about deployments, and a second copy of it for the one non-deploy
+/// provider would be a second place for a verifier to be swept wrongly.
 ///
 /// Three maps rather than one because they are keyed differently and swept
 /// differently: the verifier is keyed by `state` and expires on its own, the
@@ -101,14 +106,14 @@ impl ProviderLogins {
         Self::default()
     }
 
-    fn phase(&self, provider: &str) -> LoginPhase {
+    pub(crate) fn phase(&self, provider: &str) -> LoginPhase {
         lock(&self.inner.phases)
             .get(provider)
             .cloned()
             .unwrap_or(LoginPhase::Idle)
     }
 
-    fn set_phase(&self, provider: &str, phase: LoginPhase) {
+    pub(crate) fn set_phase(&self, provider: &str, phase: LoginPhase) {
         lock(&self.inner.phases).insert(provider.to_string(), phase);
     }
 
@@ -122,14 +127,14 @@ impl ProviderLogins {
         self.set_phase(provider, LoginPhase::Idle);
     }
 
-    fn remember(&self, provider: &str, login: PendingLogin) {
+    pub(crate) fn remember(&self, provider: &str, login: PendingLogin) {
         lock(&self.inner.owners).insert(login.state.clone(), provider.to_string());
         self.inner.sessions.remember(login);
     }
 
     /// The pending sign-in for `state`, and whoever started it. Both are
     /// forgotten in the taking — a code is redeemable once.
-    fn take(&self, state: &str) -> (Option<PendingLogin>, Option<String>) {
+    pub(crate) fn take(&self, state: &str) -> (Option<PendingLogin>, Option<String>) {
         let login = self.inner.sessions.take(state);
         let owner = lock(&self.inner.owners).remove(state);
         (login, owner)
@@ -304,7 +309,7 @@ fn refuse(logins: &ProviderLogins, provider: &str, message: String) -> Response 
     error(StatusCode::INTERNAL_SERVER_ERROR, &message)
 }
 
-fn html(status: StatusCode, body: &str) -> Response {
+pub(crate) fn html(status: StatusCode, body: &str) -> Response {
     (
         status,
         [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")],
@@ -318,7 +323,7 @@ fn html(status: StatusCode, body: &str) -> Response {
 /// Byte-identical to the reference's, because it is a response body a gate
 /// compares like any other — the whitespace and the line breaks inside the
 /// `<style>` are part of it.
-fn login_result_page(heading: &str, detail: &str) -> String {
+pub(crate) fn login_result_page(heading: &str, detail: &str) -> String {
     format!(
         "<!doctype html><html><head><meta charset=\"utf-8\"><title>{heading}</title>\n\
 <style>body{{font:15px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#111}}\n\

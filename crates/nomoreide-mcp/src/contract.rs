@@ -32,9 +32,9 @@ impl ToolRegistry {
                 contract.contract_version
             ));
         }
-        if contract.tools.len() != 90 {
+        if contract.tools.len() != 95 {
             return Err(format!(
-                "frozen MCP contract contains {} tools instead of 90",
+                "frozen MCP contract contains {} tools instead of 95",
                 contract.tools.len()
             ));
         }
@@ -88,12 +88,18 @@ pub(crate) fn registry() -> &'static ToolRegistry {
 mod tests {
     use super::*;
 
+    /// The count is asserted, not merely counted, because the contract is
+    /// frozen: a tool appearing or vanishing is a change to what this server
+    /// promises, and it should take a deliberate edit here to make it.
+    ///
+    /// The first and last entries are pinned too — order is part of the
+    /// contract, so an append must stay an append.
     #[test]
-    fn frozen_registry_has_exactly_ninety_unique_tools() {
+    fn frozen_registry_has_exactly_ninety_five_unique_tools() {
         let registry = registry();
-        assert_eq!(registry.tools().len(), 90);
-        assert_eq!(registry.names.len(), 90);
+        assert_eq!(registry.tools().len(), 95);
+        assert_eq!(registry.names.len(), 95);
         assert_eq!(registry.tools()[0]["name"], "nomoreide_list_services");
-        assert_eq!(registry.tools()[89]["name"], "nomoreide_reclaim_terminal");
+        assert_eq!(registry.tools()[94]["name"], "nomoreide_linear_comment");
     }
 }

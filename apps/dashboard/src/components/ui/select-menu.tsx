@@ -202,7 +202,13 @@ export function SelectMenu({
         ? createPortal(
             <div
               aria-label={ariaLabel}
-              className="fixed z-[100] flex max-h-80 flex-col overflow-y-auto rounded-md border border-border bg-card p-1 shadow-md"
+              // `z-[1100]`, the layer the context menu and the tooltip use: a
+              // popup has to clear whatever opened it, and dialogs sit at
+              // `z-[1000]`. At `z-[100]` this menu rendered *behind* any dialog
+              // it was opened from — the trigger took focus and nothing
+              // appeared, which reads as a dead control rather than a stacking
+              // bug. Toasts stay above at `z-[9999]`.
+              className="fixed z-[1100] flex max-h-80 flex-col overflow-y-auto rounded-md border border-border bg-card p-1 shadow-md"
               ref={menuRef}
               role="listbox"
               style={{ top: coords.top, left: coords.left, minWidth: coords.minWidth }}

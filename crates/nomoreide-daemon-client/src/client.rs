@@ -193,6 +193,45 @@ impl DaemonClient {
         Ok(body.to_vec())
     }
 
+    /// One typed Linear operation, answered by the daemon.
+    ///
+    /// **Through the daemon rather than against Linear directly**, and that is
+    /// the whole point: the token lives in the daemon's connection store, an
+    /// OAuth grant is renewed on the way into a request, and the repository
+    /// binding is read there. A second Linear client in the MCP adapter would
+    /// have to reimplement all three, which is the mistake
+    /// `docs/plans/2026-09-01-desktop-in-process-daemon.md` exists to undo
+    /// elsewhere.
+    ///
+    /// The request is passed through as-is — `nomoreide-core` owns which
+    /// operations exist and validates them, so this is transport and nothing
+    /// more.
+    pub async fn linear_request(
+        &self,
+        request: &serde_json::Value,
+    ) -> Result<serde_json::Value, DaemonClientError> {
+        let url = self.endpoint.api_url("api/linear/request");
+        let response = self
+            .send_authenticated(self.http.post(url).json(request))
+            .await?;
+        let status = response.status();
+        let body = response.bytes().await.map_err(DaemonClientError::Request)?;
+        if !status.is_success() {
+            let message = serde_json::from_slice::<ErrorEnvelope>(&body)
+                .ok()
+                .filter(|envelope| !envelope.ok)
+                .map(|envelope| envelope.error)
+                .unwrap_or_else(|| "Linear request failed.".to_string());
+            return Err(DaemonClientError::Http { status, message });
+        }
+        let envelope: serde_json::Value = serde_json::from_slice(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        envelope
+            .get("data")
+            .cloned()
+            .ok_or_else(|| DaemonClientError::Protocol("Linear answer carried no data".into()))
+    }
+
     pub async fn start_service(
         &self,
         name: &str,

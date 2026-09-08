@@ -18,7 +18,7 @@ use nomoreide_daemon_client::{DaemonClient, DaemonClientError, RuntimePaths, Ser
 
 use crate::flags::{parse_flags, Flags};
 
-pub const USAGE: &str = "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|agents|profile|remote|list|logs|start|stop|restart|add]";
+pub const USAGE: &str = "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|linear|agents|profile|remote|list|logs|start|stop|restart|add]";
 
 /// A failure on its way to an exit code.
 pub enum CliError {
@@ -38,6 +38,13 @@ pub enum CliError {
 impl CliError {
     pub fn usage(message: impl Into<String>) -> Self {
         Self::Usage(message.into())
+    }
+
+    /// Something outside the caller's control refused — a daemon that would not
+    /// answer, a provider that said no. Exit 2, so a script can tell it apart
+    /// from a command it typed wrong.
+    pub fn failure(message: impl Into<String>) -> Self {
+        Self::Failure(message.into())
     }
 
     fn code(&self) -> u8 {
@@ -108,6 +115,12 @@ async fn dispatch(args: &[String], paths: &RuntimePaths, port: u16) -> CliResult
         (Some("db"), _) => crate::database::run(subcommand, &rest, &store).await,
         (Some("profile"), _) => crate::profile::run(subcommand, &rest).await,
         (Some("remote"), _) => crate::remote::run(subcommand, &rest).await,
+        // Through the daemon: the Linear credential, its refresh and the
+        // repository binding all live there.
+        (Some("linear"), _) => {
+            let client = connect(paths, port).await?;
+            crate::linear::run(subcommand, &rest, &client).await
+        }
         (Some("add"), Some("service")) => add_service(&store, &rest).await,
         (Some("add"), Some("bundle")) => add_bundle(&store, &rest).await,
         (Some("list"), _) => list(&store).await,

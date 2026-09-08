@@ -63,6 +63,10 @@ pub fn vercel_oauth() -> ProviderOAuthSpec {
         scope: OAUTH_SCOPE.into(),
         callback_path: "/api/providers/vercel/oauth/callback".into(),
         client_name: None,
+        // Vercel publishes both a discovery document and a registration
+        // endpoint, so it states neither.
+        endpoints: None,
+        client_id: None,
     }
 }
 

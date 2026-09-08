@@ -118,6 +118,10 @@ pub(crate) fn router(state: AppState) -> Router {
         // Loaded by a browser following the registry's redirect, which carries
         // no credential and cannot be given one.
         .merge(agent_auth::public())
+        // Same reason: Linear redirects a browser here at the end of a sign-in,
+        // and a redirect cannot be given the daemon's credential. Guarded by the
+        // one-shot `state` it must carry — see the module.
+        .merge(linear::public())
         .merge(authenticated(state.clone()))
         // Last, so every `/api/*` route above wins first — the dispatch order
         // the reference gets by registering its shell routes at the end of the

@@ -6,6 +6,7 @@ pub(crate) mod docs;
 mod errors;
 mod git;
 mod github;
+mod linear;
 mod onboard;
 mod profiles;
 mod registration;
@@ -347,6 +348,15 @@ impl NativeToolExecutor {
             NativeTool::ListTerminalSessions => terminal::list(&client).await,
             NativeTool::OpenTerminal(id) => terminal::open(&client, id).await,
             NativeTool::ReclaimTerminal(id) => terminal::reclaim(&client, id).await,
+            NativeTool::LinearTeams => linear::teams(&client).await,
+            NativeTool::LinearIssues {
+                team,
+                project,
+                limit,
+            } => linear::issues(&client, team, project, limit).await,
+            NativeTool::LinearIssue { id } => linear::issue(&client, id).await,
+            NativeTool::LinearMove { id, state } => linear::move_issue(&client, id, state).await,
+            NativeTool::LinearComment { id, body } => linear::comment(&client, id, body).await,
             NativeTool::ListErrors { limit } => errors::list(&client, limit).await,
             NativeTool::ErrorPrompt { id } => errors::prompt(&client, id).await,
             NativeTool::ReadLogs { service, limit } => {
@@ -497,6 +507,27 @@ enum NativeTool<'a> {
     ListTerminalSessions,
     OpenTerminal(&'a str),
     ReclaimTerminal(&'a str),
+    /// The Linear task surface. Every one goes through the daemon, which is
+    /// where the credential, the token refresh and the repository binding are.
+    /// `LinearMove` is the only write, and it moves a workflow state and
+    /// nothing else.
+    LinearTeams,
+    LinearIssues {
+        team: &'a str,
+        project: Option<&'a str>,
+        limit: usize,
+    },
+    LinearIssue {
+        id: &'a str,
+    },
+    LinearMove {
+        id: &'a str,
+        state: &'a str,
+    },
+    LinearComment {
+        id: &'a str,
+        body: &'a str,
+    },
     /// The daemon owns the inbox, so both of these go through it.
     ListErrors {
         limit: u32,
@@ -820,6 +851,28 @@ impl<'a> NativeTool<'a> {
             "nomoreide_reclaim_terminal" => {
                 Ok(Self::ReclaimTerminal(required_text(arguments, "id")?))
             }
+            "nomoreide_linear_teams" => Ok(Self::LinearTeams),
+            "nomoreide_linear_issues" => Ok(Self::LinearIssues {
+                team: required_text(arguments, "team")?,
+                project: arguments.get("project").and_then(Value::as_str),
+                limit: arguments
+                    .get("limit")
+                    .and_then(Value::as_u64)
+                    .and_then(|limit| usize::try_from(limit).ok())
+                    .filter(|limit| *limit > 0)
+                    .unwrap_or(linear::DEFAULT_ISSUE_LIMIT),
+            }),
+            "nomoreide_linear_issue" => Ok(Self::LinearIssue {
+                id: required_text(arguments, "id")?,
+            }),
+            "nomoreide_linear_move" => Ok(Self::LinearMove {
+                id: required_text(arguments, "id")?,
+                state: required_text(arguments, "state")?,
+            }),
+            "nomoreide_linear_comment" => Ok(Self::LinearComment {
+                id: required_text(arguments, "id")?,
+                body: required_text(arguments, "body")?,
+            }),
             "nomoreide_list_errors" => Ok(Self::ListErrors {
                 limit: arguments
                     .get("limit")
