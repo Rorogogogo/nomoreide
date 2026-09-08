@@ -14,7 +14,14 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
-import { orderStates, priorityTone, stateTone } from "./linear-states";
+import {
+  columnFor as previewedColumn,
+  orderStates,
+  priorityTone,
+  resolveColumn,
+  stateTone,
+  type BoardPreview,
+} from "./linear-states";
 import type { LinearIssue, LinearState } from "./linear-types";
 
 /**
@@ -69,12 +76,10 @@ export function LinearBoard({
    * the column's own sortable does the animating and the space is reserved
    * while you are still holding it.
    */
-  const [preview, setPreview] = useState<{ id: string; stateId: string } | null>(null);
+  const [preview, setPreview] = useState<BoardPreview>(null);
   const ordered = useMemo(() => orderStates(states), [states]);
 
-  /** The state a card is in *right now*, preview included. */
-  const columnFor = (issue: LinearIssue) =>
-    preview && preview.id === issue.id ? preview.stateId : issue.state.id;
+  const columnFor = (issue: LinearIssue) => previewedColumn(issue, preview);
 
   /**
    * A drag starts only after 8px of movement.
@@ -89,18 +94,15 @@ export function LinearBoard({
     return <p className="p-3 text-[12px] text-muted-foreground">{t("boardNoStates")}</p>;
   }
 
-  /** Which column an id belongs to — a column's own id, or the card's state. */
-  function columnOf(id: string): LinearState | undefined {
-    const column = ordered.find((state) => state.id === id);
-    if (column) return column;
-    const issue = issues.find((entry) => entry.id === id);
-    return issue && ordered.find((state) => state.id === issue.state.id);
-  }
+  /** See `resolveColumn` — preview-aware, and a test says why. */
+  const columnOf = (id: string) => resolveColumn(id, ordered, issues, preview);
 
   function onDragOver(event: DragOverEvent) {
     const moved = event.active.id as string;
     const over = event.over?.id as string | undefined;
-    if (!over) return;
+    // Hovering yourself says nothing about where you are going, and resolving
+    // it is the step that made the loop above possible at all.
+    if (!over || over === moved) return;
     const target = columnOf(over);
     if (!target) return;
     // Only when it actually changes, or every pointer move re-renders the board.

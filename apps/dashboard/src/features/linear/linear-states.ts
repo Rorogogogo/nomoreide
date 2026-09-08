@@ -1,4 +1,4 @@
-import type { LinearState } from "./linear-types";
+import type { LinearIssue, LinearState } from "./linear-types";
 
 /**
  * Linear's workflow-state vocabulary, and what it means here.
@@ -51,4 +51,39 @@ export const PRIORITIES = [0, 1, 2, 3, 4] as const;
 /** Urgent earns red; everything else stays quiet. */
 export function priorityTone(priority: number): string {
   return priority === 1 ? "text-red-600 dark:text-red-500" : "text-muted-foreground";
+}
+
+/**
+ * Where the dragged card is pretending to be, while a drag is in flight.
+ *
+ * `null` when nothing is being dragged.
+ */
+export type BoardPreview = { id: string; stateId: string } | null;
+
+/** The state a card is in right now, preview included. */
+export function columnFor(issue: LinearIssue, preview: BoardPreview): string {
+  return preview && preview.id === issue.id ? preview.stateId : issue.state.id;
+}
+
+/**
+ * The column an id addresses — a column's own id, or the card's current state.
+ *
+ * **Preview-aware, and that is the whole point.** Resolving a card to its
+ * *stored* state instead put the board in an infinite update loop: hovering
+ * column B set the preview to B and re-rendered the card into B, at which point
+ * the pointer was over the card itself, and resolving that id went back to the
+ * stored state — column A. The preview flipped to A, the card moved back, the
+ * pointer was over B again, and React gave up with "maximum update depth
+ * exceeded". Extracted here so a test holds the invariant instead of a comment.
+ */
+export function resolveColumn(
+  id: string,
+  states: LinearState[],
+  issues: LinearIssue[],
+  preview: BoardPreview,
+): LinearState | undefined {
+  const column = states.find((state) => state.id === id);
+  if (column) return column;
+  const issue = issues.find((entry) => entry.id === id);
+  return issue && states.find((state) => state.id === columnFor(issue, preview));
 }
