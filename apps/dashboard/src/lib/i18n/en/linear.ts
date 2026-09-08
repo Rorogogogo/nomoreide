@@ -44,5 +44,6 @@ export const en_linear = {
   "linear.viewBoard": "Board",
   "linear.boardEmpty": "Nothing here",
   "linear.boardNoStates": "Choose a team to see its board.",
+  "linear.close": "Close",
   "linear.back": "Back to tasks"
 } as const;

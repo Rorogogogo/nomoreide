@@ -44,5 +44,6 @@ export const zh_linear = {
   "linear.viewBoard": "看板",
   "linear.boardEmpty": "暂无任务",
   "linear.boardNoStates": "选择团队以查看看板。",
+  "linear.close": "关闭",
   "linear.back": "返回任务列表"
 } as const;

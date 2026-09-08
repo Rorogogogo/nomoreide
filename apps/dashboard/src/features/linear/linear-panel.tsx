@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { LinearBoard } from "./linear-board";
 import { LinearDetail } from "./linear-detail";
 import { LinearList } from "./linear-list";
+import { LinearTaskDialog } from "./linear-task-dialog";
 import { PRIORITIES } from "./linear-states";
 import type { LinearIssue, LinearTransport } from "./linear-types";
 import { useLinearTasks } from "./use-linear-tasks";
@@ -234,21 +235,21 @@ export function LinearPanel({
             states={states}
             t={t}
           />
-          {/* A real structural boundary between two regions, so this one is a
-              full-height border rather than an inset hairline. */}
+          {/* Over the board rather than beside it: the columns are what this
+              view is for, and a pane taking a third of the width pushes half
+              of them off screen. The list keeps its side pane — see the
+              dialog's own note. */}
           {m.issue && (
-            <section className="flex w-96 min-w-0 shrink-0 flex-col border-l border-border">
-              <LinearDetail
-                busy={m.busy}
-                issue={m.issue}
-                onBack={m.closeIssue}
-                onComment={m.comment}
-                onStateChange={(state) => void m.update(state.id)}
-                states={states}
-                t={t}
-                taskAction={taskAction}
-              />
-            </section>
+            <LinearTaskDialog
+              busy={m.busy}
+              issue={m.issue}
+              onClose={m.closeIssue}
+              onComment={m.comment}
+              onStateChange={(state) => void m.update(state.id)}
+              states={states}
+              t={t}
+              taskAction={taskAction}
+            />
           )}
         </div>
       ) : (

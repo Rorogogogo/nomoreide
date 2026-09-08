@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { MarkdownPreview } from "../git/visualizers/markdown-preview";
 import { orderStates, stateTone } from "./linear-states";
 import { cn } from "@/lib/utils";
 import type { LinearIssue, LinearState } from "./linear-types";
@@ -19,6 +20,7 @@ export function LinearDetail({
   states,
   t,
   taskAction,
+  trailing,
 }: {
   busy: boolean;
   issue: LinearIssue;
@@ -28,6 +30,8 @@ export function LinearDetail({
   states: LinearState[];
   t: (key: string) => string;
   taskAction?: (issue: LinearIssue) => ReactNode;
+  /** An extra control for the header strip — the dialog's close button. */
+  trailing?: ReactNode;
 }) {
   const [comment, setComment] = useState("");
   const ordered = orderStates(states);
@@ -74,6 +78,7 @@ export function LinearDetail({
         >
           {t("open")}
         </a>
+        {trailing}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -82,11 +87,12 @@ export function LinearDetail({
           {taskAction && <span className="shrink-0">{taskAction(issue)}</span>}
         </div>
 
-        {issue.description && (
-          <p className="whitespace-pre-wrap break-words px-3 pb-3 text-[12px] text-muted-foreground">
-            {issue.description}
-          </p>
-        )}
+        {/* Linear descriptions are Markdown, and were being rendered as plain
+            text — so a task written with headings and code fences showed its
+            `##` and its backticks. Same renderer the git file viewer and the
+            GitHub issue pane use, at this panel's padding rather than the file
+            viewer's reading measure. */}
+        {issue.description && <MarkdownPreview className="px-3 pb-3" content={issue.description} />}
 
         {issue.comments && issue.comments.nodes.length > 0 && (
           <>
@@ -101,7 +107,7 @@ export function LinearDetail({
                   <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">
                     {entry.user?.name}
                   </span>
-                  <p className="whitespace-pre-wrap break-words text-[12px]">{entry.body}</p>
+                  <MarkdownPreview className="" content={entry.body} />
                 </li>
               ))}
             </ul>

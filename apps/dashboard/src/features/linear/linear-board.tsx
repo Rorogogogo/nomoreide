@@ -1,4 +1,17 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  rectIntersection,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { orderStates, priorityTone, stateTone } from "./linear-states";
 import type { LinearIssue, LinearState } from "./linear-types";
@@ -8,15 +21,22 @@ import type { LinearIssue, LinearState } from "./linear-types";
  *
  * **Columns of rows, not a field of cards.** A Jira board is usually floating
  * tiles on a grey wash, which is the one thing DESIGN.md rules out — a section
- * of a page is not a floating object. So the columns are divided by hairlines
- * and each column is a `divide-y` stack of the same row the list view uses.
- * It reads as a board because the columns are labelled and the work moves
- * between them, not because anything is wearing a border.
+ * of a page is not a floating object. So columns are divided by hairlines and
+ * each is a `divide-y` stack of the row the list view uses. It reads as a board
+ * because the columns are labelled and work moves between them.
  *
- * **Dragging is an accelerator, never the only way.** The detail pane keeps its
- * status control, so a state change is always reachable from the keyboard. A
- * board whose only affordance is a mouse gesture is a board half the people
- * using it cannot operate.
+ * **The drag is dnd-kit, not the HTML5 drag API**, and that is the whole
+ * difference in feel. The native API gives you a ghost image and a drop event
+ * and nothing in between: cards do not move aside, nothing animates, and the
+ * only feedback is a column tint. `SortableContext` transforms every sibling
+ * out of the way as the pointer moves and transitions them back, so a gap opens
+ * where the card would land and the rest glide around it. Same approach as the
+ * JobJourney board this was modelled on.
+ *
+ * **Dragging is an accelerator, never the only way.** The detail view keeps a
+ * status control, so every move is reachable from a keyboard. A board whose
+ * only affordance is a pointer gesture is one that half its users cannot
+ * operate.
  */
 export function LinearBoard({
   busy,
@@ -35,110 +55,226 @@ export function LinearBoard({
   states: LinearState[];
   t: (key: string) => string;
 }) {
-  /** The column a card is hovering over, so the drop target is visible. */
-  const [over, setOver] = useState<string | null>(null);
-  const ordered = orderStates(states);
+  /** The card under the pointer, rendered in the overlay while it travels. */
+  const [dragging, setDragging] = useState<LinearIssue | null>(null);
+  const ordered = useMemo(() => orderStates(states), [states]);
+
+  /**
+   * A drag starts only after 8px of movement.
+   *
+   * Without it every click on a card is also a drag of zero distance, and
+   * opening a task by clicking it stops working — the pointer-down is captured
+   * by the sensor and the click never lands.
+   */
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   if (ordered.length === 0) {
     return <p className="p-3 text-[12px] text-muted-foreground">{t("boardNoStates")}</p>;
   }
 
-  return (
-    <div className="flex min-h-0 flex-1 divide-x divide-border overflow-x-auto">
-      {ordered.map((state) => {
-        const column = issues.filter((issue) => issue.state.id === state.id);
-        return (
-          <section
-            // A `<section>` with an accessible name is a region, so the drop
-            // handlers below sit on something assistive tech can announce
-            // rather than on an anonymous box. The keyboard route to the same
-            // change is the detail pane's status control — the drag is an
-            // accelerator, never the only way.
-            aria-label={state.name}
-            className={cn(
-              "flex w-64 shrink-0 flex-col transition-colors",
-              over === state.id && "bg-muted/30",
-            )}
-            key={state.id}
-            onDragLeave={() => setOver((current) => (current === state.id ? null : current))}
-            onDragOver={(event) => {
-              // Without this the browser refuses the drop outright.
-              event.preventDefault();
-              setOver(state.id);
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              setOver(null);
-              const id = event.dataTransfer.getData("text/plain");
-              // A drop back where it started is not a move. Skipping it saves
-              // a mutation whose only effect would be a spinner.
-              if (id && !column.some((issue) => issue.id === id)) onMove(id, state);
-            }}
-          >
-            <div className="sticky top-0 flex items-center justify-between gap-2 border-b border-border bg-muted/20 px-3 py-1">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <StateDot type={state.type} />
-                <span className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {state.name}
-                </span>
-              </span>
-              <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                {column.length}
-              </span>
-            </div>
+  /** Which column an id belongs to — a column's own id, or the card's state. */
+  function columnOf(id: string): LinearState | undefined {
+    const column = ordered.find((state) => state.id === id);
+    if (column) return column;
+    const issue = issues.find((entry) => entry.id === id);
+    return issue && ordered.find((state) => state.id === issue.state.id);
+  }
 
-            <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
-              {column.map((issue) => (
-                <button
-                  className={cn(
-                    "block w-full cursor-grab px-3 py-2 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:cursor-grabbing",
-                    selectedId === issue.id && "bg-muted/45",
-                  )}
-                  disabled={busy}
-                  draggable={!busy}
-                  key={issue.id}
-                  onClick={() => onSelect(issue.id)}
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData("text/plain", issue.id);
-                    event.dataTransfer.effectAllowed = "move";
-                  }}
-                  type="button"
-                >
-                  <span className="block truncate text-[13px] font-medium">{issue.title}</span>
-                  <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span className="font-mono">{issue.identifier}</span>
-                    {issue.priority > 0 && (
-                      <>
-                        <span aria-hidden="true">·</span>
-                        <span className={priorityTone(issue.priority)}>
-                          {t(`priority${issue.priority}`)}
-                        </span>
-                      </>
-                    )}
-                    {issue.assignee && (
-                      <>
-                        <span aria-hidden="true">·</span>
-                        <span className="truncate">{issue.assignee.name}</span>
-                      </>
-                    )}
-                  </span>
-                </button>
-              ))}
-              {column.length === 0 && (
-                <p className="px-3 py-2 text-[11px] text-muted-foreground">{t("boardEmpty")}</p>
-              )}
-            </div>
-          </section>
-        );
-      })}
-    </div>
+  function onDragEnd(event: DragEndEvent) {
+    setDragging(null);
+    const moved = event.active.id as string;
+    const over = event.over?.id as string | undefined;
+    if (!over) return;
+    const target = columnOf(over);
+    const issue = issues.find((entry) => entry.id === moved);
+    // A drop back into the column it came from is not a move. Skipping it
+    // saves a mutation whose only visible effect would be a spinner.
+    if (!target || !issue || issue.state.id === target.id) return;
+    onMove(moved, target);
+  }
+
+  return (
+    <DndContext
+      // Rect intersection rather than the default closest-centre: a column is
+      // much taller than a card, and closest-centre picks the *card* nearest
+      // the pointer even when it is in a different column, which makes a drop
+      // near a column's edge land somewhere unexpected.
+      collisionDetection={rectIntersection}
+      onDragCancel={() => setDragging(null)}
+      onDragEnd={onDragEnd}
+      onDragStart={(event: DragStartEvent) =>
+        setDragging(issues.find((entry) => entry.id === event.active.id) ?? null)
+      }
+      sensors={sensors}
+    >
+      <div className="flex min-h-0 flex-1 divide-x divide-border overflow-x-auto">
+        {ordered.map((state) => (
+          <Column
+            busy={busy}
+            issues={issues.filter((issue) => issue.state.id === state.id)}
+            key={state.id}
+            onSelect={onSelect}
+            selectedId={selectedId}
+            state={state}
+            t={t}
+          />
+        ))}
+      </div>
+
+      {/*
+        The travelling card. Rendered outside the columns so it is not clipped
+        by their scroll containers, and so the card left behind can fade in
+        place while this one follows the pointer.
+      */}
+      <DragOverlay dropAnimation={{ duration: 160, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
+        {dragging ? (
+          <div className="w-64 cursor-grabbing border border-border bg-card px-3 py-2 shadow-lg">
+            <CardBody issue={dragging} t={t} />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+function Column({
+  busy,
+  issues,
+  onSelect,
+  selectedId,
+  state,
+  t,
+}: {
+  busy: boolean;
+  issues: LinearIssue[];
+  onSelect: (id: string) => void;
+  selectedId?: string;
+  state: LinearState;
+  t: (key: string) => string;
+}) {
+  // Droppable in its own right, so an empty column can still be dropped into —
+  // with only the cards registered there would be nothing to aim at.
+  const { isOver, setNodeRef } = useDroppable({ id: state.id });
+
+  return (
+    <section
+      aria-label={state.name}
+      className={cn("flex w-64 shrink-0 flex-col transition-colors", isOver && "bg-muted/30")}
+      ref={setNodeRef}
+    >
+      <div className="sticky top-0 flex items-center justify-between gap-2 border-b border-border bg-muted/20 px-3 py-1">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <StateDot type={state.type} />
+          <span className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {state.name}
+          </span>
+        </span>
+        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+          {issues.length}
+        </span>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <SortableContext
+          items={issues.map((issue) => issue.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <ul className="divide-y divide-border">
+            {issues.map((issue) => (
+              <Card
+                busy={busy}
+                issue={issue}
+                key={issue.id}
+                onSelect={onSelect}
+                selected={selectedId === issue.id}
+                t={t}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+        {issues.length === 0 && (
+          <p className="px-3 py-2 text-[11px] text-muted-foreground">{t("boardEmpty")}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Card({
+  busy,
+  issue,
+  onSelect,
+  selected,
+  t,
+}: {
+  busy: boolean;
+  issue: LinearIssue;
+  onSelect: (id: string) => void;
+  selected: boolean;
+  t: (key: string) => string;
+}) {
+  const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
+    disabled: busy,
+    id: issue.id,
+  });
+
+  return (
+    <li
+      className={cn(
+        "transition-colors",
+        selected && "bg-muted/45",
+        // The gap the card will drop into. The row stays mounted and holds its
+        // height — removing it would collapse the column and make everything
+        // below jump, which is the jitter the native drag had.
+        isDragging && "opacity-0",
+      )}
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      {...attributes}
+      {...listeners}
+    >
+      <button
+        className="block w-full cursor-grab px-3 py-2 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:cursor-grabbing"
+        onClick={() => onSelect(issue.id)}
+        type="button"
+      >
+        <CardBody issue={issue} t={t} />
+      </button>
+    </li>
+  );
+}
+
+/** Shared by the row and the overlay, so the card in flight is the same card. */
+function CardBody({ issue, t }: { issue: LinearIssue; t: (key: string) => string }) {
+  return (
+    <>
+      <span className="block truncate text-[13px] font-medium">{issue.title}</span>
+      <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span className="font-mono">{issue.identifier}</span>
+        {issue.priority > 0 && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span className={priorityTone(issue.priority)}>{t(`priority${issue.priority}`)}</span>
+          </>
+        )}
+        {issue.assignee && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span className="truncate">{issue.assignee.name}</span>
+          </>
+        )}
+      </span>
+    </>
   );
 }
 
 /** The status mark. `size-4` and `shrink-0`, as every status mark here is. */
 function StateDot({ type }: { type: string }) {
   return (
-    <span aria-hidden="true" className={cn("flex size-4 shrink-0 items-center justify-center", stateTone(type))}>
+    <span
+      aria-hidden="true"
+      className={cn("flex size-4 shrink-0 items-center justify-center", stateTone(type))}
+    >
       <span className="size-1.5 rounded-full bg-current" />
     </span>
   );
