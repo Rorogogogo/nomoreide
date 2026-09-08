@@ -40,6 +40,14 @@ pub(crate) const WEB_ROOT_ENV: &str = "NOMOREIDE_WEB_ROOT";
 /// which is itself kept in sync with the client's `PAGE_PATHS`. A page the
 /// client routes to but this set omits works when navigated to in-app and 404s
 /// on direct load or refresh.
+/// The paths that render the dashboard rather than 404.
+///
+/// **This list must match `PAGE_PATHS` in `apps/dashboard/src/app-routing.ts`.**
+/// It is an allowlist rather than a catch-all so a typo'd URL still 404s
+/// instead of silently rendering the app, which is worth keeping — but it means
+/// a page added on the client and not here loads fine when navigated to and
+/// 404s on refresh or on a pasted link. `test/shell-paths.test.ts` reads both
+/// files and fails when they disagree; it exists because they already did.
 const SHELL_PATHS: &[&str] = &[
     "/",
     "/services",
@@ -49,6 +57,7 @@ const SHELL_PATHS: &[&str] = &[
     "/docker",
     "/git",
     "/github",
+    "/linear",
     "/agent",
     "/agent-env",
     "/context",

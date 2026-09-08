@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Plus, RefreshCw } from "lucide-react";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { StateFilter, TabStrip } from "@/components/ui/tab-strip";
 import { cn } from "@/lib/utils";
 import { LinearBoard } from "./linear-board";
@@ -12,9 +13,6 @@ import { useLinearTasks } from "./use-linear-tasks";
 
 type View = "list" | "board";
 
-/** A `<select>` that reads as chrome rather than as a form control. */
-const SELECT =
-  "min-w-0 max-w-40 shrink-0 truncate rounded bg-transparent px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 const QUIET =
   "shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
@@ -78,37 +76,30 @@ export function LinearPanel({
         />
         <span aria-hidden="true" className="mx-1 h-3 w-px shrink-0 bg-border" />
 
-        <select
-          aria-label={t("team")}
-          className={SELECT}
+        <SelectMenu
+          ariaLabel={t("team")}
+          className="w-36"
           disabled={m.busy}
-          onChange={(event) => {
-            m.selectTeam(event.target.value);
+          onChange={(next) => {
+            m.selectTeam(next);
             setStatus("");
           }}
-          value={m.team}
-        >
-          <option value="">{t("team")}</option>
-          {m.teams.map((entry) => (
-            <option key={entry.id} value={entry.id}>
-              {entry.name}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label={t("project")}
-          className={SELECT}
+          options={m.teams.map((entry) => ({ value: entry.id, label: entry.name }))}
+          placeholder={t("team")}
+          value={m.team || null}
+        />
+        <SelectMenu
+          ariaLabel={t("project")}
+          className="w-36"
           disabled={m.busy || !m.team}
-          onChange={(event) => m.setProject(event.target.value)}
+          onChange={m.setProject}
+          options={[
+            { value: "", label: t("allProjects") },
+            ...(team?.projects.nodes.map((entry) => ({ value: entry.id, label: entry.name })) ?? []),
+          ]}
+          placeholder={t("allProjects")}
           value={m.project}
-        >
-          <option value="">{t("allProjects")}</option>
-          {team?.projects.nodes.map((entry) => (
-            <option key={entry.id} value={entry.id}>
-              {entry.name}
-            </option>
-          ))}
-        </select>
+        />
 
         <span aria-hidden="true" className="mx-1 h-3 w-px shrink-0 bg-border" />
         <input
@@ -120,19 +111,17 @@ export function LinearPanel({
         />
 
         {view === "list" && (
-          <select
-            aria-label={t("status")}
-            className={SELECT}
-            onChange={(event) => setStatus(event.target.value)}
+          <SelectMenu
+            ariaLabel={t("status")}
+            className="w-32"
+            onChange={setStatus}
+            options={[
+              { value: "", label: t("allStatuses") },
+              ...states.map((state) => ({ value: state.id, label: state.name })),
+            ]}
+            placeholder={t("allStatuses")}
             value={status}
-          >
-            <option value="">{t("allStatuses")}</option>
-            {states.map((state) => (
-              <option key={state.id} value={state.id}>
-                {state.name}
-              </option>
-            ))}
-          </select>
+          />
         )}
         <StateFilter
           ariaLabel={t("priority")}

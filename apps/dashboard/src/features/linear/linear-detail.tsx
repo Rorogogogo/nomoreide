@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { MarkdownPreview } from "../git/visualizers/markdown-preview";
 import { orderStates, stateTone } from "./linear-states";
 import { cn } from "@/lib/utils";
@@ -48,25 +49,28 @@ export function LinearDetail({
         </button>
         <span className="font-mono text-[11px] text-muted-foreground">{issue.identifier}</span>
         <span aria-hidden="true" className="mx-1 h-3 w-px shrink-0 bg-border" />
-        <select
-          aria-label={t("status")}
-          className={cn(
-            "rounded bg-transparent px-1 py-0.5 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
-            stateTone(issue.state.type),
-          )}
+        {/* The app's own picker, not a bare `<select>`: on macOS the native
+            control renders a grey system popup that ignores the theme and the
+            type scale entirely — see `select-menu.tsx`, which exists for this. */}
+        <SelectMenu
+          ariaLabel={t("status")}
+          className="w-36"
           disabled={busy}
-          onChange={(event) => {
-            const next = ordered.find((state) => state.id === event.target.value);
-            if (next) onStateChange(next);
+          onChange={(next) => {
+            const state = ordered.find((entry) => entry.id === next);
+            if (state) onStateChange(state);
           }}
+          options={ordered.map((state) => ({
+            value: state.id,
+            label: state.name,
+            icon: (
+              <span className={cn("flex size-3 items-center justify-center", stateTone(state.type))}>
+                <span className="size-1.5 rounded-full bg-current" />
+              </span>
+            ),
+          }))}
           value={issue.state.id}
-        >
-          {ordered.map((state) => (
-            <option key={state.id} value={state.id}>
-              {state.name}
-            </option>
-          ))}
-        </select>
+        />
         <span className="flex-1" />
         {/* Only ever a linear.app URL — the field is checked before it becomes
             an href, so a hostile `url` in an API answer cannot become a link. */}
@@ -82,8 +86,8 @@ export function LinearDetail({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex items-start justify-between gap-3 px-3 py-2.5">
-          <h2 className="text-[13px] font-medium">{issue.title}</h2>
+        <div className="flex items-start justify-between gap-3 border-b border-border px-3 py-3">
+          <h2 className="min-w-0 text-[13px] font-medium leading-snug">{issue.title}</h2>
           {taskAction && <span className="shrink-0">{taskAction(issue)}</span>}
         </div>
 
@@ -92,7 +96,7 @@ export function LinearDetail({
             `##` and its backticks. Same renderer the git file viewer and the
             GitHub issue pane use, at this panel's padding rather than the file
             viewer's reading measure. */}
-        {issue.description && <MarkdownPreview className="px-3 pb-3" content={issue.description} />}
+        {issue.description && <MarkdownPreview className="px-3 py-3" content={issue.description} />}
 
         {issue.comments && issue.comments.nodes.length > 0 && (
           <>

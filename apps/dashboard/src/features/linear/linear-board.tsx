@@ -8,6 +8,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -57,7 +58,23 @@ export function LinearBoard({
 }) {
   /** The card under the pointer, rendered in the overlay while it travels. */
   const [dragging, setDragging] = useState<LinearIssue | null>(null);
+  /**
+   * Where the dragged card is *pretending* to be, mid-drag.
+   *
+   * This is what opens the gap. `SortableContext` only moves siblings within
+   * the list it is given, so hovering another column did nothing at all until
+   * the card was actually a member of it — the target lane sat inert and the
+   * space only appeared after the drop. Re-partitioning on this override makes
+   * the card a member of the hovered column from the moment it is over it, so
+   * the column's own sortable does the animating and the space is reserved
+   * while you are still holding it.
+   */
+  const [preview, setPreview] = useState<{ id: string; stateId: string } | null>(null);
   const ordered = useMemo(() => orderStates(states), [states]);
+
+  /** The state a card is in *right now*, preview included. */
+  const columnFor = (issue: LinearIssue) =>
+    preview && preview.id === issue.id ? preview.stateId : issue.state.id;
 
   /**
    * A drag starts only after 8px of movement.
@@ -80,17 +97,35 @@ export function LinearBoard({
     return issue && ordered.find((state) => state.id === issue.state.id);
   }
 
-  function onDragEnd(event: DragEndEvent) {
-    setDragging(null);
+  function onDragOver(event: DragOverEvent) {
     const moved = event.active.id as string;
     const over = event.over?.id as string | undefined;
     if (!over) return;
     const target = columnOf(over);
+    if (!target) return;
+    // Only when it actually changes, or every pointer move re-renders the board.
+    setPreview((current) =>
+      current?.id === moved && current.stateId === target.id
+        ? current
+        : { id: moved, stateId: target.id },
+    );
+  }
+
+  function onDragEnd(event: DragEndEvent) {
+    const moved = event.active.id as string;
+    const over = event.over?.id as string | undefined;
+    const target = over ? columnOf(over) : undefined;
     const issue = issues.find((entry) => entry.id === moved);
     // A drop back into the column it came from is not a move. Skipping it
     // saves a mutation whose only visible effect would be a spinner.
-    if (!target || !issue || issue.state.id === target.id) return;
-    onMove(moved, target);
+    if (target && issue && issue.state.id !== target.id) {
+      // Moved before the preview is dropped, so the optimistic update in the
+      // hook has already landed by the time the card stops pretending. The
+      // other order shows one frame of the card back in its old column.
+      onMove(moved, target);
+    }
+    setPreview(null);
+    setDragging(null);
   }
 
   return (
@@ -100,8 +135,12 @@ export function LinearBoard({
       // the pointer even when it is in a different column, which makes a drop
       // near a column's edge land somewhere unexpected.
       collisionDetection={rectIntersection}
-      onDragCancel={() => setDragging(null)}
+      onDragCancel={() => {
+        setPreview(null);
+        setDragging(null);
+      }}
       onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
       onDragStart={(event: DragStartEvent) =>
         setDragging(issues.find((entry) => entry.id === event.active.id) ?? null)
       }
@@ -111,7 +150,7 @@ export function LinearBoard({
         {ordered.map((state) => (
           <Column
             busy={busy}
-            issues={issues.filter((issue) => issue.state.id === state.id)}
+            issues={issues.filter((issue) => columnFor(issue) === state.id)}
             key={state.id}
             onSelect={onSelect}
             selectedId={selectedId}

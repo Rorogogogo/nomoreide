@@ -54,7 +54,11 @@ export function LinearTaskDialog({
       <div
         aria-label={issue.identifier}
         aria-modal="true"
-        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        // A fixed height, not `max-h-full`. Sized to content the dialog jumped
+        // between a two-line task and a long one, and the comment box moved up
+        // the screen with it — so the control you reach for last is somewhere
+        // different every time you open one.
+        className="flex h-[min(40rem,calc(100vh-4rem))] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
       >
