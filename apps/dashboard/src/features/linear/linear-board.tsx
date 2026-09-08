@@ -49,6 +49,7 @@ import type { LinearIssue, LinearState } from "./linear-types";
 export function LinearBoard({
   busy,
   issues,
+  onDragBegin,
   onMove,
   onSelect,
   selectedId,
@@ -57,6 +58,12 @@ export function LinearBoard({
 }: {
   busy: boolean;
   issues: LinearIssue[];
+  /**
+   * A drag has started. The panel closes the open task on this: the detail
+   * pane takes a third of the width, and dropping a card into a column hidden
+   * behind it is a drop you cannot aim.
+   */
+  onDragBegin?: () => void;
   onMove: (id: string, state: LinearState) => void;
   onSelect: (id: string) => void;
   selectedId?: string;
@@ -143,9 +150,10 @@ export function LinearBoard({
       }}
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
-      onDragStart={(event: DragStartEvent) =>
-        setDragging(issues.find((entry) => entry.id === event.active.id) ?? null)
-      }
+      onDragStart={(event: DragStartEvent) => {
+        setDragging(issues.find((entry) => entry.id === event.active.id) ?? null);
+        onDragBegin?.();
+      }}
       sensors={sensors}
     >
       <div className="flex min-h-0 flex-1 divide-x divide-border overflow-x-auto">

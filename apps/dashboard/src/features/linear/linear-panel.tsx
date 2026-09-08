@@ -1,12 +1,11 @@
 import { useState, type ReactNode } from "react";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, X } from "lucide-react";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { StateFilter, TabStrip } from "@/components/ui/tab-strip";
 import { cn } from "@/lib/utils";
 import { LinearBoard } from "./linear-board";
 import { LinearDetail } from "./linear-detail";
 import { LinearList } from "./linear-list";
-import { LinearTaskDialog } from "./linear-task-dialog";
 import { PRIORITIES } from "./linear-states";
 import type { LinearIssue, LinearTransport } from "./linear-types";
 import { useLinearTasks } from "./use-linear-tasks";
@@ -218,27 +217,40 @@ export function LinearPanel({
           <LinearBoard
             busy={m.busy}
             issues={visible}
+            onDragBegin={m.closeIssue}
             onMove={(id, state) => void m.moveIssue(id, state)}
             onSelect={(id) => void m.selectIssue(id)}
             selectedId={m.issue?.id}
             states={states}
             t={t}
           />
-          {/* Over the board rather than beside it: the columns are what this
-              view is for, and a pane taking a third of the width pushes half
-              of them off screen. The list keeps its side pane — see the
-              dialog's own note. */}
+          {/* Beside the board, not over it. A real boundary between two
+              regions, so a full-height border rather than an inset hairline —
+              and it closes the moment a drag starts, because a column hidden
+              behind it is a column you cannot drop into. */}
           {m.issue && (
-            <LinearTaskDialog
-              busy={m.busy}
-              issue={m.issue}
-              onClose={m.closeIssue}
-              onComment={m.comment}
-              onStateChange={(state) => void m.update(state.id)}
-              states={states}
-              t={t}
-              taskAction={taskAction}
-            />
+            <section className="flex w-96 min-w-0 shrink-0 flex-col border-l border-border">
+              <LinearDetail
+                busy={m.busy}
+                issue={m.issue}
+                onBack={m.closeIssue}
+                onComment={m.comment}
+                onStateChange={(state) => void m.update(state.id)}
+                states={states}
+                t={t}
+                taskAction={taskAction}
+                trailing={
+                  <button
+                    aria-label={t("close")}
+                    className="shrink-0 rounded px-1 py-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={m.closeIssue}
+                    type="button"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                }
+              />
+            </section>
           )}
         </div>
       ) : (
