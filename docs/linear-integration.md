@@ -30,7 +30,7 @@ Scanned guest links have no Linear access. The `linear.tasks` capability gates t
 - Browser sign-in: `crates/nomoreide-core/src/linear_oauth.rs` (the vendor half) over the shared PKCE flow in `crates/nomoreide-core/src/providers/oauth.rs`, with `/api/linear/oauth/{start,callback,status}` in the host routes.
 - Remote API and clients: the sibling `nomoreide-platform` repository. Both host and platform updates must ship for remote support.
 
-Task pages contain 30 issues. Team/project selectors show up to 100 entries, and issue details show up to 50 comments with a link to Linear for the remainder. Search and status filters apply to loaded issues. This version uses manual refresh; webhooks, attachments, and automatic task/PR synchronization are not included.
+Task pages contain 30 issues. Team/project selectors show up to 50 entries, and issue details show up to 50 comments with a link to Linear for the remainder. The selectors' 50 is a ceiling Linear sets, not a preference: it prices a query by the page sizes asked for, and the metadata query nests two of them inside a third, so 100 each scored 25131 against a limit of 10000 and was refused outright. Search and status filters apply to loaded issues. This version uses manual refresh; webhooks, attachments, and automatic task/PR synchronization are not included.
 
 Reference: [Linear GraphQL API](https://linear.app/developers/graphql).
 

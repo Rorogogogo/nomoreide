@@ -48,11 +48,15 @@ const SCOPES: &str = "read write";
 
 /// The app the sign-in authorizes.
 ///
-/// Empty until a NoMoreIDE OAuth app is registered with Linear. A blank id is
-/// not an error — it is how the dashboard knows to offer the API-key form and
-/// no "Connect with Linear" button, the same way GitHub's `deviceFlowAvailable`
-/// gates its own.
-const DEFAULT_CLIENT_ID: &str = "";
+/// Public by design, exactly as [`crate::github_oauth`]'s device-flow id is: it
+/// identifies the app to Linear and authorizes nothing on its own. The client
+/// *secret* Linear issues alongside it is deliberately unused and must not be
+/// compiled in or read from the environment — see the module docs.
+///
+/// A blank id is not an error, and the gate stays: an install that clears this
+/// (or overrides it with nothing) gets the API-key form and no "Connect with
+/// Linear" button, the same way GitHub's `deviceFlowAvailable` works.
+const DEFAULT_CLIENT_ID: &str = "fce253c6be9f2deea1fea6fbd493d5af";
 
 /// Where Linear sends the browser back to.
 ///

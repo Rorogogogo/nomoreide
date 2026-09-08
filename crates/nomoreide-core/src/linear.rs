@@ -66,7 +66,14 @@ pub async fn execute(authorization: &str, request: &LinearRequest) -> Result<Val
     request.validate()?;
     let (document, variables) = match request {
         LinearRequest::Binding { .. } => return Err("Binding must be handled by the host".into()),
-        LinearRequest::Metadata {} => ("query { viewer { id name } teams(first: 100) { nodes { id name key states(first: 100) { nodes { id name type } } projects(first: 100) { nodes { id name } } } } }".into(), json!({})),
+        // 50, not 100, and the three are load-bearing together. Linear costs a
+        // query by its *requested* page sizes rather than by what comes back,
+        // and this one nests two hundred-item lists inside a hundred-item one:
+        // that scored 25131 against a 10000 ceiling and came back 400 "Query
+        // too complex" for every workspace, empty ones included. Halving each
+        // brings it to roughly a quarter of the cost. Raising any of them back
+        // means checking the total again, not just that one.
+        LinearRequest::Metadata {} => ("query { viewer { id name } teams(first: 50) { nodes { id name key states(first: 50) { nodes { id name type } } projects(first: 50) { nodes { id name } } } } }".into(), json!({})),
         LinearRequest::Issues { team, project, after } => {
             let mut filter = json!({"team": {"id": {"eq": team}}});
             if let Some(project) = project { filter["project"] = json!({"id": {"eq": project}}); }

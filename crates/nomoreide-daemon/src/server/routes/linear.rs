@@ -44,6 +44,25 @@ use serde_json::json;
 /// under.
 const PROVIDER: &str = "linear";
 
+/// The callback, and nothing else.
+///
+/// **Outside the credential layer, and it has to be.** This route is loaded by
+/// a browser that Linear redirected. A redirect carries no `Authorization`
+/// header and there is no way to give it one — the daemon's credential is not
+/// something a third party can be asked to forward — so mounting it with the
+/// rest answers `401 Authentication required` and the code is never exchanged.
+/// The same reason `agent_auth::public` exists.
+///
+/// **What guards it instead is `state`.** The callback exchanges nothing unless
+/// its `state` matches a sign-in this daemon started and has not yet redeemed —
+/// 128 bits minted per attempt, held in memory, and taken exactly once. A
+/// request without one is a stale tab or a forgery, and is refused before any
+/// code reaches Linear. That is the same defence the credential would have
+/// provided here, and it is the one OAuth is designed around.
+pub(super) fn public() -> Router<AppState> {
+    Router::new().route("/api/linear/oauth/callback", any(oauth_callback))
+}
+
 pub(super) fn routes() -> Router<AppState> {
     Router::new()
         .route(
@@ -52,7 +71,6 @@ pub(super) fn routes() -> Router<AppState> {
         )
         .route("/api/linear/request", post(execute))
         .route("/api/linear/oauth/start", any(oauth_start))
-        .route("/api/linear/oauth/callback", any(oauth_callback))
         .route("/api/linear/oauth/status", any(oauth_status))
 }
 /// Whether Linear is connected, how, and whether a browser sign-in is even on
