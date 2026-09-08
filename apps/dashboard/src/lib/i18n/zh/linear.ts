@@ -39,5 +39,10 @@ export const zh_linear = {
   "linear.connectedVia": "已连接",
   "linear.viaOauth": "通过 Linear 登录",
   "linear.viaKey": "通过 API 密钥",
+  "linear.view": "视图",
+  "linear.viewList": "列表",
+  "linear.viewBoard": "看板",
+  "linear.boardEmpty": "暂无任务",
+  "linear.boardNoStates": "选择团队以查看看板。",
   "linear.back": "返回任务列表"
 } as const;

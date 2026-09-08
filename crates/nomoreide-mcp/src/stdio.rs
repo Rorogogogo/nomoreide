@@ -105,7 +105,7 @@ mod tests {
         );
         assert_eq!(
             responses[1]["result"]["tools"].as_array().unwrap().len(),
-            90
+            95
         );
     }
 

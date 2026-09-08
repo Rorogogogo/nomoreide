@@ -39,5 +39,10 @@ export const en_linear = {
   "linear.connectedVia": "Connected",
   "linear.viaOauth": "via Linear sign-in",
   "linear.viaKey": "via API key",
+  "linear.view": "View",
+  "linear.viewList": "List",
+  "linear.viewBoard": "Board",
+  "linear.boardEmpty": "Nothing here",
+  "linear.boardNoStates": "Choose a team to see its board.",
   "linear.back": "Back to tasks"
 } as const;

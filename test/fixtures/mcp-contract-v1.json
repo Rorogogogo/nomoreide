@@ -555,7 +555,7 @@
       "name": "nomoreide_git_commit"
     },
     {
-      "description": "Push the current branch to its remote (sets upstream on first push). Write op — does not force-push.",
+      "description": "Push the current branch to its remote (sets upstream on first push). Write op \u2014 does not force-push.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -576,7 +576,7 @@
       "name": "nomoreide_git_push"
     },
     {
-      "description": "Clone a remote Git repository (HTTPS or SSH/scp-style URL) into the managed repos dir and register it as a Git project. SSH uses the host's ssh-agent/keys; interactive credential prompts are disabled so private repos fail fast. Write op — creates a new local clone.",
+      "description": "Clone a remote Git repository (HTTPS or SSH/scp-style URL) into the managed repos dir and register it as a Git project. SSH uses the host's ssh-agent/keys; interactive credential prompts are disabled so private repos fail fast. Write op \u2014 creates a new local clone.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -652,7 +652,7 @@
       "name": "nomoreide_git_worktrees"
     },
     {
-      "description": "Create an isolated managed worktree for a new or existing branch. Write op — creates a fresh directory without changing the current worktree.",
+      "description": "Create an isolated managed worktree for a new or existing branch. Write op \u2014 creates a fresh directory without changing the current worktree.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1111,7 +1111,7 @@
           "sha": {
             "type": "string",
             "minLength": 7,
-            "description": "Commit SHA (full or abbreviated to ≥7 chars)."
+            "description": "Commit SHA (full or abbreviated to \u22657 chars)."
           }
         },
         "required": [
@@ -1238,7 +1238,7 @@
       "name": "nomoreide_deploy_get_deployment"
     },
     {
-      "description": "Read build logs for a deployment — the output to diagnose a failed build.",
+      "description": "Read build logs for a deployment \u2014 the output to diagnose a failed build.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1472,7 +1472,7 @@
       "name": "nomoreide_db_tables"
     },
     {
-      "description": "Sample rows from a table (read-only) with its column schema — the 'explain this data to the agent' payload.",
+      "description": "Sample rows from a table (read-only) with its column schema \u2014 the 'explain this data to the agent' payload.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1503,7 +1503,7 @@
       "name": "nomoreide_db_sample"
     },
     {
-      "description": "Run a read-only SQL query against a registered connection and return the rows. Read-only at the transaction level — INSERT/UPDATE/DELETE/DDL are rejected. To make a change, don't run it here. Provide the exact SQL statement for review, identify the connection, and direct the user to stage and run it through NoMoreIDE's locked SQL console with its affected-rows preview.",
+      "description": "Run a read-only SQL query against a registered connection and return the rows. Read-only at the transaction level \u2014 INSERT/UPDATE/DELETE/DDL are rejected. To make a change, don't run it here. Provide the exact SQL statement for review, identify the connection, and direct the user to stage and run it through NoMoreIDE's locked SQL console with its affected-rows preview.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2201,7 +2201,7 @@
       "name": "nomoreide_profiles_apply"
     },
     {
-      "description": "Export a profile as a portable .tar.gz. Secret-looking env/header values are redacted to ${credentials.*} placeholders — the archive never contains raw secrets.",
+      "description": "Export a profile as a portable .tar.gz. Secret-looking env/header values are redacted to ${credentials.*} placeholders \u2014 the archive never contains raw secrets.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2306,7 +2306,7 @@
       "name": "nomoreide_profiles_copy_items"
     },
     {
-      "description": "Publish a saved profile to the hosted registry so others can install it by slug. Uploads the credential-redacted export archive — raw secrets never leave the machine.",
+      "description": "Publish a saved profile to the hosted registry so others can install it by slug. Uploads the credential-redacted export archive \u2014 raw secrets never leave the machine.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2392,7 +2392,7 @@
       "name": "nomoreide_profiles_install_from_registry"
     },
     {
-      "description": "Register a GitHub repository as a registry profile — the registry serves it without a package upload (free sharing path).",
+      "description": "Register a GitHub repository as a registry profile \u2014 the registry serves it without a package upload (free sharing path).",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2479,6 +2479,103 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "name": "nomoreide_reclaim_terminal"
+    },
+    {
+      "name": "nomoreide_linear_teams",
+      "description": "List Linear teams with their workflow states (in board order) and projects, plus the team this repository is linked to. Read this before moving an issue: state ids are per-team and cannot be guessed.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "nomoreide_linear_issues",
+      "description": "List a Linear team's issues, most recently updated first. Optionally scope to one project.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team id from nomoreide_linear_teams."
+          },
+          "project": {
+            "type": "string",
+            "description": "Optional project id to filter to."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30,
+            "description": "How many issues to return. Defaults to 30."
+          }
+        },
+        "required": [
+          "team"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "nomoreide_linear_issue",
+      "description": "Read one Linear issue in full: description, workflow state, suggested branch name and comments.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Issue id or identifier, e.g. ROR-107."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "nomoreide_linear_move",
+      "description": "Move a Linear issue to a workflow state \u2014 the board drag, from an agent. Changes the state and nothing else, and answers with the issue read back after the move.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Issue id or identifier."
+          },
+          "state": {
+            "type": "string",
+            "description": "Target workflow state id, from nomoreide_linear_teams."
+          }
+        },
+        "required": [
+          "id",
+          "state"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "nomoreide_linear_comment",
+      "description": "Comment on a Linear issue \u2014 how an agent reports what it did on the task it was given.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Issue id or identifier."
+          },
+          "body": {
+            "type": "string",
+            "description": "Comment text, Markdown."
+          }
+        },
+        "required": [
+          "id",
+          "body"
+        ],
+        "type": "object"
+      }
     }
   ],
   "cases": [

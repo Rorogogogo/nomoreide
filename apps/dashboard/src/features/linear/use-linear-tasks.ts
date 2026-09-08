@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { LinearIssue, LinearTeam, LinearTransport } from "./linear-types";
+import type { LinearIssue, LinearState, LinearTeam, LinearTransport } from "./linear-types";
 
 export function useLinearTasks(send: LinearTransport) {
   const [teams, setTeams] = useState<LinearTeam[]>([]);
   const [team, setTeam] = useState("");
   const [project, setProject] = useState("");
   const [issues, setIssues] = useState<LinearIssue[]>([]);
+  /**
+   * The current list, readable from a callback that must not re-create itself
+   * every time the list changes — `moveIssue` needs the pre-drag order to
+   * restore, and closing over `issues` would rebuild every mutation on every
+   * keystroke of a paged fetch.
+   */
+  const issuesRef = useRef<LinearIssue[]>([]);
+  issuesRef.current = issues;
   const [issue, setIssue] = useState<LinearIssue | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -50,6 +58,32 @@ export function useLinearTasks(send: LinearTransport) {
     link: () => run(async () => { await send({ operation: "binding", team, project: project || null }); }),
     create: (title: string, description: string) => run(async () => { const data = await send({ operation: "create", team, project: project || null, title, description }); await refresh(); setIssue(data.issueCreate?.issue ?? null); }),
     update: (state: string) => run(async () => { if (!issue) return; await send({ operation: "update", id: issue.id, state }); const data = await send({ operation: "issue", id: issue.id }); setIssue(data.issue ?? null); await refresh(); }),
+    /**
+     * Move any issue to a state, by id — what a board drag calls.
+     *
+     * Optimistic, and deliberately so: a drag that snaps back for the length of
+     * a round trip reads as a rejected drop. The card moves on release, and the
+     * server's answer either confirms it or puts it back with the error shown.
+     *
+     * `run` guards against a second mutation while one is in flight, so a fast
+     * second drag is refused rather than racing the first — a board is one
+     * person's screen, and two moves that interleave produce an order neither
+     * of them asked for.
+     */
+    moveIssue: (id: string, state: LinearState) => run(async () => {
+      const before = issuesRef.current;
+      setIssues((current) => current.map((item) => (item.id === id ? { ...item, state } : item)));
+      setIssue((current) => (current?.id === id ? { ...current, state } : current));
+      try {
+        await send({ operation: "update", id, state: state.id });
+      } catch (failure) {
+        // Put it back exactly where it was. Re-fetching instead would also
+        // repair it, but a whole list reload on a failed drag loses the
+        // scroll position and any newer page the user had already asked for.
+        setIssues(before);
+        throw failure;
+      }
+    }),
     comment: (body: string) => run(async () => { if (!issue) return; await send({ operation: "comment", id: issue.id, body }); const data = await send({ operation: "issue", id: issue.id }); setIssue(data.issue ?? null); }),
   };
 }
