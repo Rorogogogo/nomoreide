@@ -103,8 +103,8 @@ pub async fn run_embedded_with_shutdown_requests(
     options: DaemonOptions,
     listener: TcpListener,
     credential: String,
-    shutdown_sender: mpsc::Sender<()>,
-    shutdown_requests: mpsc::Receiver<()>,
+    shutdown_sender: mpsc::Sender<ShutdownRequest>,
+    shutdown_requests: mpsc::Receiver<ShutdownRequest>,
 ) -> Result<()> {
     anyhow::ensure!(
         !credential.is_empty(),
@@ -128,7 +128,7 @@ where
     let signalled = shutdown_tx.clone();
     tokio::spawn(async move {
         shutdown.await;
-        let _ = signalled.send(()).await;
+        let _ = signalled.send(ShutdownRequest::Signalled).await;
     });
     serve_with_shutdown_requests(options, shutdown_tx, shutdown_rx).await
 }
@@ -138,8 +138,8 @@ where
 /// request and a signal reach the same drain rather than two separate exits.
 pub async fn serve_with_shutdown_requests(
     options: DaemonOptions,
-    shutdown_sender: mpsc::Sender<()>,
-    shutdown_requests: mpsc::Receiver<()>,
+    shutdown_sender: mpsc::Sender<ShutdownRequest>,
+    shutdown_requests: mpsc::Receiver<ShutdownRequest>,
 ) -> Result<()> {
     let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, options.port)))
         .await
@@ -154,6 +154,33 @@ pub async fn serve_with_shutdown_requests(
     .await
 }
 
+/// Why a shutdown was asked for.
+///
+/// **The distinction is the whole point.** Cleanup failing used to refuse the
+/// shutdown whatever asked for it, and that is right for one of these two and
+/// catastrophic for the other: a daemon whose cleanup can *never* succeed —
+/// because its state directory has been deleted out from under it, which is
+/// what happens to a parity gate's temp fixture — becomes immortal. Four of
+/// them were found alive on this machine, up to ten days old, ignoring
+/// `SIGTERM` and holding a listening socket on a directory that no longer
+/// existed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShutdownRequest {
+    /// `POST /api/daemon/shutdown`. A caller asked and is waiting for an
+    /// answer, so a cleanup failure is worth reporting *and* worth staying up
+    /// for — the next request reaches a daemon that knows it has processes it
+    /// could not account for.
+    Requested,
+    /// `SIGTERM`, `SIGINT`, or the future handed to [`serve_until`].
+    ///
+    /// Not a request that may be declined. Cleanup is still attempted and its
+    /// failure still reported, but the process exits either way: a service this
+    /// daemon could not stop is a leaked service, while refusing to exit leaks
+    /// the service *and* the daemon, forever, with nothing left that can ask it
+    /// again.
+    Signalled,
+}
+
 enum RuntimePublication {
     Files,
     Memory(String),
@@ -163,8 +190,8 @@ async fn serve_on_listener(
     options: DaemonOptions,
     listener: TcpListener,
     publication: RuntimePublication,
-    shutdown_sender: mpsc::Sender<()>,
-    shutdown_requests: mpsc::Receiver<()>,
+    shutdown_sender: mpsc::Sender<ShutdownRequest>,
+    shutdown_requests: mpsc::Receiver<ShutdownRequest>,
 ) -> Result<()> {
     let ownership = DaemonOwnership::acquire(options.runtime_paths.clone())
         .context("failed to acquire daemon ownership")?;
@@ -311,34 +338,56 @@ async fn serve_on_listener(
     Ok(())
 }
 
-/// Stop serving only once the services are actually down. A cleanup failure
-/// refuses the shutdown rather than completing it, so the next request still
-/// reaches a daemon that knows it has processes it could not account for.
+/// Stop serving only once the services are actually down — unless the ask was a
+/// signal, which is not a thing to decline.
+///
+/// A [`ShutdownRequest::Requested`] that cannot clean up stays up and says so,
+/// so the next request reaches a daemon that knows it has processes it could
+/// not account for. A [`ShutdownRequest::Signalled`] that cannot clean up
+/// exits anyway — see the type for the four immortal daemons that behaviour
+/// cost.
 async fn drain_before_shutdown(
     runtime: Arc<DaemonRuntime>,
-    mut requests: mpsc::Receiver<()>,
+    mut requests: mpsc::Receiver<ShutdownRequest>,
     http_shutdown: oneshot::Sender<()>,
 ) {
     let mut http_shutdown = Some(http_shutdown);
     loop {
-        match requests.recv().await {
-            Some(()) => match runtime.shutdown().await {
-                Ok(()) => {
+        let Some(request) = requests.recv().await else {
+            std::future::pending::<()>().await;
+            continue;
+        };
+        match runtime.shutdown().await {
+            Ok(()) => {
+                if let Some(sender) = http_shutdown.take() {
+                    let _ = sender.send(());
+                }
+                return;
+            }
+            Err(error) => {
+                eprintln!("nomoreide: daemon cleanup failed: {error}");
+                if stops_anyway(request) {
+                    eprintln!("nomoreide: exiting anyway; a signal is not a request to decline.");
                     if let Some(sender) = http_shutdown.take() {
                         let _ = sender.send(());
                     }
                     return;
                 }
-                Err(error) => {
-                    eprintln!("nomoreide: daemon cleanup failed; shutdown refused: {error}");
-                }
-            },
-            None => std::future::pending::<()>().await,
+                eprintln!("nomoreide: shutdown refused; send SIGTERM to stop regardless.");
+            }
         }
     }
 }
 
-async fn forward_shutdown_signals(sender: mpsc::Sender<()>) {
+/// Whether a shutdown proceeds even though cleanup failed.
+///
+/// The one line the immortal-daemon bug turned on, pulled out of the loop so a
+/// test holds it rather than a comment.
+fn stops_anyway(request: ShutdownRequest) -> bool {
+    matches!(request, ShutdownRequest::Signalled)
+}
+
+async fn forward_shutdown_signals(sender: mpsc::Sender<ShutdownRequest>) {
     #[cfg(unix)]
     {
         use tokio::signal::unix::{signal, SignalKind};
@@ -353,14 +402,16 @@ async fn forward_shutdown_signals(sender: mpsc::Sender<()>) {
                 _ = terminate.recv() => {}
                 _ = interrupt.recv() => {}
             }
-            if sender.send(()).await.is_err() {
+            if sender.send(ShutdownRequest::Signalled).await.is_err() {
                 return;
             }
         }
     }
     #[cfg(not(unix))]
     loop {
-        if tokio::signal::ctrl_c().await.is_err() || sender.send(()).await.is_err() {
+        if tokio::signal::ctrl_c().await.is_err()
+            || sender.send(ShutdownRequest::Signalled).await.is_err()
+        {
             return;
         }
     }
@@ -415,5 +466,29 @@ async fn sample_metrics(metrics: MetricsStore, runtime: Arc<DaemonRuntime>) {
             })
             .collect();
         metrics.sample_once(&running).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{stops_anyway, ShutdownRequest};
+
+    /// The regression, stated as the rule it broke.
+    ///
+    /// Cleanup failing used to refuse the shutdown whatever asked for it. For a
+    /// signal that is not a refusal anybody can act on — there is nothing left
+    /// to ask again — so the daemon lived forever. Four were found on one
+    /// machine, up to ten days old, holding sockets on deleted directories.
+    #[test]
+    fn a_signal_stops_the_daemon_even_when_cleanup_fails() {
+        assert!(stops_anyway(ShutdownRequest::Signalled));
+    }
+
+    /// ...and the half that was right stays right: an HTTP caller is waiting
+    /// for an answer and can retry, so a daemon that could not account for its
+    /// services stays up and says so.
+    #[test]
+    fn an_http_request_still_refuses_when_cleanup_fails() {
+        assert!(!stops_anyway(ShutdownRequest::Requested));
     }
 }

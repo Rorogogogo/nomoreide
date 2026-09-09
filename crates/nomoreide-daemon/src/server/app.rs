@@ -32,10 +32,11 @@ pub(crate) struct AppState {
     pub(crate) config_store: ConfigStore,
     pub(crate) runtime: Arc<DaemonRuntime>,
     pub(crate) errors: ErrorInbox,
-    /// The same channel a SIGTERM pulls on. A shutdown asked for over HTTP has
+    /// The same channel a SIGTERM pulls on — but carrying *why*, because a
+    /// signal may not be declined and an HTTP ask may. A shutdown asked for over HTTP has
     /// to drain the runtime the way a signalled one does, so both go through
     /// here rather than one of them exiting the process directly.
-    pub(crate) shutdown: mpsc::Sender<()>,
+    pub(crate) shutdown: mpsc::Sender<crate::server::ShutdownRequest>,
     pub(crate) terminal: TerminalManager,
     /// Where a terminal session's lifecycle events go.
     ///

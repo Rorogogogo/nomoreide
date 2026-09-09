@@ -49,6 +49,8 @@ struct ShutdownEnvelope {
 /// as long as they take to stop, and a caller that waited for the socket to
 /// close would be waiting on its own request to be dropped.
 async fn shutdown(State(state): State<AppState>) -> Json<ShutdownEnvelope> {
-    let _ = state.shutdown.try_send(());
+    let _ = state
+        .shutdown
+        .try_send(crate::server::ShutdownRequest::Requested);
     Json(ShutdownEnvelope { ok: true })
 }

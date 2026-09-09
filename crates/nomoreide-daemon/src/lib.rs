@@ -15,7 +15,7 @@ mod service_discovery;
 
 pub use server::{
     run, run_embedded, run_embedded_with_shutdown_requests, run_with_listener, serve_until,
-    serve_with_shutdown_requests, DaemonOptions,
+    serve_with_shutdown_requests, DaemonOptions, ShutdownRequest,
 };
 
 use nomoreide_core::filesystem::{atomic_write, AtomicWriteOptions};
