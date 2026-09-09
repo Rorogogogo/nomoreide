@@ -103,8 +103,8 @@ pub async fn run_embedded_with_shutdown_requests(
     options: DaemonOptions,
     listener: TcpListener,
     credential: String,
-    shutdown_sender: mpsc::Sender<()>,
-    shutdown_requests: mpsc::Receiver<()>,
+    shutdown_sender: mpsc::Sender<ShutdownRequest>,
+    shutdown_requests: mpsc::Receiver<ShutdownRequest>,
 ) -> Result<()> {
     anyhow::ensure!(
         !credential.is_empty(),
@@ -128,7 +128,7 @@ where
     let signalled = shutdown_tx.clone();
     tokio::spawn(async move {
         shutdown.await;
-        let _ = signalled.send(()).await;
+        let _ = signalled.send(ShutdownRequest::Signalled).await;
     });
     serve_with_shutdown_requests(options, shutdown_tx, shutdown_rx).await
 }
@@ -138,8 +138,8 @@ where
 /// request and a signal reach the same drain rather than two separate exits.
 pub async fn serve_with_shutdown_requests(
     options: DaemonOptions,
-    shutdown_sender: mpsc::Sender<()>,
-    shutdown_requests: mpsc::Receiver<()>,
+    shutdown_sender: mpsc::Sender<ShutdownRequest>,
+    shutdown_requests: mpsc::Receiver<ShutdownRequest>,
 ) -> Result<()> {
     let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, options.port)))
         .await
@@ -154,6 +154,33 @@ pub async fn serve_with_shutdown_requests(
     .await
 }
 
+/// Why a shutdown was asked for.
+///
+/// **The distinction is the whole point.** Cleanup failing used to refuse the
+/// shutdown whatever asked for it, and that is right for one of these two and
+/// catastrophic for the other: a daemon whose cleanup can *never* succeed —
+/// because its state directory has been deleted out from under it, which is
+/// what happens to a parity gate's temp fixture — becomes immortal. Four of
+/// them were found alive on this machine, up to ten days old, ignoring
+/// `SIGTERM` and holding a listening socket on a directory that no longer
+/// existed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShutdownRequest {
+    /// `POST /api/daemon/shutdown`. A caller asked and is waiting for an
+    /// answer, so a cleanup failure is worth reporting *and* worth staying up
+    /// for — the next request reaches a daemon that knows it has processes it
+    /// could not account for.
+    Requested,
+    /// `SIGTERM`, `SIGINT`, or the future handed to [`serve_until`].
+    ///
+    /// Not a request that may be declined. Cleanup is still attempted and its
+    /// failure still reported, but the process exits either way: a service this
+    /// daemon could not stop is a leaked service, while refusing to exit leaks
+    /// the service *and* the daemon, forever, with nothing left that can ask it
+    /// again.
+    Signalled,
+}
+
 enum RuntimePublication {
     Files,
     Memory(String),
@@ -163,8 +190,8 @@ async fn serve_on_listener(
     options: DaemonOptions,
     listener: TcpListener,
     publication: RuntimePublication,
-    shutdown_sender: mpsc::Sender<()>,
-    shutdown_requests: mpsc::Receiver<()>,
+    shutdown_sender: mpsc::Sender<ShutdownRequest>,
+    shutdown_requests: mpsc::Receiver<ShutdownRequest>,
 ) -> Result<()> {
     let ownership = DaemonOwnership::acquire(options.runtime_paths.clone())
         .context("failed to acquire daemon ownership")?;
@@ -239,6 +266,15 @@ async fn serve_on_listener(
     ));
     tokio::spawn(sample_usage(usage_history.clone()));
 
+    // Exit if this daemon's runtime home is deleted out from under it. See
+    // `watch_runtime_home` — this is what stops an orphaned gate daemon living
+    // for ten days rather than merely making it killable.
+    tokio::spawn(watch_runtime_home(
+        options.runtime_paths.clone(),
+        ownership.owner_id().to_string(),
+        shutdown_sender.clone(),
+    ));
+
     // One channel behind the sink every manager already emits into, so the
     // terminal stream is a subscriber rather than a change to the manager.
     let event_stream = tokio::sync::broadcast::Sender::<app::RuntimeEvent>::new(app::EVENT_BACKLOG);
@@ -311,34 +347,123 @@ async fn serve_on_listener(
     Ok(())
 }
 
-/// Stop serving only once the services are actually down. A cleanup failure
-/// refuses the shutdown rather than completing it, so the next request still
-/// reaches a daemon that knows it has processes it could not account for.
+/// Stop serving only once the services are actually down — unless the ask was a
+/// signal, which is not a thing to decline.
+///
+/// A [`ShutdownRequest::Requested`] that cannot clean up stays up and says so,
+/// so the next request reaches a daemon that knows it has processes it could
+/// not account for. A [`ShutdownRequest::Signalled`] that cannot clean up
+/// exits anyway — see the type for the four immortal daemons that behaviour
+/// cost.
 async fn drain_before_shutdown(
     runtime: Arc<DaemonRuntime>,
-    mut requests: mpsc::Receiver<()>,
+    mut requests: mpsc::Receiver<ShutdownRequest>,
     http_shutdown: oneshot::Sender<()>,
 ) {
     let mut http_shutdown = Some(http_shutdown);
     loop {
-        match requests.recv().await {
-            Some(()) => match runtime.shutdown().await {
-                Ok(()) => {
+        let Some(request) = requests.recv().await else {
+            std::future::pending::<()>().await;
+            continue;
+        };
+        match runtime.shutdown().await {
+            Ok(()) => {
+                if let Some(sender) = http_shutdown.take() {
+                    let _ = sender.send(());
+                }
+                return;
+            }
+            Err(error) => {
+                eprintln!("nomoreide: daemon cleanup failed: {error}");
+                if stops_anyway(request) {
+                    eprintln!("nomoreide: exiting anyway; a signal is not a request to decline.");
                     if let Some(sender) = http_shutdown.take() {
                         let _ = sender.send(());
                     }
                     return;
                 }
-                Err(error) => {
-                    eprintln!("nomoreide: daemon cleanup failed; shutdown refused: {error}");
-                }
-            },
-            None => std::future::pending::<()>().await,
+                eprintln!("nomoreide: shutdown refused; send SIGTERM to stop regardless.");
+            }
         }
     }
 }
 
-async fn forward_shutdown_signals(sender: mpsc::Sender<()>) {
+/// How often the daemon checks that it still has a runtime home.
+const RUNTIME_HOME_POLL: Duration = Duration::from_secs(30);
+/// Consecutive misses before exiting. Two, so a transient stat failure — a
+/// filesystem briefly unavailable, a home on a network mount — does not end a
+/// healthy daemon.
+const RUNTIME_HOME_MISSES: u8 = 2;
+
+/// Stop when this daemon's runtime home has been deleted out from under it.
+///
+/// **This is what makes orphan cleanup automatic** rather than something a
+/// person notices weeks later in `ps`. A parity gate spawns a daemon inside a
+/// temp fixture; when the gate is interrupted the fixture is removed and the
+/// daemon is left serving a directory that no longer exists. Nothing ever told
+/// it to stop, so it did not — four such daemons were found on one machine, up
+/// to ten days old.
+///
+/// **The check is the lock file, deliberately not the parent process.** The
+/// obvious test — "am I an orphan, is my `ppid` 1?" — is exactly wrong here:
+/// the real daemon is *detached on purpose* and legitimately has `ppid` 1 from
+/// the moment it starts. A parent-death check would kill the one daemon that is
+/// supposed to be running. What actually separates the two is that
+/// `~/.nomoreide/daemon.lock` persists while a temp fixture does not.
+///
+/// An owner id that no longer matches counts as gone too: the file being
+/// replaced means this process is no longer the owner it published itself as,
+/// and serving on a credential nobody can look up is not serving.
+async fn watch_runtime_home(
+    paths: RuntimePaths,
+    owner_id: String,
+    shutdown: mpsc::Sender<ShutdownRequest>,
+) {
+    let mut misses = 0u8;
+    loop {
+        tokio::time::sleep(RUNTIME_HOME_POLL).await;
+        if runtime_home_is_ours(&paths, &owner_id) {
+            misses = 0;
+            continue;
+        }
+        misses += 1;
+        if misses < RUNTIME_HOME_MISSES {
+            continue;
+        }
+        eprintln!(
+            "nomoreide: runtime home {} is gone; stopping.",
+            paths.state_dir.display()
+        );
+        // `Signalled`, not `Requested`: nobody is waiting for an answer, and
+        // this must not be declinable — a daemon whose home has been deleted is
+        // precisely the one whose cleanup cannot succeed.
+        let _ = shutdown.send(ShutdownRequest::Signalled).await;
+        return;
+    }
+}
+
+/// Whether the lock file still exists and still names this owner.
+fn runtime_home_is_ours(paths: &RuntimePaths, owner_id: &str) -> bool {
+    let Ok(raw) = std::fs::read(&paths.lock) else {
+        return false;
+    };
+    // A lock file that cannot be parsed is not evidence of anything; treat it
+    // as present rather than reading a truncated write as a reason to exit.
+    match serde_json::from_slice::<crate::LockRecord>(&raw) {
+        Ok(record) => record.owner_id == owner_id,
+        Err(_) => true,
+    }
+}
+
+/// Whether a shutdown proceeds even though cleanup failed.
+///
+/// The one line the immortal-daemon bug turned on, pulled out of the loop so a
+/// test holds it rather than a comment.
+fn stops_anyway(request: ShutdownRequest) -> bool {
+    matches!(request, ShutdownRequest::Signalled)
+}
+
+async fn forward_shutdown_signals(sender: mpsc::Sender<ShutdownRequest>) {
     #[cfg(unix)]
     {
         use tokio::signal::unix::{signal, SignalKind};
@@ -353,14 +478,16 @@ async fn forward_shutdown_signals(sender: mpsc::Sender<()>) {
                 _ = terminate.recv() => {}
                 _ = interrupt.recv() => {}
             }
-            if sender.send(()).await.is_err() {
+            if sender.send(ShutdownRequest::Signalled).await.is_err() {
                 return;
             }
         }
     }
     #[cfg(not(unix))]
     loop {
-        if tokio::signal::ctrl_c().await.is_err() || sender.send(()).await.is_err() {
+        if tokio::signal::ctrl_c().await.is_err()
+            || sender.send(ShutdownRequest::Signalled).await.is_err()
+        {
             return;
         }
     }
@@ -415,5 +542,51 @@ async fn sample_metrics(metrics: MetricsStore, runtime: Arc<DaemonRuntime>) {
             })
             .collect();
         metrics.sample_once(&running).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{runtime_home_is_ours, stops_anyway, RuntimePaths, ShutdownRequest};
+
+    /// The regression, stated as the rule it broke.
+    ///
+    /// Cleanup failing used to refuse the shutdown whatever asked for it. For a
+    /// signal that is not a refusal anybody can act on — there is nothing left
+    /// to ask again — so the daemon lived forever. Four were found on one
+    /// machine, up to ten days old, holding sockets on deleted directories.
+    #[test]
+    fn a_signal_stops_the_daemon_even_when_cleanup_fails() {
+        assert!(stops_anyway(ShutdownRequest::Signalled));
+    }
+
+    /// A deleted runtime home is what an orphaned gate daemon is left serving.
+    #[test]
+    fn a_missing_lock_file_means_the_runtime_home_is_gone() {
+        let dir = std::env::temp_dir().join(format!("nmi-home-{}", uuid::Uuid::new_v4()));
+        let paths = RuntimePaths::new(dir.clone());
+        assert!(!runtime_home_is_ours(&paths, "owner-a"));
+    }
+
+    #[test]
+    fn a_lock_naming_another_owner_means_this_daemon_is_not_it() {
+        let dir = std::env::temp_dir().join(format!("nmi-home-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let paths = RuntimePaths::new(dir.clone());
+        std::fs::write(&paths.lock, br#"{"pid":1,"ownerId":"owner-b"}"#).unwrap();
+        assert!(!runtime_home_is_ours(&paths, "owner-a"));
+        assert!(runtime_home_is_ours(&paths, "owner-b"));
+        // A half-written file is not evidence of anything, so it is kept.
+        std::fs::write(&paths.lock, b"{not json").unwrap();
+        assert!(runtime_home_is_ours(&paths, "owner-a"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// ...and the half that was right stays right: an HTTP caller is waiting
+    /// for an answer and can retry, so a daemon that could not account for its
+    /// services stays up and says so.
+    #[test]
+    fn an_http_request_still_refuses_when_cleanup_fails() {
+        assert!(!stops_anyway(ShutdownRequest::Requested));
     }
 }

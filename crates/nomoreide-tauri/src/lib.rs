@@ -232,7 +232,7 @@ struct StartedEmbeddedDaemon {
 struct EmbeddedDaemonTask {
     base_url: String,
     credential: String,
-    shutdown: tokio::sync::mpsc::Sender<()>,
+    shutdown: tokio::sync::mpsc::Sender<nomoreide_daemon::ShutdownRequest>,
     task: tauri::async_runtime::JoinHandle<anyhow::Result<()>>,
 }
 
@@ -287,7 +287,17 @@ fn begin_app_shutdown(app: tauri::AppHandle) {
             .expect("embedded daemon task mutex poisoned")
             .take();
         if let Some(mut daemon) = daemon {
-            if daemon.shutdown.send(()).await.is_err() {
+            // `Requested`, not `Signalled`: this window closing is an ask, and
+            // the app deliberately refuses to close when the daemon cannot
+            // account for its services — see `refuse_app_shutdown` below. A
+            // desktop app that vanished leaving orphaned processes would be the
+            // same bug in a nicer wrapper.
+            if daemon
+                .shutdown
+                .send(nomoreide_daemon::ShutdownRequest::Requested)
+                .await
+                .is_err()
+            {
                 refuse_app_shutdown(&app, "the embedded daemon shutdown channel closed");
                 return;
             }

@@ -15,7 +15,7 @@ mod service_discovery;
 
 pub use server::{
     run, run_embedded, run_embedded_with_shutdown_requests, run_with_listener, serve_until,
-    serve_with_shutdown_requests, DaemonOptions,
+    serve_with_shutdown_requests, DaemonOptions, ShutdownRequest,
 };
 
 use nomoreide_core::filesystem::{atomic_write, AtomicWriteOptions};
@@ -27,9 +27,9 @@ use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct LockRecord {
+pub(crate) struct LockRecord {
     pid: u32,
-    owner_id: String,
+    pub(crate) owner_id: String,
 }
 
 /// Exclusive ownership of the machine-global runtime. The OS lock is released
