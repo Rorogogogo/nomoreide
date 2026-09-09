@@ -27,9 +27,9 @@ use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct LockRecord {
+pub(crate) struct LockRecord {
     pid: u32,
-    owner_id: String,
+    pub(crate) owner_id: String,
 }
 
 /// Exclusive ownership of the machine-global runtime. The OS lock is released
