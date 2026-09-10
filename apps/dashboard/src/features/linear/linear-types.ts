@@ -6,22 +6,30 @@ export interface LinearIssue {
   id: string;
   identifier: string; title: string; description: string | null; url: string; branchName: string;
   priority: number; state: LinearState; team: LinearChoice; assignee: LinearChoice | null;
+  project?: LinearChoice | null;
+  /** ISO 8601. How long a card has sat still is the board's missing signal. */
+  updatedAt?: string | null;
   comments?: { nodes: { id: string; body: string; user: { name: string } | null }[]; pageInfo: { hasNextPage: boolean } };
 }
 export type LinearRequest =
   | { operation: "metadata" }
   | { operation: "binding"; team: string; project: string | null }
+  | { operation: "unbind" }
   | { operation: "issues"; team: string; project: string | null; after?: string | null }
   | { operation: "issue"; id: string }
+  | { operation: "createProject"; team: string; name: string; description: string }
   | { operation: "create"; team: string; project: string | null; title: string; description: string }
   | { operation: "update"; id: string; state: string }
   | { operation: "comment"; id: string; body: string };
 export interface LinearData {
   teams?: { nodes: LinearTeam[] };
   binding?: { team: string; project: string | null } | null;
+  /** The repository the binding is filed under — what the UI names it by. */
+  repository?: string | null;
   issues?: { nodes: LinearIssue[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
   issue?: LinearIssue;
   issueCreate?: { issue: LinearIssue };
+  projectCreate?: { project: LinearChoice };
 }
 export type LinearTransport = (request: LinearRequest) => Promise<LinearData>;
 export function linearTaskPrompt(issue: LinearIssue): string {

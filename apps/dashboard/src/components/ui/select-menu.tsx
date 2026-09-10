@@ -36,6 +36,7 @@ export function SelectMenu({
   ariaLabel,
   placeholder,
   className,
+  footer,
   mono = false,
   disabled = false,
 }: {
@@ -46,6 +47,13 @@ export function SelectMenu({
   /** Trigger text when nothing is selected yet. */
   placeholder?: string;
   className?: string;
+  /**
+   * A row under the options, separated by a hairline — for a setting *about*
+   * the choice rather than one of the choices. It sits outside the listbox and
+   * outside the arrow-key walk, and clicking it leaves the menu open, because
+   * it does not answer the question the menu is asking.
+   */
+  footer?: ReactNode | ((close: () => void) => ReactNode);
   /** Render labels in the mono face — paths, ids, anything read character by character. */
   mono?: boolean;
   disabled?: boolean;
@@ -201,19 +209,25 @@ export function SelectMenu({
       {open
         ? createPortal(
             <div
-              aria-label={ariaLabel}
               // `z-[1100]`, the layer the context menu and the tooltip use: a
               // popup has to clear whatever opened it, and dialogs sit at
               // `z-[1000]`. At `z-[100]` this menu rendered *behind* any dialog
               // it was opened from — the trigger took focus and nothing
               // appeared, which reads as a dead control rather than a stacking
               // bug. Toasts stay above at `z-[9999]`.
-              className="fixed z-[1100] flex max-h-80 flex-col overflow-y-auto rounded-md border border-border bg-card p-1 shadow-md"
+              className="fixed z-[1100] flex max-h-80 flex-col rounded-md border border-border bg-card p-1 shadow-md"
               ref={menuRef}
-              role="listbox"
               style={{ top: coords.top, left: coords.left, minWidth: coords.minWidth }}
             >
-              {options.map((option, index) => (
+              {/* The listbox is the options alone. `footer` is a sibling of
+                  it, not a member — an option a screen reader could land on
+                  while walking the choices would be read as one of them. */}
+              <div
+                aria-label={ariaLabel}
+                className="flex min-h-0 flex-col overflow-y-auto"
+                role="listbox"
+              >
+                {options.map((option, index) => (
                 <button
                   aria-selected={option.value === value}
                   className={cn(
@@ -249,6 +263,12 @@ export function SelectMenu({
                   />
                 </button>
               ))}
+              </div>
+              {footer ? (
+                <div className="mt-1 border-t border-border pt-1">
+                  {typeof footer === "function" ? footer(() => setOpen(false)) : footer}
+                </div>
+              ) : null}
             </div>,
             document.body,
           )

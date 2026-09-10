@@ -10,7 +10,7 @@ use crate::remote::protocol::linear::LinearRequest;
 use serde_json::{json, Value};
 use std::time::Duration;
 
-const ISSUE: &str = "id identifier title description url branchName priority state { id name type } assignee { id name } team { id name } project { id name }";
+const ISSUE: &str = "id identifier title description url branchName priority updatedAt state { id name type } assignee { id name } team { id name } project { id name }";
 
 pub async fn query(authorization: &str, query: &str, variables: Value) -> Result<Value, String> {
     let client = reqwest::Client::builder()
@@ -65,7 +65,9 @@ fn decode(value: Value) -> Result<Value, String> {
 pub async fn execute(authorization: &str, request: &LinearRequest) -> Result<Value, String> {
     request.validate()?;
     let (document, variables) = match request {
-        LinearRequest::Binding { .. } => return Err("Binding must be handled by the host".into()),
+        LinearRequest::Binding { .. } | LinearRequest::Unbind {} => {
+            return Err("Binding must be handled by the host".into())
+        }
         // 50, not 100, and the three are load-bearing together. Linear costs a
         // query by its *requested* page sizes rather than by what comes back,
         // and this one nests two hundred-item lists inside a hundred-item one:
@@ -81,6 +83,7 @@ pub async fn execute(authorization: &str, request: &LinearRequest) -> Result<Val
         },
         LinearRequest::Issue { id } => (format!("query($id: String!) {{ issue(id: $id) {{ {ISSUE} comments(first: 50) {{ nodes {{ id body user {{ name }} }} pageInfo {{ hasNextPage endCursor }} }} }} }}"), json!({"id": id})),
         LinearRequest::Create { team, project, title, description } => (format!("mutation($input: IssueCreateInput!) {{ issueCreate(input: $input) {{ success issue {{ {ISSUE} }} }} }}"), json!({"input": {"teamId": team, "projectId": project, "title": title, "description": description}})),
+        LinearRequest::CreateProject { team, name, description } => ("mutation($input: ProjectCreateInput!) { projectCreate(input: $input) { success project { id name } } }".into(), json!({"input": {"teamIds": [team], "name": name, "description": description}})),
         LinearRequest::Update { id, state } => (format!("mutation($id: String!, $input: IssueUpdateInput!) {{ issueUpdate(id: $id, input: $input) {{ success issue {{ {ISSUE} }} }} }}"), json!({"id": id, "input": {"stateId": state}})),
         LinearRequest::Comment { id, body } => ("mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id body user { name } } } }".into(), json!({"input": {"issueId": id, "body": body}})),
     };

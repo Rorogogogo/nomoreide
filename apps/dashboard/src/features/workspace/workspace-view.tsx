@@ -74,7 +74,7 @@ export function WorkspaceView({ layout, update, options, title, render }: {
             onPointerDownCapture={() => { if (layout.focused !== paneIndex) update((current) => ({ ...current, focused: paneIndex })); }}
             onFocusCapture={() => { if (layout.focused !== paneIndex) update((current) => ({ ...current, focused: paneIndex })); }}
           >
-            <div className={cn("flex shrink-0 items-center gap-1 border-b border-border px-2 py-1", layout.focused === paneIndex && "bg-muted/20")}>
+            <div className={cn("flex shrink-0 items-center gap-1 border-b border-border px-2 py-0.5", layout.focused === paneIndex && "bg-muted/20")}>
               <div
                 className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto" role="tablist" aria-label={t("workspace.tabs")}
                 /* Dropping past the last tab appends, which is what the empty
@@ -112,7 +112,7 @@ export function WorkspaceView({ layout, update, options, title, render }: {
                       <button
                         type="button" role="tab" id={`${id}-${paneIndex}-${index}-tab`} aria-controls={`${id}-${paneIndex}-${index}-panel`}
                         aria-selected={active} tabIndex={active ? 0 : -1}
-                        className="max-w-40 truncate py-1 focus-visible:outline focus-visible:outline-2"
+                        className="max-w-40 truncate py-0.5 leading-4 focus-visible:outline focus-visible:outline-2"
                         draggable
                         onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", tabId(tab)); setDragging({ pane: paneIndex, index }); }}
                         onDragEnd={endDrag}
@@ -158,14 +158,14 @@ export function WorkspaceView({ layout, update, options, title, render }: {
               </select>
               {paneIndex === 0 && !split ? (
                 <Button
-                  variant="ghost" size="icon" className="size-6 shrink-0"
+                  variant="ghost" size="icon" className="size-5 shrink-0"
                   aria-label={t("workspace.openBeside")} title={t("workspace.openBeside")}
                   onClick={() => update((current) => splitActive(current, options))}
                 ><SquareSplitHorizontal aria-hidden className="size-3.5" /></Button>
               ) : null}
               {paneIndex === 1 ? (
                 <Button
-                  variant="ghost" size="icon" className="size-6 shrink-0"
+                  variant="ghost" size="icon" className="size-5 shrink-0"
                   aria-label={t("workspace.singlePane")} title={t("workspace.singlePane")}
                   onClick={() => update(mergePanes)}
                 ><Columns2 aria-hidden className="size-3.5" /></Button>

@@ -9,6 +9,11 @@ pub enum LinearRequest {
         team: String,
         project: Option<String>,
     },
+    /// Forget the selected repository's default team — what unticking the
+    /// team menu's "use for this repository" does. Additive to [`Binding`]
+    /// rather than a nullable team on it, because that field is `String` on
+    /// the wire and the platform speaks this format from another repository.
+    Unbind {},
     Issues {
         team: String,
         project: Option<String>,
@@ -16,6 +21,14 @@ pub enum LinearRequest {
     },
     Issue {
         id: String,
+    },
+    /// A Linear *project*, not an issue. `teamIds` is plural in Linear's own
+    /// input because a project may span teams; this creates it against the one
+    /// the panel is scoped to, which is the only team it can name.
+    CreateProject {
+        team: String,
+        name: String,
+        description: String,
     },
     Create {
         team: String,
@@ -36,7 +49,12 @@ impl LinearRequest {
     pub fn is_mutating(&self) -> bool {
         matches!(
             self,
-            Self::Binding { .. } | Self::Create { .. } | Self::Update { .. } | Self::Comment { .. }
+            Self::Binding { .. }
+                | Self::Unbind {}
+                | Self::CreateProject { .. }
+                | Self::Create { .. }
+                | Self::Update { .. }
+                | Self::Comment { .. }
         )
     }
     pub fn validate(&self) -> Result<(), &'static str> {
@@ -50,6 +68,7 @@ impl LinearRequest {
         let valid = match self {
             Self::Metadata {} => true,
             Self::Binding { team, project } => id(team) && project.as_deref().map_or(true, id),
+            Self::Unbind {} => true,
             Self::Issues {
                 team,
                 project,
@@ -70,6 +89,16 @@ impl LinearRequest {
                     && project.as_deref().map_or(true, id)
                     && !title.trim().is_empty()
                     && title.len() <= 512
+                    && description.len() <= 16000
+            }
+            Self::CreateProject {
+                team,
+                name,
+                description,
+            } => {
+                id(team)
+                    && !name.trim().is_empty()
+                    && name.len() <= 512
                     && description.len() <= 16000
             }
             Self::Update { id: value, state } => id(value) && id(state),

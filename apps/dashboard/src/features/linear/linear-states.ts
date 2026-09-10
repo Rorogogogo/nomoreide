@@ -50,7 +50,27 @@ export const PRIORITIES = [0, 1, 2, 3, 4] as const;
 
 /** Urgent earns red; everything else stays quiet. */
 export function priorityTone(priority: number): string {
-  return priority === 1 ? "text-red-600 dark:text-red-500" : "text-muted-foreground";
+  if (priority === 1) return "text-red-600 dark:text-red-500";
+  if (priority === 2) return "text-amber-600 dark:text-amber-500";
+  return "text-muted-foreground";
+}
+
+/**
+ * The row's left edge, by priority — and deliberately only for the top two.
+ *
+ * Priority answers "what do I look at first", which is a two-state question.
+ * Giving all four levels a colour turns a column into a rainbow in which
+ * nothing stands out, so Normal, Low and No priority get no edge at all and
+ * Urgent and High are the only things that interrupt a scan.
+ *
+ * Every row reserves the 2px whether or not it is coloured, so a card changing
+ * priority does not shift its own text sideways. The colour is redundant with
+ * the priority label the row already carries, never the only carrier of it.
+ */
+export function priorityEdge(priority: number): string {
+  if (priority === 1) return "border-l-red-600 dark:border-l-red-500";
+  if (priority === 2) return "border-l-amber-500 dark:border-l-amber-400";
+  return "border-l-transparent";
 }
 
 /**

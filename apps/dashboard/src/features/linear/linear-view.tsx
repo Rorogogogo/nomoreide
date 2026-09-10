@@ -23,7 +23,8 @@ const send = async (request: LinearRequest) =>
 export function LinearView() {
   const agent = useAgentDock();
   const translate = useT();
-  const t = (key: string) => translate(`linear.${key}` as TranslationKey);
+  const t = (key: string, params?: Record<string, string | number>) =>
+    translate(`linear.${key}` as TranslationKey, params);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [source, setSource] = useState<string | null>(null);
   const [oauthAvailable, setOauthAvailable] = useState(false);

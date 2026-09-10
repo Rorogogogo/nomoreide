@@ -802,6 +802,8 @@ const linearIssues = [
     description:
       "A timeout is being treated as a failure, so the retry charges again. Make the submit idempotent with the key the API already accepts.",
     url: "https://linear.app/acme/issue/WEB-214",
+    updatedAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+    project: { id: "prj-checkout", name: "Checkout" },
     branchName: "web-214-checkout-double-charge",
     priority: 1,
     state: { id: "state_doing", name: "In Progress" },
@@ -814,6 +816,8 @@ const linearIssues = [
     title: "Session expiry logs people out mid-form",
     description: "Refresh the token in the background instead of redirecting.",
     url: "https://linear.app/acme/issue/WEB-208",
+    updatedAt: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+    project: { id: "prj-checkout", name: "Checkout" },
     branchName: "web-208-silent-refresh",
     priority: 2,
     state: { id: "state_todo", name: "Todo" },
@@ -826,6 +830,8 @@ const linearIssues = [
     title: "Ship the empty-state illustration",
     description: "Design is in Figma; only the dashboard list is missing it.",
     url: "https://linear.app/acme/issue/WEB-197",
+    updatedAt: new Date(Date.now() - 98 * 3600 * 1000).toISOString(),
+    project: { id: "prj-checkout", name: "Checkout" },
     branchName: "web-197-empty-state",
     priority: 3,
     state: { id: "state_done", name: "Done" },
@@ -1756,6 +1762,9 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
         data: {
           teams: { nodes: [linearTeam] },
           binding: { team: linearTeam.id, project: null },
+          // The team menu's "use for <repository>" row reads this to name the
+          // repository; without it the demo renders the no-repository copy.
+          repository: "acme",
         },
       });
     }
@@ -1778,7 +1787,21 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     if (operation === "create") {
       return json({ ok: true, data: { issueCreate: { issue: linearIssues[0] } } });
     }
-    // binding, update and comment answer with nothing to render.
+    if (operation === "createProject") {
+      return json({
+        ok: true,
+        data: { projectCreate: { project: { id: "prj-demo", name: "New project" } } },
+      });
+    }
+    // update and comment answer with nothing to render; the two binding
+    // operations answer with the binding they leave behind, which is what the
+    // team menu's tick reads.
+    if (operation === "binding") {
+      return json({ ok: true, data: { binding: { team: linearTeam.id, project: null } } });
+    }
+    if (operation === "unbind") {
+      return json({ ok: true, data: { binding: null } });
+    }
     return json({ ok: true, data: {} });
   }
 

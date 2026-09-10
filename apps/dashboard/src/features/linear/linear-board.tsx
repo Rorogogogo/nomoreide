@@ -13,10 +13,11 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cn } from "@/lib/utils";
+import { cn, formatUptime } from "@/lib/utils";
 import {
   columnFor as previewedColumn,
   orderStates,
+  priorityEdge,
   priorityTone,
   resolveColumn,
   stateTone,
@@ -53,6 +54,7 @@ export function LinearBoard({
   onMove,
   onSelect,
   selectedId,
+  showProject,
   states,
   t,
 }: {
@@ -67,6 +69,8 @@ export function LinearBoard({
   onMove: (id: string, state: LinearState) => void;
   onSelect: (id: string) => void;
   selectedId?: string;
+  /** Name each card's project — only worth it when the panel shows them all. */
+  showProject?: boolean;
   states: LinearState[];
   t: (key: string) => string;
 }) {
@@ -164,6 +168,7 @@ export function LinearBoard({
             key={state.id}
             onSelect={onSelect}
             selectedId={selectedId}
+            showProject={showProject}
             state={state}
             t={t}
           />
@@ -178,7 +183,7 @@ export function LinearBoard({
       <DragOverlay dropAnimation={{ duration: 160, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
         {dragging ? (
           <div className="w-64 cursor-grabbing border border-border bg-card px-3 py-2 shadow-lg">
-            <CardBody issue={dragging} t={t} />
+            <CardBody issue={dragging} showProject={showProject} t={t} />
           </div>
         ) : null}
       </DragOverlay>
@@ -191,6 +196,7 @@ function Column({
   issues,
   onSelect,
   selectedId,
+  showProject,
   state,
   t,
 }: {
@@ -198,6 +204,7 @@ function Column({
   issues: LinearIssue[];
   onSelect: (id: string) => void;
   selectedId?: string;
+  showProject?: boolean;
   state: LinearState;
   t: (key: string) => string;
 }) {
@@ -236,6 +243,7 @@ function Column({
                 key={issue.id}
                 onSelect={onSelect}
                 selected={selectedId === issue.id}
+                showProject={showProject}
                 t={t}
               />
             ))}
@@ -254,12 +262,14 @@ function Card({
   issue,
   onSelect,
   selected,
+  showProject,
   t,
 }: {
   busy: boolean;
   issue: LinearIssue;
   onSelect: (id: string) => void;
   selected: boolean;
+  showProject?: boolean;
   t: (key: string) => string;
 }) {
   const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
@@ -270,7 +280,8 @@ function Card({
   return (
     <li
       className={cn(
-        "transition-colors",
+        "border-l-2 transition-colors",
+        priorityEdge(issue.priority),
         selected && "bg-muted/45",
         // The gap the card will drop into. The row stays mounted and holds its
         // height — removing it would collapse the column and make everything
@@ -287,17 +298,46 @@ function Card({
         onClick={() => onSelect(issue.id)}
         type="button"
       >
-        <CardBody issue={issue} t={t} />
+        <CardBody issue={issue} showProject={showProject} t={t} />
       </button>
     </li>
   );
 }
 
-/** Shared by the row and the overlay, so the card in flight is the same card. */
-function CardBody({ issue, t }: { issue: LinearIssue; t: (key: string) => string }) {
+/**
+ * Shared by the row and the overlay, so the card in flight is the same card.
+ *
+ * **Age sits on the title line, not in the meta run.** A column of eight cards
+ * used to say nothing about which one was stuck, which is the question a board
+ * exists to answer; putting it at the right of the title makes the stalled card
+ * findable by scanning one edge rather than reading eight meta lines.
+ *
+ * The project appears only when the panel is not already filtered to one —
+ * otherwise every card repeats the same word.
+ */
+function CardBody({
+  issue,
+  showProject,
+  t,
+}: {
+  issue: LinearIssue;
+  showProject?: boolean;
+  t: (key: string) => string;
+}) {
+  const age = formatUptime(issue.updatedAt ?? undefined);
   return (
     <>
-      <span className="block truncate text-[13px] font-medium">{issue.title}</span>
+      <span className="flex items-baseline gap-2">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{issue.title}</span>
+        {age && (
+          <span
+            className="shrink-0 font-mono text-[10px] text-muted-foreground"
+            title={t("updated")}
+          >
+            {age}
+          </span>
+        )}
+      </span>
       <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <span className="font-mono">{issue.identifier}</span>
         {issue.priority > 0 && (
@@ -310,6 +350,12 @@ function CardBody({ issue, t }: { issue: LinearIssue; t: (key: string) => string
           <>
             <span aria-hidden="true">·</span>
             <span className="truncate">{issue.assignee.name}</span>
+          </>
+        )}
+        {showProject && issue.project && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span className="truncate">{issue.project.name}</span>
           </>
         )}
       </span>

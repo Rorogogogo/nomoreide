@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
-import { priorityTone, stateTone } from "./linear-states";
+import { cn, formatUptime } from "@/lib/utils";
+import { priorityEdge, priorityTone, stateTone } from "./linear-states";
 import type { LinearIssue } from "./linear-types";
 
 /**
@@ -19,6 +19,7 @@ export function LinearList({
   onMore,
   onSelect,
   selectedId,
+  showProject,
   t,
 }: {
   busy: boolean;
@@ -29,6 +30,8 @@ export function LinearList({
   onMore: () => void;
   onSelect: (id: string) => void;
   selectedId?: string;
+  /** Name each row's project — only worth it when the panel shows them all. */
+  showProject?: boolean;
   t: (key: string) => string;
 }) {
   if (issues.length === 0) {
@@ -38,7 +41,7 @@ export function LinearList({
     <div className="min-h-0 flex-1 overflow-y-auto">
       <ul className="divide-y divide-border">
         {issues.map((issue) => (
-          <li key={issue.id}>
+          <li className={cn("border-l-2", priorityEdge(issue.priority))} key={issue.id}>
             <button
               className={cn(
                 "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
@@ -64,11 +67,20 @@ export function LinearList({
                   {" · "}
                   {issue.state.name}
                   {issue.assignee ? ` · ${issue.assignee.name}` : ""}
+                  {showProject && issue.project ? ` · ${issue.project.name}` : ""}
                 </span>
               </span>
               {issue.priority > 0 && (
                 <span className={cn("shrink-0 text-[10px]", priorityTone(issue.priority))}>
                   {t(`priority${issue.priority}`)}
+                </span>
+              )}
+              {formatUptime(issue.updatedAt ?? undefined) && (
+                <span
+                  className="shrink-0 font-mono text-[10px] text-muted-foreground"
+                  title={t("updated")}
+                >
+                  {formatUptime(issue.updatedAt ?? undefined)}
                 </span>
               )}
             </button>
