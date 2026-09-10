@@ -477,7 +477,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   ]);
 
   const railProviderId = focusedTask?.provider ?? provider?.id;
-  const activeShell = focusedTask?.kind === "shell";
+  const activeShell = focusedTask?.kind === "shell" && !focusedTask.provider;
   // History is a property of the new-session surface, so the rail follows the
   // composer rather than the dock: with a session in front of the user there is
   // no sidebar at all, only the toolbar "+" that starts a new one.
@@ -489,7 +489,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       ? CodexLogo
       : ClaudeLogo;
   const collapsedTask = currentRailTask ?? latestRailTask;
-  const collapsedShell = collapsedTask?.kind === "shell";
+  const collapsedShell = collapsedTask?.kind === "shell" && !collapsedTask.provider;
   const collapsedProviderId = collapsedTask?.provider ?? provider?.id;
   const CollapsedLogo = collapsedShell
     ? SquareTerminal
@@ -528,7 +528,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   // exists, an explicit new task or staged draft brings it back.
   // Agent capabilities are meaningless against a plain shell, so the chips go
   // away whenever the thing in front of the user is one.
-  const agentContext = focusedTask ? !activeShell : composing && !shellMode;
+  const agentContext = focusedTask ? focusedTask.kind !== "shell" : composing && !shellMode;
   // Keep both provider snapshots warm so split panes can render task-scoped
   // capability clusters instead of borrowing whichever pane was focused last.
   const claudeCapabilities = useAgentCapabilities("claude", open);
@@ -901,9 +901,9 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
               role="tablist"
             >
               {collapsedTaskTabs.map((task) => {
-                const label = task.label || (task.kind === "shell" ? t("dock.shellFallback") : t("dock.taskFallback", { provider: task.provider === "codex" ? "Codex" : "Claude Code" }));
+                const label = task.label || (task.kind === "shell" && !task.provider ? t("dock.shellFallback") : t("dock.taskFallback", { provider: task.provider === "codex" ? "Codex" : "Claude Code" }));
                 const active = task.id === collapsedTask?.id;
-                const TaskLogo = task.kind === "shell"
+                const TaskLogo = task.kind === "shell" && !task.provider
                   ? SquareTerminal
                   : task.provider === "codex"
                     ? CodexLogo
@@ -1046,7 +1046,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
             data-agent-pane-tabs="left"
             style={{ right: `${100 - splitPercent}%` }}
           >
-            <AgentTerminalTabs activeTaskId={activeTaskId} ariaLabel={t("dock.leftTasksAria")} composing={false} onActivate={activateLeft} onBringBackToDock={terminalCapabilities?.externalTerminal ? (id) => void bringTaskBackToDock(id) : undefined} onClose={(id) => void closeLeft(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onOpenInTerminal={terminalCapabilities?.externalTerminal ? (id) => void openTaskInTerminal(id) : undefined} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={leftTasks} />
+            <AgentTerminalTabs activeTaskId={activeTaskId} ariaLabel={t("dock.leftTasksAria")} composing={false} onActivate={activateLeft} onBringBackToDock={(id) => void bringTaskBackToDock(id)} onClose={(id) => void closeLeft(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onOpenInTerminal={terminalCapabilities?.externalTerminal ? (id) => void openTaskInTerminal(id) : undefined} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={leftTasks} />
             {leftAgentContext ? <AgentCapabilityBadges capabilities={capabilitiesFor(leftProviderId)} onInsert={(text) => insertPaneCapability("left", leftActive, text)} onNavigate={onNavigate ? navigate : undefined} onSelectOneTimeSkill={(skill) => stagePaneOneTimeSkill("left", leftActive, skill)} providerLabel={leftProviderLabel} /> : null}
             <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={leftProviderId} variant="dock" />
           </div>
@@ -1059,14 +1059,14 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
             data-agent-pane-tabs="right"
             style={{ left: `${splitPercent}%` }}
           >
-            <AgentTerminalTabs activeTaskId={rightActive?.id ?? null} ariaLabel={t("dock.rightTasksAria")} composing={false} onActivate={activateRight} onBringBackToDock={terminalCapabilities?.externalTerminal ? (id) => void bringTaskBackToDock(id) : undefined} onClose={(id) => void closeRight(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onOpenInTerminal={terminalCapabilities?.externalTerminal ? (id) => void openTaskInTerminal(id) : undefined} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={rightTasks} />
+            <AgentTerminalTabs activeTaskId={rightActive?.id ?? null} ariaLabel={t("dock.rightTasksAria")} composing={false} onActivate={activateRight} onBringBackToDock={(id) => void bringTaskBackToDock(id)} onClose={(id) => void closeRight(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onOpenInTerminal={terminalCapabilities?.externalTerminal ? (id) => void openTaskInTerminal(id) : undefined} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={rightTasks} />
             {rightAgentContext ? <AgentCapabilityBadges capabilities={capabilitiesFor(rightProviderId)} onInsert={(text) => insertPaneCapability("right", rightActive, text)} onNavigate={onNavigate ? navigate : undefined} onSelectOneTimeSkill={(skill) => stagePaneOneTimeSkill("right", rightActive, skill)} providerLabel={rightProviderLabel} /> : null}
             <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={rightProviderId} variant="dock" />
           </div>
         </div>
       ) : (
         <>
-          <AgentTerminalTabs activeTaskId={sideDocked ? sideActiveTaskId : activeTaskId} composing={composing} onActivate={(id) => sideDocked && rightTaskIds.has(id) ? activateRight(id) : activateLeft(id)} onBringBackToDock={terminalCapabilities?.externalTerminal ? (id) => void bringTaskBackToDock(id) : undefined} onClose={(id) => void (rightTaskIds.has(id) ? closeRight(id) : closeLeft(id))} onDragEnd={sideDocked ? undefined : () => setDraggedTaskId(null)} onDragStart={sideDocked ? undefined : setDraggedTaskId} onOpenInTerminal={terminalCapabilities?.externalTerminal ? (id) => void openTaskInTerminal(id) : undefined} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={sideDocked ? tasks : leftTasks} />
+          <AgentTerminalTabs activeTaskId={sideDocked ? sideActiveTaskId : activeTaskId} composing={composing} onActivate={(id) => sideDocked && rightTaskIds.has(id) ? activateRight(id) : activateLeft(id)} onBringBackToDock={(id) => void bringTaskBackToDock(id)} onClose={(id) => void (rightTaskIds.has(id) ? closeRight(id) : closeLeft(id))} onDragEnd={sideDocked ? undefined : () => setDraggedTaskId(null)} onDragStart={sideDocked ? undefined : setDraggedTaskId} onOpenInTerminal={terminalCapabilities?.externalTerminal ? (id) => void openTaskInTerminal(id) : undefined} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={sideDocked ? tasks : leftTasks} />
           {!sideDocked && agentContext ? <AgentCapabilityBadges capabilities={capabilities} onInsert={insertCapability} onNavigate={onNavigate ? navigate : undefined} onSelectOneTimeSkill={stageOneTimeSkill} providerLabel={railProviderLabel} /> : <span className="flex-1" />}
           {!sideDocked ? <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={railProviderId} variant="dock" /> : null}
         </>

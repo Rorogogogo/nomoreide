@@ -202,7 +202,7 @@ fn spawn_test_session(manager: &TerminalManager, id: &str, script: &str) -> u32 
         killer,
         master: pair.master,
         gate: Arc::new(Mutex::new(OutputGate::default())),
-        #[cfg(target_os = "macos")]
+        #[cfg(unix)]
         attachment: None,
     };
     manager

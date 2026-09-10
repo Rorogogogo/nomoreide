@@ -8,7 +8,11 @@
 //! Terminal.app without being restarted.
 
 mod agent;
-#[cfg(target_os = "macos")]
+#[cfg(unix)]
+pub mod attach;
+#[cfg(unix)]
+mod detection;
+#[cfg(unix)]
 mod external;
 mod manager;
 mod service;
@@ -28,3 +32,12 @@ pub use session::{
     TerminalPresentation, TerminalSession, MAX_AGENT_PROMPT_BYTES,
 };
 pub use spawn::TerminalSpawnSpec;
+
+/// One-use credentials for a local terminal relay. Never broadcast these.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalAttachment {
+    pub session: TerminalSession,
+    pub socket_path: String,
+    pub token: String,
+}

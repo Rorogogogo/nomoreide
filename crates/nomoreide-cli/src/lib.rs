@@ -13,6 +13,7 @@
 //! that says `nomoreide start` has to keep working.
 
 mod agents;
+mod attach;
 mod commands;
 mod daemon_cli;
 mod database;

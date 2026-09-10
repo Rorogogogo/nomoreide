@@ -3,10 +3,10 @@
 //! The preference and how it resolves live at the top level, on every platform:
 //! the daemon reads the setting and passes it down before it knows or cares
 //! whether anything can act on it. Only the *launching* is macOS-only, and that
-//! is what the `macos` module below holds.
+//! is exposed by the macOS host.
 //!
-//! Getting this boundary wrong does not fail on a Mac. It fails on Linux, in a
-//! release build, after everything green has already been merged.
+//! The relay transport also serves CLI attachment on Unix. Launching a new
+//! terminal application remains a macOS capability.
 
 /// Which terminal application a mirror opens in.
 ///
@@ -104,8 +104,8 @@ pub fn resolve_external_terminal(preference: &str) -> ExternalTerminalApp {
         .unwrap_or(ExternalTerminalApp::TerminalApp)
 }
 
-#[cfg(target_os = "macos")]
-mod macos {
+#[cfg(unix)]
+mod unix {
     use super::ExternalTerminalApp;
     use std::env;
     use std::fs;
@@ -381,6 +381,12 @@ mod macos {
             unsafe {
                 libc::tcsetattr(self.fd, libc::TCSANOW, &self.original);
             }
+            // The CLI may return to an existing shell while the managed TUI
+            // stays alive in the dock. Restore display modes the TUI could
+            // otherwise leave enabled in that shell's terminal.
+            let mut stdout = io::stdout().lock();
+            let _ = stdout.write_all(b"\x1b[?1049l\x1b[?2004l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[0m\x1b[?25h");
+            let _ = stdout.flush();
         }
     }
 
@@ -406,6 +412,9 @@ mod macos {
     pub fn run_attach(socket_path: &str, token: &str) -> Result<(), String> {
         let mut stream = UnixStream::connect(socket_path)
             .map_err(|error| format!("Could not attach to NoMoreIDE: {error}"))?;
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .map_err(|error| error.to_string())?;
         write_frame(&mut stream, AUTH, token.as_bytes()).map_err(|error| error.to_string())?;
         let (kind, payload) = read_frame(&mut stream).map_err(|error| error.to_string())?;
         if kind == ERROR {
@@ -415,6 +424,9 @@ mod macos {
             return Err("NoMoreIDE returned an invalid terminal handshake".to_string());
         }
 
+        stream
+            .set_read_timeout(None)
+            .map_err(|error| error.to_string())?;
         let _raw = RawModeGuard::enter().map_err(|error| error.to_string())?;
         let mut read_stream = stream.try_clone().map_err(|error| error.to_string())?;
         let writer = std::sync::Arc::new(std::sync::Mutex::new(stream));
@@ -708,10 +720,10 @@ mod macos {
     }
 }
 
-#[cfg(target_os = "macos")]
-pub use macos::*;
+#[cfg(unix)]
+pub use unix::*;
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(unix))]
 pub fn run_attach(_socket_path: &str, _token: &str) -> Result<(), String> {
     Err("External Terminal is currently available on macOS only".to_string())
 }

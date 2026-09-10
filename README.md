@@ -345,6 +345,40 @@ service's logs. In logs, use the arrow keys or Page Up/Page Down to inspect
 history and `End` to return to the live tail. `Esc` returns to services and
 `Q` quits; services continue running in the daemon.
 
+### Attach your terminal to the agent dock
+
+On macOS or Linux, start a managed shell from your terminal:
+
+```bash
+cd /path/to/project
+nomoreide attach
+# Inside the attached shell:
+claude
+# or: codex
+```
+
+The command prefers the running desktop app and adds the shell to its bottom
+agent dock. If the desktop is closed, it starts or connects to the standalone
+daemon; use `nomoreide web` to see that dock. `nomoreide attach --daemon` explicitly
+selects the standalone daemon.
+
+The tab recognizes foreground Claude Code and Codex processes and returns to
+Shell when they exit. Use **Bring back** in the dock to take control there without
+restarting the shell. To move it back to your current terminal, use the session ID
+printed by the CLI:
+
+```bash
+nomoreide attach --session cli:SESSION_ID
+```
+
+Only one surface controls the terminal at a time. Closing the external terminal
+leaves the managed session in the dock; `exit` inside the shell ends it. Attach
+starts a new shell in your current directory, so run it before starting your
+agent. It does not adopt a process already running in an unmanaged terminal.
+Recognition supplies the agent name and icon, not conversation or approval state;
+attached shells retain shell permissions and do not accept automatic agent-prompt
+insertion.
+
 ### Database CLI
 
 ```bash

@@ -54,8 +54,8 @@ pub(super) struct ExternalAttachment {
 }
 
 pub(super) fn validate_external_launch(session: &PtySession) -> Result<(), String> {
-    if session.metadata.kind.as_deref() != Some("agent") {
-        return Err("Only agent sessions can open in Terminal.".to_string());
+    if !matches!(session.metadata.kind.as_deref(), Some("agent" | "shell")) {
+        return Err("Only agent or shell sessions can open in Terminal.".to_string());
     }
     if session.metadata.state != "running" || session.gate.lock().unwrap().closed {
         return Err("Only a running agent session can open in Terminal.".to_string());
@@ -279,6 +279,9 @@ pub(super) fn run_external_listener(
                 {
                     session.metadata.cols = cols;
                     session.metadata.rows = rows;
+                    if let Some(sizes) = session.gate.lock().unwrap().size.as_ref() {
+                        sizes.send_replace((cols, rows));
+                    }
                 }
             }
             Ok((DETACH, _)) | Err(_) => break,

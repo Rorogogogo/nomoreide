@@ -85,7 +85,7 @@ export function AgentTerminalTabs({ tasks, activeTaskId, ariaLabel, composing, o
   };
   return <div aria-label={ariaLabel ?? t("dock.tasksAria")} className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-1" role="tablist">
     {tasks.map((task) => {
-      const shell = task.kind === "shell";
+      const shell = task.kind === "shell" && !task.provider;
       const label = task.label || (shell ? t("dock.shellFallback") : t("dock.taskFallback", { provider: task.provider === "codex" ? "Codex" : "Claude" }));
       const active = task.id === activeTaskId;
       const editing = editingTaskId === task.id;
@@ -107,8 +107,8 @@ export function AgentTerminalTabs({ tasks, activeTaskId, ariaLabel, composing, o
         {/* Always visible and never squeezed: the label truncates inside its own
             button, so a long task name can't push the close control out of the
             tab or hide it behind the text. */}
-        {!shell && onOpenInTerminal && task.presentation !== "terminal" ? <button aria-label={t("dock.openInTerminalAria", { label })} className={cn("grid size-6 shrink-0 place-items-center rounded-sm disabled:pointer-events-none disabled:opacity-25", active ? "text-background/70 hover:bg-background/15 hover:text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")} disabled={editing || pendingTaskIds?.has(task.id) || task.presentation === "terminalLaunching" || task.state !== "running"} onClick={() => onOpenInTerminal(task.id)} title={t("dock.openInTerminal")} type="button"><ExternalLink className="size-3" /></button> : null}
-        {!shell && onBringBackToDock && task.presentation === "terminal" ? <button aria-label={t("dock.bringBackAria", { label })} className={cn("grid size-6 shrink-0 place-items-center rounded-sm disabled:pointer-events-none disabled:opacity-25", active ? "text-background/70 hover:bg-background/15 hover:text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")} disabled={editing || pendingTaskIds?.has(task.id)} onClick={() => onBringBackToDock(task.id)} title={t("dock.bringBack")} type="button"><RotateCcw className="size-3" /></button> : null}
+        {onOpenInTerminal && task.presentation !== "terminal" ? <button aria-label={t("dock.openInTerminalAria", { label })} className={cn("grid size-6 shrink-0 place-items-center rounded-sm disabled:pointer-events-none disabled:opacity-25", active ? "text-background/70 hover:bg-background/15 hover:text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")} disabled={editing || pendingTaskIds?.has(task.id) || task.presentation === "terminalLaunching" || task.state !== "running"} onClick={() => onOpenInTerminal(task.id)} title={t("dock.openInTerminal")} type="button"><ExternalLink className="size-3" /></button> : null}
+        {onBringBackToDock && task.presentation === "terminal" ? <button aria-label={t("dock.bringBackAria", { label })} className={cn("grid size-6 shrink-0 place-items-center rounded-sm disabled:pointer-events-none disabled:opacity-25", active ? "text-background/70 hover:bg-background/15 hover:text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")} disabled={editing || pendingTaskIds?.has(task.id)} onClick={() => onBringBackToDock(task.id)} title={t("dock.bringBack")} type="button"><RotateCcw className="size-3" /></button> : null}
         <button aria-label={t("dock.closeTaskAria", { label })} className={cn("mr-0.5 grid size-6 shrink-0 place-items-center rounded-sm disabled:pointer-events-none disabled:opacity-25", active ? "text-background/70 hover:bg-background/15 hover:text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")} disabled={editing || pendingTaskIds?.has(task.id)} onClick={() => onClose(task.id)} type="button"><X className="size-3" /></button>
       </div>;
     })}

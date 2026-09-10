@@ -57,9 +57,7 @@ pub fn run() {
         .manage(state)
         .setup(move |app| {
             let app_handle = app.handle().clone();
-            let runtime_paths = nomoreide_daemon_client::RuntimePaths::new(
-                app.path().app_local_data_dir()?.join("runtime"),
-            );
+            let runtime_paths = nomoreide_daemon_client::RuntimePaths::desktop();
             let window_config = main_window.clone();
             tauri::async_runtime::spawn(async move {
                 match start_embedded_daemon(runtime_paths).await {

@@ -16,9 +16,9 @@ use std::io::Read;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-#[cfg(target_os = "macos")]
+#[cfg(unix)]
 use super::external::{emit_reset_external_presentation, forward_external_output, ExternalOutput};
-#[cfg(target_os = "macos")]
+#[cfg(unix)]
 use std::net::Shutdown;
 
 /// Everything a caller decides about a session before the PTY exists. The
@@ -168,10 +168,14 @@ impl TerminalManager {
                 killer,
                 master: pair.master,
                 gate,
-                #[cfg(target_os = "macos")]
+                #[cfg(unix)]
                 attachment: None,
             },
         );
+        #[cfg(unix)]
+        if session.kind.as_deref() == Some("shell") {
+            self.watch_shell_agents(sink.clone());
+        }
         self.start_child_waiter(id, generation, child);
         // A newly spawned session is a change anyone streaming should see.
         //
@@ -199,7 +203,7 @@ impl TerminalManager {
         gate: Arc<Mutex<super::manager::OutputGate>>,
         mut reader: Box<dyn Read + Send>,
     ) {
-        #[cfg(target_os = "macos")]
+        #[cfg(unix)]
         let registry = self.registry.clone();
         #[cfg(not(target_os = "macos"))]
         let _ = &generation;
@@ -216,7 +220,7 @@ impl TerminalManager {
                 // that reached a live listener but not the ring would be lost
                 // to the next one.
                 locked.record(&buffer[..read]);
-                #[cfg(target_os = "macos")]
+                #[cfg(unix)]
                 let external_failure = forward_external_output(&mut locked, &buffer[..read]);
                 let streaming = locked.streaming;
                 drop(locked);
@@ -224,7 +228,7 @@ impl TerminalManager {
                     let data = String::from_utf8_lossy(&buffer[..read]).into_owned();
                     let _ = emit_event(sink.as_ref(), &format!("terminal-output-{id}"), data);
                 }
-                #[cfg(target_os = "macos")]
+                #[cfg(unix)]
                 if let Some(lease) = external_failure {
                     emit_reset_external_presentation(
                         &registry,
@@ -235,7 +239,7 @@ impl TerminalManager {
                     );
                 }
             }
-            #[cfg(target_os = "macos")]
+            #[cfg(unix)]
             {
                 let active = {
                     let mut locked = gate.lock().unwrap();

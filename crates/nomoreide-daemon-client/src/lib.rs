@@ -30,6 +30,17 @@ pub struct RuntimePaths {
 }
 
 impl RuntimePaths {
+    /// The desktop and CLI share this location only for the local attach socket.
+    /// Desktop HTTP credentials remain in memory.
+    pub fn desktop() -> Self {
+        Self::new(
+            dirs::data_local_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join("com.nomoreide.app")
+                .join("runtime"),
+        )
+    }
+
     pub fn new(state_dir: PathBuf) -> Self {
         Self {
             state: state_dir.join("daemon.json"),

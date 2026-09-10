@@ -1239,6 +1239,21 @@ describe("AgentTerminalDock", () => {
     expect(host.querySelector('[aria-label="Open task Shell"]')).not.toBeNull();
   });
 
+  test("shows a detected agent on an attached shell and allows bringing it back", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "cli-shell", tasks: [
+      { id: "cli-shell", kind: "shell", provider: "codex", state: "running", presentation: "terminal" },
+    ] });
+    const { host } = await render();
+    expect(host.querySelector('[data-provider-accent="codex"]')).not.toBeNull();
+    expect(host.querySelector("#agent-tab-cli-shell")?.textContent).toContain("Codex");
+    const bringBack = host.querySelector('[aria-label="Bring Codex task back to NoMoreIDE"]') as HTMLButtonElement | null;
+    // The full terminal placeholder also exposes the existing Bring back action.
+    const button = bringBack ?? Array.from(host.querySelectorAll("button")).find((item) => item.textContent === "Bring back");
+    expect(button).toBeDefined();
+    await act(async () => button?.click());
+    expect(dock.bringTaskBackToDock).toHaveBeenCalledWith("cli-shell");
+  });
+
   test("renames a tab inline from double-click or F2", async () => {
     Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
       { id: "one", label: "Original task", state: "running", provider: "claude" },

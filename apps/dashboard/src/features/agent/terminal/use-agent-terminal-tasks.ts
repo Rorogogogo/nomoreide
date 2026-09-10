@@ -209,7 +209,10 @@ export function useAgentTerminalTasks() {
         .catch(() => {});
     let off: (() => void) | undefined;
     void Promise.resolve(
-      onTerminalSessionChanged((session) => {
+      onTerminalSessionChanged((incoming) => {
+        // Events are full snapshots. An absent provider means the agent exited
+        // back to its shell, so explicitly clear the previous identity.
+        const session = { ...incoming, provider: incoming.provider };
         if (!mountedRef.current) return;
         presentationEventRevisionsRef.current.set(
           session.id,
