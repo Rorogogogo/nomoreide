@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { LinearIssue, LinearState, LinearTeam, LinearTransport } from "./linear-types";
+import type { LinearData, LinearIssue, LinearState, LinearTeam, LinearTransport } from "./linear-types";
+
+type LinearBinding = NonNullable<LinearData["binding"]> | null;
 
 export function useLinearTasks(send: LinearTransport) {
   const [teams, setTeams] = useState<LinearTeam[]>([]);
   const [team, setTeam] = useState("");
   const [project, setProject] = useState("");
+  /** What this repository currently defaults to, and the repository's name. */
+  const [binding, setBinding] = useState<LinearBinding>(null);
+  const [repository, setRepository] = useState<string | null>(null);
   const [issues, setIssues] = useState<LinearIssue[]>([]);
   /**
    * The current list, readable from a callback that must not re-create itself
@@ -15,6 +20,8 @@ export function useLinearTasks(send: LinearTransport) {
   const issuesRef = useRef<LinearIssue[]>([]);
   issuesRef.current = issues;
   const [issue, setIssue] = useState<LinearIssue | null>(null);
+  /** A full issue is in flight for the open task — only comments are missing. */
+  const [detailPending, setDetailPending] = useState(false);
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,6 +41,8 @@ export function useLinearTasks(send: LinearTransport) {
       if (!active) return;
       const found = data.teams?.nodes ?? [];
       setTeams(found);
+      setBinding(data.binding ?? null);
+      setRepository(data.repository ?? null);
       setTeam(defaultTeam(found, data.binding?.team ?? null));
       setProject(data.binding?.project ?? "");
     }).catch((e: Error) => { if (active) setError(e.message); });
@@ -52,12 +61,67 @@ export function useLinearTasks(send: LinearTransport) {
     void refresh().catch((e: Error) => setError(e.message));
     return invalidate;
   }, [refresh, invalidate]);
+  // Whether the current selection *is* this repository's default. Compared on
+  // both halves: the binding stores a team and a project, so a bound team seen
+  // under a different project is not the thing that was saved.
+  const bound =
+    binding !== null && binding.team === team && (binding.project ?? "") === project;
   return { teams, team, project, issues, issue, cursor, error, busy, run, refresh,
-    reloadMetadata: () => run(async () => { const data = await send({ operation: "metadata" }); const found = data.teams?.nodes ?? []; setTeams(found); setTeam(defaultTeam(found, data.binding?.team ?? null)); setProject(data.binding?.project ?? ""); }),
-    closeIssue: () => setIssue(null),
+    binding, repository, bound, detailPending,
+    reloadMetadata: () => run(async () => { const data = await send({ operation: "metadata" }); const found = data.teams?.nodes ?? []; setTeams(found); setBinding(data.binding ?? null); setRepository(data.repository ?? null); setTeam(defaultTeam(found, data.binding?.team ?? null)); setProject(data.binding?.project ?? ""); }),
+    closeIssue: () => { setIssue(null); setDetailPending(false); },
     selectTeam(value: string) { rememberTeam(value); setTeam(value); setProject(""); }, setProject,
-    selectIssue: (id: string) => run(async () => { const revision = generation.current; const data = await send({ operation: "issue", id }); if (revision === generation.current) setIssue(data.issue ?? null); }),
-    link: () => run(async () => { await send({ operation: "binding", team, project: project || null }); }),
+    /**
+     * Open a task.
+     *
+     * **The pane opens on the click, not on the answer.** Every field it shows
+     * except the comments is already in the row that was clicked — the list
+     * query fetches the same fragment — so waiting for a round trip before
+     * rendering anything left the click with no feedback at all, and on a slow
+     * network read as a dead row. The known issue goes in immediately and the
+     * fetch that follows only adds the comments, which is the one thing it
+     * actually brings.
+     */
+    selectIssue: (id: string) => {
+      const known = issuesRef.current.find((entry) => entry.id === id) ?? null;
+      if (known) setIssue(known);
+      setDetailPending(true);
+      const revision = generation.current;
+      return run(async () => {
+        const data = await send({ operation: "issue", id });
+        if (revision === generation.current) setIssue(data.issue ?? known);
+      }).finally(() => setDetailPending(false));
+    },
+    /**
+     * Make the current team and project this repository's default, or clear it
+     * — one toggle, because the control is a checkbox rather than a verb. The
+     * answer is applied rather than re-fetched: the daemon has just written it,
+     * and a metadata round trip would reset the pickers mid-interaction.
+     */
+    toggleBinding: () => run(async () => {
+      if (bound) {
+        await send({ operation: "unbind" });
+        setBinding(null);
+        return;
+      }
+      const next = { team, project: project || null };
+      await send({ operation: "binding", ...next });
+      setBinding(next);
+    }),
+    /**
+     * A new Linear project in the current team, then selected.
+     *
+     * The team list is reloaded rather than patched locally: projects hang off
+     * the team in `metadata`, and inventing the new one client-side would leave
+     * the picker holding a project the next reload might disagree about.
+     */
+    createProject: (name: string, description: string) => run(async () => {
+      const data = await send({ operation: "createProject", team, name, description });
+      const created = data.projectCreate?.project ?? null;
+      const refreshed = await send({ operation: "metadata" });
+      setTeams(refreshed.teams?.nodes ?? []);
+      if (created) setProject(created.id);
+    }),
     create: (title: string, description: string) => run(async () => { const data = await send({ operation: "create", team, project: project || null, title, description }); await refresh(); setIssue(data.issueCreate?.issue ?? null); }),
     update: (state: string) => run(async () => { if (!issue) return; await send({ operation: "update", id: issue.id, state }); const data = await send({ operation: "issue", id: issue.id }); setIssue(data.issue ?? null); await refresh(); }),
     /**
@@ -92,6 +156,34 @@ export function useLinearTasks(send: LinearTransport) {
 
 /** Where the last chosen team is kept. Per-browser, and only ever a hint. */
 const REMEMBERED_TEAM = "nomoreide.linear.team";
+const REMEMBERED_VIEW = "nomoreide.linear.view";
+
+/**
+ * List or board, as last left — and **board when nothing has been chosen yet**.
+ *
+ * The view used to reset to the list on every mount, and the panel is remounted
+ * whenever the selected repository changes, so choosing the board never
+ * survived leaving the page. Kept beside the remembered team because it is the
+ * same kind of thing: a per-browser convenience, not a statement about the
+ * repository the way a binding is.
+ */
+export function rememberedView(): "list" | "board" {
+  try {
+    const stored = window.localStorage.getItem(REMEMBERED_VIEW);
+    if (stored === "list" || stored === "board") return stored;
+  } catch {
+    // Storage can be unavailable; the default is not worth an error.
+  }
+  return "board";
+}
+
+export function rememberView(view: "list" | "board") {
+  try {
+    window.localStorage.setItem(REMEMBERED_VIEW, view);
+  } catch {
+    // As above — a forgotten preference is not a failure worth showing.
+  }
+}
 
 function rememberTeam(id: string) {
   try {

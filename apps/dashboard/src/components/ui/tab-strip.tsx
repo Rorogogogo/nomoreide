@@ -95,7 +95,7 @@ export function StateFilter<T extends string>({
         <button
           aria-pressed={value === option.id}
           className={cn(
-            "rounded px-2 py-0.5 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "whitespace-nowrap rounded px-2 py-0.5 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             value === option.id
               ? "bg-background text-foreground"
               : "text-muted-foreground hover:text-foreground",

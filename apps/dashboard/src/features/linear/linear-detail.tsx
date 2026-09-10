@@ -18,6 +18,7 @@ export function LinearDetail({
   onBack,
   onComment,
   onStateChange,
+  pending,
   states,
   t,
   taskAction,
@@ -28,6 +29,8 @@ export function LinearDetail({
   onBack: () => void;
   onComment: (body: string) => Promise<boolean>;
   onStateChange: (state: LinearState) => void;
+  /** The comments are still being fetched — everything else is already here. */
+  pending?: boolean;
   states: LinearState[];
   t: (key: string) => string;
   taskAction?: (issue: LinearIssue) => ReactNode;
@@ -40,8 +43,13 @@ export function LinearDetail({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b border-border px-3 py-1">
+        {/* Shown exactly when the panel is too narrow to keep the list beside
+            this — the same `@3xl/panel` threshold that collapses the split, so
+            the way back can never disappear with the thing it returns to. It
+            was `md:hidden`, a window measurement, which left no way back from a
+            detail opened in a narrow panel on a wide screen. */}
         <button
-          className="text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+          className="shrink-0 whitespace-nowrap text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @3xl/panel:hidden"
           onClick={onBack}
           type="button"
         >
@@ -97,6 +105,25 @@ export function LinearDetail({
             GitHub issue pane use, at this panel's padding rather than the file
             viewer's reading measure. */}
         {issue.description && <MarkdownPreview className="px-3 py-3" content={issue.description} />}
+
+        {/* The one part of this pane that is not already known at click time,
+            so it is the only part that gets a loading state. A spinner over the
+            whole detail would hide a title, a description and a status control
+            that were all available immediately. */}
+        {pending && !issue.comments && (
+          <>
+            <div className="border-y border-border bg-muted/20 px-3 py-1">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("comment")}
+              </span>
+            </div>
+            <div aria-label={t("loading")} className="space-y-2 px-3 py-2" role="status">
+              <span className="block h-2 w-24 animate-pulse rounded bg-muted" />
+              <span className="block h-2 w-full animate-pulse rounded bg-muted" />
+              <span className="block h-2 w-4/5 animate-pulse rounded bg-muted" />
+            </div>
+          </>
+        )}
 
         {issue.comments && issue.comments.nodes.length > 0 && (
           <>

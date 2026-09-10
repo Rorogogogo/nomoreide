@@ -158,6 +158,25 @@ async fn execute(State(state): State<AppState>, Json(request): Json<LinearReques
     }
     let header = header.value;
     let repository = config.selected_git_repository.clone().unwrap_or_default();
+    if matches!(request, LinearRequest::Unbind {}) {
+        if repository.is_empty() {
+            return refused("Select a repository before linking Linear");
+        }
+        // Only ever removes a key. A repository that was never linked is
+        // already in the state this asks for, so it answers rather than
+        // refusing — unticking a box twice is not an error.
+        if let Some(preferences) = config.preferences.as_mut() {
+            if let Some(bindings) = preferences.get_mut("linearBindings") {
+                if let Some(map) = bindings.as_object_mut() {
+                    map.remove(&repository);
+                }
+            }
+        }
+        return match state.config_store.save(&config).await {
+            Ok(_) => Json(json!({"ok": true, "data": {"binding": null}})).into_response(),
+            Err(_) => refused("Could not save Linear project link"),
+        };
+    }
     if let LinearRequest::Binding { team, project } = &request {
         if repository.is_empty() {
             return refused("Select a repository before linking Linear");
@@ -203,6 +222,15 @@ async fn execute(State(state): State<AppState>, Json(request): Json<LinearReques
                     .as_ref()
                     .map(|p| p["linearBindings"][&repository].clone())
                     .unwrap_or(serde_json::Value::Null);
+                // The name the binding is filed under. The dashboard labels its
+                // "use for this repository" control with it, and asking the
+                // caller to fetch the selected repository separately would let
+                // the two answers disagree.
+                data["repository"] = if repository.is_empty() {
+                    serde_json::Value::Null
+                } else {
+                    json!(repository)
+                };
             }
             Json(json!({"ok": true, "data": data})).into_response()
         }
