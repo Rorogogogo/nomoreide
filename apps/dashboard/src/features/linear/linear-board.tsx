@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   DndContext,
   DragOverlay,
@@ -235,7 +236,15 @@ function Column({
           items={issues.map((issue) => issue.id)}
           strategy={verticalListSortingStrategy}
         >
+          {/* The gap a card leaves has to close, not vanish. The row is kept
+              mounted at `opacity-0` for the length of the drag so the column
+              does not jump under the pointer — but when the drop lands in
+              another column it unmounts, and without an exit that placeholder
+              disappeared in a single frame. `AnimatePresence` holds it long
+              enough to collapse its own height. `initial={false}` so a column
+              rendering for the first time does not play a row of animations. */}
           <ul className="divide-y divide-border">
+            <AnimatePresence initial={false}>
             {issues.map((issue) => (
               <Card
                 busy={busy}
@@ -247,6 +256,7 @@ function Column({
                 t={t}
               />
             ))}
+            </AnimatePresence>
           </ul>
         </SortableContext>
         {issues.length === 0 && (
@@ -272,13 +282,14 @@ function Card({
   showProject?: boolean;
   t: (key: string) => string;
 }) {
+  const reduceMotion = useReducedMotion();
   const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     disabled: busy,
     id: issue.id,
   });
 
   return (
-    <li
+    <motion.li
       className={cn(
         "border-l-2 transition-colors",
         priorityEdge(issue.priority),
@@ -288,8 +299,13 @@ function Card({
         // below jump, which is the jitter the native drag had.
         isDragging && "opacity-0",
       )}
+      // Height and opacity only. The transform is dnd-kit's — it is what moves
+      // the siblings aside mid-drag — so animating position here would be two
+      // libraries writing the same property.
+      exit={{ height: 0, opacity: 0, overflow: "hidden" }}
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
+      transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.4, 0, 0.2, 1] }}
       {...attributes}
       {...listeners}
     >
@@ -300,7 +316,7 @@ function Card({
       >
         <CardBody issue={issue} showProject={showProject} t={t} />
       </button>
-    </li>
+    </motion.li>
   );
 }
 
