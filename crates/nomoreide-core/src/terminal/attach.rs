@@ -30,7 +30,7 @@ pub struct AttachRequest {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "camelCase")]
 enum AttachResponse {
-    Attached { attachment: TerminalAttachment },
+    Attached { attachment: Box<TerminalAttachment> },
     Error { message: String },
 }
 
@@ -111,7 +111,9 @@ pub fn serve(
                         _ => Err("Invalid terminal attach request".to_string()),
                     };
                     let reply = match reply {
-                        Ok(attachment) => AttachResponse::Attached { attachment },
+                        Ok(attachment) => AttachResponse::Attached {
+                            attachment: Box::new(attachment),
+                        },
                         Err(message) => AttachResponse::Error { message },
                     };
                     if let Ok(bytes) = serde_json::to_vec(&reply) {
@@ -194,7 +196,7 @@ pub fn request(state_dir: &Path, request: &AttachRequest) -> Result<TerminalAtta
         return Err("Invalid terminal attach response".into());
     }
     match serde_json::from_slice(&bytes).map_err(|error| error.to_string())? {
-        AttachResponse::Attached { attachment } => Ok(attachment),
+        AttachResponse::Attached { attachment } => Ok(*attachment),
         AttachResponse::Error { message } => Err(message),
     }
 }
