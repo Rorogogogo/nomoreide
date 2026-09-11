@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
   columnFor,
+  orderIssues,
   orderStates,
   resolveColumn,
+  sortOrderBetween,
 } from "../apps/dashboard/src/features/linear/linear-states";
 import type { LinearIssue, LinearState } from "../apps/dashboard/src/features/linear/linear-types";
 
@@ -51,5 +53,61 @@ describe("board columns", () => {
     // ...and a card that is not the one being dragged is unaffected.
     const other = issue("b", "todo");
     expect(columnFor(other, preview)).toBe("todo");
+  });
+});
+
+const placed = (id: string, sortOrder?: number | null) =>
+  ({ id, identifier: id, sortOrder }) as LinearIssue;
+
+describe("board order", () => {
+  test("a column follows sortOrder, not the order the fetch returned", () => {
+    // The fetch is `orderBy: updatedAt`, so this is the order the API hands
+    // back; the board must not show it.
+    const fetched = [placed("C", 3000), placed("A", 1000), placed("B", 2000)];
+    expect(orderIssues(fetched).map((issue) => issue.id)).toEqual(["A", "B", "C"]);
+  });
+
+  test("equal orders fall back to the identifier rather than flipping", () => {
+    const tied = [placed("B", 1000), placed("A", 1000)];
+    expect(orderIssues(tied).map((issue) => issue.id)).toEqual(["A", "B"]);
+  });
+
+  test("a missing sortOrder sorts as zero instead of dropping the card", () => {
+    const mixed = [placed("A", 10), placed("B", null), placed("C", undefined)];
+    expect(orderIssues(mixed)).toHaveLength(3);
+    expect(orderIssues(mixed).map((issue) => issue.id)).toEqual(["B", "C", "A"]);
+  });
+
+  test("orderIssues does not mutate what it is given", () => {
+    const fetched = [placed("C", 3000), placed("A", 1000)];
+    orderIssues(fetched);
+    expect(fetched.map((issue) => issue.id)).toEqual(["C", "A"]);
+  });
+
+  test("a drop between two cards takes the midpoint", () => {
+    expect(sortOrderBetween(1000, 2000)).toBe(1500);
+  });
+
+  test("a drop at either end steps past the neighbour it has", () => {
+    expect(sortOrderBetween(undefined, 1000)).toBe(0);
+    expect(sortOrderBetween(1000, undefined)).toBe(2000);
+  });
+
+  test("a drop into an empty column is zero rather than NaN", () => {
+    expect(sortOrderBetween(undefined, undefined)).toBe(0);
+  });
+
+  test("repeated halving keeps every card distinct and in order", () => {
+    // One drop writes one field rather than renumbering the column, so the gap
+    // halves each time a card is dropped into the same slot.
+    let low = 1000;
+    const high = 2000;
+    const seen: number[] = [];
+    for (let drop = 0; drop < 30; drop += 1) {
+      low = sortOrderBetween(low, high);
+      seen.push(low);
+    }
+    expect(new Set(seen).size).toBe(seen.length);
+    expect([...seen].sort((a, b) => a - b)).toEqual(seen);
   });
 });

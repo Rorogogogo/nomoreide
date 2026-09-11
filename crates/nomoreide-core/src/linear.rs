@@ -10,7 +10,7 @@ use crate::remote::protocol::linear::LinearRequest;
 use serde_json::{json, Value};
 use std::time::Duration;
 
-const ISSUE: &str = "id identifier title description url branchName priority updatedAt state { id name type } assignee { id name } team { id name } project { id name }";
+const ISSUE: &str = "id identifier title description url branchName priority updatedAt sortOrder state { id name type } assignee { id name } team { id name } project { id name }";
 
 pub async fn query(authorization: &str, query: &str, variables: Value) -> Result<Value, String> {
     let client = reqwest::Client::builder()
@@ -85,6 +85,7 @@ pub async fn execute(authorization: &str, request: &LinearRequest) -> Result<Val
         LinearRequest::Create { team, project, title, description } => (format!("mutation($input: IssueCreateInput!) {{ issueCreate(input: $input) {{ success issue {{ {ISSUE} }} }} }}"), json!({"input": {"teamId": team, "projectId": project, "title": title, "description": description}})),
         LinearRequest::CreateProject { team, name, description } => ("mutation($input: ProjectCreateInput!) { projectCreate(input: $input) { success project { id name } } }".into(), json!({"input": {"teamIds": [team], "name": name, "description": description}})),
         LinearRequest::Update { id, state } => (format!("mutation($id: String!, $input: IssueUpdateInput!) {{ issueUpdate(id: $id, input: $input) {{ success issue {{ {ISSUE} }} }} }}"), json!({"id": id, "input": {"stateId": state}})),
+        LinearRequest::Place { id, state, sort_order } => (format!("mutation($id: String!, $input: IssueUpdateInput!) {{ issueUpdate(id: $id, input: $input) {{ success issue {{ {ISSUE} }} }} }}"), json!({"id": id, "input": {"stateId": state, "sortOrder": sort_order}})),
         LinearRequest::Comment { id, body } => ("mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id body user { name } } } }".into(), json!({"input": {"issueId": id, "body": body}})),
     };
     query(authorization, &document, variables).await

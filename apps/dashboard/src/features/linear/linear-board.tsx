@@ -17,10 +17,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn, formatUptime } from "@/lib/utils";
 import {
   columnFor as previewedColumn,
+  orderIssues,
   orderStates,
   priorityEdge,
   priorityTone,
   resolveColumn,
+  sortOrderBetween,
   stateTone,
   type BoardPreview,
 } from "./linear-states";
@@ -52,7 +54,7 @@ export function LinearBoard({
   busy,
   issues,
   onDragBegin,
-  onMove,
+  onPlace,
   onSelect,
   selectedId,
   showProject,
@@ -67,7 +69,8 @@ export function LinearBoard({
    * behind it is a drop you cannot aim.
    */
   onDragBegin?: () => void;
-  onMove: (id: string, state: LinearState) => void;
+  /** A drop: the column it landed in and where in that column. */
+  onPlace: (id: string, state: LinearState, sortOrder: number) => void;
   onSelect: (id: string) => void;
   selectedId?: string;
   /** Name each card's project — only worth it when the panel shows them all. */
@@ -130,13 +133,33 @@ export function LinearBoard({
     const over = event.over?.id as string | undefined;
     const target = over ? columnOf(over) : undefined;
     const issue = issues.find((entry) => entry.id === moved);
-    // A drop back into the column it came from is not a move. Skipping it
-    // saves a mutation whose only visible effect would be a spinner.
-    if (target && issue && issue.state.id !== target.id) {
-      // Moved before the preview is dropped, so the optimistic update in the
-      // hook has already landed by the time the card stops pretending. The
-      // other order shows one frame of the card back in its old column.
-      onMove(moved, target);
+    if (target && issue) {
+      // The target column as it will be *without* the card, so the drop index
+      // is an insertion point rather than a position that has to be adjusted
+      // for the hole the card left behind.
+      const rest = orderIssues(
+        issues.filter((entry) => entry.state.id === target.id && entry.id !== moved),
+      );
+      // Dropped on a card: take that card's slot. Dropped on the column's own
+      // empty space: the end.
+      const onCard = over && over !== target.id ? rest.findIndex((e) => e.id === over) : -1;
+      const index = onCard >= 0 ? onCard : rest.length;
+      const settled = [...rest];
+      settled.splice(index, 0, issue);
+      const before = orderIssues(issues.filter((entry) => entry.state.id === target.id));
+      // A drop that changes nothing is not a move — it would spend a mutation
+      // whose only visible effect is a spinner. This compares the column it
+      // would produce, so it catches a drop back into the same slot as well as
+      // a drop back into the same column.
+      const changed =
+        issue.state.id !== target.id ||
+        before.map((entry) => entry.id).join() !== settled.map((entry) => entry.id).join();
+      if (changed) {
+        // Placed before the preview is dropped, so the optimistic update in the
+        // hook has already landed by the time the card stops pretending. The
+        // other order shows one frame of the card back in its old column.
+        onPlace(moved, target, sortOrderBetween(rest[index - 1]?.sortOrder, rest[index]?.sortOrder));
+      }
     }
     setPreview(null);
     setDragging(null);
@@ -165,7 +188,7 @@ export function LinearBoard({
         {ordered.map((state) => (
           <Column
             busy={busy}
-            issues={issues.filter((issue) => columnFor(issue) === state.id)}
+            issues={orderIssues(issues.filter((issue) => columnFor(issue) === state.id))}
             key={state.id}
             onSelect={onSelect}
             selectedId={selectedId}

@@ -803,6 +803,7 @@ const linearIssues = [
       "A timeout is being treated as a failure, so the retry charges again. Make the submit idempotent with the key the API already accepts.",
     url: "https://linear.app/acme/issue/WEB-214",
     updatedAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+    sortOrder: 1000,
     project: { id: "prj-checkout", name: "Checkout" },
     branchName: "web-214-checkout-double-charge",
     priority: 1,
@@ -817,6 +818,7 @@ const linearIssues = [
     description: "Refresh the token in the background instead of redirecting.",
     url: "https://linear.app/acme/issue/WEB-208",
     updatedAt: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+    sortOrder: 2000,
     project: { id: "prj-checkout", name: "Checkout" },
     branchName: "web-208-silent-refresh",
     priority: 2,
@@ -831,6 +833,7 @@ const linearIssues = [
     description: "Design is in Figma; only the dashboard list is missing it.",
     url: "https://linear.app/acme/issue/WEB-197",
     updatedAt: new Date(Date.now() - 98 * 3600 * 1000).toISOString(),
+    sortOrder: 3000,
     project: { id: "prj-checkout", name: "Checkout" },
     branchName: "web-197-empty-state",
     priority: 3,
@@ -1786,6 +1789,9 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     }
     if (operation === "create") {
       return json({ ok: true, data: { issueCreate: { issue: linearIssues[0] } } });
+    }
+    if (operation === "place") {
+      return json({ ok: true, data: {} });
     }
     if (operation === "createProject") {
       return json({

@@ -287,7 +287,7 @@ export function LinearPanel({
               busy={m.busy}
               issues={visible}
               onDragBegin={m.closeIssue}
-              onMove={(id, state) => void m.moveIssue(id, state)}
+              onPlace={(id, state, sortOrder) => void m.placeIssue(id, state, sortOrder)}
               onSelect={(id) => void m.selectIssue(id)}
               selectedId={m.issue?.id}
               showProject={!m.project}

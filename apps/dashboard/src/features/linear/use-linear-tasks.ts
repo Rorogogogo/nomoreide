@@ -125,7 +125,8 @@ export function useLinearTasks(send: LinearTransport) {
     create: (title: string, description: string) => run(async () => { const data = await send({ operation: "create", team, project: project || null, title, description }); await refresh(); setIssue(data.issueCreate?.issue ?? null); }),
     update: (state: string) => run(async () => { if (!issue) return; await send({ operation: "update", id: issue.id, state }); const data = await send({ operation: "issue", id: issue.id }); setIssue(data.issue ?? null); await refresh(); }),
     /**
-     * Move any issue to a state, by id — what a board drag calls.
+     * Place any issue: its column and its position in that column — what a
+     * board drop calls.
      *
      * Optimistic, and deliberately so: a drag that snaps back for the length of
      * a round trip reads as a rejected drop. The card moves on release, and the
@@ -136,12 +137,14 @@ export function useLinearTasks(send: LinearTransport) {
      * person's screen, and two moves that interleave produce an order neither
      * of them asked for.
      */
-    moveIssue: (id: string, state: LinearState) => run(async () => {
+    placeIssue: (id: string, state: LinearState, sortOrder: number) => run(async () => {
       const before = issuesRef.current;
-      setIssues((current) => current.map((item) => (item.id === id ? { ...item, state } : item)));
-      setIssue((current) => (current?.id === id ? { ...current, state } : current));
+      setIssues((current) =>
+        current.map((item) => (item.id === id ? { ...item, state, sortOrder } : item)),
+      );
+      setIssue((current) => (current?.id === id ? { ...current, state, sortOrder } : current));
       try {
-        await send({ operation: "update", id, state: state.id });
+        await send({ operation: "place", id, state: state.id, sortOrder });
       } catch (failure) {
         // Put it back exactly where it was. Re-fetching instead would also
         // repair it, but a whole list reload on a failed drag loses the

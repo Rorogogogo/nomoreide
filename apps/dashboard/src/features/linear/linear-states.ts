@@ -107,3 +107,35 @@ export function resolveColumn(
   const issue = issues.find((entry) => entry.id === id);
   return issue && states.find((state) => state.id === columnFor(issue, preview));
 }
+
+/**
+ * A column's cards, in the order a person put them in.
+ *
+ * Linear's `sortOrder` ascending, then the identifier so equal orders never
+ * flip between renders. Without this a column is whatever order the fetch
+ * returned — `orderBy: updatedAt` — so a card dragged into place jumped back
+ * to time order the moment anything touched it.
+ */
+export function orderIssues(issues: LinearIssue[]): LinearIssue[] {
+  return [...issues].sort(
+    (a, b) =>
+      (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.identifier.localeCompare(b.identifier),
+  );
+}
+
+/** The gap between two neighbours, or a step past the end of the column. */
+const STEP = 1000;
+
+/**
+ * The `sortOrder` for a card dropped between `before` and `after`.
+ *
+ * A midpoint rather than a renumbering, so one drop writes one field on one
+ * issue instead of rewriting the column. Doubles stay exact for far more
+ * halvings than a board will ever see between two neighbours.
+ */
+export function sortOrderBetween(before?: number | null, after?: number | null): number {
+  if (before != null && after != null) return (before + after) / 2;
+  if (after != null) return after - STEP;
+  if (before != null) return before + STEP;
+  return 0;
+}
