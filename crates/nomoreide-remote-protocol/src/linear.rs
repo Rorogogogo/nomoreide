@@ -40,6 +40,15 @@ pub enum LinearRequest {
         id: String,
         state: String,
     },
+    /// Where a board drop leaves a card: its column **and** its position in
+    /// that column, in one mutation. Separate from [`Update`] because a
+    /// cross-column drag changes both, and two round trips would show the card
+    /// in the right lane at the wrong height.
+    Place {
+        id: String,
+        state: String,
+        sort_order: f64,
+    },
     Comment {
         id: String,
         body: String,
@@ -54,6 +63,7 @@ impl LinearRequest {
                 | Self::CreateProject { .. }
                 | Self::Create { .. }
                 | Self::Update { .. }
+                | Self::Place { .. }
                 | Self::Comment { .. }
         )
     }
@@ -102,6 +112,13 @@ impl LinearRequest {
                     && description.len() <= 16000
             }
             Self::Update { id: value, state } => id(value) && id(state),
+            // A non-finite sort order would serialise as `null` and silently
+            // clear the field rather than set it.
+            Self::Place {
+                id: value,
+                state,
+                sort_order,
+            } => id(value) && id(state) && sort_order.is_finite(),
             Self::Comment { id: value, body } => {
                 id(value) && !body.trim().is_empty() && body.len() <= 16000
             }

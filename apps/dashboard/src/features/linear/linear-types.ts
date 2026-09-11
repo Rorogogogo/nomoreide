@@ -9,6 +9,8 @@ export interface LinearIssue {
   project?: LinearChoice | null;
   /** ISO 8601. How long a card has sat still is the board's missing signal. */
   updatedAt?: string | null;
+  /** Linear's manual board position. Ascending: the smallest sits at the top. */
+  sortOrder?: number | null;
   comments?: { nodes: { id: string; body: string; user: { name: string } | null }[]; pageInfo: { hasNextPage: boolean } };
 }
 export type LinearRequest =
@@ -20,6 +22,7 @@ export type LinearRequest =
   | { operation: "createProject"; team: string; name: string; description: string }
   | { operation: "create"; team: string; project: string | null; title: string; description: string }
   | { operation: "update"; id: string; state: string }
+  | { operation: "place"; id: string; state: string; sortOrder: number }
   | { operation: "comment"; id: string; body: string };
 export interface LinearData {
   teams?: { nodes: LinearTeam[] };
