@@ -230,6 +230,56 @@ async fn embedded_daemon_keeps_auth_in_memory_and_allows_only_desktop_origins() 
     .expect("terminal socket did not report the stopped PTY");
     assert_eq!(stopped_socket["state"], "exited");
 
+    #[cfg(unix)]
+    {
+        // The desktop's private daemon accepts CLI attachment without exposing
+        // its HTTP credential or creating machine-global discovery files.
+        let attach_paths = runtime_paths.clone();
+        let attach_cwd = root.to_string_lossy().into_owned();
+        let attachment = tokio::task::spawn_blocking(move || {
+            nomoreide_core::terminal::attach::request(
+                &attach_paths.state_dir,
+                &nomoreide_core::terminal::attach::AttachRequest {
+                    cwd: attach_cwd,
+                    session_id: None,
+                    shell: Some("/bin/sh".into()),
+                    path: None,
+                },
+            )
+        })
+        .await
+        .unwrap()
+        .unwrap();
+        let listed = http
+            .get(format!("{base_url}/api/terminal/sessions"))
+            .bearer_auth("desktop-test-credential")
+            .send()
+            .await
+            .unwrap()
+            .json::<serde_json::Value>()
+            .await
+            .unwrap();
+        assert!(listed["sessions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|session| {
+                session["id"] == attachment.session.id && session["kind"] == "shell"
+            }));
+        assert!(!runtime_paths.state.exists());
+        assert!(!runtime_paths.credential.exists());
+        let closed = http
+            .delete(format!(
+                "{base_url}/api/terminal/sessions/{}",
+                attachment.session.id
+            ))
+            .bearer_auth("desktop-test-credential")
+            .send()
+            .await
+            .unwrap();
+        assert!(closed.status().is_success());
+    }
+
     let stopped = http
         .post(format!("{base_url}/api/daemon/shutdown"))
         .bearer_auth("desktop-test-credential")

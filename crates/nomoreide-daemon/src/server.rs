@@ -286,6 +286,16 @@ async fn serve_on_listener(
     // sessions. Two managers would each own their own PTYs, and a phone would
     // be shown a terminal list the dashboard has never heard of.
     let terminal = TerminalManager::new();
+    let events: nomoreide_core::event_sink::SharedEventSink =
+        Arc::new(app::BroadcastEventSink::new(event_stream.clone()));
+    #[cfg(unix)]
+    let _attach_server = nomoreide_core::terminal::attach::serve(
+        &options.runtime_paths.state_dir,
+        terminal.clone(),
+        events.clone(),
+    )
+    .map_err(anyhow::Error::msg)
+    .context("failed to start local terminal attachment")?;
     let relay = crate::remote::supervisor::RelaySupervisor::new(
         options.runtime_paths.state_dir.clone(),
         credential.clone(),
@@ -299,7 +309,7 @@ async fn serve_on_listener(
         errors,
         shutdown: shutdown_sender,
         terminal,
-        events: Arc::new(app::BroadcastEventSink::new(event_stream.clone())),
+        events,
         event_stream,
         session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         metrics: metrics.clone(),

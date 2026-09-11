@@ -144,6 +144,26 @@ afterEach(() => {
 });
 
 describe("AgentProvider terminal tasks", () => {
+  test("clears detected agent identity when an attached shell returns to its prompt", async () => {
+    let listener: ((value: Omit<ReturnType<typeof session>, "provider"> & { provider?: "claude" | "codex" }) => void) | undefined;
+    api.onTerminalSessionChanged.mockImplementation(async (handler) => {
+      listener = handler;
+      return () => {};
+    });
+    const mounted = await mountProvider();
+    await act(async () => {
+      listener?.({ ...session("cli-shell", "shell"), provider: "codex" });
+    });
+    expect(mounted.value.tasks[0]?.provider).toBe("codex");
+    await act(async () => {
+      const { provider: _provider, ...shell } = session("cli-shell", "shell");
+      listener?.(shell);
+    });
+    expect(mounted.value.tasks[0]?.kind).toBe("shell");
+    expect(mounted.value.tasks[0]?.provider).toBeUndefined();
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("keeps a presentation event that arrives before stale hydration", async () => {
     const listed = deferred<Array<ReturnType<typeof session> & { presentation: "dock" }>>();
     let listener: ((value: ReturnType<typeof session> & { presentation: "terminal" }) => void) | undefined;

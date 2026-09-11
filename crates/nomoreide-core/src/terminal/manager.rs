@@ -17,16 +17,16 @@ use std::io::Write;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
-#[cfg(target_os = "macos")]
+#[cfg(unix)]
 use super::external::{
-    reset_external_presentation, revoke_external_attachment, run_external_listener,
-    validate_external_launch, ExternalAttachment, ExternalOutputSink,
+    revoke_external_attachment, run_external_listener, validate_external_launch,
+    ExternalAttachment, ExternalOutputSink,
 };
 #[cfg(target_os = "macos")]
-use crate::external_terminal::{
-    external_terminal_title, launch_terminal, new_socket_path, SocketPathGuard,
-};
-#[cfg(target_os = "macos")]
+use crate::external_terminal::{external_terminal_title, launch_terminal};
+#[cfg(unix)]
+use crate::external_terminal::{new_socket_path, SocketPathGuard};
+#[cfg(unix)]
 use uuid::Uuid;
 
 /// How long a process group is given to disappear after its leader is killed.
@@ -163,9 +163,9 @@ pub(super) struct OutputGate {
     /// value to a phone would be a burst of frames describing a shape the
     /// terminal already left.
     pub(super) size: Option<tokio::sync::watch::Sender<(u16, u16)>>,
-    #[cfg(target_os = "macos")]
+    #[cfg(unix)]
     pub(super) external: Option<ExternalOutputSink>,
-    #[cfg(target_os = "macos")]
+    #[cfg(unix)]
     pub(super) closed: bool,
 }
 
@@ -196,7 +196,7 @@ pub(super) struct PtySession {
     #[allow(dead_code)]
     pub(super) master: Box<dyn portable_pty::MasterPty + Send>,
     pub(super) gate: Arc<Mutex<OutputGate>>,
-    #[cfg(target_os = "macos")]
+    #[cfg(unix)]
     pub(super) attachment: Option<ExternalAttachment>,
 }
 
@@ -252,6 +252,8 @@ pub(super) struct TerminalRegistry {
     pub(super) creating: HashSet<String>,
     pub(super) closing: HashMap<String, String>,
     pub(super) shutting_down: bool,
+    #[cfg(unix)]
+    pub(super) detecting_agents: bool,
 }
 
 impl TerminalRegistry {
@@ -319,13 +321,23 @@ impl TerminalManager {
             .any(|session| session.metadata.presentation != TerminalPresentation::Dock)
     }
 
-    #[cfg(target_os = "macos")]
-    pub fn open_in_terminal(
+    /// Reserve a one-use relay for a local CLI client without opening a window.
+    #[cfg(unix)]
+    pub fn prepare_attachment(
         &self,
         sink: SharedEventSink,
         id: &str,
-        app: crate::external_terminal::ExternalTerminalApp,
-    ) -> Result<TerminalSession, String> {
+    ) -> Result<super::TerminalAttachment, String> {
+        self.prepare_attachment_lease(sink, id)
+            .map(|(attachment, _, _)| attachment)
+    }
+
+    #[cfg(unix)]
+    fn prepare_attachment_lease(
+        &self,
+        sink: SharedEventSink,
+        id: &str,
+    ) -> Result<(super::TerminalAttachment, String, String), String> {
         let (control, control_generation) = {
             let registry = self.registry.0.lock().unwrap();
             let session = registry
@@ -395,12 +407,38 @@ impl TerminalManager {
             );
         });
 
+        Ok((
+            super::TerminalAttachment {
+                session: snapshot,
+                socket_path: socket_path.to_string_lossy().into_owned(),
+                token,
+            },
+            generation,
+            lease,
+        ))
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn open_in_terminal(
+        &self,
+        sink: SharedEventSink,
+        id: &str,
+        app: crate::external_terminal::ExternalTerminalApp,
+    ) -> Result<TerminalSession, String> {
+        let (attachment, generation, lease) = self.prepare_attachment_lease(sink.clone(), id)?;
+        let socket_path = std::path::PathBuf::from(&attachment.socket_path);
+        let token = attachment.token;
+        let snapshot = attachment.session;
         let title =
             external_terminal_title(snapshot.provider.as_deref(), snapshot.label.as_deref());
         if let Err(error) = launch_terminal(&socket_path, &token, &title, app) {
-            let rollback = reset_external_presentation(&self.registry, id, &generation, &lease);
-            if let Some(session) = rollback.as_ref() {
-                emit_terminal_session(sink.as_ref(), session);
+            if let Some(session) = super::external::reset_external_presentation(
+                &self.registry,
+                id,
+                &generation,
+                &lease,
+            ) {
+                emit_terminal_session(sink.as_ref(), &session);
             }
             return Err(error);
         }
@@ -409,7 +447,7 @@ impl TerminalManager {
             .sessions
             .get(id)
             .filter(|session| session.generation == generation)
-            .ok_or_else(|| "Agent session ended while Terminal was opening".to_string())?;
+            .ok_or_else(|| "Session ended while Terminal was opening".to_string())?;
         if session
             .attachment
             .as_ref()
@@ -457,7 +495,7 @@ impl TerminalManager {
             if session.prompt_write_active {
                 return Err("This agent session is receiving a prompt; retry shortly".to_string());
             }
-            #[cfg(target_os = "macos")]
+            #[cfg(unix)]
             revoke_external_attachment(session, None);
             session.metadata.presentation = TerminalPresentation::Dock;
             session.metadata.clone()
@@ -816,7 +854,7 @@ impl TerminalManager {
             {
                 return Err(format!("Terminal session changed while closing: {id}"));
             }
-            #[cfg(target_os = "macos")]
+            #[cfg(unix)]
             revoke_external_attachment(session, None);
             if session.metadata.state != "running" {
                 if session.group_cleanup_complete {
