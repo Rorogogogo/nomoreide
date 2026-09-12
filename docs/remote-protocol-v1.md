@@ -104,6 +104,7 @@ anything that is not listed here.
 | `terminal.input` | **yes** | `terminal.attach` |
 | `terminal.resize` | **yes** | `terminal.attach` |
 | `terminal.detach` | **yes** | `terminal.attach` |
+| `repositories.request` | no | `repositories.list` |
 | `github.runs.request` | no | `github.actions` |
 | `github.run.jobs.request` | no | `github.actions` |
 | `github.prs.request` | no | `github.pulls` |
@@ -114,8 +115,24 @@ anything that is not listed here.
 
 No payload carries a command, argument, working directory, environment, port
 override, SSH host, process id or kill strategy. `terminal.spawn.request`
-carries a provider name and a prompt and **nothing else** — there is no field
-for a path or an argv, which is how there comes to be no way to name one.
+carries a provider name, a prompt, and the *name* of one registered repository —
+and **no path and no argv**, which is how there comes to be no way to name one.
+
+The repository is a name, not a location, and the distinction is the rule the
+whole union is built on: a phone names one of the machine's own registered
+things, the daemon is what turns that into a directory, and a name the registry
+does not hold is refused. The same constraint `github.runs.request` carries on
+its `repository`, and `terminal.attach.request` on its `sessionId`.
+
+**One capability here gates a field rather than a command.**
+`terminal.spawn.repository` says this daemon will accept a `repository` on
+`terminal.spawn.request`; without it the command is routable exactly as before
+and carries no such field. It needs a name of its own because the payload denies
+unknown fields, so a daemon that predates the field refuses the whole frame
+rather than ignoring the key — "send it and see" is not available to a platform
+the way an unknown capability normally is. A platform not offered the name sends
+what it always sent, and the agent starts in the repository the machine has
+selected.
 
 **Excluded, and refused by name:** filesystem browsing or writes, git mutations,
 database queries or write-unlock, service and config registration, environment
@@ -131,12 +148,13 @@ off. While it is advertised, "remote control cannot run arbitrary commands" is
 false, and the pairing copy says so rather than keeping a promise the code
 stopped making.
 
-**The read-only inspection surface.** The last seven rows above answer "what is
-going on?" and change nothing: GitHub Actions runs and their jobs, pull
-requests, what Claude and Codex have spent, the error inbox, and the runtime
-timeline. They arrived after v2 shipped and needed no version bump, which is
-what capabilities are for — a daemon advertises what it has, and a name an
-older platform has not heard of is an omission rather than a failure.
+**The read-only inspection surface.** The last eight rows above answer "what is
+going on?" and change nothing: the machine's registered repositories, GitHub
+Actions runs and their jobs, pull requests, what Claude and Codex have spent,
+the error inbox, and the runtime timeline. They arrived after v2 shipped and
+needed no version bump, which is what capabilities are for — a daemon
+advertises what it has, and a name an older platform has not heard of is an
+omission rather than a failure.
 
 Three rules held while adding them, and they are why this is not a widening:
 

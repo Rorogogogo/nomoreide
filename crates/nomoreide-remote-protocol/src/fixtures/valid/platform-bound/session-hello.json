@@ -31,7 +31,8 @@
       "terminal.attach",
       "terminal.sessions",
       "terminal.shell",
-      "terminal.spawn"
+      "terminal.spawn",
+      "terminal.spawn.repository"
     ]
   }
 }

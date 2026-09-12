@@ -226,9 +226,25 @@ pub(crate) fn served_capabilities() -> CapabilitySet {
             // The row stays in the table — what changes is what this machine
             // says it will do, not what the table permits.
             .filter(|allowed| shells || allowed.capability != capabilities::TERMINAL_SHELL)
-            .map(|allowed| allowed.capability),
+            .map(|allowed| allowed.capability)
+            .chain(FIELD_CAPABILITIES.iter().copied()),
     )
 }
+
+/// Capabilities that gate a **field on a command already in [`ALLOWLIST`]**,
+/// rather than a command of their own.
+///
+/// The table is one row per command, and reading the advertisement off it is
+/// what keeps routable and advertised the same set. A field cannot have a row
+/// there without inventing a command nobody sends, so it is listed here
+/// instead — visibly, and in the same function, rather than by loosening what a
+/// row means.
+///
+/// Nothing here widens what is routable: every name below belongs to a command
+/// the table already permits. What it tells a phone is which *shape* of that
+/// command this daemon will accept, which matters only because the frames that
+/// grew a field deny unknown ones.
+const FIELD_CAPABILITIES: &[&str] = &[capabilities::TERMINAL_SPAWN_REPOSITORY];
 
 /// Calls the daemon's router in-process.
 pub(crate) struct RouterDispatcher {
@@ -892,9 +908,15 @@ impl RouterDispatcher {
             Some(provider) => provider.clone(),
             None => self.selected_agent_provider().await?,
         };
-        let body = serde_json::json!({
-            "agent": { "prompt": request.prompt, "provider": provider }
-        });
+        let mut agent = serde_json::json!({ "prompt": request.prompt, "provider": provider });
+        // Passed through as a **name**, not resolved here. The route owns the
+        // registry lookup — the same one `manager_for_repository` does — so the
+        // dispatcher never holds a path, and an unknown name is refused by the
+        // thing that knows what is registered.
+        if let Some(repository) = &request.repository {
+            agent["repository"] = Value::String(repository.clone());
+        }
+        let body = serde_json::json!({ "agent": agent });
 
         let built = Request::builder()
             .method(Method::POST)
@@ -1260,6 +1282,7 @@ mod tests {
         let logs_note = note.clone();
         let trap_note = note.clone();
         let agent_status_note = note.clone();
+        let spawn_note = note.clone();
 
         Router::new()
             .route("/api/linear/request", post(|headers: HeaderMap, Json(request): Json<nomoreide_core::remote::protocol::linear::LinearRequest>| async move {
@@ -1376,6 +1399,37 @@ mod tests {
                                   "text": format!("auth={CREDENTIAL} DATABASE_PASSWORD=hunter2000") }
                             ]
                         }))
+                    }
+                }),
+            )
+            // Starting an agent terminal. Records the **body** rather than the
+            // path, because what is under test here is the one thing the
+            // dispatcher puts in it that a caller chose.
+            .route(
+                "/api/terminal/sessions",
+                post(move |headers: HeaderMap, Json(body): Json<serde_json::Value>| {
+                    let note = spawn_note.clone();
+                    async move {
+                        require(&headers);
+                        note(format!("POST spawn {body}"));
+                        (
+                            StatusCode::CREATED,
+                            Json(serde_json::json!({
+                                "ok": true,
+                                "session": {
+                                    "id": "term_1",
+                                    "cols": 80,
+                                    "rows": 24,
+                                    "cwd": "/repos/platform",
+                                    "shell": "claude",
+                                    "state": "running",
+                                    "presentation": "dock",
+                                    "kind": "agent",
+                                    "provider": "claude",
+                                    "label": "why is the api restarting"
+                                }
+                            })),
+                        )
                     }
                 }),
             )
@@ -1867,6 +1921,105 @@ mod tests {
 
     /// A machine with shells off does not advertise them, so a phone is never
     /// shown a button it would be refused for pressing.
+    /// The name a phone picked reaches the route **as a name**. The dispatcher
+    /// resolves nothing: if it ever turned an id into a path, the registry
+    /// check would no longer be the thing standing between a caller and an
+    /// arbitrary directory.
+    #[tokio::test]
+    async fn a_spawn_passes_the_repository_through_by_name() {
+        let (dispatcher, reached) = dispatcher();
+
+        let answer = dispatcher
+            .dispatch(
+                "req_1",
+                DeviceBound::TerminalSpawn(
+                    nomoreide_core::remote::protocol::device_bound::TerminalSpawnRequest {
+                        provider: Some("claude".into()),
+                        prompt: "why is the api restarting".into(),
+                        repository: Some("platform".into()),
+                    },
+                ),
+                events(),
+            )
+            .await;
+        assert!(
+            matches!(answer, PlatformBound::TerminalSpawned(_)),
+            "expected a spawn, got {}",
+            answer.kind()
+        );
+
+        let body = reached
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|entry| entry.starts_with("POST spawn "))
+            .expect("the spawn never reached the route")
+            .clone();
+        let body: Value =
+            serde_json::from_str(body.trim_start_matches("POST spawn ")).expect("a JSON body");
+        assert_eq!(
+            body["agent"]["repository"],
+            Value::String("platform".into())
+        );
+    }
+
+    /// No repository means the key is **absent**, not null or empty. The route
+    /// reads "absent" as the machine's own selection, and a null would be a
+    /// type error rather than a default.
+    #[tokio::test]
+    async fn a_spawn_without_a_repository_sends_no_such_key() {
+        let (dispatcher, reached) = dispatcher();
+
+        let _ = dispatcher
+            .dispatch(
+                "req_1",
+                DeviceBound::TerminalSpawn(
+                    nomoreide_core::remote::protocol::device_bound::TerminalSpawnRequest {
+                        provider: Some("claude".into()),
+                        prompt: "why is the api restarting".into(),
+                        repository: None,
+                    },
+                ),
+                events(),
+            )
+            .await;
+
+        let body = reached
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|entry| entry.starts_with("POST spawn "))
+            .expect("the spawn never reached the route")
+            .clone();
+        let body: Value =
+            serde_json::from_str(body.trim_start_matches("POST spawn ")).expect("a JSON body");
+        assert!(
+            body["agent"].get("repository").is_none(),
+            "an absent repository must not become a key: {body}"
+        );
+    }
+
+    /// A field capability is advertised even though it has no row of its own.
+    /// It gates the *shape* of a command the table already permits, and a phone
+    /// that is not offered it must keep sending the older shape — so failing to
+    /// advertise it is a feature that silently never appears.
+    #[test]
+    fn the_field_capabilities_are_advertised_alongside_the_table() {
+        let advertised = served_capabilities();
+        for name in FIELD_CAPABILITIES {
+            assert!(advertised.contains(name), "{name} is not advertised");
+            assert!(
+                !ALLOWLIST.iter().any(|allowed| allowed.capability == *name),
+                "{name} has a row, so it is not a field capability"
+            );
+        }
+        // The command it qualifies is in the table, which is what makes it a
+        // shape rather than a widening.
+        assert!(ALLOWLIST
+            .iter()
+            .any(|allowed| allowed.capability == capabilities::TERMINAL_SPAWN));
+    }
+
     #[test]
     fn the_shell_capability_follows_the_switch() {
         let advertised = served_capabilities();

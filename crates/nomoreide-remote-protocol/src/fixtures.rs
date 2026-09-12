@@ -105,6 +105,10 @@ pub fn every_command() -> Vec<DeviceBound> {
         DeviceBound::TerminalSpawn(TerminalSpawnRequest {
             provider: Some("claude".to_string()),
             prompt: "why is the api restarting".to_string(),
+            // Carried in the golden frame so the wire shape of a named
+            // repository is committed rather than only described: a name the
+            // machine reported, never a path.
+            repository: Some("nomoreide".to_string()),
         }),
         DeviceBound::TerminalShell(Empty {}),
         DeviceBound::TerminalSessions(Empty {}),

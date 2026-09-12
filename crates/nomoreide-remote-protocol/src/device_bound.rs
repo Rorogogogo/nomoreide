@@ -230,10 +230,15 @@ pub struct AgentApprovalResolve {
 
 /// Start an agent, in a terminal, on the machine.
 ///
-/// **There is deliberately no working directory here.** The daemon runs the
-/// agent in the workspace it already has selected, the same one the dashboard
-/// would use. A caller-supplied path would be the filesystem reach that remote
-/// control does not have, and no field for it is the way to not have it.
+/// **There is still deliberately no working directory here.** A caller-supplied
+/// path would be the filesystem reach that remote control does not have, and no
+/// field for it is the way to not have it.
+///
+/// [`Self::repository`] is not that field, and the difference is the whole rule
+/// this union is built on: it names one of the machine's *own registered*
+/// repositories, by an id the machine itself reported, and the daemon is what
+/// turns that id into a path. A phone still cannot say where — only which of
+/// the things already on the machine.
 ///
 /// Nor is there an argv: `provider` picks between the agent CLIs this machine
 /// knows, and everything else about the invocation is the daemon's.
@@ -247,6 +252,27 @@ pub struct TerminalSpawnRequest {
     /// [`super::limits::MAX_AGENT_PROMPT_BYTES`], like any other prompt from a
     /// phone.
     pub prompt: String,
+    /// Which registered repository to start the agent in — **an id this machine
+    /// already reported**, never a path the caller invented.
+    ///
+    /// The same constraint `GithubRunsRequest::repository` and
+    /// `TerminalAttachRequest::session_id` carry, for the same reason: naming
+    /// one of the machine's own things is not the arbitrary filesystem reach
+    /// that a path would make of this surface. The dispatcher refuses anything
+    /// the registry does not hold.
+    ///
+    /// Absent means the repository the machine has selected, which is what this
+    /// asked for before the field existed. It never *changes* that selection —
+    /// the dashboard on the user's desk is looking at it too.
+    ///
+    /// A daemon that predates this field refuses the whole frame rather than
+    /// ignoring the key, because this struct denies unknown fields. That is why
+    /// it is gated by its own capability,
+    /// [`super::version::capabilities::TERMINAL_SPAWN_REPOSITORY`], rather than
+    /// riding on `terminal.spawn`: a phone that is not offered the name must
+    /// keep sending what it sent before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
