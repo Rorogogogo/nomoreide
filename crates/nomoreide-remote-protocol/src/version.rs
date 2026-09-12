@@ -209,6 +209,7 @@ pub mod capabilities {
         TERMINAL_ATTACH,
         TERMINAL_SPAWN,
         TERMINAL_SHELL,
+        REPOSITORIES,
         GITHUB_ACTIONS,
         GITHUB_PULLS,
         LINEAR,
@@ -220,7 +221,7 @@ pub mod capabilities {
     /// `V2` must extend `V1` rather than diverge from it. Checked here because
     /// the two lists are written out separately for readability.
     const _: () = {
-        assert!(V2.len() == V1.len() + 10);
+        assert!(V2.len() == V1.len() + 11);
     };
 }
 
