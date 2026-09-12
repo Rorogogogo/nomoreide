@@ -1435,6 +1435,23 @@ mod tests {
             )
             // Routes a hostile name might try to reach. Reaching either is the
             // failure these tests exist to catch.
+            // The repository list, at the path the daemon actually serves it
+            // on. Registered here and nowhere else on purpose: the stub 404s
+            // everything it does not name, so a dispatcher that asks for some
+            // other path fails this test rather than passing it quietly.
+            .route(
+                "/api/repositories",
+                get(|headers: HeaderMap| async move {
+                    require(&headers);
+                    Json(serde_json::json!({
+                        "ok": true,
+                        "repositories": [
+                            { "name": "nomoreide", "selected": true },
+                            { "name": "platform" },
+                        ]
+                    }))
+                }),
+            )
             .route(
                 "/api/daemon/shutdown",
                 post(move || {
@@ -1475,6 +1492,47 @@ mod tests {
             TerminalManager::new(),
         );
         (dispatcher, reached)
+    }
+
+    /// The repository list has to come back, which sounds too obvious to test
+    /// until you notice what it is guarding.
+    ///
+    /// `Allowed::routes` is prose — deliberately, and the comment on it argues
+    /// the case — so nothing makes the path in the table and the path in
+    /// `inspection::repositories` agree. They did not: the table said
+    /// `GET /api/repositories` while the call asked for `/api/git/repositories`,
+    /// which the daemon does not serve and the remote allowlist would refuse
+    /// anyway. Every local gate passed, the capability was advertised, and a
+    /// phone got "GitHub could not be reached from this machine" — the 404's
+    /// plain-text body has no `error` key, so the failure arrived wearing the
+    /// wrong explanation.
+    ///
+    /// The stub 404s any path it does not name, so this fails if the call moves
+    /// off the route the daemon really has.
+    #[tokio::test]
+    async fn the_repository_list_comes_from_the_path_the_daemon_serves() {
+        let (dispatcher, _) = dispatcher();
+
+        let answer = dispatcher
+            .dispatch("req_1", DeviceBound::Repositories(Empty {}), events())
+            .await;
+
+        let PlatformBound::Repositories(response) = answer else {
+            panic!("expected repositories, got {}", answer.kind());
+        };
+        let names: Vec<&str> = response
+            .repositories
+            .iter()
+            .map(|repository| repository.name.as_str())
+            .collect();
+        assert_eq!(names, ["nomoreide", "platform"]);
+
+        // The id is what a phone sends back as `repository`, and the picker
+        // keys its options on it — an empty one renders a control whose every
+        // option is the same option.
+        assert_eq!(response.repositories[0].id, "nomoreide");
+        assert!(response.repositories[0].selected);
+        assert!(!response.repositories[1].selected);
     }
 
     #[tokio::test]
