@@ -33,6 +33,7 @@ export const zh_shell: Partial<Record<TranslationKey, string>> = {
   "app.allProjects": "所有项目",
   "app.daemonSkew.message":
     "NoMoreIDE 守护进程运行的是 v{daemon}，但此仪表板由 v{client} 构建。功能可能以看似无关的方式出错。请运行以下命令重启：",
+  "app.update.available": "NoMoreIDE v{version} 已发布，升级命令：",
   "app.daemonSkew.cost": "— 这会停止它管理的所有服务。",
   "app.serviceOutsideScope": "该服务不在当前项目范围内 — 已切换为显示所有项目。",
   "action.refresh": "刷新",

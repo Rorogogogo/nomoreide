@@ -73,6 +73,7 @@ import { ServersView } from "@/features/servers/servers-view";
 import { RemoteView } from "@/features/remote/remote-view";
 import { GistPopover } from "@/components/gist-popover";
 import { DaemonSkewBanner } from "@/components/daemon-skew-banner";
+import { UpdateNotice } from "@/components/update-notice";
 import { RuntimeDiagnostics } from "@/components/runtime-diagnostics";
 import {
   getRuntimeConnectionSnapshot,
@@ -847,6 +848,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               that read as ordinary bugs, so this has to be seen before they
               are believed. */}
           <DaemonSkewBanner />
+          <UpdateNotice />
 
           {/* No wrapper here: OperationStrip renders nothing while idle, and a
               padded wrapper around it left an empty strip under the header on

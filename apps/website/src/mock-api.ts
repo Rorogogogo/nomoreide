@@ -1740,6 +1740,12 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     );
   }
 
+  // The demo is always current: an update bar in a marketing screenshot would
+  // advertise that the thing on screen is out of date.
+  if (path === "/api/update") {
+    return json({ ok: true, current: "0.18.1", updateAvailable: false });
+  }
+
   if (path === "/api/linear/connection") {
     if (method === "DELETE") return json({ ok: true });
     if (method === "POST") return json({ ok: true });

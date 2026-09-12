@@ -29,6 +29,7 @@ export const en_shell = {
   "app.daemonSkew.message":
     "The NoMoreIDE daemon is running v{daemon}, but this dashboard was built from v{client}. Features may fail in ways that look like unrelated bugs. Restart it with",
   "app.daemonSkew.cost": "— this stops the services it manages.",
+  "app.update.available": "NoMoreIDE v{version} is available. Upgrade with",
   "app.serviceOutsideScope":
     "Service is outside the current project — showing all projects.",
   "action.refresh": "Refresh",

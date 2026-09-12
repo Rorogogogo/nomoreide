@@ -44,6 +44,7 @@ mod skills;
 mod snapshots;
 mod terminal;
 mod timeline;
+mod update;
 mod usage;
 
 pub(crate) use usage::daemon_cwd;
@@ -195,6 +196,7 @@ async fn declare_json_charset(mut response: Response) -> Response {
 fn authenticated(state: AppState) -> Router<AppState> {
     Router::new()
         .merge(meta::authenticated())
+        .merge(update::routes())
         .merge(agent_auth::authenticated())
         .merge(agent_chat::routes())
         .merge(agent_env::routes())
