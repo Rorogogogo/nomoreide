@@ -138,6 +138,13 @@ pub mod capabilities {
     /// Read-only: there is no re-run, no cancel, and no dispatch. Watching CI
     /// from a phone is a different permission from steering it, and only the
     /// first is here.
+    /// The machine's registered repositories, so a phone can say which one it
+    /// is asking about. Its own capability rather than folded into
+    /// `github.actions`: a daemon that predates the picker does not advertise
+    /// it, and a phone that sees it missing keeps asking about the selected
+    /// repository exactly as it did before.
+    pub const REPOSITORIES: &str = "repositories.list";
+
     pub const GITHUB_ACTIONS: &str = "github.actions";
     /// Listing pull requests, and reading one.
     ///

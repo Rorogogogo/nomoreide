@@ -28,7 +28,8 @@ use nomoreide_core::remote::protocol::errors::{ErrorCode, ProtocolError};
 use nomoreide_core::remote::protocol::limits;
 use nomoreide_core::remote::protocol::platform_bound::{
     AgentUsageResponse, ErrorsResponse, GithubPullResponse, GithubPullsResponse,
-    GithubRunJobsResponse, GithubRunsResponse, TimelineResponse,
+    GithubRunJobsResponse, GithubRunsResponse, RemoteRepository, RepositoriesResponse,
+    TimelineResponse,
 };
 use nomoreide_core::remote::protocol::snapshot::{
     IncidentLevel, PullRequestState, RemoteAgentUsage, RemoteClaudeUsage, RemoteCodexUsage,
@@ -39,6 +40,51 @@ use nomoreide_core::remote::protocol::PlatformBound;
 use serde_json::Value;
 
 use super::dispatcher::RouterDispatcher;
+
+/// `?repository=…` or `&repository=…`, or nothing at all.
+///
+/// Percent-encoded like every other caller-supplied value on this surface. An
+/// empty name is the same as none: the route reads an absent repository as "the
+/// selected one", and a blank string should not mean something different.
+fn repository_query(repository: Option<&str>, separator: char) -> String {
+    repository
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(|name| format!("{separator}repository={}", RouterDispatcher::segment(name)))
+        .unwrap_or_default()
+}
+
+// --- Repositories ------------------------------------------------------------
+
+/// The repositories this machine has registered.
+///
+/// This is what makes the repository field on the GitHub requests usable: a
+/// phone can only name one of these, and the route that serves them is the same
+/// one that refuses anything else.
+pub(super) async fn repositories(
+    dispatcher: &RouterDispatcher,
+) -> Result<PlatformBound, ProtocolError> {
+    let (status, body) = dispatcher
+        .call(Method::GET, "/api/git/repositories")
+        .await?;
+    github_failure(status, &body)?;
+    Ok(PlatformBound::Repositories(RepositoriesResponse {
+        repositories: array(&body, "repositories")
+            .iter()
+            .filter_map(|entry| {
+                let name = text(entry, "name")?;
+                Some(RemoteRepository {
+                    id: name.clone(),
+                    name,
+                    selected: entry
+                        .get("selected")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false),
+                })
+            })
+            .collect(),
+    }))
+}
 
 // --- GitHub Actions ----------------------------------------------------------
 
@@ -51,6 +97,12 @@ pub(super) async fn workflow_runs(
     // name may legitimately contain a `/` — so it is percent-encoded whole,
     // exactly as a service name is, rather than trusted to be one segment.
     let mut path = "/api/github/runs?page=1".to_string();
+    if let Some(repository) = request.repository.as_deref().filter(|it| !it.is_empty()) {
+        path.push_str(&format!(
+            "&repository={}",
+            RouterDispatcher::segment(repository)
+        ));
+    }
     if let Some(branch) = request.branch.as_deref().filter(|it| !it.is_empty()) {
         path.push_str(&format!("&branch={}", RouterDispatcher::segment(branch)));
     }
@@ -84,7 +136,11 @@ pub(super) async fn workflow_run_jobs(
             "That is not a workflow run id.",
         ));
     }
-    let path = format!("/api/github/runs/{}/jobs", request.run_id);
+    let path = format!(
+        "/api/github/runs/{}/jobs{}",
+        request.run_id,
+        repository_query(request.repository.as_deref(), '?')
+    );
     let (status, body) = dispatcher.call(Method::GET, &path).await?;
     github_failure(status, &body)?;
 
@@ -116,7 +172,10 @@ pub(super) async fn pull_requests(
     let (status, body) = dispatcher
         .call(
             Method::GET,
-            &format!("/api/github/prs?state={state}&page=1"),
+            &format!(
+                "/api/github/prs?state={state}&page=1{}",
+                repository_query(request.repository.as_deref(), '&')
+            ),
         )
         .await?;
     github_failure(status, &body)?;
@@ -134,7 +193,14 @@ pub(super) async fn pull_request_detail(
     request: &GithubPullRequestRef,
 ) -> Result<PlatformBound, ProtocolError> {
     let (status, body) = dispatcher
-        .call(Method::GET, &format!("/api/github/prs/{}", request.number))
+        .call(
+            Method::GET,
+            &format!(
+                "/api/github/prs/{}{}",
+                request.number,
+                repository_query(request.repository.as_deref(), '?')
+            ),
+        )
         .await?;
     github_failure(status, &body)?;
 
