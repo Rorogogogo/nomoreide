@@ -77,6 +77,10 @@ pub enum PlatformBound {
     #[serde(rename = "terminal.closed")]
     TerminalClosed(TerminalClosed),
 
+    /// The repositories this machine has registered.
+    #[serde(rename = "repositories.response")]
+    Repositories(RepositoriesResponse),
+
     /// Recent GitHub Actions runs.
     #[serde(rename = "github.runs.response")]
     GithubRuns(GithubRunsResponse),
@@ -113,6 +117,30 @@ pub enum PlatformBound {
 /// Every list answer here carries `truncated` for the same reason
 /// [`ServiceLogsResponse`] does: a phone showing thirty runs must be able to say
 /// "the most recent thirty" rather than implying the repository has thirty.
+/// The repositories a phone may ask about.
+///
+/// **An id and a name, and nothing else.** No path, no remote URL, no branch —
+/// the rule this protocol is built on is that a phone names *what* to look at
+/// and never *where*, and a filesystem path is the purest form of "where".
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteRepository {
+    /// What a request passes back as `repository`. The daemon's own name for
+    /// it; the dispatcher refuses any id it did not report here.
+    pub id: String,
+    pub name: String,
+    /// The one the machine currently has selected — what an absent `repository`
+    /// resolves to, so a phone can show which it is defaulting to.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub selected: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RepositoriesResponse {
+    pub repositories: Vec<RemoteRepository>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GithubRunsResponse {
@@ -373,6 +401,7 @@ impl PlatformBound {
         "terminal.geometry",
         "terminal.ack",
         "terminal.closed",
+        "repositories.response",
         "github.runs.response",
         "github.run.jobs.response",
         "github.prs.response",
@@ -403,6 +432,7 @@ impl PlatformBound {
             Self::TerminalGeometry(_) => "terminal.geometry",
             Self::TerminalAck(_) => "terminal.ack",
             Self::TerminalClosed(_) => "terminal.closed",
+            Self::Repositories(_) => "repositories.response",
             Self::GithubRuns(_) => "github.runs.response",
             Self::GithubRunJobs(_) => "github.run.jobs.response",
             Self::GithubPulls(_) => "github.prs.response",
@@ -448,6 +478,7 @@ impl PlatformBound {
             | Self::TerminalAttachAccepted(_)
             | Self::TerminalAck(_)
             | Self::Linear(_)
+            | Self::Repositories(_)
             | Self::GithubRuns(_)
             | Self::GithubRunJobs(_)
             | Self::GithubPulls(_)

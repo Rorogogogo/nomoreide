@@ -170,6 +170,11 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
     // product has all four, and they stay where a person at the machine is the
     // one pressing them.
     Allowed {
+        kind: "repositories.request",
+        capability: capabilities::REPOSITORIES,
+        routes: "GET /api/repositories",
+    },
+    Allowed {
         kind: "github.runs.request",
         capability: capabilities::GITHUB_ACTIONS,
         routes: "GET /api/github/runs",
@@ -746,6 +751,7 @@ impl CommandSink for RouterDispatcher {
                 }
                 DeviceBound::TerminalDetach(request) => self.mirrors.detach(request),
                 DeviceBound::Linear(request) => self.linear(request).await,
+                DeviceBound::Repositories(_) => super::inspection::repositories(self).await,
                 DeviceBound::GithubRuns(request) => {
                     super::inspection::workflow_runs(self, request).await
                 }
@@ -1754,10 +1760,12 @@ mod tests {
                 "the allowlist mentions {forbidden}: {rendered}"
             );
         }
-        // Twenty-four rows: one Linear, five service, four agent, seven terminal, seven
-        // read-only inspection. Pinned so growing the remote surface is a
-        // deliberate edit to a test rather than a quiet addition.
-        assert_eq!(ALLOWLIST.len(), 24);
+        // Twenty-five rows: one Linear, five service, four agent, seven terminal,
+        // eight read-only inspection — the newest being the repository list a
+        // phone reads to say which repository it is asking about. Pinned so
+        // growing the remote surface is a deliberate edit to a test rather than
+        // a quiet addition.
+        assert_eq!(ALLOWLIST.len(), 25);
     }
 
     /// Everything added for CI, pull requests, usage, errors and the timeline

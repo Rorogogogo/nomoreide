@@ -25,14 +25,19 @@ use axum::body::Bytes;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, post, put};
+use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
-use nomoreide_core::config::{Config, GitRepoDef};
+use nomoreide_core::config::{selected_git_repository, Config, GitRepoDef};
 use serde::Serialize;
 use serde_json::Value;
 
 pub(super) fn routes() -> Router<AppState> {
     Router::new()
+        // The listing is **not** under `/api/git/`, and that is deliberate: the
+        // remote allowlist bans that whole prefix, because it is where clone,
+        // adopt, create and select live. A read-only list of names is not one of
+        // those, so it gets a path of its own rather than a hole in the ban.
+        .route("/api/repositories", get(list))
         .route("/api/git/repositories", post(register))
         .route("/api/git/repositories/:name", delete(remove))
         .route("/api/git/clone", post(clone))
@@ -40,6 +45,56 @@ pub(super) fn routes() -> Router<AppState> {
         .route("/api/git/create", post(create))
         .route("/api/git/select", post(select))
         .route("/api/git/board", put(board))
+}
+
+/// What a caller that only needs to *name* a repository is told about it.
+///
+/// **Name and selection, never the path.** The full definition carries a
+/// filesystem path, and this list is what the remote surface reads: a phone
+/// names what to look at and never where, so the path stays on the machine.
+/// Callers that need it read the config itself, which is authenticated.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepositoryEntry {
+    name: String,
+    selected: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepositoryList {
+    ok: bool,
+    repositories: Vec<RepositoryEntry>,
+}
+
+/// The repositories this machine has registered.
+///
+/// The selected one is marked rather than moved to the front, because the order
+/// registered is the order a person put them in and reordering a list under
+/// somebody is its own small confusion.
+async fn list(State(state): State<AppState>) -> Response {
+    let config = match state.config_store.load().await {
+        Ok(config) => config,
+        Err(_) => {
+            return error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Could not read the configuration",
+            )
+        }
+    };
+    let selected = selected_git_repository(&config).map(|repository| repository.name.clone());
+    Json(RepositoryList {
+        ok: true,
+        repositories: config
+            .git_repositories
+            .iter()
+            .map(|repository| RepositoryEntry {
+                selected: Some(&repository.name) == selected.as_ref(),
+                name: repository.name.clone(),
+            })
+            .collect(),
+    })
+    .into_response()
 }
 
 #[derive(Serialize)]

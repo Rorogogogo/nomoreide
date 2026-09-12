@@ -98,6 +98,11 @@ pub enum DeviceBound {
     #[serde(rename = "terminal.detach")]
     TerminalDetach(TerminalDetach),
 
+    /// The repositories this machine has registered, so a phone can say which
+    /// one it is asking about.
+    #[serde(rename = "repositories.request")]
+    Repositories(Empty),
+
     /// Recent GitHub Actions runs for the selected repository.
     #[serde(rename = "github.runs.request")]
     GithubRuns(GithubRunsRequest),
@@ -289,6 +294,21 @@ pub struct TerminalDetach {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GithubRunsRequest {
+    /// Which repository to answer for — **an id this machine already
+    /// reported**, never an `owner/repo` the caller invented.
+    ///
+    /// This is the same constraint `TerminalAttachRequest::session_id` carries,
+    /// and for the same reason: naming one of the machine's own things is not
+    /// the general-purpose GitHub client that an arbitrary `owner/repo` would
+    /// make of this surface. The dispatcher refuses anything the registry does
+    /// not hold.
+    ///
+    /// Absent means the repository the machine has selected, which is what a
+    /// phone opening the screen cold wants, and what this asked for before the
+    /// field existed. It never *changes* that selection — the dashboard on the
+    /// user's desk is looking at it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
     /// Only runs on this branch. Absent means every branch, which is what a
     /// phone opening the screen cold wants.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -302,6 +322,21 @@ pub struct GithubRunsRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GithubRunJobsRequest {
+    /// Which repository to answer for — **an id this machine already
+    /// reported**, never an `owner/repo` the caller invented.
+    ///
+    /// This is the same constraint `TerminalAttachRequest::session_id` carries,
+    /// and for the same reason: naming one of the machine's own things is not
+    /// the general-purpose GitHub client that an arbitrary `owner/repo` would
+    /// make of this surface. The dispatcher refuses anything the registry does
+    /// not hold.
+    ///
+    /// Absent means the repository the machine has selected, which is what a
+    /// phone opening the screen cold wants, and what this asked for before the
+    /// field existed. It never *changes* that selection — the dashboard on the
+    /// user's desk is looking at it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
     /// GitHub's run id, as a string, exactly as a listing reported it. The
     /// daemon refuses anything that is not digits — it becomes part of a URL,
     /// and a run id is the only caller-supplied value on this surface that
@@ -322,6 +357,21 @@ pub enum PullRequestFilter {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GithubPullsRequest {
+    /// Which repository to answer for — **an id this machine already
+    /// reported**, never an `owner/repo` the caller invented.
+    ///
+    /// This is the same constraint `TerminalAttachRequest::session_id` carries,
+    /// and for the same reason: naming one of the machine's own things is not
+    /// the general-purpose GitHub client that an arbitrary `owner/repo` would
+    /// make of this surface. The dispatcher refuses anything the registry does
+    /// not hold.
+    ///
+    /// Absent means the repository the machine has selected, which is what a
+    /// phone opening the screen cold wants, and what this asked for before the
+    /// field existed. It never *changes* that selection — the dashboard on the
+    /// user's desk is looking at it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
     /// Absent means [`PullRequestFilter::Open`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state: Option<PullRequestFilter>,
@@ -330,9 +380,24 @@ pub struct GithubPullsRequest {
     pub limit: Option<u32>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GithubPullRequestRef {
+    /// Which repository to answer for — **an id this machine already
+    /// reported**, never an `owner/repo` the caller invented.
+    ///
+    /// This is the same constraint `TerminalAttachRequest::session_id` carries,
+    /// and for the same reason: naming one of the machine's own things is not
+    /// the general-purpose GitHub client that an arbitrary `owner/repo` would
+    /// make of this surface. The dispatcher refuses anything the registry does
+    /// not hold.
+    ///
+    /// Absent means the repository the machine has selected, which is what a
+    /// phone opening the screen cold wants, and what this asked for before the
+    /// field existed. It never *changes* that selection — the dashboard on the
+    /// user's desk is looking at it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
     pub number: u64,
 }
 
@@ -376,6 +441,7 @@ impl DeviceBound {
         "terminal.input",
         "terminal.resize",
         "terminal.detach",
+        "repositories.request",
         "github.runs.request",
         "github.run.jobs.request",
         "github.prs.request",
@@ -406,6 +472,7 @@ impl DeviceBound {
             Self::TerminalInput(_) => "terminal.input",
             Self::TerminalResize(_) => "terminal.resize",
             Self::TerminalDetach(_) => "terminal.detach",
+            Self::Repositories(_) => "repositories.request",
             Self::GithubRuns(_) => "github.runs.request",
             Self::GithubRunJobs(_) => "github.run.jobs.request",
             Self::GithubPulls(_) => "github.prs.request",
@@ -451,6 +518,7 @@ impl DeviceBound {
             // The whole inspection surface. Nothing below changes anything on
             // the machine or on GitHub, which is what makes a retry harmless
             // and a degraded session still useful.
+            | Self::Repositories(_)
             | Self::GithubRuns(_)
             | Self::GithubRunJobs(_)
             | Self::GithubPulls(_)
@@ -483,6 +551,7 @@ impl DeviceBound {
             | Self::TerminalResize(_)
             | Self::TerminalDetach(_) => Some(capability::TERMINAL_ATTACH),
             Self::Linear(_) => Some(capability::LINEAR),
+            Self::Repositories(_) => Some(capability::REPOSITORIES),
             Self::GithubRuns(_) | Self::GithubRunJobs(_) => Some(capability::GITHUB_ACTIONS),
             Self::GithubPulls(_) | Self::GithubPull(_) => Some(capability::GITHUB_PULLS),
             Self::AgentUsage(_) => Some(capability::AGENT_USAGE),

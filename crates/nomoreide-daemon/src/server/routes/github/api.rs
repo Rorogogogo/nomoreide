@@ -98,6 +98,9 @@ async fn branches(State(state): State<AppState>) -> Response {
 
 #[derive(Deserialize)]
 struct ListQuery {
+    /// A registered repository's name, or absent for the selected one.
+    #[serde(default)]
+    repository: Option<String>,
     #[serde(default)]
     state: Option<String>,
     #[serde(default)]
@@ -126,7 +129,7 @@ impl ListQuery {
 }
 
 async fn list_prs(State(state): State<AppState>, Query(query): Query<ListQuery>) -> Response {
-    let manager = match selected_manager(&state).await {
+    let manager = match manager_for_repository(&state, query.repository.as_deref()).await {
         Ok(manager) => manager,
         Err(response) => return response,
     };
@@ -163,11 +166,15 @@ async fn create_pr(State(state): State<AppState>, body: Bytes) -> Response {
     }
 }
 
-async fn get_pr(State(state): State<AppState>, Path(number): Path<String>) -> Response {
+async fn get_pr(
+    State(state): State<AppState>,
+    Path(number): Path<String>,
+    Query(query): Query<ListQuery>,
+) -> Response {
     let Some(number) = numeric_path(&number) else {
         return not_found();
     };
-    let manager = match selected_manager(&state).await {
+    let manager = match manager_for_repository(&state, query.repository.as_deref()).await {
         Ok(manager) => manager,
         Err(response) => return response,
     };
@@ -413,7 +420,7 @@ async fn commit_ci(State(state): State<AppState>, Path(sha): Path<String>) -> Re
 }
 
 async fn list_runs(State(state): State<AppState>, Query(query): Query<ListQuery>) -> Response {
-    let manager = match selected_manager(&state).await {
+    let manager = match manager_for_repository(&state, query.repository.as_deref()).await {
         Ok(manager) => manager,
         Err(response) => return response,
     };
@@ -426,11 +433,15 @@ async fn list_runs(State(state): State<AppState>, Query(query): Query<ListQuery>
     }
 }
 
-async fn run_jobs(State(state): State<AppState>, Path(run_id): Path<String>) -> Response {
+async fn run_jobs(
+    State(state): State<AppState>,
+    Path(run_id): Path<String>,
+    Query(query): Query<ListQuery>,
+) -> Response {
     let Some(run_id) = numeric_path(&run_id) else {
         return not_found();
     };
-    let manager = match selected_manager(&state).await {
+    let manager = match manager_for_repository(&state, query.repository.as_deref()).await {
         Ok(manager) => manager,
         Err(response) => return response,
     };
@@ -446,6 +457,41 @@ async fn run_jobs(State(state): State<AppState>, Path(run_id): Path<String>) -> 
 /// instead.
 async fn selected_manager(state: &AppState) -> Result<GithubManager, Response> {
     let cwd = state.workspace_cwd().await;
+    manager_for(state, &cwd).await
+}
+
+/// A manager for a *named* repository, or the selected one when unnamed.
+///
+/// **The name is checked against the registry, and that check is the point.**
+/// This is what a phone passes, and the rule the remote protocol is built on is
+/// that a caller names one of the machine's own things rather than an arbitrary
+/// `owner/repo` — so a name the machine never registered is refused here rather
+/// than turned into a GitHub request under the user's token.
+///
+/// Naming a repository never *selects* it: the dashboard on the user's desk is
+/// looking at the selection, and a phone glancing at CI should not move it.
+async fn manager_for_repository(
+    state: &AppState,
+    repository: Option<&str>,
+) -> Result<GithubManager, Response> {
+    let Some(name) = repository.map(str::trim).filter(|name| !name.is_empty()) else {
+        return selected_manager(state).await;
+    };
+    let config = match state.config_store.load().await {
+        Ok(config) => config,
+        Err(_) => return Err(refused("Could not read the configuration")),
+    };
+    let Some(found) = config
+        .git_repositories
+        .iter()
+        .find(|repository| repository.name == name)
+    else {
+        return Err(not_found());
+    };
+    let cwd = found
+        .active_worktree_path
+        .clone()
+        .unwrap_or_else(|| found.path.clone());
     manager_for(state, &cwd).await
 }
 

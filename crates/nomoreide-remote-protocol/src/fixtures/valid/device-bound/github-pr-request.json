@@ -6,6 +6,7 @@
   "sentAt": "2026-09-01T00:00:00.000Z",
   "replyTo": null,
   "payload": {
+    "repository": "nomoreide",
     "number": 268
   }
 }

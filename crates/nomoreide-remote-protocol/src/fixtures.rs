@@ -44,9 +44,10 @@ use super::platform_bound::{
     AgentProvidersResponse, AgentTurnAccepted, AgentUsageResponse, BundleListResponse,
     CommandErrorResponse, DeviceSnapshotResponse, ErrorsResponse, GithubPullResponse,
     GithubPullsResponse, GithubRunJobsResponse, GithubRunsResponse, PlatformBound,
-    ServiceActionResponse, ServiceListResponse, ServiceLogsResponse, SessionHello, TerminalAck,
-    TerminalAttachAccepted, TerminalCloseReason, TerminalClosed, TerminalGeometry, TerminalOutput,
-    TerminalSessionsResponse, TerminalSpawned, TimelineResponse,
+    RemoteRepository, RepositoriesResponse, ServiceActionResponse, ServiceListResponse,
+    ServiceLogsResponse, SessionHello, TerminalAck, TerminalAttachAccepted, TerminalCloseReason,
+    TerminalClosed, TerminalGeometry, TerminalOutput, TerminalSessionsResponse, TerminalSpawned,
+    TimelineResponse,
 };
 use super::snapshot::{
     BundleState, DeviceSnapshot, IncidentLevel, LogLine, LogStream, PullRequestState,
@@ -126,18 +127,25 @@ pub fn every_command() -> Vec<DeviceBound> {
             stream_id: "stream_1".to_string(),
         }),
         DeviceBound::Linear(crate::linear::LinearRequest::Metadata {}),
+        DeviceBound::Repositories(Empty {}),
         DeviceBound::GithubRuns(GithubRunsRequest {
+            repository: Some("nomoreide".to_string()),
             branch: Some("main".to_string()),
             limit: Some(10),
         }),
         DeviceBound::GithubRunJobs(GithubRunJobsRequest {
+            repository: Some("nomoreide".to_string()),
             run_id: "1874200193".to_string(),
         }),
         DeviceBound::GithubPulls(GithubPullsRequest {
+            repository: Some("nomoreide".to_string()),
             state: Some(PullRequestFilter::Open),
             limit: Some(10),
         }),
-        DeviceBound::GithubPull(GithubPullRequestRef { number: 268 }),
+        DeviceBound::GithubPull(GithubPullRequestRef {
+            repository: Some("nomoreide".to_string()),
+            number: 268,
+        }),
         DeviceBound::AgentUsage(Empty {}),
         DeviceBound::Errors(ErrorsRequest { limit: Some(20) }),
         DeviceBound::Timeline(TimelineRequest { limit: Some(20) }),
@@ -257,6 +265,13 @@ pub fn every_event() -> Vec<PlatformBound> {
         PlatformBound::Linear(Box::new(crate::linear::LinearResponse {
             data: serde_json::from_value(serde_json::json!({"teams": {"nodes": []}})).unwrap(),
         })),
+        PlatformBound::Repositories(RepositoriesResponse {
+            repositories: vec![RemoteRepository {
+                id: "nomoreide".to_string(),
+                name: "nomoreide".to_string(),
+                selected: true,
+            }],
+        }),
         PlatformBound::GithubRuns(GithubRunsResponse {
             runs: vec![RemoteWorkflowRun {
                 id: "1874200193".to_string(),
