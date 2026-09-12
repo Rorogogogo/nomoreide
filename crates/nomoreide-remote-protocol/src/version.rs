@@ -117,6 +117,26 @@ pub mod capabilities {
     /// Kept honest: while this is advertised, "remote control cannot run
     /// arbitrary commands" is false, and the pairing copy says so.
     pub const TERMINAL_SHELL: &str = "terminal.shell";
+    /// **Ending** an agent terminal, rather than only stopping the mirror.
+    ///
+    /// Its own name because it is the one thing on the terminal surface that
+    /// destroys work. `terminal.attach` covers detaching, which leaves the
+    /// agent running on purpose; this stops it. A machine can offer the whole
+    /// rest of the surface — spawn, shell, mirror, type — and not this, which
+    /// is the point of it being separate rather than folded into any of them.
+    pub const TERMINAL_KILL: &str = "terminal.kill";
+    /// Starting an agent terminal **in a named registered repository**, rather
+    /// than only in the one the machine has selected.
+    ///
+    /// The one capability here that gates a *field* rather than a command:
+    /// `terminal.spawn.request` is routable without it, and simply has no
+    /// `repository` on it. It needs a name of its own because
+    /// `TerminalSpawnRequest` denies unknown fields — a daemon built before the
+    /// field existed refuses the entire frame rather than ignoring the key, so
+    /// "try it and see" is not available to a phone the way an unknown
+    /// capability normally is. A phone that is not offered this name sends what
+    /// it always sent, and the agent starts in the selected repository.
+    pub const TERMINAL_SPAWN_REPOSITORY: &str = "terminal.spawn.repository";
     /// Mirroring one agent terminal: its output, and typing into it. **v2.**
     ///
     /// Deliberately separate from [`TERMINAL_SESSIONS`], so a machine can show
@@ -208,7 +228,9 @@ pub mod capabilities {
         TERMINAL_SESSIONS,
         TERMINAL_ATTACH,
         TERMINAL_SPAWN,
+        TERMINAL_SPAWN_REPOSITORY,
         TERMINAL_SHELL,
+        TERMINAL_KILL,
         REPOSITORIES,
         GITHUB_ACTIONS,
         GITHUB_PULLS,
@@ -221,7 +243,7 @@ pub mod capabilities {
     /// `V2` must extend `V1` rather than diverge from it. Checked here because
     /// the two lists are written out separately for readability.
     const _: () = {
-        assert!(V2.len() == V1.len() + 11);
+        assert!(V2.len() == V1.len() + 13);
     };
 }
 

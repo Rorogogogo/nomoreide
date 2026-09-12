@@ -64,9 +64,7 @@ fn repository_query(repository: Option<&str>, separator: char) -> String {
 pub(super) async fn repositories(
     dispatcher: &RouterDispatcher,
 ) -> Result<PlatformBound, ProtocolError> {
-    let (status, body) = dispatcher
-        .call(Method::GET, "/api/git/repositories")
-        .await?;
+    let (status, body) = dispatcher.call(Method::GET, "/api/repositories").await?;
     github_failure(status, &body)?;
     Ok(PlatformBound::Repositories(RepositoriesResponse {
         repositories: array(&body, "repositories")

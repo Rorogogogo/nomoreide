@@ -37,6 +37,14 @@ pub struct TerminalSession {
     pub error: Option<String>,
     #[serde(default)]
     pub presentation: TerminalPresentation,
+    /// When the session was spawned.
+    ///
+    /// Optional because a session restored from disk by an older build has no
+    /// record of it, and "unknown" is the honest answer there — an invented
+    /// start time would render as an agent that has been running for no time
+    /// at all, which is worse than saying nothing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// What a terminal's child process ended with.

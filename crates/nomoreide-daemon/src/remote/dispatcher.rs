@@ -160,6 +160,13 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
         capability: capabilities::TERMINAL_ATTACH,
         routes: "(the terminal manager)",
     },
+    // The only row on the terminal surface that ends something. Its own
+    // capability, so a machine can offer every line above and not this one.
+    Allowed {
+        kind: "terminal.kill.request",
+        capability: capabilities::TERMINAL_KILL,
+        routes: "DELETE /api/terminal/sessions/:id",
+    },
     Allowed {
         kind: "linear.request",
         capability: capabilities::LINEAR,
@@ -226,9 +233,25 @@ pub(crate) fn served_capabilities() -> CapabilitySet {
             // The row stays in the table — what changes is what this machine
             // says it will do, not what the table permits.
             .filter(|allowed| shells || allowed.capability != capabilities::TERMINAL_SHELL)
-            .map(|allowed| allowed.capability),
+            .map(|allowed| allowed.capability)
+            .chain(FIELD_CAPABILITIES.iter().copied()),
     )
 }
+
+/// Capabilities that gate a **field on a command already in [`ALLOWLIST`]**,
+/// rather than a command of their own.
+///
+/// The table is one row per command, and reading the advertisement off it is
+/// what keeps routable and advertised the same set. A field cannot have a row
+/// there without inventing a command nobody sends, so it is listed here
+/// instead — visibly, and in the same function, rather than by loosening what a
+/// row means.
+///
+/// Nothing here widens what is routable: every name below belongs to a command
+/// the table already permits. What it tells a phone is which *shape* of that
+/// command this daemon will accept, which matters only because the frames that
+/// grew a field deny unknown ones.
+const FIELD_CAPABILITIES: &[&str] = &[capabilities::TERMINAL_SPAWN_REPOSITORY];
 
 /// Calls the daemon's router in-process.
 pub(crate) struct RouterDispatcher {
@@ -750,6 +773,7 @@ impl CommandSink for RouterDispatcher {
                     self.mirrors.resize(&self.terminal, request)
                 }
                 DeviceBound::TerminalDetach(request) => self.mirrors.detach(request),
+                DeviceBound::TerminalKill(request) => self.kill_terminal(request).await,
                 DeviceBound::Linear(request) => self.linear(request).await,
                 DeviceBound::Repositories(_) => super::inspection::repositories(self).await,
                 DeviceBound::GithubRuns(request) => {
@@ -892,9 +916,15 @@ impl RouterDispatcher {
             Some(provider) => provider.clone(),
             None => self.selected_agent_provider().await?,
         };
-        let body = serde_json::json!({
-            "agent": { "prompt": request.prompt, "provider": provider }
-        });
+        let mut agent = serde_json::json!({ "prompt": request.prompt, "provider": provider });
+        // Passed through as a **name**, not resolved here. The route owns the
+        // registry lookup — the same one `manager_for_repository` does — so the
+        // dispatcher never holds a path, and an unknown name is refused by the
+        // thing that knows what is registered.
+        if let Some(repository) = &request.repository {
+            agent["repository"] = Value::String(repository.clone());
+        }
+        let body = serde_json::json!({ "agent": agent });
 
         let built = Request::builder()
             .method(Method::POST)
@@ -936,6 +966,51 @@ impl RouterDispatcher {
         )
         .map_err(|error| internal(format!("the local response was not a session: {error}")))?;
         Ok(super::terminal::spawned(session))
+    }
+
+    /// End one session, by a name the machine reported.
+    ///
+    /// Refused unless the session is one this surface can see at all: the same
+    /// `mirrorable_sessions` set an attach is checked against, so a phone
+    /// cannot end a service tab or a shell on a machine with shells switched
+    /// off — things it is not allowed to know exist, let alone stop.
+    ///
+    /// The id is percent-encoded into the path like any other caller-supplied
+    /// segment, so a name with a slash in it cannot reach a different route.
+    async fn kill_terminal(
+        &self,
+        request: &nomoreide_core::remote::protocol::device_bound::TerminalKillRequest,
+    ) -> Result<PlatformBound, ProtocolError> {
+        let known = self
+            .terminal
+            .mirrorable_sessions(super::shell_allowed())
+            .into_iter()
+            .any(|session| session.id == request.session_id);
+        if !known {
+            return Err(ProtocolError::new(
+                ErrorCode::CapabilityUnavailable,
+                "That terminal is not on this machine.",
+            )
+            .with_detail(request.session_id.clone()));
+        }
+
+        let path = format!(
+            "/api/terminal/sessions/{}",
+            Self::segment(&request.session_id)
+        );
+        let (status, body) = self.call(Method::DELETE, &path).await?;
+        if !status.is_success() {
+            let detail = body
+                .get("error")
+                .and_then(Value::as_str)
+                .unwrap_or("that terminal could not be closed");
+            return Err(ProtocolError::new(
+                ErrorCode::ServiceActionFailed,
+                "That terminal could not be closed.",
+            )
+            .with_detail(detail.to_string()));
+        }
+        Ok(super::terminal::killed(request.session_id.clone()))
     }
 }
 
@@ -1260,6 +1335,7 @@ mod tests {
         let logs_note = note.clone();
         let trap_note = note.clone();
         let agent_status_note = note.clone();
+        let spawn_note = note.clone();
 
         Router::new()
             .route("/api/linear/request", post(|headers: HeaderMap, Json(request): Json<nomoreide_core::remote::protocol::linear::LinearRequest>| async move {
@@ -1379,8 +1455,56 @@ mod tests {
                     }
                 }),
             )
+            // Starting an agent terminal. Records the **body** rather than the
+            // path, because what is under test here is the one thing the
+            // dispatcher puts in it that a caller chose.
+            .route(
+                "/api/terminal/sessions",
+                post(move |headers: HeaderMap, Json(body): Json<serde_json::Value>| {
+                    let note = spawn_note.clone();
+                    async move {
+                        require(&headers);
+                        note(format!("POST spawn {body}"));
+                        (
+                            StatusCode::CREATED,
+                            Json(serde_json::json!({
+                                "ok": true,
+                                "session": {
+                                    "id": "term_1",
+                                    "cols": 80,
+                                    "rows": 24,
+                                    "cwd": "/repos/platform",
+                                    "shell": "claude",
+                                    "state": "running",
+                                    "presentation": "dock",
+                                    "kind": "agent",
+                                    "provider": "claude",
+                                    "label": "why is the api restarting"
+                                }
+                            })),
+                        )
+                    }
+                }),
+            )
             // Routes a hostile name might try to reach. Reaching either is the
             // failure these tests exist to catch.
+            // The repository list, at the path the daemon actually serves it
+            // on. Registered here and nowhere else on purpose: the stub 404s
+            // everything it does not name, so a dispatcher that asks for some
+            // other path fails this test rather than passing it quietly.
+            .route(
+                "/api/repositories",
+                get(|headers: HeaderMap| async move {
+                    require(&headers);
+                    Json(serde_json::json!({
+                        "ok": true,
+                        "repositories": [
+                            { "name": "nomoreide", "selected": true },
+                            { "name": "platform" },
+                        ]
+                    }))
+                }),
+            )
             .route(
                 "/api/daemon/shutdown",
                 post(move || {
@@ -1421,6 +1545,47 @@ mod tests {
             TerminalManager::new(),
         );
         (dispatcher, reached)
+    }
+
+    /// The repository list has to come back, which sounds too obvious to test
+    /// until you notice what it is guarding.
+    ///
+    /// `Allowed::routes` is prose — deliberately, and the comment on it argues
+    /// the case — so nothing makes the path in the table and the path in
+    /// `inspection::repositories` agree. They did not: the table said
+    /// `GET /api/repositories` while the call asked for `/api/git/repositories`,
+    /// which the daemon does not serve and the remote allowlist would refuse
+    /// anyway. Every local gate passed, the capability was advertised, and a
+    /// phone got "GitHub could not be reached from this machine" — the 404's
+    /// plain-text body has no `error` key, so the failure arrived wearing the
+    /// wrong explanation.
+    ///
+    /// The stub 404s any path it does not name, so this fails if the call moves
+    /// off the route the daemon really has.
+    #[tokio::test]
+    async fn the_repository_list_comes_from_the_path_the_daemon_serves() {
+        let (dispatcher, _) = dispatcher();
+
+        let answer = dispatcher
+            .dispatch("req_1", DeviceBound::Repositories(Empty {}), events())
+            .await;
+
+        let PlatformBound::Repositories(response) = answer else {
+            panic!("expected repositories, got {}", answer.kind());
+        };
+        let names: Vec<&str> = response
+            .repositories
+            .iter()
+            .map(|repository| repository.name.as_str())
+            .collect();
+        assert_eq!(names, ["nomoreide", "platform"]);
+
+        // The id is what a phone sends back as `repository`, and the picker
+        // keys its options on it — an empty one renders a control whose every
+        // option is the same option.
+        assert_eq!(response.repositories[0].id, "nomoreide");
+        assert!(response.repositories[0].selected);
+        assert!(!response.repositories[1].selected);
     }
 
     #[tokio::test]
@@ -1737,6 +1902,17 @@ mod tests {
     /// GitHub rows are a proxy of somebody else's read-only API; they cannot
     /// commit, push, merge or rewrite anything, and
     /// [`the_inspection_surface_only_reads`] is what holds that.
+    ///
+    /// **`kill` left the list too, and this is the loosening to argue with.**
+    /// A phone can now end an agent terminal, which is the first thing on this
+    /// surface that destroys work rather than starting or reading it. The word
+    /// went because the rule behind it was never "no row may contain k-i-l-l" —
+    /// it was "nothing here reaches a process". That rule still holds, and
+    /// [`ending_a_terminal_names_a_session_and_nothing_else`] asserts what it
+    /// actually means: the one row that ends anything names a *session id the
+    /// machine reported*, routes at the daemon's own close endpoint, and
+    /// carries no pid, no signal and no force flag. A phone chooses which of
+    /// its own terminals to stop; it does not get to describe how.
     #[test]
     fn the_allowlist_names_nothing_dangerous() {
         let rendered = ALLOWLIST
@@ -1752,7 +1928,6 @@ mod tests {
             "fs",
             "exec",
             "env",
-            "kill",
             "config",
         ] {
             assert!(
@@ -1760,12 +1935,50 @@ mod tests {
                 "the allowlist mentions {forbidden}: {rendered}"
             );
         }
-        // Twenty-five rows: one Linear, five service, four agent, seven terminal,
-        // eight read-only inspection — the newest being the repository list a
-        // phone reads to say which repository it is asking about. Pinned so
-        // growing the remote surface is a deliberate edit to a test rather than
-        // a quiet addition.
-        assert_eq!(ALLOWLIST.len(), 25);
+        // Twenty-six rows: one Linear, five service, four agent, eight terminal,
+        // eight read-only inspection — the newest being the one that *ends* an
+        // agent terminal. Pinned so growing the remote surface is a deliberate
+        // edit to a test rather than a quiet addition.
+        assert_eq!(ALLOWLIST.len(), 26);
+    }
+
+    /// The one row that destroys work, held to naming and nothing more.
+    ///
+    /// This is what replaced the bare `kill` substring above. A phone may stop
+    /// one of the machine's own agent terminals; it may not say how. So the
+    /// payload is checked for the things that would turn "which" into "how" —
+    /// a pid, a signal, a force flag — and the route is checked to be the
+    /// daemon's own close endpoint rather than anything that reaches a process
+    /// directly.
+    #[test]
+    fn ending_a_terminal_names_a_session_and_nothing_else() {
+        use nomoreide_core::remote::protocol::device_bound::TerminalKillRequest;
+        use nomoreide_core::remote::protocol::version::capabilities as capability;
+
+        let row = ALLOWLIST
+            .iter()
+            .find(|entry| entry.kind == "terminal.kill.request")
+            .expect("the kill row");
+        assert_eq!(
+            row.capability,
+            capability::TERMINAL_KILL,
+            "ending a terminal must not ride on another capability"
+        );
+        assert_eq!(row.routes, "DELETE /api/terminal/sessions/:id");
+
+        // Rendered, so a field added to the payload later is caught as well as
+        // one present today.
+        let rendered = serde_json::to_string(&TerminalKillRequest {
+            session_id: "term_1".to_string(),
+        })
+        .expect("serialize");
+        assert_eq!(rendered, r#"{"sessionId":"term_1"}"#);
+        for forbidden in ["pid", "signal", "force", "cwd", "command"] {
+            assert!(
+                !rendered.contains(forbidden),
+                "{forbidden} reached the kill payload: {rendered}"
+            );
+        }
     }
 
     /// Everything added for CI, pull requests, usage, errors and the timeline
@@ -1867,6 +2080,105 @@ mod tests {
 
     /// A machine with shells off does not advertise them, so a phone is never
     /// shown a button it would be refused for pressing.
+    /// The name a phone picked reaches the route **as a name**. The dispatcher
+    /// resolves nothing: if it ever turned an id into a path, the registry
+    /// check would no longer be the thing standing between a caller and an
+    /// arbitrary directory.
+    #[tokio::test]
+    async fn a_spawn_passes_the_repository_through_by_name() {
+        let (dispatcher, reached) = dispatcher();
+
+        let answer = dispatcher
+            .dispatch(
+                "req_1",
+                DeviceBound::TerminalSpawn(
+                    nomoreide_core::remote::protocol::device_bound::TerminalSpawnRequest {
+                        provider: Some("claude".into()),
+                        prompt: "why is the api restarting".into(),
+                        repository: Some("platform".into()),
+                    },
+                ),
+                events(),
+            )
+            .await;
+        assert!(
+            matches!(answer, PlatformBound::TerminalSpawned(_)),
+            "expected a spawn, got {}",
+            answer.kind()
+        );
+
+        let body = reached
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|entry| entry.starts_with("POST spawn "))
+            .expect("the spawn never reached the route")
+            .clone();
+        let body: Value =
+            serde_json::from_str(body.trim_start_matches("POST spawn ")).expect("a JSON body");
+        assert_eq!(
+            body["agent"]["repository"],
+            Value::String("platform".into())
+        );
+    }
+
+    /// No repository means the key is **absent**, not null or empty. The route
+    /// reads "absent" as the machine's own selection, and a null would be a
+    /// type error rather than a default.
+    #[tokio::test]
+    async fn a_spawn_without_a_repository_sends_no_such_key() {
+        let (dispatcher, reached) = dispatcher();
+
+        let _ = dispatcher
+            .dispatch(
+                "req_1",
+                DeviceBound::TerminalSpawn(
+                    nomoreide_core::remote::protocol::device_bound::TerminalSpawnRequest {
+                        provider: Some("claude".into()),
+                        prompt: "why is the api restarting".into(),
+                        repository: None,
+                    },
+                ),
+                events(),
+            )
+            .await;
+
+        let body = reached
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|entry| entry.starts_with("POST spawn "))
+            .expect("the spawn never reached the route")
+            .clone();
+        let body: Value =
+            serde_json::from_str(body.trim_start_matches("POST spawn ")).expect("a JSON body");
+        assert!(
+            body["agent"].get("repository").is_none(),
+            "an absent repository must not become a key: {body}"
+        );
+    }
+
+    /// A field capability is advertised even though it has no row of its own.
+    /// It gates the *shape* of a command the table already permits, and a phone
+    /// that is not offered it must keep sending the older shape — so failing to
+    /// advertise it is a feature that silently never appears.
+    #[test]
+    fn the_field_capabilities_are_advertised_alongside_the_table() {
+        let advertised = served_capabilities();
+        for name in FIELD_CAPABILITIES {
+            assert!(advertised.contains(name), "{name} is not advertised");
+            assert!(
+                !ALLOWLIST.iter().any(|allowed| allowed.capability == *name),
+                "{name} has a row, so it is not a field capability"
+            );
+        }
+        // The command it qualifies is in the table, which is what makes it a
+        // shape rather than a widening.
+        assert!(ALLOWLIST
+            .iter()
+            .any(|allowed| allowed.capability == capabilities::TERMINAL_SPAWN));
+    }
+
     #[test]
     fn the_shell_capability_follows_the_switch() {
         let advertised = served_capabilities();

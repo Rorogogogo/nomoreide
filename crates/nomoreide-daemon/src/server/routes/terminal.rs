@@ -24,6 +24,7 @@ use nomoreide_core::agent_sessions::{
 use nomoreide_core::agent_transcripts::{
     default_transcript_homes, list_agent_transcripts, AgentTranscript, DEFAULT_TRANSCRIPT_LIMIT,
 };
+use nomoreide_core::config::Config;
 use nomoreide_core::context_library::{ContextAttachment, ContextRef, CONTEXT_KINDS};
 use nomoreide_core::one_time_skills::{
     compose_one_time_skill_prompt, resolve_one_time_skill, OneTimeSkillSelection,
@@ -789,7 +790,10 @@ async fn create_session(State(state): State<AppState>, body: Bytes) -> Response 
 /// issue's first path element — so what matters is not how many fields are
 /// wrong but which of them the schema declares earliest. The declaration order
 /// is `provider, prompt, label, oneTimeSkill, resumeId, model, context`, and
-/// only two of those get wording of their own.
+/// only two of those get wording of their own. `repository`, which the
+/// reference never had, is read after all of them so that it cannot take a
+/// refusal away from a field that came first.
+#[derive(Debug)]
 enum AgentField {
     Provider,
     ResumeId,
@@ -804,6 +808,9 @@ struct AgentSession {
     resume_id: Option<String>,
     model: Option<String>,
     context: Option<ContextAttachment>,
+    /// Which registered repository to run in. A *name*, resolved against the
+    /// registry by [`agent_workspace`] — never a path.
+    repository: Option<String>,
 }
 
 async fn create_agent_session(state: &AppState, agent: &Value, workspace: String) -> Response {
@@ -826,6 +833,13 @@ async fn create_agent_session(state: &AppState, agent: &Value, workspace: String
             "A temporary skill cannot be attached to a resumed session.",
         );
     }
+
+    // Resolved before anything is created: an unknown name must not cost a
+    // restore point, and the snapshot below is taken in whichever tree wins.
+    let workspace = match agent_workspace(state, request.repository.as_deref(), workspace).await {
+        Ok(workspace) => workspace,
+        Err(response) => return response,
+    };
 
     let task_label = agent_task_label(&request.provider, request.label.as_deref(), &request.prompt);
     let snapshot_label = if request.prompt.lines().any(|line| !line.trim().is_empty()) {
@@ -942,6 +956,65 @@ async fn create_agent_session(state: &AppState, agent: &Value, workspace: String
     }
 }
 
+/// Which tree an agent session runs in.
+///
+/// A named repository is resolved the way `manager_for_repository` resolves one
+/// for GitHub: by **name, against `git_repositories`**, never by a path the
+/// caller supplied. That is what lets a remote caller choose a project folder
+/// without being able to name a directory — the id is the machine's own, and
+/// this is where it becomes a path.
+///
+/// The active worktree wins over the repository root, so an agent started this
+/// way lands in the tree the dashboard is showing rather than beside it.
+///
+/// **Naming one does not select it.** The selection is shared with the desktop
+/// dashboard, and starting an agent elsewhere is not a reason to move what
+/// somebody else is looking at.
+async fn agent_workspace(
+    state: &AppState,
+    repository: Option<&str>,
+    selected: String,
+) -> Result<String, Response> {
+    let Some(name) = repository.map(str::trim).filter(|name| !name.is_empty()) else {
+        return Ok(selected);
+    };
+    let config = match state.config_store.load().await {
+        Ok(config) => config,
+        Err(failure) => {
+            return Err(error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &failure.to_string(),
+            ))
+        }
+    };
+    match repository_workspace(&config, name) {
+        Some(workspace) => Ok(workspace),
+        None => Err(error(
+            StatusCode::NOT_FOUND,
+            &format!("Unknown repository: {name}"),
+        )),
+    }
+}
+
+/// The tree a registered repository's name points at, or `None` if the registry
+/// does not hold that name.
+///
+/// Split out from [`agent_workspace`] because this is the whole rule — a name
+/// becomes a path here and nowhere else — and a function over a `Config` can be
+/// tested without standing up a daemon.
+fn repository_workspace(config: &Config, name: &str) -> Option<String> {
+    let found = config
+        .git_repositories
+        .iter()
+        .find(|repository| repository.name == name)?;
+    Some(
+        found
+            .active_worktree_path
+            .clone()
+            .unwrap_or_else(|| found.path.clone()),
+    )
+}
+
 /// Keep the terminal tab, restore point, and change-set on one readable name.
 /// API clients do not have to supply `label`: the first meaningful prompt line
 /// is what the user recognises as the work they requested.
@@ -995,6 +1068,13 @@ fn agent_session(value: &Value) -> Result<AgentSession, AgentField> {
         None => None,
         Some(value) => Some(attachment(value).map_err(|()| AgentField::Other)?),
     };
+    // Read **last**, after every field the reference declared. Which field is
+    // reported is decided by declaration order, so a key added at the front
+    // would change the wording of refusals that have nothing to do with it.
+    let repository = match object.get("repository") {
+        None => None,
+        Some(value) => Some(value.as_str().ok_or(AgentField::Other)?.to_string()),
+    };
     Ok(AgentSession {
         provider,
         prompt,
@@ -1003,6 +1083,7 @@ fn agent_session(value: &Value) -> Result<AgentSession, AgentField> {
         resume_id,
         model,
         context,
+        repository,
     })
 }
 
@@ -1118,7 +1199,106 @@ fn wire(session: TerminalSession) -> TerminalSessionInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::agent_task_label;
+    use super::{agent_session, agent_task_label, repository_workspace, AgentField};
+    use nomoreide_core::config::Config;
+    use serde_json::json;
+
+    fn config_with_repositories(repositories: serde_json::Value) -> Config {
+        serde_json::from_value(json!({
+            "version": 1,
+            "services": [],
+            "bundles": [],
+            "gitRepositories": repositories,
+        }))
+        .expect("config")
+    }
+
+    /// The whole rule in one test: a *name* the machine registered becomes a
+    /// path, and nothing else does.
+    #[test]
+    fn a_registered_name_resolves_to_its_tree() {
+        let config = config_with_repositories(json!([
+            { "name": "nomoreide", "path": "/repos/nomoreide" },
+            { "name": "platform", "path": "/repos/platform" },
+        ]));
+        assert_eq!(
+            repository_workspace(&config, "platform").as_deref(),
+            Some("/repos/platform")
+        );
+    }
+
+    /// The active worktree is what the dashboard is showing, so it is where an
+    /// agent started by name belongs — beside the work, not beside the repo.
+    #[test]
+    fn the_active_worktree_wins_over_the_repository_root() {
+        let config = config_with_repositories(json!([{
+            "name": "nomoreide",
+            "path": "/repos/nomoreide",
+            "activeWorktreePath": "/repos/nomoreide-wt/feature",
+        }]));
+        assert_eq!(
+            repository_workspace(&config, "nomoreide").as_deref(),
+            Some("/repos/nomoreide-wt/feature")
+        );
+    }
+
+    /// A name the registry does not hold resolves to nothing, which the route
+    /// turns into a 404. It must never fall back to the selected repository:
+    /// silently starting an agent somewhere else is worse than refusing.
+    #[test]
+    fn an_unregistered_name_resolves_to_nothing() {
+        let config = config_with_repositories(json!([
+            { "name": "nomoreide", "path": "/repos/nomoreide" },
+        ]));
+        assert_eq!(repository_workspace(&config, "not-registered"), None);
+    }
+
+    /// A path is not a name. Nothing in the registry is keyed by one, so the
+    /// obvious attempt to smuggle one through resolves to nothing like any
+    /// other unknown name.
+    #[test]
+    fn a_path_is_not_a_name() {
+        let config = config_with_repositories(json!([
+            { "name": "nomoreide", "path": "/repos/nomoreide" },
+        ]));
+        assert_eq!(repository_workspace(&config, "/repos/nomoreide"), None);
+        assert_eq!(repository_workspace(&config, "../../etc"), None);
+    }
+
+    /// A request that names no repository is the request every client sent
+    /// before the field existed, and it must still parse.
+    #[test]
+    fn an_agent_request_without_a_repository_still_parses() {
+        let request = agent_session(&json!({ "provider": "claude", "prompt": "hello" }))
+            .expect("agent request");
+        assert_eq!(request.repository, None);
+    }
+
+    #[test]
+    fn an_agent_request_carries_the_repository_it_names() {
+        let request = agent_session(&json!({
+            "provider": "codex",
+            "prompt": "hello",
+            "repository": "platform",
+        }))
+        .expect("agent request");
+        assert_eq!(request.repository.as_deref(), Some("platform"));
+    }
+
+    /// Read last, so it cannot change which field an existing bad request is
+    /// refused for — the wording comes from the first failing field in
+    /// declaration order.
+    #[test]
+    fn a_bad_repository_does_not_take_over_another_fields_refusal() {
+        assert!(matches!(
+            agent_session(&json!({ "provider": "nope", "repository": 7 })),
+            Err(AgentField::Provider)
+        ));
+        assert!(matches!(
+            agent_session(&json!({ "provider": "claude", "repository": 7 })),
+            Err(AgentField::Other)
+        ));
+    }
 
     #[test]
     fn agent_task_names_follow_the_first_prompt_line() {

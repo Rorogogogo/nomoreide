@@ -89,6 +89,26 @@ pub struct RemoteTerminalSession {
     pub workspace: Option<String>,
     /// False once the child has exited. The tab may still be on screen.
     pub running: bool,
+    /// When the session was spawned, so a phone can say how long it has been
+    /// going without being told again every few seconds.
+    ///
+    /// A duration would be stale the moment it was sent — this is the one fact
+    /// that does not change, and the phone does the arithmetic. Absent for a
+    /// session that predates the daemon recording it, where "unknown" is the
+    /// honest answer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Whether the session looks like it is sitting on a numbered menu —
+    /// waiting for a person rather than working.
+    ///
+    /// **Advisory, and deliberately so.** The daemon reads this off raw output
+    /// without rendering a grid, because it is the only thing that can see a
+    /// session nobody is attached to, and that is exactly when the question is
+    /// worth asking. It drives a badge, never an action: approving still
+    /// happens against the real grid on the attached client, so a missed prompt
+    /// costs a row that says "Working" too long and nothing else.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub waiting: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

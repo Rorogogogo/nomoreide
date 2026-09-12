@@ -29,9 +29,11 @@
         "service.list",
         "service.logs",
         "terminal.attach",
+        "terminal.kill",
         "terminal.sessions",
         "terminal.shell",
-        "terminal.spawn"
+        "terminal.spawn",
+        "terminal.spawn.repository"
       ]
     }
   }

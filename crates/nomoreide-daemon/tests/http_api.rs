@@ -1578,3 +1578,103 @@ async fn searches_the_selected_repository_by_file_name_and_by_content() {
     let _ = server.await;
     tokio::fs::remove_dir_all(&root).await.ok();
 }
+
+/// Naming a repository the registry does not hold is refused by the route, not
+/// merely by the function underneath it.
+///
+/// The unit tests next to `repository_workspace` prove a name resolves to a
+/// tree, and the dispatcher's prove the name reaches the body. Neither proves
+/// the route *consults* any of it — a `create_agent_session` that never called
+/// `agent_workspace` would pass both and quietly start the agent in the
+/// selected repository instead. This is the one assertion that fails if that
+/// wiring is ever dropped.
+///
+/// The refusal path is deliberately the one under test: it is the only one that
+/// reaches a verdict without launching an agent CLI, and resolution happens
+/// before anything is created precisely so that an unknown name costs nothing.
+#[tokio::test]
+async fn an_agent_cannot_be_started_in_a_repository_the_machine_never_registered() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({
+            "version": 1,
+            "services": [],
+            "bundles": [],
+            "gitRepositories": [
+                { "name": "nomoreide", "path": "/repos/nomoreide", "selected": true },
+            ],
+        }))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        serve_until(
+            DaemonOptions {
+                port: 0,
+                runtime_paths: task_paths,
+                config_path: config_path.clone(),
+            },
+            async {
+                let _ = shutdown_rx.await;
+            },
+        )
+        .await
+    });
+
+    let state = wait_for_state(&runtime_paths, &mut server).await;
+    let http = reqwest::Client::new();
+    let token = credential(&runtime_paths).await;
+
+    let refused = http
+        .post(format!("{}/api/terminal/sessions", state.url))
+        .bearer_auth(&token)
+        .json(&json!({
+            "agent": {
+                "provider": "claude",
+                "prompt": "why is the api restarting",
+                "repository": "a-repository-nobody-registered",
+            }
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(refused.status(), StatusCode::NOT_FOUND);
+    let body = refused.json::<serde_json::Value>().await.unwrap();
+    assert_eq!(body["ok"], json!(false));
+    assert!(
+        body["error"]
+            .as_str()
+            .is_some_and(|error| error.contains("a-repository-nobody-registered")),
+        "the refusal should name what was asked for, got {body}"
+    );
+
+    // A path is the thing this field exists not to accept. It is refused for
+    // the same reason and by the same lookup — nothing in the registry is keyed
+    // by one — rather than by a separate check that could drift.
+    let path = http
+        .post(format!("{}/api/terminal/sessions", state.url))
+        .bearer_auth(&token)
+        .json(&json!({
+            "agent": {
+                "provider": "claude",
+                "prompt": "why is the api restarting",
+                "repository": "/repos/nomoreide",
+            }
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(path.status(), StatusCode::NOT_FOUND);
+
+    let _ = shutdown_tx.send(());
+    let _ = server.await;
+    tokio::fs::remove_dir_all(&root).await.ok();
+}

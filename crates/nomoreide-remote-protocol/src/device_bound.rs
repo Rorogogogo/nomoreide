@@ -97,6 +97,16 @@ pub enum DeviceBound {
     /// Stop mirroring. The PTY keeps running; only the mirror ends. **v2.**
     #[serde(rename = "terminal.detach")]
     TerminalDetach(TerminalDetach),
+    /// End a session: the PTY closes and the agent in it stops.
+    ///
+    /// **The one thing on this surface that destroys work.** Detaching leaves
+    /// the agent running because a phone walking away should not stop it; this
+    /// is the opposite, and it is a separate frame with a capability of its own
+    /// so a machine can offer every other terminal command without offering
+    /// this one. It names a session the machine reported, like an attach —
+    /// never a pid, and never a signal to send.
+    #[serde(rename = "terminal.kill.request")]
+    TerminalKill(TerminalKillRequest),
 
     /// The repositories this machine has registered, so a phone can say which
     /// one it is asking about.
@@ -230,10 +240,15 @@ pub struct AgentApprovalResolve {
 
 /// Start an agent, in a terminal, on the machine.
 ///
-/// **There is deliberately no working directory here.** The daemon runs the
-/// agent in the workspace it already has selected, the same one the dashboard
-/// would use. A caller-supplied path would be the filesystem reach that remote
-/// control does not have, and no field for it is the way to not have it.
+/// **There is still deliberately no working directory here.** A caller-supplied
+/// path would be the filesystem reach that remote control does not have, and no
+/// field for it is the way to not have it.
+///
+/// [`Self::repository`] is not that field, and the difference is the whole rule
+/// this union is built on: it names one of the machine's *own registered*
+/// repositories, by an id the machine itself reported, and the daemon is what
+/// turns that id into a path. A phone still cannot say where — only which of
+/// the things already on the machine.
 ///
 /// Nor is there an argv: `provider` picks between the agent CLIs this machine
 /// knows, and everything else about the invocation is the daemon's.
@@ -247,6 +262,27 @@ pub struct TerminalSpawnRequest {
     /// [`super::limits::MAX_AGENT_PROMPT_BYTES`], like any other prompt from a
     /// phone.
     pub prompt: String,
+    /// Which registered repository to start the agent in — **an id this machine
+    /// already reported**, never a path the caller invented.
+    ///
+    /// The same constraint `GithubRunsRequest::repository` and
+    /// `TerminalAttachRequest::session_id` carry, for the same reason: naming
+    /// one of the machine's own things is not the arbitrary filesystem reach
+    /// that a path would make of this surface. The dispatcher refuses anything
+    /// the registry does not hold.
+    ///
+    /// Absent means the repository the machine has selected, which is what this
+    /// asked for before the field existed. It never *changes* that selection —
+    /// the dashboard on the user's desk is looking at it too.
+    ///
+    /// A daemon that predates this field refuses the whole frame rather than
+    /// ignoring the key, because this struct denies unknown fields. That is why
+    /// it is gated by its own capability,
+    /// [`super::version::capabilities::TERMINAL_SPAWN_REPOSITORY`], rather than
+    /// riding on `terminal.spawn`: a phone that is not offered the name must
+    /// keep sending what it sent before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -276,6 +312,19 @@ pub struct TerminalResize {
     pub stream_id: String,
     pub cols: u16,
     pub rows: u16,
+}
+
+/// End one agent terminal.
+///
+/// No signal, no pid, no force flag: the daemon closes the session the way the
+/// dashboard's own close button does, and how that is done is the machine's
+/// business. A phone names *which*, and nothing else — the same constraint
+/// [`TerminalAttachRequest::session_id`] carries.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalKillRequest {
+    /// A session id the machine reported. Anything else is refused.
+    pub session_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -441,6 +490,7 @@ impl DeviceBound {
         "terminal.input",
         "terminal.resize",
         "terminal.detach",
+        "terminal.kill.request",
         "repositories.request",
         "github.runs.request",
         "github.run.jobs.request",
@@ -472,6 +522,7 @@ impl DeviceBound {
             Self::TerminalInput(_) => "terminal.input",
             Self::TerminalResize(_) => "terminal.resize",
             Self::TerminalDetach(_) => "terminal.detach",
+            Self::TerminalKill(_) => "terminal.kill.request",
             Self::Repositories(_) => "repositories.request",
             Self::GithubRuns(_) => "github.runs.request",
             Self::GithubRunJobs(_) => "github.run.jobs.request",
@@ -503,7 +554,11 @@ impl DeviceBound {
             // A retried spawn is a second agent, running a second time — and a
             // retried shell is a second shell.
             | Self::TerminalSpawn(_)
-            | Self::TerminalShell(_) => true,
+            | Self::TerminalShell(_)
+            // Ending a session is destructive and a timeout says nothing about
+            // whether it happened. A retry that arrives after the id came round
+            // again would end a different session.
+            | Self::TerminalKill(_) => true,
             Self::SessionWelcome(_)
             | Self::SessionRevoke(_)
             | Self::DeviceSnapshot(_)
@@ -550,6 +605,7 @@ impl DeviceBound {
             | Self::TerminalInput(_)
             | Self::TerminalResize(_)
             | Self::TerminalDetach(_) => Some(capability::TERMINAL_ATTACH),
+            Self::TerminalKill(_) => Some(capability::TERMINAL_KILL),
             Self::Linear(_) => Some(capability::LINEAR),
             Self::Repositories(_) => Some(capability::REPOSITORIES),
             Self::GithubRuns(_) | Self::GithubRunJobs(_) => Some(capability::GITHUB_ACTIONS),
