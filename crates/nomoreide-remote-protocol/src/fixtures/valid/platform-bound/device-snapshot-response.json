@@ -24,6 +24,7 @@
         "github.actions",
         "github.pulls",
         "linear.tasks",
+        "repositories.list",
         "service.action",
         "service.list",
         "service.logs",

@@ -25,3 +25,7 @@ npm-bootstrap/
 # they are build output, and the copy at the workspace root is the real source.
 crates/nomoreide-daemon/web-client/
 crates/*/vendored/
+
+# Editor swap files. This tree has parallel writers; a stray .swp is somebody
+# else's open buffer, not an artefact to commit.
+*.swp
