@@ -37,7 +37,7 @@ use super::device_bound::{
     ErrorsRequest, GithubPullRequestRef, GithubPullsRequest, GithubRunJobsRequest,
     GithubRunsRequest, PullRequestFilter, ServiceAction, ServiceActionRequest, ServiceLogsRequest,
     SessionRevoke, SessionWelcome, TerminalAttachRequest, TerminalDetach, TerminalInput,
-    TerminalResize, TerminalSpawnRequest, TimelineRequest,
+    TerminalKillRequest, TerminalResize, TerminalSpawnRequest, TimelineRequest,
 };
 use super::errors::{ErrorCode, ProtocolError};
 use super::platform_bound::{
@@ -46,8 +46,8 @@ use super::platform_bound::{
     GithubPullsResponse, GithubRunJobsResponse, GithubRunsResponse, PlatformBound,
     RemoteRepository, RepositoriesResponse, ServiceActionResponse, ServiceListResponse,
     ServiceLogsResponse, SessionHello, TerminalAck, TerminalAttachAccepted, TerminalCloseReason,
-    TerminalClosed, TerminalGeometry, TerminalOutput, TerminalSessionsResponse, TerminalSpawned,
-    TimelineResponse,
+    TerminalClosed, TerminalGeometry, TerminalKilled, TerminalOutput, TerminalSessionsResponse,
+    TerminalSpawned, TimelineResponse,
 };
 use super::snapshot::{
     BundleState, DeviceSnapshot, IncidentLevel, LogLine, LogStream, PullRequestState,
@@ -129,6 +129,9 @@ pub fn every_command() -> Vec<DeviceBound> {
         }),
         DeviceBound::TerminalDetach(TerminalDetach {
             stream_id: "stream_1".to_string(),
+        }),
+        DeviceBound::TerminalKill(TerminalKillRequest {
+            session_id: "term_1".to_string(),
         }),
         DeviceBound::Linear(crate::linear::LinearRequest::Metadata {}),
         DeviceBound::Repositories(Empty {}),
@@ -230,6 +233,8 @@ pub fn every_event() -> Vec<PlatformBound> {
                 provider: Some("claude".to_string()),
                 workspace: Some("nomoreide".to_string()),
                 running: true,
+                started_at: None,
+                waiting: false,
             },
         }),
         PlatformBound::TerminalSessions(TerminalSessionsResponse {
@@ -239,6 +244,14 @@ pub fn every_event() -> Vec<PlatformBound> {
                 provider: Some("claude".to_string()),
                 workspace: Some("nomoreide".to_string()),
                 running: true,
+                // A golden frame for the fields a phone reads off a row: when
+                // it started, and whether it is sitting on a prompt.
+                started_at: Some(
+                    chrono::DateTime::parse_from_rfc3339("2026-01-02T03:04:05Z")
+                        .expect("fixture timestamp")
+                        .with_timezone(&chrono::Utc),
+                ),
+                waiting: true,
             }],
         }),
         PlatformBound::TerminalAttachAccepted(TerminalAttachAccepted {
@@ -261,6 +274,9 @@ pub fn every_event() -> Vec<PlatformBound> {
         }),
         PlatformBound::TerminalAck(TerminalAck {
             stream_id: "stream_1".to_string(),
+        }),
+        PlatformBound::TerminalKilled(TerminalKilled {
+            session_id: "term_1".to_string(),
         }),
         PlatformBound::TerminalClosed(TerminalClosed {
             stream_id: "stream_1".to_string(),

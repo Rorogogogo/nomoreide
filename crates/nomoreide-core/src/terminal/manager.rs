@@ -121,6 +121,13 @@ fn wait_for_process_group_exit(pid: u32, timeout: Duration) -> bool {
 /// renders as garbage rather than as a shorter transcript.
 pub(super) const TERMINAL_REPLAY_BYTES: usize = 1024 * 1024;
 
+/// How much of the ring [`TerminalManager::awaiting_choice`] copies out.
+///
+/// Comfortably more than the window the heuristic scans, so the cut cannot
+/// remove the very lines it is looking for, and far less than the ring — this
+/// runs once per session on every listing.
+const PROMPT_TAIL_BYTES: usize = 16 * 1024;
+
 /// Everything the child has written lately, and whether anyone is listening.
 ///
 /// **Why a ring rather than a flushed buffer.** This began as a gate: the shell
@@ -1001,6 +1008,32 @@ impl TerminalManager {
     /// is the geometry to draw into, rather than a number to set. A PTY has one
     /// size, and a mirror that set it would reflow the terminal somebody is
     /// working in at their desk.
+    /// Whether this session looks like it is sitting on a numbered menu.
+    ///
+    /// Advisory — see [`super::prompt`] for what that means and why the daemon
+    /// reads bytes rather than a rendered grid. It is here rather than beside
+    /// the caller because the replay ring is private to this module, and
+    /// handing out a megabyte per session per listing to answer a yes/no
+    /// question would be the wrong shape.
+    pub fn awaiting_choice(&self, id: &str) -> bool {
+        let Some(gate) = ({
+            let registry = self.registry.0.lock().unwrap();
+            registry
+                .sessions
+                .get(id)
+                .map(|session| session.gate.clone())
+        }) else {
+            return false;
+        };
+        // Only the tail is read, so the copy is bounded by what the heuristic
+        // looks at rather than by the megabyte the ring may be holding.
+        let gate = gate.lock().unwrap();
+        let skip = gate.replay.len().saturating_sub(PROMPT_TAIL_BYTES);
+        let tail: Vec<u8> = gate.replay.iter().skip(skip).copied().collect();
+        drop(gate);
+        super::prompt::awaiting_choice(&tail)
+    }
+
     pub fn session_size(&self, id: &str) -> Option<(u16, u16)> {
         let registry = self.registry.0.lock().unwrap();
         registry

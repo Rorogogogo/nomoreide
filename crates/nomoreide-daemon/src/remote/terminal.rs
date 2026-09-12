@@ -30,7 +30,7 @@ use nomoreide_core::remote::protocol::errors::{ErrorCode, ProtocolError};
 use nomoreide_core::remote::protocol::limits;
 use nomoreide_core::remote::protocol::platform_bound::{
     TerminalAck, TerminalAttachAccepted, TerminalCloseReason, TerminalClosed, TerminalGeometry,
-    TerminalOutput, TerminalSessionsResponse, TerminalSpawned,
+    TerminalKilled, TerminalOutput, TerminalSessionsResponse, TerminalSpawned,
 };
 use nomoreide_core::remote::protocol::snapshot::RemoteTerminalSession;
 use nomoreide_core::remote::protocol::PlatformBound;
@@ -219,6 +219,7 @@ impl Mirrors {
 /// fields the listing would have dropped.
 pub(crate) fn describe(
     session: nomoreide_core::terminal::TerminalSession,
+    waiting: bool,
 ) -> RemoteTerminalSession {
     RemoteTerminalSession {
         id: session.id,
@@ -230,14 +231,29 @@ pub(crate) fn describe(
             .file_name()
             .map(|name| name.to_string_lossy().into_owned()),
         running: session.exit.is_none(),
+        started_at: session.started_at,
+        // Passed in rather than read here: this function takes a session, and
+        // the answer lives in the manager's output ring. A spawn has nothing to
+        // be waiting on yet, so it hands `false` without paying for the look.
+        waiting,
     }
 }
 
 /// What a spawn answers with, given the session the router just created.
 pub(crate) fn spawned(session: nomoreide_core::terminal::TerminalSession) -> PlatformBound {
     PlatformBound::TerminalSpawned(TerminalSpawned {
-        session: describe(session),
+        // A session created a moment ago has drawn nothing to be waiting on.
+        session: describe(session, false),
     })
+}
+
+/// End a session, and say so.
+///
+/// The daemon closes it the way the dashboard's own close button does — there
+/// is no signal or force flag on the wire, because how a session is ended is
+/// the machine's business and a phone has no way to judge which to ask for.
+pub(crate) fn killed(session_id: String) -> PlatformBound {
+    PlatformBound::TerminalKilled(TerminalKilled { session_id })
 }
 
 /// Reject a prompt a phone should never have sent.
@@ -263,7 +279,10 @@ pub(crate) fn sessions(terminal: &TerminalManager) -> PlatformBound {
         sessions: terminal
             .mirrorable_sessions(super::shell_allowed())
             .into_iter()
-            .map(describe)
+            .map(|session| {
+                let waiting = terminal.awaiting_choice(&session.id);
+                describe(session, waiting)
+            })
             .collect(),
     })
 }

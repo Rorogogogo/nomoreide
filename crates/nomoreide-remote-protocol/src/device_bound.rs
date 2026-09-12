@@ -97,6 +97,16 @@ pub enum DeviceBound {
     /// Stop mirroring. The PTY keeps running; only the mirror ends. **v2.**
     #[serde(rename = "terminal.detach")]
     TerminalDetach(TerminalDetach),
+    /// End a session: the PTY closes and the agent in it stops.
+    ///
+    /// **The one thing on this surface that destroys work.** Detaching leaves
+    /// the agent running because a phone walking away should not stop it; this
+    /// is the opposite, and it is a separate frame with a capability of its own
+    /// so a machine can offer every other terminal command without offering
+    /// this one. It names a session the machine reported, like an attach —
+    /// never a pid, and never a signal to send.
+    #[serde(rename = "terminal.kill.request")]
+    TerminalKill(TerminalKillRequest),
 
     /// The repositories this machine has registered, so a phone can say which
     /// one it is asking about.
@@ -304,6 +314,19 @@ pub struct TerminalResize {
     pub rows: u16,
 }
 
+/// End one agent terminal.
+///
+/// No signal, no pid, no force flag: the daemon closes the session the way the
+/// dashboard's own close button does, and how that is done is the machine's
+/// business. A phone names *which*, and nothing else — the same constraint
+/// [`TerminalAttachRequest::session_id`] carries.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalKillRequest {
+    /// A session id the machine reported. Anything else is refused.
+    pub session_id: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TerminalDetach {
@@ -467,6 +490,7 @@ impl DeviceBound {
         "terminal.input",
         "terminal.resize",
         "terminal.detach",
+        "terminal.kill.request",
         "repositories.request",
         "github.runs.request",
         "github.run.jobs.request",
@@ -498,6 +522,7 @@ impl DeviceBound {
             Self::TerminalInput(_) => "terminal.input",
             Self::TerminalResize(_) => "terminal.resize",
             Self::TerminalDetach(_) => "terminal.detach",
+            Self::TerminalKill(_) => "terminal.kill.request",
             Self::Repositories(_) => "repositories.request",
             Self::GithubRuns(_) => "github.runs.request",
             Self::GithubRunJobs(_) => "github.run.jobs.request",
@@ -529,7 +554,11 @@ impl DeviceBound {
             // A retried spawn is a second agent, running a second time — and a
             // retried shell is a second shell.
             | Self::TerminalSpawn(_)
-            | Self::TerminalShell(_) => true,
+            | Self::TerminalShell(_)
+            // Ending a session is destructive and a timeout says nothing about
+            // whether it happened. A retry that arrives after the id came round
+            // again would end a different session.
+            | Self::TerminalKill(_) => true,
             Self::SessionWelcome(_)
             | Self::SessionRevoke(_)
             | Self::DeviceSnapshot(_)
@@ -576,6 +605,7 @@ impl DeviceBound {
             | Self::TerminalInput(_)
             | Self::TerminalResize(_)
             | Self::TerminalDetach(_) => Some(capability::TERMINAL_ATTACH),
+            Self::TerminalKill(_) => Some(capability::TERMINAL_KILL),
             Self::Linear(_) => Some(capability::LINEAR),
             Self::Repositories(_) => Some(capability::REPOSITORIES),
             Self::GithubRuns(_) | Self::GithubRunJobs(_) => Some(capability::GITHUB_ACTIONS),

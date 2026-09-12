@@ -291,7 +291,7 @@ fn junk_is_a_malformed_frame() {
 /// than derived, so that changing a command's mutating-ness has to be done
 /// twice and noticed once.
 #[test]
-fn the_mutating_half_of_the_union_is_exactly_these_seven() {
+fn the_mutating_half_of_the_union_is_exactly_these_eight() {
     let mutating: Vec<&str> = every_command()
         .iter()
         .filter(|command| command.mutating())
@@ -307,6 +307,7 @@ fn the_mutating_half_of_the_union_is_exactly_these_seven() {
             "terminal.spawn.request",
             "terminal.shell.request",
             "terminal.input",
+            "terminal.kill.request",
         ]
     );
 }

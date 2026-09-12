@@ -15,6 +15,7 @@ mod detection;
 #[cfg(unix)]
 mod external;
 mod manager;
+mod prompt;
 mod service;
 mod session;
 mod spawn;
@@ -26,6 +27,7 @@ pub use agent::{
     AgentInvocation, SessionScope,
 };
 pub use manager::{TerminalManager, TerminalMirror};
+pub use prompt::awaiting_choice;
 pub use service::{resolve_service_terminal, service_terminal_env, ServiceTerminal};
 pub use session::{
     encode_agent_prompt_paste, normalize_agent_label, normalize_session_label,

@@ -117,6 +117,14 @@ pub mod capabilities {
     /// Kept honest: while this is advertised, "remote control cannot run
     /// arbitrary commands" is false, and the pairing copy says so.
     pub const TERMINAL_SHELL: &str = "terminal.shell";
+    /// **Ending** an agent terminal, rather than only stopping the mirror.
+    ///
+    /// Its own name because it is the one thing on the terminal surface that
+    /// destroys work. `terminal.attach` covers detaching, which leaves the
+    /// agent running on purpose; this stops it. A machine can offer the whole
+    /// rest of the surface — spawn, shell, mirror, type — and not this, which
+    /// is the point of it being separate rather than folded into any of them.
+    pub const TERMINAL_KILL: &str = "terminal.kill";
     /// Starting an agent terminal **in a named registered repository**, rather
     /// than only in the one the machine has selected.
     ///
@@ -222,6 +230,7 @@ pub mod capabilities {
         TERMINAL_SPAWN,
         TERMINAL_SPAWN_REPOSITORY,
         TERMINAL_SHELL,
+        TERMINAL_KILL,
         REPOSITORIES,
         GITHUB_ACTIONS,
         GITHUB_PULLS,
@@ -234,7 +243,7 @@ pub mod capabilities {
     /// `V2` must extend `V1` rather than diverge from it. Checked here because
     /// the two lists are written out separately for readability.
     const _: () = {
-        assert!(V2.len() == V1.len() + 12);
+        assert!(V2.len() == V1.len() + 13);
     };
 }
 

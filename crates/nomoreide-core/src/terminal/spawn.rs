@@ -96,6 +96,7 @@ impl TerminalManager {
             exit: None,
             error: None,
             presentation: TerminalPresentation::Dock,
+            started_at: Some(chrono::Utc::now()),
         };
 
         let pair = native_pty_system()

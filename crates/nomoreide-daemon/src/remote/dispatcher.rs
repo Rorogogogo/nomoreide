@@ -160,6 +160,13 @@ pub(crate) const ALLOWLIST: &[Allowed] = &[
         capability: capabilities::TERMINAL_ATTACH,
         routes: "(the terminal manager)",
     },
+    // The only row on the terminal surface that ends something. Its own
+    // capability, so a machine can offer every line above and not this one.
+    Allowed {
+        kind: "terminal.kill.request",
+        capability: capabilities::TERMINAL_KILL,
+        routes: "DELETE /api/terminal/sessions/:id",
+    },
     Allowed {
         kind: "linear.request",
         capability: capabilities::LINEAR,
@@ -766,6 +773,7 @@ impl CommandSink for RouterDispatcher {
                     self.mirrors.resize(&self.terminal, request)
                 }
                 DeviceBound::TerminalDetach(request) => self.mirrors.detach(request),
+                DeviceBound::TerminalKill(request) => self.kill_terminal(request).await,
                 DeviceBound::Linear(request) => self.linear(request).await,
                 DeviceBound::Repositories(_) => super::inspection::repositories(self).await,
                 DeviceBound::GithubRuns(request) => {
@@ -958,6 +966,51 @@ impl RouterDispatcher {
         )
         .map_err(|error| internal(format!("the local response was not a session: {error}")))?;
         Ok(super::terminal::spawned(session))
+    }
+
+    /// End one session, by a name the machine reported.
+    ///
+    /// Refused unless the session is one this surface can see at all: the same
+    /// `mirrorable_sessions` set an attach is checked against, so a phone
+    /// cannot end a service tab or a shell on a machine with shells switched
+    /// off — things it is not allowed to know exist, let alone stop.
+    ///
+    /// The id is percent-encoded into the path like any other caller-supplied
+    /// segment, so a name with a slash in it cannot reach a different route.
+    async fn kill_terminal(
+        &self,
+        request: &nomoreide_core::remote::protocol::device_bound::TerminalKillRequest,
+    ) -> Result<PlatformBound, ProtocolError> {
+        let known = self
+            .terminal
+            .mirrorable_sessions(super::shell_allowed())
+            .into_iter()
+            .any(|session| session.id == request.session_id);
+        if !known {
+            return Err(ProtocolError::new(
+                ErrorCode::CapabilityUnavailable,
+                "That terminal is not on this machine.",
+            )
+            .with_detail(request.session_id.clone()));
+        }
+
+        let path = format!(
+            "/api/terminal/sessions/{}",
+            Self::segment(&request.session_id)
+        );
+        let (status, body) = self.call(Method::DELETE, &path).await?;
+        if !status.is_success() {
+            let detail = body
+                .get("error")
+                .and_then(Value::as_str)
+                .unwrap_or("that terminal could not be closed");
+            return Err(ProtocolError::new(
+                ErrorCode::ServiceActionFailed,
+                "That terminal could not be closed.",
+            )
+            .with_detail(detail.to_string()));
+        }
+        Ok(super::terminal::killed(request.session_id.clone()))
     }
 }
 
@@ -1849,6 +1902,17 @@ mod tests {
     /// GitHub rows are a proxy of somebody else's read-only API; they cannot
     /// commit, push, merge or rewrite anything, and
     /// [`the_inspection_surface_only_reads`] is what holds that.
+    ///
+    /// **`kill` left the list too, and this is the loosening to argue with.**
+    /// A phone can now end an agent terminal, which is the first thing on this
+    /// surface that destroys work rather than starting or reading it. The word
+    /// went because the rule behind it was never "no row may contain k-i-l-l" —
+    /// it was "nothing here reaches a process". That rule still holds, and
+    /// [`ending_a_terminal_names_a_session_and_nothing_else`] asserts what it
+    /// actually means: the one row that ends anything names a *session id the
+    /// machine reported*, routes at the daemon's own close endpoint, and
+    /// carries no pid, no signal and no force flag. A phone chooses which of
+    /// its own terminals to stop; it does not get to describe how.
     #[test]
     fn the_allowlist_names_nothing_dangerous() {
         let rendered = ALLOWLIST
@@ -1864,7 +1928,6 @@ mod tests {
             "fs",
             "exec",
             "env",
-            "kill",
             "config",
         ] {
             assert!(
@@ -1872,12 +1935,50 @@ mod tests {
                 "the allowlist mentions {forbidden}: {rendered}"
             );
         }
-        // Twenty-five rows: one Linear, five service, four agent, seven terminal,
-        // eight read-only inspection — the newest being the repository list a
-        // phone reads to say which repository it is asking about. Pinned so
-        // growing the remote surface is a deliberate edit to a test rather than
-        // a quiet addition.
-        assert_eq!(ALLOWLIST.len(), 25);
+        // Twenty-six rows: one Linear, five service, four agent, eight terminal,
+        // eight read-only inspection — the newest being the one that *ends* an
+        // agent terminal. Pinned so growing the remote surface is a deliberate
+        // edit to a test rather than a quiet addition.
+        assert_eq!(ALLOWLIST.len(), 26);
+    }
+
+    /// The one row that destroys work, held to naming and nothing more.
+    ///
+    /// This is what replaced the bare `kill` substring above. A phone may stop
+    /// one of the machine's own agent terminals; it may not say how. So the
+    /// payload is checked for the things that would turn "which" into "how" —
+    /// a pid, a signal, a force flag — and the route is checked to be the
+    /// daemon's own close endpoint rather than anything that reaches a process
+    /// directly.
+    #[test]
+    fn ending_a_terminal_names_a_session_and_nothing_else() {
+        use nomoreide_core::remote::protocol::device_bound::TerminalKillRequest;
+        use nomoreide_core::remote::protocol::version::capabilities as capability;
+
+        let row = ALLOWLIST
+            .iter()
+            .find(|entry| entry.kind == "terminal.kill.request")
+            .expect("the kill row");
+        assert_eq!(
+            row.capability,
+            capability::TERMINAL_KILL,
+            "ending a terminal must not ride on another capability"
+        );
+        assert_eq!(row.routes, "DELETE /api/terminal/sessions/:id");
+
+        // Rendered, so a field added to the payload later is caught as well as
+        // one present today.
+        let rendered = serde_json::to_string(&TerminalKillRequest {
+            session_id: "term_1".to_string(),
+        })
+        .expect("serialize");
+        assert_eq!(rendered, r#"{"sessionId":"term_1"}"#);
+        for forbidden in ["pid", "signal", "force", "cwd", "command"] {
+            assert!(
+                !rendered.contains(forbidden),
+                "{forbidden} reached the kill payload: {rendered}"
+            );
+        }
     }
 
     /// Everything added for CI, pull requests, usage, errors and the timeline

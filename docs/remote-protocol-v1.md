@@ -104,6 +104,7 @@ anything that is not listed here.
 | `terminal.input` | **yes** | `terminal.attach` |
 | `terminal.resize` | **yes** | `terminal.attach` |
 | `terminal.detach` | **yes** | `terminal.attach` |
+| `terminal.kill.request` | **yes** | `terminal.kill` |
 | `repositories.request` | no | `repositories.list` |
 | `github.runs.request` | no | `github.actions` |
 | `github.run.jobs.request` | no | `github.actions` |
@@ -114,7 +115,11 @@ anything that is not listed here.
 | `timeline.request` | no | `device.timeline` |
 
 No payload carries a command, argument, working directory, environment, port
-override, SSH host, process id or kill strategy. `terminal.spawn.request`
+override, SSH host, process id or kill strategy. **Including the one that ends
+a terminal**: `terminal.kill.request` carries a session id the machine reported
+and nothing else — no pid, no signal, no force flag. A phone chooses *which* of
+the machine's own terminals to stop; how it is stopped is the daemon's, and is
+the same close the dashboard's own button performs. `terminal.spawn.request`
 carries a provider name, a prompt, and the *name* of one registered repository —
 and **no path and no argv**, which is how there comes to be no way to name one.
 
@@ -123,6 +128,14 @@ whole union is built on: a phone names one of the machine's own registered
 things, the daemon is what turns that into a directory, and a name the registry
 does not hold is refused. The same constraint `github.runs.request` carries on
 its `repository`, and `terminal.attach.request` on its `sessionId`.
+
+**Ending a terminal is the one thing here that destroys work**, and it has a
+capability of its own for exactly that reason. `terminal.attach` covers
+detaching, which deliberately leaves the agent running — a phone walking away
+is not a reason to stop it. `terminal.kill` is the opposite, so a machine can
+advertise the whole rest of the terminal surface and not this. Nothing retries
+it: a timeout says nothing about whether the session ended, and a retry that
+arrived after the id came round again would end a different one.
 
 **One capability here gates a field rather than a command.**
 `terminal.spawn.repository` says this daemon will accept a `repository` on

@@ -40,6 +40,7 @@ fn agent_prompt_target_allows_dock_and_terminal_but_not_launching() {
         exit: None,
         error: None,
         presentation: TerminalPresentation::Dock,
+        started_at: None,
     };
     assert!(validate_agent_prompt_target(&session).is_ok());
     session.presentation = TerminalPresentation::Terminal;
@@ -197,6 +198,7 @@ fn spawn_test_session(manager: &TerminalManager, id: &str, script: &str) -> u32 
             exit: None,
             error: None,
             presentation: TerminalPresentation::Dock,
+            started_at: None,
         },
         writer,
         killer,

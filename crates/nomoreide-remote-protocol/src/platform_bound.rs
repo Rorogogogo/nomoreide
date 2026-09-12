@@ -76,6 +76,9 @@ pub enum PlatformBound {
     /// The mirror ended. **v2.**
     #[serde(rename = "terminal.closed")]
     TerminalClosed(TerminalClosed),
+    /// The session was ended, and the agent in it stopped.
+    #[serde(rename = "terminal.killed")]
+    TerminalKilled(TerminalKilled),
 
     /// The repositories this machine has registered.
     #[serde(rename = "repositories.response")]
@@ -283,6 +286,19 @@ pub struct TerminalAck {
     pub stream_id: String,
 }
 
+/// One session was ended.
+///
+/// Names the session rather than a stream, which is why this is not a
+/// [`TerminalAck`]: a kill is aimed at the session, and a phone that never
+/// mirrored it has no stream id to be told back. Ending a session that was
+/// being mirrored also produces a [`TerminalClosed`] for the mirror, from the
+/// pump noticing the child go — one frame per thing that ended.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TerminalKilled {
+    pub session_id: String,
+}
+
 /// Why a mirror ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -400,6 +416,7 @@ impl PlatformBound {
         "terminal.output",
         "terminal.geometry",
         "terminal.ack",
+        "terminal.killed",
         "terminal.closed",
         "repositories.response",
         "github.runs.response",
@@ -431,6 +448,7 @@ impl PlatformBound {
             Self::TerminalOutput(_) => "terminal.output",
             Self::TerminalGeometry(_) => "terminal.geometry",
             Self::TerminalAck(_) => "terminal.ack",
+            Self::TerminalKilled(_) => "terminal.killed",
             Self::TerminalClosed(_) => "terminal.closed",
             Self::Repositories(_) => "repositories.response",
             Self::GithubRuns(_) => "github.runs.response",
@@ -477,6 +495,7 @@ impl PlatformBound {
             | Self::TerminalSessions(_)
             | Self::TerminalAttachAccepted(_)
             | Self::TerminalAck(_)
+            | Self::TerminalKilled(_)
             | Self::Linear(_)
             | Self::Repositories(_)
             | Self::GithubRuns(_)
