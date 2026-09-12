@@ -72,6 +72,7 @@ pub mod terminal;
 pub mod test_runner;
 pub mod timeline;
 pub mod tool_call_store;
+pub mod update_check;
 pub mod usage_history;
 pub mod usage_info;
 pub mod vercel_actions;
