@@ -51,6 +51,10 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [mode, setMode] = useState<ViewMode>("list");
+  const [graphEnabled, setGraphEnabled] = useState(false);
+  const [browseOpen, setBrowseOpen] = useState(true);
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const refreshSequence = useRef(0);
   const [showSessions, setShowSessions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -67,6 +71,7 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
   }, [query]);
 
   const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
     setLoading(true);
     setError(null);
     const kinds = showSessions
@@ -75,10 +80,11 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
     try {
       const [next, nextGraph] = await Promise.all([
         listContext({ q: debouncedQuery || undefined, projectPath: projectPath ?? undefined, kinds: kinds ? [...kinds] : undefined }),
-        mode === "graph"
+        graphEnabled
           ? getContextGraph({ q: debouncedQuery || undefined, projectPath: projectPath ?? undefined, kinds: kinds ? [...kinds] : undefined })
           : Promise.resolve(null),
       ]);
+      if (sequence !== refreshSequence.current) return;
       setSnapshot(next);
       if (nextGraph) setGraph(nextGraph);
       setSelected((current) => {
@@ -87,22 +93,23 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
         return refreshed ?? (dirtyRef.current ? current : null);
       });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
+      if (sequence === refreshSequence.current) setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
-      setLoading(false);
+      if (sequence === refreshSequence.current) setLoading(false);
     }
-  }, [debouncedQuery, mode, projectPath, showSessions]);
+  }, [debouncedQuery, graphEnabled, projectPath, showSessions]);
 
   useEffect(() => {
     if (migrationStarted.current) {
       void refresh();
-      return;
+      return () => { refreshSequence.current += 1; };
     }
     migrationStarted.current = true;
     void migrateLegacyGists().then(refresh).catch((caught) => {
       setError(caught instanceof Error ? caught.message : String(caught));
       void refresh();
     });
+    return () => { refreshSequence.current += 1; };
   }, [refresh]);
 
   useEffect(() => {
@@ -238,7 +245,7 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
           <TabStrip<ViewMode>
             ariaLabel={t("context.view")}
             idPrefix="context-view"
-            onSelect={setMode}
+            onSelect={(next) => { if (next === "graph") setGraphEnabled(true); setMode(next); }}
             tabs={[
               { id: "list", label: t("context.list") },
               { id: "graph", label: t("context.graph") },
@@ -246,6 +253,10 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
             value={mode}
           />
         </div>
+        {mode === "graph" ? <>
+          <Button size="sm" variant="ghost" aria-pressed={browseOpen} onClick={() => setBrowseOpen((open) => !open)}>{t("context.graphBrowse")}</Button>
+          <Button size="sm" variant="ghost" aria-pressed={detailsOpen} onClick={() => setDetailsOpen((open) => !open)}>{t("context.graphDetails")}</Button>
+        </> : null}
         <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <input className="size-3.5" checked={showSessions} onChange={(event) => setShowSessions(event.target.checked)} type="checkbox" />
           {t("context.sessions")}
@@ -255,8 +266,8 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
 
       {error ? <Alert className="m-3 shrink-0" variant="destructive">{error}</Alert> : null}
 
-      <div aria-labelledby={`context-view-tab-${mode}`} className="grid min-h-0 flex-1 md:grid-cols-[280px_minmax(0,1fr)]" id={`context-view-panel-${mode}`} role="tabpanel">
-        <aside className="flex min-h-0 flex-col border-r border-border">
+      <div aria-labelledby={`context-view-tab-${mode}`} className={cn("grid min-h-0 flex-1", (mode !== "graph" || browseOpen) && "md:grid-cols-[280px_minmax(0,1fr)]")} id={`context-view-panel-${mode}`} role="tabpanel">
+        <aside className={cn("min-h-0 flex-col border-r border-border", mode !== "graph" || browseOpen ? "flex" : "hidden")}>
           <div className="border-b border-border p-2">
             <div className="flex h-7 items-center gap-2 border border-border bg-background px-2 focus-within:ring-1 focus-within:ring-ring">
               <Search aria-hidden="true" className="size-3.5 text-muted-foreground" />
@@ -270,14 +281,14 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
         </aside>
 
         <section className="min-h-0 overflow-hidden">
-          {mode === "graph" && graph && snapshot ? (
-            <div className="grid h-full min-h-0 grid-rows-[minmax(260px,1fr)_minmax(0,0.8fr)] lg:grid-cols-[minmax(0,1fr)_minmax(260px,34%)] lg:grid-rows-1">
+          {graphEnabled && graph && snapshot ? (
+            <div className={cn("h-full min-h-0", mode === "graph" ? "grid" : "hidden", detailsOpen && selected ? "grid-rows-[minmax(260px,1fr)_minmax(0,0.8fr)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,34%)] lg:grid-rows-1" : "grid-cols-1")}>
               <Suspense fallback={<div className="grid h-full place-items-center text-xs text-muted-foreground"><LoaderCircle className="mr-2 inline size-3 animate-spin" />{t("context.graphLoading")}</div>}>
                 <ContextGraph graph={graph} items={snapshot.items} onSelect={selectItem} selected={selected?.ref} />
               </Suspense>
               {selected ? (
                 <ContextPreviewPanel
-                  className="border-t border-border lg:border-l lg:border-t-0"
+                  className={cn("border-t border-border lg:border-l lg:border-t-0", !detailsOpen && "hidden")}
                   error={previewError}
                   item={selected}
                   loading={previewLoading}
@@ -285,7 +296,9 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
                 />
               ) : null}
             </div>
-          ) : selected ? (
+          ) : null}
+          <div className={cn("h-full min-h-0", mode === "list" ? "block" : "hidden")}>
+          {selected ? (
             <div className="flex h-full min-h-0 flex-col">
               <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
                 {note ? <Input aria-label={t("context.noteTitle")} className="h-7 max-w-xl text-[13px] font-semibold" onChange={(event) => setTitle(event.target.value)} value={title} /> : <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold">{selected.title}</h3>}
@@ -297,6 +310,8 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
               {note ? <div className="min-h-0 flex-1 overflow-auto"><Suspense fallback={<div className="p-3 text-xs text-muted-foreground">{t("context.editorLoading")}</div>}><CodeEditor ariaLabel={t("context.editor")} onChange={setDraft} path={`${note.title}.md`} value={draft} /></Suspense></div> : <EntityDetail error={previewError} item={selected} loading={previewLoading} preview={preview} />}
             </div>
           ) : <div className="grid h-full place-items-center text-xs text-muted-foreground">{t("context.empty")}</div>}
+          </div>
+          {mode === "graph" && !graph ? <div className="p-4 text-xs text-muted-foreground">{t("context.graphLoading")}</div> : null}
         </section>
       </div>
       {pendingDiscard ? (
