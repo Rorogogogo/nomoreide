@@ -76,6 +76,56 @@ pub type Answer<'a> =
 /// stall the agent producing into it.
 pub type EventSender = tokio::sync::mpsc::Sender<PlatformBound>;
 
+/// A way to put one unsolicited frame on whichever socket is live *now*.
+///
+/// The outbound channel belongs to a single connection and is made inside
+/// [`connect_once`], so nothing outside the connector could reach it. That is
+/// right for everything the sink emits — a run's events belong to the session
+/// that started it — and wrong for the one frame that is about the machine
+/// rather than about any session: unpairing, which is pressed by a person who
+/// has no idea a socket exists.
+///
+/// So this is a slot the live connection fills and clears. Empty means there is
+/// nothing connected, which is a normal answer and not an error: a machine can
+/// be unpaired while offline, and the frame is best-effort by design.
+#[derive(Clone, Default)]
+pub struct RelayOutbound(std::sync::Arc<std::sync::Mutex<Option<EventSender>>>);
+
+impl RelayOutbound {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Point it at a live connection's queue.
+    fn arm(&self, sender: EventSender) {
+        if let Ok(mut slot) = self.0.lock() {
+            *slot = Some(sender);
+        }
+    }
+
+    /// The connection has gone.
+    fn disarm(&self) {
+        if let Ok(mut slot) = self.0.lock() {
+            *slot = None;
+        }
+    }
+
+    /// Queue one frame, and say whether there was anywhere to put it.
+    ///
+    /// `try_send` rather than an await: the caller is an HTTP handler that must
+    /// answer whether or not the relay is healthy, and a full queue means the
+    /// socket is already struggling — one more frame would not reach the
+    /// platform any sooner for being waited on.
+    pub fn try_send(&self, frame: PlatformBound) -> bool {
+        let Ok(slot) = self.0.lock() else {
+            return false;
+        };
+        slot.as_ref()
+            .map(|sender| sender.try_send(frame).is_ok())
+            .unwrap_or(false)
+    }
+}
+
 /// How many unsolicited frames may queue for the socket.
 pub const EVENT_QUEUE: usize = 256;
 
@@ -224,6 +274,7 @@ pub async fn connect_once(
     config: &ConnectorConfig,
     commands: &dyn CommandSink,
     status: &RelayStatus,
+    outbound: &RelayOutbound,
 ) -> Disconnected {
     let mut request = match config.socket_url().into_client_request() {
         Ok(request) => request,
@@ -280,6 +331,11 @@ pub async fn connect_once(
     heartbeat.tick().await;
 
     let (events, mut pending_events) = tokio::sync::mpsc::channel(EVENT_QUEUE);
+    // From here until this function returns there is a socket to put a frame
+    // on. `run_forever` clears it again, so a caller between connections is
+    // told plainly that there is nowhere to send rather than queueing into a
+    // channel whose reader has gone.
+    outbound.arm(events.clone());
 
     loop {
         tokio::select! {
@@ -433,11 +489,13 @@ pub async fn run_forever(
     config: ConnectorConfig,
     commands: std::sync::Arc<dyn CommandSink>,
     status: RelayStatus,
+    outbound: RelayOutbound,
 ) {
     let mut backoff = Backoff::new();
     loop {
         let started = std::time::Instant::now();
-        let ended = connect_once(&config, commands.as_ref(), &status).await;
+        let ended = connect_once(&config, commands.as_ref(), &status, &outbound).await;
+        outbound.disarm();
         // Before anything else about the ending is interpreted: whatever the
         // sink was holding for that socket has nowhere to go now, and a
         // revocation is one of the ways we get here.
@@ -631,5 +689,46 @@ mod tests {
             speaking.get(),
             super::super::protocol::version::PROTOCOL_VERSION
         );
+    }
+
+    fn retire_frame() -> PlatformBound {
+        use super::super::protocol::platform_bound::{DeviceRetire, RetireReason};
+        PlatformBound::DeviceRetire(DeviceRetire {
+            reason: RetireReason::Unpaired,
+        })
+    }
+
+    /// Unpairing a machine that is offline must answer, not block or panic.
+    /// There is no socket, and that is an ordinary state rather than a fault.
+    #[test]
+    fn an_unarmed_outbound_reports_that_it_sent_nothing() {
+        let outbound = RelayOutbound::new();
+
+        assert!(!outbound.try_send(retire_frame()));
+    }
+
+    #[tokio::test]
+    async fn an_armed_outbound_queues_the_frame_for_the_socket() {
+        let outbound = RelayOutbound::new();
+        let (sender, mut received) = tokio::sync::mpsc::channel(EVENT_QUEUE);
+        outbound.arm(sender);
+
+        assert!(outbound.try_send(retire_frame()));
+        assert_eq!(
+            received.recv().await.map(|frame| frame.kind()),
+            Some("device.retire")
+        );
+    }
+
+    /// A connection that ended takes the slot with it. Without this, unpairing
+    /// after a drop would queue into a channel nobody reads and report success.
+    #[tokio::test]
+    async fn a_disarmed_outbound_stops_accepting() {
+        let outbound = RelayOutbound::new();
+        let (sender, _received) = tokio::sync::mpsc::channel(EVENT_QUEUE);
+        outbound.arm(sender);
+        outbound.disarm();
+
+        assert!(!outbound.try_send(retire_frame()));
     }
 }

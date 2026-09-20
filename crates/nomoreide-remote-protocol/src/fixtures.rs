@@ -42,12 +42,12 @@ use super::device_bound::{
 use super::errors::{ErrorCode, ProtocolError};
 use super::platform_bound::{
     AgentProvidersResponse, AgentTurnAccepted, AgentUsageResponse, BundleListResponse,
-    CommandErrorResponse, DeviceSnapshotResponse, ErrorsResponse, GithubPullResponse,
+    CommandErrorResponse, DeviceRetire, DeviceSnapshotResponse, ErrorsResponse, GithubPullResponse,
     GithubPullsResponse, GithubRunJobsResponse, GithubRunsResponse, PlatformBound,
-    RemoteRepository, RepositoriesResponse, ServiceActionResponse, ServiceListResponse,
-    ServiceLogsResponse, SessionHello, TerminalAck, TerminalAttachAccepted, TerminalCloseReason,
-    TerminalClosed, TerminalGeometry, TerminalKilled, TerminalOutput, TerminalSessionsResponse,
-    TerminalSpawned, TimelineResponse,
+    RemoteRepository, RepositoriesResponse, RetireReason, ServiceActionResponse,
+    ServiceListResponse, ServiceLogsResponse, SessionHello, TerminalAck, TerminalAttachAccepted,
+    TerminalCloseReason, TerminalClosed, TerminalGeometry, TerminalKilled, TerminalOutput,
+    TerminalSessionsResponse, TerminalSpawned, TimelineResponse,
 };
 use super::snapshot::{
     BundleState, DeviceSnapshot, IncidentLevel, LogLine, LogStream, PullRequestState,
@@ -421,6 +421,9 @@ pub fn every_event() -> Vec<PlatformBound> {
                 detail: Some("restarting in 2s".to_string()),
             }],
             truncated: true,
+        }),
+        PlatformBound::DeviceRetire(DeviceRetire {
+            reason: RetireReason::Unpaired,
         }),
     ];
     // One frame per run-event kind, because `agent.turn.event` is a union in

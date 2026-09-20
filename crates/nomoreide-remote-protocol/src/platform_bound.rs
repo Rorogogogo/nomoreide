@@ -111,10 +111,49 @@ pub enum PlatformBound {
     #[serde(rename = "timeline.response")]
     Timeline(TimelineResponse),
 
+    /// This machine is unpairing itself, and asks to be retired.
+    ///
+    /// **Device-initiated, and answers nothing.** Every other frame in this
+    /// union is either a reply or an event about work the platform asked for;
+    /// this one is the machine saying it has thrown its own credential away and
+    /// would like the row to go with it. Revocation stays the platform's to
+    /// perform and remains one-way — the device asks, it does not do.
+    ///
+    /// Unsolicited rather than a reply to some `device.retire.request`, because
+    /// there is no version of this the platform initiates: the credential is
+    /// deleted on the machine by somebody standing at it.
+    ///
+    /// **Nothing depends on it arriving.** An older platform does not know this
+    /// name and refuses it, by the same fail-closed rule as any unknown frame,
+    /// and the machine unpairs locally regardless. A retirement that did not
+    /// land leaves exactly what leaving this frame out always left: a device
+    /// row the owner can revoke from their phone.
+    #[serde(rename = "device.retire")]
+    DeviceRetire(DeviceRetire),
+
     /// A refusal. Always carries `replyTo`, because an error with nothing to
     /// answer is a log line, not a frame.
     #[serde(rename = "command.error")]
     CommandError(CommandErrorResponse),
+}
+
+/// Why a machine retired itself.
+///
+/// A reason rather than an empty body, so the platform's audit of a vanished
+/// device can say whether a person unpaired it or something else did. It is a
+/// closed set rather than free text: this crosses a trust boundary, and a
+/// string a device chooses would end up rendered somewhere.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DeviceRetire {
+    pub reason: RetireReason,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RetireReason {
+    /// Somebody pressed Unpair on the machine.
+    Unpaired,
 }
 
 /// Every list answer here carries `truncated` for the same reason
@@ -427,6 +466,7 @@ impl PlatformBound {
         "agent.usage.response",
         "errors.response",
         "timeline.response",
+        "device.retire",
         "command.error",
     ];
 
@@ -459,6 +499,7 @@ impl PlatformBound {
             Self::AgentUsage(_) => "agent.usage.response",
             Self::Errors(_) => "errors.response",
             Self::Timeline(_) => "timeline.response",
+            Self::DeviceRetire(_) => "device.retire",
             Self::CommandError(_) => "command.error",
         }
     }
@@ -483,7 +524,10 @@ impl PlatformBound {
             // asked for it, and the request it would otherwise name was
             // answered when the mirror opened.
             | Self::TerminalGeometry(_)
-            | Self::TerminalClosed(_) => false,
+            | Self::TerminalClosed(_)
+            // Nobody asked the machine to leave. It is telling the platform
+            // that somebody standing at it already has.
+            | Self::DeviceRetire(_) => false,
             Self::DeviceSnapshot(_)
             | Self::ServiceList(_)
             | Self::ServiceAction(_)
