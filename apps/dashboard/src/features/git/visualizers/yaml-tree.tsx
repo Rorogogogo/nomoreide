@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import yaml from "js-yaml";
+// Named import: js-yaml 5 ships no default export.
+import { loadAll } from "js-yaml";
 import { Alert } from "@/components/ui/alert";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -90,7 +91,7 @@ export function YamlTree({ content }: { content: string }) {
   const t = useT();
   const result = useMemo(() => {
     try {
-      const docs = yaml.loadAll(content);
+      const docs = loadAll(content);
       const value = docs.length <= 1 ? docs[0] : docs;
       return { value, error: null as string | null };
     } catch (caught) {
