@@ -269,6 +269,12 @@ impl PairingFlow {
             device_name: issued.device_name,
             credential: issued.credential,
             platform_base_url: self.base_url.clone(),
+            // The claim page the platform minted is served by its web front
+            // door, which on the hosted platform is not the API host. Taking
+            // the origin off it is how this machine learns that host without
+            // a second setting for a user to get wrong.
+            web_base_url: super::credentials::web_origin(&ticket.verification_url)
+                .unwrap_or_default(),
             paired_at: chrono::Utc::now().to_rfc3339(),
         };
         self.credentials

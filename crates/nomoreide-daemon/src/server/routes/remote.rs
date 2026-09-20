@@ -165,6 +165,10 @@ async fn status(State(state): State<AppState>) -> Response {
         "deviceName": paired.as_ref().map(|stored| stored.device_name.clone()),
         "deviceId": paired.as_ref().map(|stored| stored.device_id.clone()),
         "platformBaseUrl": paired.as_ref().map(|stored| stored.platform_base_url.clone()),
+        // Where this platform serves pages, which is not where it serves the
+        // API. The dashboard builds this machine's link from it; building one
+        // from `platformBaseUrl` produced an API host with a page path on it.
+        "webBaseUrl": paired.as_ref().map(|stored| stored.web_base_url().to_string()),
         "relay": relay,
     }))
     .into_response()

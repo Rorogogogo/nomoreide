@@ -14,6 +14,8 @@ export interface RemoteStatus {
   deviceName?: string | null;
   deviceId?: string | null;
   platformBaseUrl?: string | null;
+  /** Where the platform serves its *pages*. Not `platformBaseUrl`, which is its API. */
+  webBaseUrl?: string | null;
   relay?: RemoteRelaySnapshot | null;
 }
 

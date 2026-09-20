@@ -133,10 +133,16 @@ export function RemotePairingPanel() {
    * Both halves come from the daemon's own status rather than a constant here,
    * because a self-hosted platform has a different base and the device id is
    * only known once pairing finished.
+   *
+   * `webBaseUrl`, never `platformBaseUrl`: the latter is where the platform
+   * serves its *API*, and on the hosted platform that is a different host.
+   * Building the link from it produced `https://api.nomoreide.com/app/remote/…`
+   * — an API host wearing a page's path, which answers nothing.
    */
+  const webBase = status?.webBaseUrl ?? status?.platformBaseUrl;
   const machineUrl =
-    status?.platformBaseUrl && status?.deviceId
-      ? `${status.platformBaseUrl.replace(/\/$/, "")}/app/remote/${status.deviceId}`
+    webBase && status?.deviceId
+      ? `${webBase.replace(/\/$/, "")}/app/remote/${status.deviceId}`
       : null;
 
   async function copyLink(url: string) {

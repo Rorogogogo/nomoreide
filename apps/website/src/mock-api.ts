@@ -2545,6 +2545,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       deviceName: "Studio",
       deviceId: "11111111-2222-3333-4444-555555555555",
       platformBaseUrl: "https://api.nomoreide.com",
+      webBaseUrl: "https://remote.nomoreide.com",
       relay: { connected: true, deviceName: "Studio", lastError: null, stopped: false },
     });
   }

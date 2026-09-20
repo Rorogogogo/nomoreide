@@ -41,10 +41,66 @@ pub struct StoredCredential {
     pub device_name: String,
     /// 64 hex characters. The only copy — the platform stores a hash.
     pub credential: String,
-    /// The deployment that issued it.
+    /// The deployment that issued it. **The API, not a page.**
     pub platform_base_url: String,
+    /// Where that deployment serves its *pages*, which is a different host from
+    /// the API on the hosted platform and may be on any host self-hosted.
+    ///
+    /// Learned from the `verification_url` the platform minted during pairing
+    /// rather than configured here: the platform already builds that from its
+    /// own web front door, so asking it is both correct and free. A credential
+    /// stored before this field existed has an empty one — read it through
+    /// [`StoredCredential::web_base_url`], never directly.
+    #[serde(default)]
+    pub web_base_url: String,
     /// RFC 3339, UTC.
     pub paired_at: String,
+}
+
+/// The hosted platform's API, and the front door serving its pages.
+///
+/// Paired here because [`StoredCredential::web_base_url`] has to answer for
+/// credentials stored before the field existed, and those have no other way to
+/// learn the second. Deliberately an exact match on the first rather than a
+/// rule about subdomains: a self-hosted platform owes us no such relationship
+/// between its hosts, and guessing one for it would be worse than the old
+/// behaviour.
+const HOSTED_API_BASE_URL: &str = "https://api.nomoreide.com";
+const HOSTED_WEB_BASE_URL: &str = "https://remote.nomoreide.com";
+
+impl StoredCredential {
+    /// Where this platform's pages live.
+    ///
+    /// The stored value when pairing recorded one. Otherwise the hosted front
+    /// door if this credential came from the hosted API, and failing that the
+    /// API base — which is what the dashboard used to build links from, and is
+    /// wrong, but is no more wrong than before and never invents a host.
+    pub fn web_base_url(&self) -> &str {
+        if !self.web_base_url.is_empty() {
+            return self.web_base_url.trim_end_matches('/');
+        }
+        if self.platform_base_url.trim_end_matches('/') == HOSTED_API_BASE_URL {
+            return HOSTED_WEB_BASE_URL;
+        }
+        self.platform_base_url.trim_end_matches('/')
+    }
+}
+
+/// The `scheme://host[:port]` a URL is served from, or `None` if it is not one.
+///
+/// Everything after the authority is dropped on purpose: what pairing hands
+/// back is a claim *page* carrying a code, and what is wanted from it is only
+/// the origin that page lives on.
+pub fn web_origin(url: &str) -> Option<String> {
+    let (scheme, rest) = url.split_once("://")?;
+    if scheme.is_empty() {
+        return None;
+    }
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    if authority.is_empty() {
+        return None;
+    }
+    Some(format!("{scheme}://{authority}"))
 }
 
 /// Reads and writes the credential file.
@@ -145,8 +201,55 @@ mod tests {
             device_name: "Studio".into(),
             credential: "c".repeat(64),
             platform_base_url: "https://api.nomoreide.com".into(),
+            web_base_url: "https://remote.nomoreide.com".into(),
             paired_at: "2026-09-02T00:00:00Z".into(),
         }
+    }
+
+    #[test]
+    fn web_origin_keeps_the_authority_and_drops_the_rest() {
+        assert_eq!(
+            web_origin("https://remote.nomoreide.com/app/remote/pair?code=ABCD-EFGH#t=x"),
+            Some("https://remote.nomoreide.com".to_string())
+        );
+        assert_eq!(
+            web_origin("http://localhost:5173/app/remote/pair"),
+            Some("http://localhost:5173".to_string())
+        );
+        assert_eq!(web_origin("not-a-url"), None);
+        assert_eq!(web_origin("https://"), None);
+    }
+
+    #[test]
+    fn web_base_url_prefers_what_pairing_recorded() {
+        let stored = credential();
+
+        assert_eq!(stored.web_base_url(), "https://remote.nomoreide.com");
+    }
+
+    /// A machine paired before the field existed still has to produce a link
+    /// that resolves, without being made to pair again.
+    #[test]
+    fn web_base_url_falls_back_to_the_hosted_front_door() {
+        let stored = StoredCredential {
+            web_base_url: String::new(),
+            ..credential()
+        };
+
+        assert_eq!(stored.web_base_url(), "https://remote.nomoreide.com");
+    }
+
+    /// A self-hosted platform is owed no guess about its hosts, so the old
+    /// behaviour stands rather than an invented subdomain.
+    #[test]
+    fn web_base_url_does_not_invent_a_host_for_a_self_hosted_platform() {
+        let stored = StoredCredential {
+            platform_base_url: "https://nomoreide.internal.example".into(),
+            web_base_url: String::new(),
+            ..credential()
+        };
+
+        assert_eq!(stored.web_base_url(), "https://nomoreide.internal.example");
     }
 
     /// A store over a throwaway state directory, cleaned up by [`Scratch`].
