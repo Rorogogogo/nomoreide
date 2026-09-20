@@ -36,6 +36,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
+use tokio::time::timeout;
 
 #[derive(Debug, Clone)]
 pub struct DaemonOptions {
@@ -346,16 +347,46 @@ async fn serve_on_listener(
         http_shutdown_tx,
     ));
 
-    let server_result = axum::serve(listener, app)
-        .with_graceful_shutdown(async {
-            let _ = http_shutdown_rx.await;
-        })
-        .await;
+    // Graceful, but not unbounded.
+    //
+    // `with_graceful_shutdown` waits for in-flight requests to finish, and the
+    // dashboard's streams are in-flight requests that never finish on their
+    // own: a browser sitting on the services page holds an SSE connection open
+    // for as long as the tab is open. So `daemon stop` stopped accepting, said
+    // "all services shut down" — true, they were — and then waited forever on
+    // a tab nobody was looking at. The port was free, the process was not, and
+    // SIGTERM did not help because the handler below had already taken it.
+    //
+    // A deadline turns that into what the caller asked for. A request with any
+    // prospect of finishing has far longer than it needs; a stream that would
+    // never end stops being a reason to stay up.
+    let graceful = axum::serve(listener, app).with_graceful_shutdown(async {
+        let _ = http_shutdown_rx.await;
+    });
+    let server_result = match timeout(SHUTDOWN_GRACE, graceful).await {
+        Ok(result) => result,
+        Err(_) => {
+            eprintln!(
+                "nomoreide: shutting down with connections still open after {}s; \
+                 they are almost certainly streams a browser is holding.",
+                SHUTDOWN_GRACE.as_secs()
+            );
+            Ok(())
+        }
+    };
     shutdown_coordinator.abort();
     server_result.context("daemon HTTP server failed")?;
     drop(ownership);
     Ok(())
 }
+
+/// How long a shutdown waits for requests that are still running.
+///
+/// Long enough that a real request finishes, short enough that a person who
+/// typed `daemon stop` does not wonder whether it worked. The streams this
+/// exists for would never finish at all, so the exact number only decides how
+/// long the honest case waits — not whether the dishonest one is survivable.
+const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
 
 /// Stop serving only once the services are actually down — unless the ask was a
 /// signal, which is not a thing to decline.
@@ -473,6 +504,22 @@ fn stops_anyway(request: ShutdownRequest) -> bool {
     matches!(request, ShutdownRequest::Signalled)
 }
 
+/// Turn SIGTERM and SIGINT into shutdown requests — and stop pretending to,
+/// the moment nobody is listening.
+///
+/// **Installing a handler replaces the default disposition.** Once this is
+/// running, SIGTERM no longer kills the process; it arrives here instead. That
+/// is the point while there is a coordinator to hand it to, and a trap once
+/// there is not: after shutdown has been arranged the receiver is gone, the
+/// send fails, and a process that has stopped serving but not yet exited
+/// becomes deaf to the one signal everybody reaches for. Every tool that stops
+/// a process — a service manager, a packaging script, a person — sends SIGTERM
+/// first and concludes the process is wedged when nothing happens.
+///
+/// So a signal that cannot be delivered is honoured here instead. Exiting
+/// directly is the correct response and not a shortcut: the send only fails
+/// once the drain has finished and the coordinator has returned, which is to
+/// say once the cleanup this would otherwise skip has already happened.
 async fn forward_shutdown_signals(sender: mpsc::Sender<ShutdownRequest>) {
     #[cfg(unix)]
     {
@@ -489,16 +536,17 @@ async fn forward_shutdown_signals(sender: mpsc::Sender<ShutdownRequest>) {
                 _ = interrupt.recv() => {}
             }
             if sender.send(ShutdownRequest::Signalled).await.is_err() {
-                return;
+                std::process::exit(0);
             }
         }
     }
     #[cfg(not(unix))]
     loop {
-        if tokio::signal::ctrl_c().await.is_err()
-            || sender.send(ShutdownRequest::Signalled).await.is_err()
-        {
+        if tokio::signal::ctrl_c().await.is_err() {
             return;
+        }
+        if sender.send(ShutdownRequest::Signalled).await.is_err() {
+            std::process::exit(0);
         }
     }
 }
@@ -598,5 +646,28 @@ mod tests {
     #[test]
     fn an_http_request_still_refuses_when_cleanup_fails() {
         assert!(!stops_anyway(ShutdownRequest::Requested));
+    }
+
+    /// A shutdown has to be bounded, and this is the number that bounds it.
+    ///
+    /// The second immortal-daemon bug was not a refusal to stop but a wait
+    /// with no end: `with_graceful_shutdown` waits for in-flight requests, and
+    /// the dashboard's event streams are in-flight requests that only finish
+    /// when the browser tab does. `daemon stop` freed the port, reported
+    /// success truthfully, and left the process waiting on a tab.
+    ///
+    /// Held as a test because the bound is the whole fix. Zero would abandon
+    /// requests that were about to finish; a large number is the bug again
+    /// wearing a number.
+    #[test]
+    fn a_shutdown_waits_for_a_bounded_time() {
+        assert!(
+            super::SHUTDOWN_GRACE > std::time::Duration::ZERO,
+            "a zero grace drops requests that were about to finish"
+        );
+        assert!(
+            super::SHUTDOWN_GRACE <= std::time::Duration::from_secs(30),
+            "a long grace is the unbounded wait again, only quieter"
+        );
     }
 }
