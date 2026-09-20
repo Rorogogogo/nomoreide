@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
 import { GitHubLogo } from "@/features/github/github-logo";
+import { LinearLogo } from "@/features/linear/linear-logo";
 
 export type AppPage =
   | "home"
@@ -79,7 +80,7 @@ export const APP_NAV_SECTIONS: Array<{
     items: [
       { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
       { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
-      { page: "linear", labelKey: "nav.linear", icon: <Inbox /> },
+      { page: "linear", labelKey: "nav.linear", icon: <LinearLogo /> },
     ],
   },
   {
