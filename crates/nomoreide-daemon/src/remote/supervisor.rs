@@ -48,6 +48,9 @@ pub(crate) struct RelaySupervisor {
     router: Arc<OnceLock<axum::Router>>,
     started: Arc<AtomicBool>,
     status: Arc<OnceLock<RelayStatus>>,
+    /// A way onto the live socket for the one frame that is not an answer:
+    /// this machine retiring itself. See [`Self::retire`].
+    outbound: nomoreide_core::remote::connector::RelayOutbound,
 }
 
 impl RelaySupervisor {
@@ -63,6 +66,7 @@ impl RelaySupervisor {
             router: Arc::new(OnceLock::new()),
             started: Arc::new(AtomicBool::new(false)),
             status: Arc::new(OnceLock::new()),
+            outbound: nomoreide_core::remote::connector::RelayOutbound::new(),
         }
     }
 
@@ -104,7 +108,10 @@ impl RelaySupervisor {
             self.terminal.clone(),
         ));
         tokio::spawn(nomoreide_core::remote::connector::run_forever(
-            config, sink, status,
+            config,
+            sink,
+            status,
+            self.outbound.clone(),
         ));
         StartOutcome::Started
     }
@@ -112,6 +119,25 @@ impl RelaySupervisor {
     /// What the connection is doing, or `None` when nothing has been started.
     pub(crate) fn snapshot(&self) -> Option<RelaySnapshot> {
         self.status.get().map(RelayStatus::snapshot)
+    }
+
+    /// Tell the platform this machine is unpairing, if there is a socket to
+    /// tell it on.
+    ///
+    /// Returns whether the frame was queued, which is **not** whether the
+    /// device was retired: the platform decides that, and this end never learns
+    /// the outcome. Unpairing does not wait for it and does not fail without
+    /// it, because the thing a person pressed Unpair for — this machine losing
+    /// its credential — is local and must happen whether the platform is
+    /// reachable, older than this frame, or gone.
+    pub(crate) fn retire(&self) -> bool {
+        use nomoreide_core::remote::protocol::platform_bound::{
+            DeviceRetire, PlatformBound, RetireReason,
+        };
+        self.outbound
+            .try_send(PlatformBound::DeviceRetire(DeviceRetire {
+                reason: RetireReason::Unpaired,
+            }))
     }
 }
 

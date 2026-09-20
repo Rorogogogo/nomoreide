@@ -136,13 +136,28 @@ async fn poll_pairing(State(state): State<AppState>) -> Response {
 
 /// Forget this machine's credential.
 ///
-/// Local only, and it says so: the device row stays on the account until it is
-/// revoked from the phone. Deleting the file stops this machine connecting; it
-/// does not withdraw anything, because revocation is the owner's to perform.
+/// Deletes the credential, and asks the platform to retire the device.
+///
+/// **The local half is the part that must not fail.** Somebody pressed Unpair
+/// on this machine; what they are owed is that it stops being reachable, and
+/// that is done by deleting the file. So the ask goes first and is not waited
+/// on, and the credential is cleared whatever came of it — an unreachable
+/// platform, or one too old to know the frame, must not leave a machine still
+/// holding a working credential.
+///
+/// Revocation itself stays the owner's and stays one-way: this asks, and the
+/// platform decides. `retired` reports only that the frame was queued on a live
+/// socket, never that the row is gone — an unpaired machine is offline a moment
+/// later and has no way to hear the answer. When it is `false` the device is
+/// still listed on the account, and revoking it from the phone is what removes
+/// it, exactly as before this frame existed.
 async fn unpair(State(state): State<AppState>) -> Response {
     state.pending_pairing.clear();
+    let retired = state.relay.retire();
     match nomoreide_core::remote::credentials::RemoteCredentials::discover().clear() {
-        Ok(had) => Json(json!({ "ok": true, "wasPaired": had })).into_response(),
+        Ok(had) => {
+            Json(json!({ "ok": true, "wasPaired": had, "retired": retired })).into_response()
+        }
         Err(error) => Json(json!({ "ok": false, "error": error.to_string() })).into_response(),
     }
 }
