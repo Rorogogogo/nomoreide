@@ -83,6 +83,43 @@ impl ContextEntry {
     }
 }
 
+/// The registered project a recorded path refers to.
+///
+/// **An exact match is not enough, because checkouts move.** A note records the
+/// absolute path of the project it belonged to when it was written, and moving
+/// the repository — or cloning it somewhere else — leaves every note pointing
+/// at a directory that no longer exists. Matched literally they all fall out of
+/// the graph at once, which reads as "these notes belong to nothing" rather
+/// than "this path is stale".
+///
+/// So: the exact path first, and failing that the project whose directory has
+/// the same name. **An ambiguous name resolves to nothing** — two checkouts
+/// called `api` are a real possibility, and silently attaching a note to
+/// whichever came first is a worse answer than leaving it unattached, the same
+/// judgement the duplicate-note-id rule makes.
+fn resolve_project<'a>(recorded: &str, items: &'a [ContextItem]) -> Option<&'a ContextItem> {
+    let is_project = |item: &&ContextItem| item.kind == "project";
+    if let Some(exact) = items
+        .iter()
+        .find(|item| is_project(item) && item.context_ref.id == recorded)
+    {
+        return Some(exact);
+    }
+    let name = directory_name(recorded)?;
+    let mut matches = items
+        .iter()
+        .filter(|item| is_project(item) && directory_name(&item.context_ref.id) == Some(name));
+    let first = matches.next()?;
+    matches.next().is_none().then_some(first)
+}
+
+/// The last non-empty segment of a path, with any trailing separator ignored.
+fn directory_name(path: &str) -> Option<&str> {
+    path.trim_end_matches('/')
+        .rsplit('/')
+        .find(|segment| !segment.is_empty())
+}
+
 /// The listing, which is `ContextSnapshot` with its rows able to be notes.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -202,9 +239,19 @@ pub fn context_snapshot(
     // of them, so a note filed under three repositories shows up under all
     // three. A derived row has only the one it was built with.
     if let Some(project) = query.project_path.as_deref() {
+        // The same staleness the graph has to cope with: a note filed before the
+        // checkout moved records the old absolute path, and matching it
+        // literally hides the note from the project it plainly belongs to. The
+        // directory name is the fallback here too — without the ambiguity check
+        // the graph can make, because a filter that quietly drops a row is the
+        // worse failure of the two.
+        let wanted_name = directory_name(project);
         items.retain(|entry| {
             entry.item().project_path.as_deref() == Some(project)
-                || entry.project_paths().iter().any(|path| path == project)
+                || entry.project_paths().iter().any(|path| {
+                    path == project
+                        || (wanted_name.is_some() && directory_name(path) == wanted_name)
+                })
         });
     }
     if let Some(needle) = query.q.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
@@ -516,7 +563,7 @@ pub fn context_graph(
             continue;
         }
         for project_path in &note.project_paths {
-            if let Some(project) = find("project", project_path) {
+            if let Some(project) = resolve_project(project_path, &items) {
                 if is_visible(&project.context_ref) {
                     edges.push(edge(&note.item, project, "belongs-to"));
                 }
@@ -660,4 +707,79 @@ fn ref_key(reference: &ContextRef) -> String {
 /// is not.
 fn locale_cmp(left: &str, right: &str) -> Ordering {
     crate::locale::compare(left, right)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn project(path: &str) -> ContextItem {
+        ContextItem {
+            context_ref: ContextRef {
+                kind: "project".into(),
+                id: path.into(),
+            },
+            title: directory_name(path).unwrap_or(path).into(),
+            kind: "project".into(),
+            excerpt: None,
+            project_path: Some(path.into()),
+            path: Some(path.into()),
+            updated_at: None,
+            tags: Vec::new(),
+            aliases: Vec::new(),
+            pinned: false,
+            editable: false,
+        }
+    }
+
+    #[test]
+    fn an_exact_path_wins_over_any_name_match() {
+        let items = vec![
+            project("/elsewhere/nomoreide"),
+            project("/Users/me/Developer/nomoreide"),
+        ];
+
+        let resolved = resolve_project("/Users/me/Developer/nomoreide", &items).unwrap();
+
+        assert_eq!(resolved.context_ref.id, "/Users/me/Developer/nomoreide");
+    }
+
+    /// The case that put three notes on the floor: the note records where the
+    /// project was when it was written, and the checkout has since moved.
+    #[test]
+    fn a_moved_checkout_still_resolves_by_directory_name() {
+        let items = vec![project("/Users/me/Developer/workspace/nomoreide")];
+
+        let resolved = resolve_project("/Users/me/Downloads/old/nomoreide", &items).unwrap();
+
+        assert_eq!(
+            resolved.context_ref.id,
+            "/Users/me/Developer/workspace/nomoreide"
+        );
+    }
+
+    /// Two checkouts called `api` is an ordinary thing to have. Attaching the
+    /// note to whichever happens to sort first would be a guess wearing the
+    /// clothes of a fact.
+    #[test]
+    fn an_ambiguous_directory_name_resolves_to_nothing() {
+        let items = vec![project("/work/one/api"), project("/work/two/api")];
+
+        assert!(resolve_project("/gone/api", &items).is_none());
+    }
+
+    #[test]
+    fn a_name_nothing_registers_resolves_to_nothing() {
+        let items = vec![project("/work/nomoreide")];
+
+        assert!(resolve_project("/gone/unrelated", &items).is_none());
+    }
+
+    #[test]
+    fn a_trailing_separator_does_not_change_a_directory_name() {
+        assert_eq!(directory_name("/work/nomoreide/"), Some("nomoreide"));
+        assert_eq!(directory_name("/work/nomoreide"), Some("nomoreide"));
+        assert_eq!(directory_name("/"), None);
+        assert_eq!(directory_name(""), None);
+    }
 }
