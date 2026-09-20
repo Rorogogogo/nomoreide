@@ -49,6 +49,7 @@ pub(crate) fn routes() -> Router<AppState> {
         )
         .route("/api/context/pins", put(set_pins))
         .route("/api/context/preview", post(preview))
+        .route("/api/context/content", post(content))
 }
 
 #[derive(Serialize)]
@@ -222,6 +223,40 @@ async fn set_pins(body: Bytes) -> Response {
         Ok(Ok(pinned)) => Json(serde_json::json!({ "ok": true, "pinned": pinned })).into_response(),
         Ok(Err(message)) => context_failure(message),
         Err(join) => error(StatusCode::INTERNAL_SERVER_ERROR, &join.to_string()),
+    }
+}
+
+/// One item's body, for a reader rather than for an agent's prompt.
+///
+/// **Deliberately not part of `preview`.** A preview is the `<nomoreide-context>`
+/// block that gets handed to an agent, and it renders a derived row as the few
+/// facts that place it. Inlining file bodies there would grow every attachment
+/// the MCP surface builds and start evicting items against `MAX_CONTEXT_CHARS`.
+/// This route answers the different question the dashboard's panel is asking —
+/// "show me this file" — and leaves that contract alone.
+async fn content(State(state): State<AppState>, body: Bytes) -> Response {
+    let payload = parsed_body(&body);
+    let Some(context_ref) = content_input(&payload) else {
+        return error(StatusCode::BAD_REQUEST, "Invalid context content request.");
+    };
+    // Unfiltered, like the preview: a ref names one thing directly, and whether
+    // it happens to sit outside the page's current filter is not this route's
+    // business. It is also what scopes the read — only an indexed item resolves.
+    let (listing, _) = match snapshot_for(&state, &ContextQuery::default()).await {
+        Ok(pair) => pair,
+        Err(message) => return error(StatusCode::INTERNAL_SERVER_ERROR, &message),
+    };
+    let items = listing.items();
+    match tokio::task::spawn_blocking(move || {
+        ContextLibrary::default().content(&context_ref, &items)
+    })
+    .await
+    {
+        Ok(Ok(content)) => {
+            Json(serde_json::json!({ "ok": true, "content": content })).into_response()
+        }
+        Ok(Err(message)) => error(StatusCode::NOT_FOUND, &message),
+        Err(failure) => error(StatusCode::INTERNAL_SERVER_ERROR, &failure.to_string()),
     }
 }
 
@@ -438,6 +473,16 @@ fn pins(payload: &Value) -> Option<Vec<ContextRef>> {
         return None;
     }
     context_refs(object.get("refs")?)
+}
+
+/// `{ "ref": { "kind", "id" } }` and nothing else.
+fn content_input(payload: &Value) -> Option<ContextRef> {
+    let object = payload.as_object()?;
+    if object.keys().any(|key| key != "ref") {
+        return None;
+    }
+    let mut refs = context_refs(&Value::Array(vec![object.get("ref")?.clone()]))?;
+    refs.pop()
 }
 
 fn preview_input(payload: &Value) -> Option<(ContextAttachment, Option<String>)> {

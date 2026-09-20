@@ -18,12 +18,41 @@ pub const CONTEXT_KINDS: &[&str] = &["note", "project", "service", "file", "inci
 const MAX_NOTE_BYTES: usize = 1024 * 1024;
 const MAX_NOTES: usize = 2_000;
 const MAX_CONTEXT_CHARS: usize = 96 * 1024;
+/// What `content` will read off disk for one file.
+///
+/// Smaller than `MAX_NOTE_BYTES` on purpose: a note is something a person
+/// wrote and the whole of it is the point, where a file is being *quoted* and
+/// a reader who needs more than this should open it.
+const MAX_FILE_CONTENT_BYTES: usize = 256 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct ContextRef {
     pub kind: String,
     pub id: String,
+}
+
+/// The body behind one context item, for the kinds that have one.
+///
+/// `body` is `None` rather than empty when a kind carries no content, and
+/// `reason` says which case that is — an unreadable file and a kind that never
+/// had a body are different answers, and a caller rendering them the same way
+/// would be lying about one of them.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextContent {
+    #[serde(rename = "ref")]
+    pub context_ref: ContextRef,
+    pub kind: String,
+    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+    /// True when the file was longer than `MAX_FILE_CONTENT_BYTES`.
+    pub truncated: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -361,6 +390,91 @@ impl ContextLibrary {
         )
         .map_err(|error| error.to_string())?;
         Ok(pinned)
+    }
+
+    /// The body behind one item: a note's text, or a file's bytes off disk.
+    ///
+    /// **Scoped by construction.** There is no path argument — the only path
+    /// this reads is the one the listing already holds for the ref, so it
+    /// cannot be turned into an arbitrary file read. A ref that is not in
+    /// `items` is simply not found, which is the same answer the preview gives.
+    ///
+    /// The other kinds are not failures. A service or a session never had a
+    /// body to store, so they come back with `body: None` and a reason saying
+    /// so, and a caller renders that rather than an error.
+    pub fn content(
+        &self,
+        context_ref: &ContextRef,
+        items: &[ContextItem],
+    ) -> Result<ContextContent, String> {
+        let item = items
+            .iter()
+            .find(|candidate| {
+                candidate.context_ref.kind == context_ref.kind
+                    && candidate.context_ref.id == context_ref.id
+            })
+            .cloned()
+            .ok_or_else(|| {
+                format!(
+                    "{} {} is not in the library.",
+                    context_ref.kind, context_ref.id
+                )
+            })?;
+
+        let mut content = ContextContent {
+            context_ref: item.context_ref.clone(),
+            kind: item.kind.clone(),
+            title: item.title.clone(),
+            path: item.path.clone(),
+            body: None,
+            truncated: false,
+            reason: None,
+        };
+
+        if item.kind == "note" {
+            content.body = Some(self.get_note(&item.context_ref.id)?.body);
+            return Ok(content);
+        }
+        if item.kind != "file" {
+            content.reason = Some(format!(
+                "A {} is a derived row and has no stored content.",
+                item.kind
+            ));
+            return Ok(content);
+        }
+        let Some(path) = item.path.as_deref() else {
+            content.reason = Some("This file has no path on record.".to_string());
+            return Ok(content);
+        };
+        let bytes = match fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                content.reason = Some(format!("The file could not be read: {error}"));
+                return Ok(content);
+            }
+        };
+        content.truncated = bytes.len() > MAX_FILE_CONTENT_BYTES;
+        // Cut on a character boundary, not a byte one: truncating mid-codepoint
+        // turns a readable file into an encoding error.
+        let capped = if content.truncated {
+            // Back off over any UTF-8 continuation bytes (`10xxxxxx`) so the cut
+            // lands where a character starts.
+            let mut end = MAX_FILE_CONTENT_BYTES;
+            while end > 0 && bytes[end] & 0b1100_0000 == 0b1000_0000 {
+                end -= 1;
+            }
+            &bytes[..end]
+        } else {
+            &bytes[..]
+        };
+        match std::str::from_utf8(capped) {
+            Ok(text) => content.body = Some(text.to_string()),
+            Err(_) => {
+                content.truncated = false;
+                content.reason = Some("This file is not text.".to_string());
+            }
+        }
+        Ok(content)
     }
 
     pub fn preview(
@@ -749,6 +863,108 @@ mod tests {
             .unwrap_err()
             .contains("duplicated"));
         fs::remove_dir_all(&library.root).unwrap();
+    }
+
+    fn file_item(path: &Path) -> ContextItem {
+        ContextItem {
+            context_ref: ContextRef {
+                kind: "file".into(),
+                id: "f1".into(),
+            },
+            title: path.file_name().unwrap().to_string_lossy().into_owned(),
+            kind: "file".into(),
+            excerpt: None,
+            project_path: None,
+            path: Some(path.to_string_lossy().into_owned()),
+            updated_at: None,
+            tags: Vec::new(),
+            aliases: Vec::new(),
+            pinned: false,
+            editable: false,
+        }
+    }
+
+    #[test]
+    fn a_file_item_reads_its_body_off_disk() {
+        let library = test_library();
+        fs::create_dir_all(&library.root).unwrap();
+        let path = library.root.join("hello.md");
+        fs::write(&path, "# Title\n\nreal content").unwrap();
+        let item = file_item(&path);
+
+        let content = library
+            .content(&item.context_ref, std::slice::from_ref(&item))
+            .unwrap();
+
+        assert_eq!(content.body.as_deref(), Some("# Title\n\nreal content"));
+        assert!(!content.truncated);
+        assert!(content.reason.is_none());
+        fs::remove_dir_all(&library.root).unwrap();
+    }
+
+    /// The cut has to land on a character boundary. A multi-byte file sliced at
+    /// a fixed byte offset would come back as "not text" rather than truncated.
+    #[test]
+    fn an_oversized_file_is_cut_without_breaking_a_character() {
+        let library = test_library();
+        fs::create_dir_all(&library.root).unwrap();
+        let path = library.root.join("big.txt");
+        fs::write(&path, "\u{4e2d}".repeat(MAX_FILE_CONTENT_BYTES)).unwrap();
+        let item = file_item(&path);
+
+        let content = library
+            .content(&item.context_ref, std::slice::from_ref(&item))
+            .unwrap();
+
+        assert!(content.truncated);
+        let body = content.body.expect("a truncated file still has a body");
+        assert!(body.len() <= MAX_FILE_CONTENT_BYTES);
+        assert!(body.chars().all(|character| character == '\u{4e2d}'));
+        fs::remove_dir_all(&library.root).unwrap();
+    }
+
+    /// The point of the whole change: a derived row is answered, not refused,
+    /// and it says why it has nothing rather than looking like a read failure.
+    #[test]
+    fn a_derived_row_reports_that_it_has_no_body() {
+        let library = test_library();
+        let context_ref = ContextRef {
+            kind: "service".into(),
+            id: "svc".into(),
+        };
+        let item = ContextItem {
+            context_ref: context_ref.clone(),
+            title: "api".into(),
+            kind: "service".into(),
+            excerpt: None,
+            project_path: None,
+            path: Some("/somewhere/api".into()),
+            updated_at: None,
+            tags: Vec::new(),
+            aliases: Vec::new(),
+            pinned: false,
+            editable: false,
+        };
+
+        let content = library.content(&context_ref, &[item]).unwrap();
+
+        assert!(content.body.is_none());
+        assert!(content.reason.unwrap().contains("derived row"));
+    }
+
+    /// There is no path argument, so the only file this can reach is one the
+    /// listing already names. A ref nobody indexed is not found.
+    #[test]
+    fn content_cannot_read_a_path_the_listing_does_not_hold() {
+        let library = test_library();
+        let context_ref = ContextRef {
+            kind: "file".into(),
+            id: "/etc/passwd".into(),
+        };
+
+        let error = library.content(&context_ref, &[]).unwrap_err();
+
+        assert!(error.contains("is not in the library"));
     }
 
     #[test]

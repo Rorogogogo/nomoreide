@@ -11,9 +11,11 @@ export const updateContextNote = api.updateNote;
 export const deleteContextNote = api.deleteNote;
 export const setContextPins = api.setPinned;
 export const previewContext = api.preview;
+export const getContextContent = api.content;
 
 export type {
   ContextAttachment,
+  ContextContent,
   ContextGraph,
   ContextItem,
   ContextKind,

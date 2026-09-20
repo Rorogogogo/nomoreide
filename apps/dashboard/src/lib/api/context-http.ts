@@ -1,6 +1,7 @@
 import { requestJson } from "./client.js";
 import type {
   ContextApi,
+  ContextContent,
   ContextGraph,
   ContextLibrarySnapshot,
   ContextNote,
@@ -61,6 +62,14 @@ export const contextHttpApi: ContextApi = {
       body: JSON.stringify({ refs }),
     });
     return result.pinned;
+  },
+  async content(ref) {
+    const result = await requestJson<{ ok: true; content: ContextContent }>("/api/context/content", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ref }),
+    });
+    return result.content;
   },
   async preview(attachment, projectPath) {
     const result = await requestJson<{ ok: true; preview: ContextPreview }>("/api/context/preview", {

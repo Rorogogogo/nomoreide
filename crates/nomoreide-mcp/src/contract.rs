@@ -32,9 +32,9 @@ impl ToolRegistry {
                 contract.contract_version
             ));
         }
-        if contract.tools.len() != 95 {
+        if contract.tools.len() != 97 {
             return Err(format!(
-                "frozen MCP contract contains {} tools instead of 95",
+                "frozen MCP contract contains {} tools instead of 97",
                 contract.tools.len()
             ));
         }
@@ -95,11 +95,12 @@ mod tests {
     /// The first and last entries are pinned too — order is part of the
     /// contract, so an append must stay an append.
     #[test]
-    fn frozen_registry_has_exactly_ninety_five_unique_tools() {
+    fn frozen_registry_has_exactly_ninety_seven_unique_tools() {
         let registry = registry();
-        assert_eq!(registry.tools().len(), 95);
-        assert_eq!(registry.names.len(), 95);
+        assert_eq!(registry.tools().len(), 97);
+        assert_eq!(registry.names.len(), 97);
         assert_eq!(registry.tools()[0]["name"], "nomoreide_list_services");
         assert_eq!(registry.tools()[94]["name"], "nomoreide_linear_comment");
+        assert_eq!(registry.tools()[96]["name"], "nomoreide_context_get");
     }
 }

@@ -12,6 +12,10 @@ use serde_json::{Map, Value};
 /// keys are stripped rather than rejected, so only declared fields can fail.
 pub(super) enum ArgumentContract {
     Empty,
+    /// Every field optional: an absent query is a request for everything.
+    ContextSearch,
+    /// A ref: a kind from the frozen set, and a non-empty id.
+    ContextRef,
     /// A single required non-empty `name`. The reference's `serviceNameSchema`
     /// and `bundleNameSchema` are the same shape, so they reject the same
     /// arguments with the same wording.
@@ -283,11 +287,17 @@ const AGENTS: &[&str] = &["claude", "codex", "antigravity", "cursor", "windsurf"
 const SCOPES: &[&str] = &["user", "project"];
 /// How a remote MCP server is reached.
 const TRANSPORTS: &[&str] = &["http", "sse"];
+/// The kinds a context ref may name, spelled the way `CONTEXT_KINDS` does.
+const CONTEXT_KINDS: &[&str] = &["note", "project", "service", "file", "incident", "session"];
+/// A context search will not hand back more rows than this in one answer.
+const CONTEXT_LIMIT_MAX: f64 = 500.0;
 
 impl ArgumentContract {
     pub(super) fn of(tool: &str) -> Option<Self> {
         match tool {
             "nomoreide_list_services" | "nomoreide_status" => Some(Self::Empty),
+            "nomoreide_context_search" => Some(Self::ContextSearch),
+            "nomoreide_context_get" => Some(Self::ContextRef),
             "nomoreide_start_service"
             | "nomoreide_stop_service"
             | "nomoreide_restart_service"
@@ -383,6 +393,39 @@ impl ArgumentContract {
     pub(super) fn validate(&self, arguments: &Map<String, Value>) -> Result<(), String> {
         match self {
             Self::Empty => Ok(()),
+            Self::ContextSearch => {
+                let mut failures = optional_string(arguments, "query");
+                failures.extend(optional_string(arguments, "projectPath"));
+                // The array itself may be absent, but a named kind has to be one
+                // of the six — a typo silently matching nothing is worse than a
+                // refusal that spells the set.
+                if arguments.contains_key("kinds") {
+                    failures.extend(string_array(arguments, "kinds", ArrayShape::ANY));
+                    if let Some(kinds) = arguments.get("kinds").and_then(Value::as_array) {
+                        for (index, member) in kinds.iter().enumerate() {
+                            if let Some(kind) = member.as_str() {
+                                if !CONTEXT_KINDS.contains(&kind) {
+                                    failures.push(format!(
+                                        "kinds.{index}: Invalid enum value. Expected {}, received '{kind}'",
+                                        CONTEXT_KINDS
+                                            .iter()
+                                            .map(|member| format!("'{member}'"))
+                                            .collect::<Vec<_>>()
+                                            .join(" | ")
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+                failures.extend(bounded_integer(arguments, "limit", CONTEXT_LIMIT_MAX));
+                collect(failures)
+            }
+            Self::ContextRef => {
+                let mut failures = enumerated(arguments, "kind", CONTEXT_KINDS);
+                failures.extend(required_string_of(arguments, "id", 1));
+                collect(failures)
+            }
             Self::RequiredName => required_name(arguments).map_err(|failure| failure.join(", ")),
             Self::ServiceLogs => {
                 let mut failures = required_name(arguments).err().unwrap_or_default();
