@@ -103,6 +103,16 @@ impl RelayOutbound {
         }
     }
 
+    /// The connection has gone, said from outside the connector.
+    ///
+    /// Aborting a connector's task stops it without letting `run_forever` reach
+    /// its own `disarm`, so whoever did the aborting has to say so — otherwise
+    /// the slot still holds a sender whose reader has been dropped, and the
+    /// next frame reports success into nothing.
+    pub fn disarm_now(&self) {
+        self.disarm();
+    }
+
     /// The connection has gone.
     fn disarm(&self) {
         if let Ok(mut slot) = self.0.lock() {
