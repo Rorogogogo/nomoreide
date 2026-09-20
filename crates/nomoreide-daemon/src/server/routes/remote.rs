@@ -154,6 +154,13 @@ async fn poll_pairing(State(state): State<AppState>) -> Response {
 async fn unpair(State(state): State<AppState>) -> Response {
     state.pending_pairing.clear();
     let retired = state.relay.retire();
+    // After the ask, not before: the frame needs the socket the stop closes.
+    //
+    // The socket has to go. The credential is deleted here but the platform is
+    // entitled to keep honouring it until it is revoked, so a connector left
+    // running would answer commands for a pairing its owner believes they have
+    // ended — and would hold the machine's place as a device it no longer is.
+    state.relay.stop();
     match nomoreide_core::remote::credentials::RemoteCredentials::discover().clear() {
         Ok(had) => {
             Json(json!({ "ok": true, "wasPaired": had, "retired": retired })).into_response()
