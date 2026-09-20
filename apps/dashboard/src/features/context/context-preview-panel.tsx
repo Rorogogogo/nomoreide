@@ -1,11 +1,16 @@
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { LoaderCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/lib/i18n";
+import { getContextContent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type {
   ContextItem,
   ContextPreview,
 } from "@/lib/api";
+
+const MarkdownPreview = lazy(() => import("@/features/git/visualizers/markdown-preview").then((module) => ({ default: module.MarkdownPreview })));
 
 /** The right-hand panel: an entity's detail, and the note preview beneath it. */
 
@@ -48,7 +53,32 @@ export function ContextPreviewPanel({
   preview: ContextPreview | null;
 }) {
   const t = useT();
-  const content = preview ? readablePreview(preview.context) : "";
+  const [source, setSource] = useState(false);
+  const [fileBody, setFileBody] = useState<FileBody | null>(null);
+  const isMarkdown = item.kind === "note" || (item.kind === "file" && /\.mdx?$/i.test(item.path ?? item.title));
+  // A file's body is fetched, not previewed. The preview renders a derived row
+  // as the facts that place it — right for the block an agent receives, and
+  // never what a person clicking a file wanted to see.
+  useEffect(() => {
+    if (item.kind !== "file") {
+      setFileBody(null);
+      return;
+    }
+    let live = true;
+    setFileBody({ loading: true });
+    getContextContent(item.ref)
+      .then((content) => {
+        if (!live) return;
+        setFileBody({ loading: false, body: content.body, reason: content.reason, truncated: content.truncated });
+      })
+      .catch((caught: unknown) => {
+        if (!live) return;
+        setFileBody({ loading: false, reason: caught instanceof Error ? caught.message : String(caught) });
+      });
+    return () => { live = false; };
+  }, [item.kind, item.ref]);
+  const content = fileBody?.body ?? (preview ? readablePreview(preview.context) : "");
+  const busy = loading || Boolean(fileBody?.loading);
   return (
     <aside className={cn("flex min-h-0 flex-col bg-background", className)}>
       <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
@@ -59,17 +89,28 @@ export function ContextPreviewPanel({
         {preview ? <span className="shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground">{t("context.previewTokens", { count: preview.estimatedTokens })}</span> : null}
         <Badge size="small" variant="outline">{item.kind}</Badge>
       </header>
+      {isMarkdown ? <fieldset className="flex gap-1 border-b border-border px-3 py-1" aria-label={t("context.view")}>
+        <Button size="sm" variant={!source ? "secondary" : "ghost"} aria-pressed={!source} onClick={() => setSource(false)}>{t("context.previewRead")}</Button>
+        <Button size="sm" variant={source ? "secondary" : "ghost"} aria-pressed={source} onClick={() => setSource(true)}>{t("context.previewSource")}</Button>
+      </fieldset> : null}
       <div className="min-h-0 flex-1 overflow-auto">
-        {loading ? (
+        {busy ? (
           <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-3 animate-spin" />{t("context.previewLoading")}</div>
         ) : error ? (
           <p className="p-3 text-xs text-destructive">{error}</p>
         ) : content ? (
-          <pre className="min-h-full whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-foreground">{content}</pre>
+          isMarkdown && !source ? <Suspense fallback={<p className="p-3 text-xs text-muted-foreground">{t("context.previewLoading")}</p>}><MarkdownPreview className="px-4 py-3" content={content} /></Suspense> : <pre className="min-h-full whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-foreground">{content}</pre>
+        ) : fileBody?.reason ? (
+          <p className="p-3 text-xs text-muted-foreground">{fileBody.reason}</p>
         ) : (
           <p className="p-3 text-xs text-muted-foreground">{t("context.previewEmpty")}</p>
         )}
       </div>
+      {fileBody?.truncated ? (
+        <div className="shrink-0 border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+          {t("context.contentTruncated")}
+        </div>
+      ) : null}
       {preview?.warnings.length ? (
         <div className="shrink-0 border-t border-border px-3 py-2 text-[10px] text-amber-600 dark:text-amber-400">
           {preview.warnings.join(" ")}
@@ -77,6 +118,14 @@ export function ContextPreviewPanel({
       ) : null}
     </aside>
   );
+}
+
+/** What the file fetch is doing, and what it found. */
+interface FileBody {
+  loading?: boolean;
+  body?: string;
+  reason?: string;
+  truncated?: boolean;
 }
 
 export function readablePreview(context: string): string {

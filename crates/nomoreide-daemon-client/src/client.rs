@@ -316,6 +316,64 @@ impl DaemonClient {
         self.bundle_action(name, "stop").await
     }
 
+    /// The context library, filtered. Through the daemon rather than read in
+    /// process because a listing folds in the error inbox, which only the
+    /// daemon holds — an in-process snapshot would silently report no
+    /// incidents.
+    pub async fn context_search(
+        &self,
+        query: Option<&str>,
+        kinds: Option<&[String]>,
+        project_path: Option<&str>,
+    ) -> Result<serde_json::Value, DaemonClientError> {
+        let mut url = self.endpoint.api_url("api/context");
+        {
+            let mut pairs = url.query_pairs_mut();
+            if let Some(query) = query {
+                pairs.append_pair("q", query);
+            }
+            if let Some(kinds) = kinds {
+                pairs.append_pair("kinds", &kinds.join(","));
+            }
+            if let Some(project_path) = project_path {
+                pairs.append_pair("projectPath", project_path);
+            }
+        }
+        let body = self.read(url).await?;
+        serde_json::from_slice(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))
+    }
+
+    /// One item's body. A ref the library does not hold is a 404, which arrives
+    /// here as an `Http` error carrying the daemon's own sentence.
+    pub async fn context_content(
+        &self,
+        kind: &str,
+        id: &str,
+    ) -> Result<serde_json::Value, DaemonClientError> {
+        let url = self.endpoint.api_url("api/context/content");
+        let request = serde_json::json!({ "ref": { "kind": kind, "id": id } });
+        let response = self
+            .send_authenticated(self.http.post(url).json(&request))
+            .await?;
+        let status = response.status();
+        let body = response.bytes().await.map_err(DaemonClientError::Request)?;
+        if !status.is_success() {
+            let message = serde_json::from_slice::<ErrorEnvelope>(&body)
+                .ok()
+                .filter(|envelope| !envelope.ok)
+                .map(|envelope| envelope.error)
+                .unwrap_or_else(|| "Context request failed.".to_string());
+            return Err(DaemonClientError::Http { status, message });
+        }
+        let envelope: serde_json::Value = serde_json::from_slice(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        envelope
+            .get("content")
+            .cloned()
+            .ok_or_else(|| DaemonClientError::Protocol("Context answer carried no content".into()))
+    }
+
     /// The incidents the daemon's inbox is holding, most recently active first.
     pub async fn list_errors(&self, limit: u32) -> Result<Vec<Incident>, DaemonClientError> {
         let mut url = self.endpoint.api_url("api/errors");

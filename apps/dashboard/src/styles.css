@@ -483,3 +483,5 @@ html.theme-transition::view-transition-new(root) {
   animation-duration: 220ms;
   animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
 }
+
+.context-flow-toolbar { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--background)); }

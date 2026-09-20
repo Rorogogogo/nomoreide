@@ -56,6 +56,24 @@ export interface ContextPreview {
   warnings: string[];
 }
 
+/**
+ * One item's body, for a reader.
+ *
+ * Distinct from `ContextPreview`, which is the block handed to an agent: that
+ * renders a derived row as the facts that place it, and this answers "show me
+ * the thing". `body` is absent rather than empty when a kind has none, and
+ * `reason` says which case that is.
+ */
+export interface ContextContent {
+  ref: ContextRef;
+  kind: ContextKind;
+  title: string;
+  path?: string;
+  body?: string;
+  truncated: boolean;
+  reason?: string;
+}
+
 export interface ContextLibrarySnapshot {
   vaultPath: string;
   items: ContextItem[];
@@ -109,4 +127,5 @@ export interface ContextApi {
   deleteNote(id: string, revision: string): Promise<void>;
   setPinned(refs: ContextRef[]): Promise<ContextRef[]>;
   preview(attachment: ContextAttachment, projectPath?: string): Promise<ContextPreview>;
+  content(ref: ContextRef): Promise<ContextContent>;
 }

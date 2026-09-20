@@ -2576,6 +2576,74 @@
         ],
         "type": "object"
       }
+    },
+    {
+      "name": "nomoreide_context_search",
+      "description": "Search the context library \u2014 the notes, projects, services, files and sessions this machine has indexed. Use it to find reference material before answering, instead of asking the user to paste it.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Text to match against titles, paths, tags and aliases. Omit to list everything."
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "note",
+                "project",
+                "service",
+                "file",
+                "incident",
+                "session"
+              ]
+            },
+            "description": "Restrict to these kinds."
+          },
+          "projectPath": {
+            "type": "string",
+            "description": "Restrict to context belonging to this project."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Maximum rows to return. Defaults to 40."
+          }
+        },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "nomoreide_context_get",
+      "description": "Read one context item's body: a note's text, or a file's contents. Derived rows (projects, services, sessions) answer with the facts that place them and say they have no stored body.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "note",
+              "project",
+              "service",
+              "file",
+              "incident",
+              "session"
+            ],
+            "description": "The ref's kind, as nomoreide_context_search reported it."
+          },
+          "id": {
+            "type": "string",
+            "description": "The ref's id, as nomoreide_context_search reported it."
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "type": "object"
+      }
     }
   ],
   "cases": [

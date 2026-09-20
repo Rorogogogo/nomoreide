@@ -2545,6 +2545,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       deviceName: "Studio",
       deviceId: "11111111-2222-3333-4444-555555555555",
       platformBaseUrl: "https://api.nomoreide.com",
+      webBaseUrl: "https://remote.nomoreide.com",
       relay: { connected: true, deviceName: "Studio", lastError: null, stopped: false },
     });
   }
@@ -2792,6 +2793,9 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   }
   if (path === "/api/context/pins") {
     return json({ ok: true, pinned: [demoContextNote.ref] });
+  }
+  if (path === "/api/context/content") {
+    return json({ ok: true, content: { ref: demoContextNote.ref, kind: demoContextNote.kind, title: demoContextNote.title, body: demoContextNote.body, truncated: false } });
   }
   if (path === "/api/context/preview") {
     return json({ ok: true, preview: { context: demoContextNote.body, estimatedTokens: 15, resolved: [demoContextNote], missing: [], warnings: [] } });

@@ -206,6 +206,7 @@ mod tests {
                 // Unreachable on purpose: these tests are about the supervisor's
                 // bookkeeping, not about dialling anything.
                 platform_base_url: "http://127.0.0.1:1".into(),
+                web_base_url: String::new(),
                 paired_at: "2026-09-02T00:00:00Z".into(),
             })
             .expect("store");

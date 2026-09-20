@@ -1,4 +1,5 @@
 mod agent_env;
+mod context;
 mod database;
 mod deploy;
 mod diagnostics;
@@ -357,6 +358,13 @@ impl NativeToolExecutor {
             NativeTool::LinearIssue { id } => linear::issue(&client, id).await,
             NativeTool::LinearMove { id, state } => linear::move_issue(&client, id, state).await,
             NativeTool::LinearComment { id, body } => linear::comment(&client, id, body).await,
+            NativeTool::ContextSearch {
+                query,
+                kinds,
+                project_path,
+                limit,
+            } => context::search(&client, query, kinds.as_deref(), project_path, limit).await,
+            NativeTool::ContextGet { kind, id } => context::get(&client, kind, id).await,
             NativeTool::ListErrors { limit } => errors::list(&client, limit).await,
             NativeTool::ErrorPrompt { id } => errors::prompt(&client, id).await,
             NativeTool::ReadLogs { service, limit } => {
@@ -527,6 +535,18 @@ enum NativeTool<'a> {
     LinearComment {
         id: &'a str,
         body: &'a str,
+    },
+    /// The context library. Through the daemon because a listing folds in the
+    /// error inbox, which only the daemon holds.
+    ContextSearch {
+        query: Option<&'a str>,
+        kinds: Option<Vec<String>>,
+        project_path: Option<&'a str>,
+        limit: usize,
+    },
+    ContextGet {
+        kind: &'a str,
+        id: &'a str,
     },
     /// The daemon owns the inbox, so both of these go through it.
     ListErrors {
@@ -872,6 +892,36 @@ impl<'a> NativeTool<'a> {
             "nomoreide_linear_comment" => Ok(Self::LinearComment {
                 id: required_text(arguments, "id")?,
                 body: required_text(arguments, "body")?,
+            }),
+            "nomoreide_context_search" => Ok(Self::ContextSearch {
+                query: arguments.get("query").and_then(Value::as_str),
+                kinds: arguments
+                    .get("kinds")
+                    .and_then(Value::as_array)
+                    .map(|kinds| {
+                        kinds
+                            .iter()
+                            .filter_map(Value::as_str)
+                            .map(str::to_string)
+                            .collect()
+                    }),
+                project_path: arguments.get("projectPath").and_then(Value::as_str),
+                limit: arguments
+                    .get("limit")
+                    .and_then(Value::as_u64)
+                    .and_then(|limit| usize::try_from(limit).ok())
+                    .filter(|limit| *limit > 0)
+                    .unwrap_or(context::DEFAULT_CONTEXT_LIMIT),
+            }),
+            "nomoreide_context_get" => Ok(Self::ContextGet {
+                kind: arguments
+                    .get("kind")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| "kind is required.".to_string())?,
+                id: arguments
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| "id is required.".to_string())?,
             }),
             "nomoreide_list_errors" => Ok(Self::ListErrors {
                 limit: arguments
