@@ -482,4 +482,42 @@ mod tests {
             Ok(())
         }
     }
+
+    /// The listing is where a phone gets `startedAt`, and it must not be the
+    /// spawn response.
+    ///
+    /// These two answers are built by *different routes*, which is easy to miss
+    /// and was worth pinning. `sessions` reads the manager in-process, so it
+    /// carries the session exactly as `create` built it. A spawn goes out over
+    /// the daemon's own HTTP route, whose shape is `TerminalSessionInfo` — and
+    /// that struct has no start time, so the session deserialized back from it
+    /// reports `None` however new the daemon is.
+    ///
+    /// That asymmetry is *fine* and deliberately left alone: the phone attaches
+    /// by id and re-reads the list immediately, which is where the row's uptime
+    /// comes from. Adding the field to `TerminalSessionInfo` would change four
+    /// committed parity recordings to fix an answer nothing reads. This test is
+    /// here so the next person finds that reasoning instead of the symptom.
+    #[test]
+    fn the_session_listing_carries_the_start_time() {
+        let terminal = TerminalManager::new();
+        let id = spawn_agent(&terminal, "uptime-agent");
+
+        let PlatformBound::TerminalSessions(response) = sessions(&terminal) else {
+            panic!("expected a session listing");
+        };
+        let session = response
+            .sessions
+            .iter()
+            .find(|session| session.id == id)
+            .expect("the session just spawned");
+
+        assert!(
+            session.started_at.is_some(),
+            "the listing must carry when the session started"
+        );
+        // Nothing has drawn a prompt in a `sleep 30`, so the badge stays off.
+        // A flag that is always true would say nothing.
+        assert!(!session.waiting);
+    }
 }
