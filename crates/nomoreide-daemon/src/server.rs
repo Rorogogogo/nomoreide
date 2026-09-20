@@ -36,7 +36,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
-use tokio::time::timeout;
 
 #[derive(Debug, Clone)]
 pub struct DaemonOptions {
@@ -360,12 +359,25 @@ async fn serve_on_listener(
     // A deadline turns that into what the caller asked for. A request with any
     // prospect of finishing has far longer than it needs; a stream that would
     // never end stops being a reason to stay up.
-    let graceful = axum::serve(listener, app).with_graceful_shutdown(async {
+    //
+    // The deadline starts when the shutdown does, which is the only moment it
+    // could start: wrapping the whole server in a timeout would stop a healthy
+    // daemon after the grace period, and did — the no-Node check caught a
+    // daemon that answered `/api/health` and then refused the connection five
+    // seconds later.
+    let shutting_down = Arc::new(tokio::sync::Notify::new());
+    let began = shutting_down.clone();
+    let graceful = axum::serve(listener, app).with_graceful_shutdown(async move {
         let _ = http_shutdown_rx.await;
+        began.notify_one();
     });
-    let server_result = match timeout(SHUTDOWN_GRACE, graceful).await {
-        Ok(result) => result,
-        Err(_) => {
+    let expired = async {
+        shutting_down.notified().await;
+        tokio::time::sleep(SHUTDOWN_GRACE).await;
+    };
+    let server_result = tokio::select! {
+        result = graceful => result,
+        _ = expired => {
             eprintln!(
                 "nomoreide: shutting down with connections still open after {}s; \
                  they are almost certainly streams a browser is holding.",
