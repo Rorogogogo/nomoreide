@@ -257,13 +257,22 @@ pub(crate) fn killed(session_id: String) -> PlatformBound {
 }
 
 /// Reject a prompt a phone should never have sent.
+///
+/// **An empty prompt is not one of them.** It used to be: the phone had a
+/// prompt box, so arriving with nothing in it meant a tap that would have
+/// started an agent with no instruction. The box is gone — it asked what the
+/// agent should look at before there was an agent on screen to ask, which is
+/// two decisions in the wrong order and a phone keyboard for a sentence better
+/// typed into the terminal that opens a second later. So the phone now sends an
+/// empty prompt on purpose, and this check refused every one of them.
+///
+/// Nothing downstream needed it. `derive_agent_invocation` already treats a
+/// blank prompt as "open the provider's interactive TUI" and never forwards it
+/// as an empty positional argument, and the spawn route defaults the key to
+/// `""` — which is how the dashboard has always been able to start a bare
+/// agent. The guard made a phone stricter than the desk for no reason either
+/// could explain.
 pub(crate) fn check_prompt(request: &TerminalSpawnRequest) -> Result<(), ProtocolError> {
-    if request.prompt.trim().is_empty() {
-        return Err(ProtocolError::new(
-            ErrorCode::MalformedFrame,
-            "An agent needs something to work on.",
-        ));
-    }
     if request.prompt.len() > limits::MAX_AGENT_PROMPT_BYTES {
         return Err(ProtocolError::new(
             ErrorCode::MalformedFrame,
@@ -380,6 +389,40 @@ async fn pump(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn spawn_request(prompt: &str) -> TerminalSpawnRequest {
+        TerminalSpawnRequest {
+            provider: Some("claude".into()),
+            prompt: prompt.to_string(),
+            repository: None,
+        }
+    }
+
+    /// **Starting an agent with nothing to say is the phone's normal case.**
+    ///
+    /// The prompt box was removed from the phone deliberately: it asked what
+    /// the agent should look at before there was an agent on screen to ask. So
+    /// the phone sends an empty prompt on every ordinary tap, and refusing it
+    /// meant "Start agent" did nothing but produce an error — unless Linear had
+    /// prefilled a task, which is the one path that still carried a sentence
+    /// and the reason this survived as long as it did.
+    ///
+    /// `derive_agent_invocation` opens the provider's interactive TUI for a
+    /// blank prompt, which is exactly what someone wants to type into.
+    #[test]
+    fn an_agent_may_start_with_nothing_to_work_on() {
+        check_prompt(&spawn_request("")).expect("an empty prompt opens the interactive TUI");
+        check_prompt(&spawn_request("   ")).expect("whitespace is no different from empty");
+    }
+
+    /// The bound that is still real: one prompt has to fit in one frame.
+    #[test]
+    fn a_prompt_larger_than_a_frame_is_still_refused() {
+        let oversized = "x".repeat(limits::MAX_AGENT_PROMPT_BYTES + 1);
+        let error = check_prompt(&spawn_request(&oversized))
+            .expect_err("a prompt over the cap must still be refused");
+        assert_eq!(error.code, ErrorCode::MalformedFrame);
+    }
 
     /// A resize on the machine reaches the phone as its own frame.
     ///
