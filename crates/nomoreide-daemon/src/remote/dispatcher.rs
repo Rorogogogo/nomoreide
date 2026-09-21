@@ -253,6 +253,30 @@ pub(crate) fn served_capabilities() -> CapabilitySet {
 /// grew a field deny unknown ones.
 const FIELD_CAPABILITIES: &[&str] = &[capabilities::TERMINAL_SPAWN_REPOSITORY];
 
+/// How much of *this machine's own* answer the dispatcher will read before
+/// trimming it for the wire.
+///
+/// **Deliberately not [`limits::MAX_FRAME_BYTES`].** That one bounds a frame
+/// read off the socket, where the bytes are someone else's and the cost of
+/// parsing them is the attack — so it is small on purpose. Nothing about this
+/// read is that: the body comes from the daemon's own router, in-process, and
+/// it is the *input* to the trimming rather than anything that goes out.
+///
+/// Borrowing the socket's bound here applied it in the wrong order — cap first,
+/// trim second — and `/api/github/runs` answers with GitHub's whole page, every
+/// run carrying every field GitHub sends. That cleared 256 KiB, so the read
+/// failed before `inspection::workflow_runs` could take its thirty and map each
+/// one down to the slim wire type. The phone got "could not read the local
+/// response: length limit exceeded" for a screen whose answer would have been a
+/// few kilobytes. Asking for `limit: 1` failed identically, because the limit
+/// is applied during that trimming and never reaches the route.
+///
+/// What leaves the machine is still bounded, and by the things that should
+/// bound it: the per-response caps in `inspection`, and the relay's own frame
+/// check on the way out. This is only how much the daemon may hold while
+/// deciding what to send.
+const MAX_LOCAL_RESPONSE_BYTES: usize = 8 * 1024 * 1024;
+
 /// Calls the daemon's router in-process.
 pub(crate) struct RouterDispatcher {
     router: axum::Router,
@@ -329,7 +353,7 @@ impl RouterDispatcher {
             .await
             .map_err(|error| internal(format!("the local router failed: {error}")))?;
         let status = response.status();
-        let body = axum::body::to_bytes(response.into_body(), limits::MAX_FRAME_BYTES)
+        let body = axum::body::to_bytes(response.into_body(), MAX_LOCAL_RESPONSE_BYTES)
             .await
             .map_err(|error| internal(format!("could not read the local response: {error}")))?;
         let parsed = serde_json::from_slice(&body).unwrap_or(Value::Null);
@@ -874,7 +898,7 @@ impl RouterDispatcher {
             .await
             .map_err(|error| internal(format!("the local router failed: {error}")))?;
         let status = response.status();
-        let bytes = axum::body::to_bytes(response.into_body(), limits::MAX_FRAME_BYTES)
+        let bytes = axum::body::to_bytes(response.into_body(), MAX_LOCAL_RESPONSE_BYTES)
             .await
             .map_err(|error| internal(format!("could not read the local response: {error}")))?;
         let parsed: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
@@ -944,7 +968,7 @@ impl RouterDispatcher {
             .await
             .map_err(|error| internal(format!("the local router failed: {error}")))?;
         let status = response.status();
-        let bytes = axum::body::to_bytes(response.into_body(), limits::MAX_FRAME_BYTES)
+        let bytes = axum::body::to_bytes(response.into_body(), MAX_LOCAL_RESPONSE_BYTES)
             .await
             .map_err(|error| internal(format!("could not read the local response: {error}")))?;
         let parsed: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
@@ -1407,6 +1431,37 @@ mod tests {
                     }
                 }),
             )
+            // A page of workflow runs the size GitHub really sends: every run
+            // carrying the fat objects GitHub embeds on each one. It exists to
+            // be *larger than one frame*, because that is the shape that broke
+            // — the dispatcher read this before anything trimmed it.
+            .route(
+                "/api/github/runs",
+                get(move |headers: HeaderMap| async move {
+                    require(&headers);
+                    let filler = "x".repeat(4 * 1024);
+                    let runs: Vec<serde_json::Value> = (0..200)
+                        .map(|index| {
+                            serde_json::json!({
+                                "id": 1000 + index,
+                                "name": "CI",
+                                "display_title": "a commit",
+                                "head_branch": "main",
+                                "event": "push",
+                                "run_number": index,
+                                "status": "completed",
+                                "conclusion": "success",
+                                "run_started_at": "2026-09-01T00:00:00Z",
+                                "updated_at": "2026-09-01T00:01:00Z",
+                                "html_url": "https://github.com/o/r/actions/runs/1",
+                                // The part that makes a real page big.
+                                "head_commit": { "message": filler.clone() },
+                            })
+                        })
+                        .collect();
+                    Json(serde_json::json!({ "ok": true, "runs": runs }))
+                }),
+            )
             .route(
                 "/api/services/:name/start",
                 post(move |Path(name): Path<String>| {
@@ -1545,6 +1600,53 @@ mod tests {
             TerminalManager::new(),
         );
         (dispatcher, reached)
+    }
+
+    /// **A page bigger than one frame still answers.**
+    ///
+    /// The dispatcher reads the machine's own response before anything trims
+    /// it, and it used to read it under `limits::MAX_FRAME_BYTES` — the bound
+    /// for a frame off the socket, where the bytes are someone else's. Applied
+    /// here it came first and the trimming came second, so `/api/github/runs`,
+    /// which answers with GitHub's whole page, failed the read outright. A
+    /// phone asking for the CI screen got "could not read the local response:
+    /// length limit exceeded" for an answer that would have been a few
+    /// kilobytes once `take(30)` and `workflow_run` were done with it.
+    ///
+    /// The stub answers with a page deliberately over that bound, so this fails
+    /// again the moment the cap goes back to being the socket's.
+    #[tokio::test]
+    async fn a_page_larger_than_one_frame_is_read_and_then_trimmed() {
+        let (dispatcher, _) = dispatcher();
+
+        let answer = dispatcher
+            .dispatch(
+                "req_1",
+                DeviceBound::GithubRuns(
+                    nomoreide_core::remote::protocol::device_bound::GithubRunsRequest {
+                        repository: None,
+                        branch: None,
+                        limit: None,
+                    },
+                ),
+                events(),
+            )
+            .await;
+
+        let PlatformBound::GithubRuns(response) = answer else {
+            panic!("expected runs, got {}", answer.kind());
+        };
+        // Trimmed to the protocol's ceiling, and said so.
+        assert_eq!(response.runs.len(), limits::MAX_WORKFLOW_RUNS);
+        assert!(response.truncated, "200 runs into 30 is a truncation");
+        // And what comes back is the slim wire type, not GitHub's page: the
+        // whole answer has to fit a frame even though its input did not.
+        let encoded = serde_json::to_vec(&response).expect("the answer serialises");
+        assert!(
+            encoded.len() < limits::MAX_FRAME_BYTES,
+            "the trimmed answer is {} bytes, which does not fit a frame",
+            encoded.len()
+        );
     }
 
     /// The repository list has to come back, which sounds too obvious to test
