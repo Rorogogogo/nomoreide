@@ -256,6 +256,54 @@ pub(crate) fn killed(session_id: String) -> PlatformBound {
     PlatformBound::TerminalKilled(TerminalKilled { session_id })
 }
 
+/// Whether the close route actually closed anything.
+///
+/// **The status is not the answer, and that is the whole bug this exists for.**
+/// `DELETE /api/terminal/sessions/:id` answers `200 { ok: false }` when it
+/// closed nothing — the daemon's own convention for a refusal, shared with the
+/// database and log-source routes, and deliberate: the dashboard renders the
+/// reason rather than treating it as a transport failure.
+///
+/// The remote path checked only `status.is_success()`, which that answer
+/// satisfies. So every failed close was reported to the phone as
+/// `terminal.killed`: the session stayed on the machine, still running, while
+/// the phone said it had ended and removed it from the list. The person then
+/// finds it alive in NoMoreIDE with no reason given and no record that anything
+/// went wrong.
+///
+/// `close_session` refuses for real reasons — a session still being created, or
+/// one that changed underneath the close — and a caller that cannot see them is
+/// a caller that cannot report them.
+pub(crate) fn check_closed(
+    status: axum::http::StatusCode,
+    body: &serde_json::Value,
+) -> Result<(), ProtocolError> {
+    let detail = || {
+        body.get("error")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("that terminal could not be closed")
+            .to_string()
+    };
+    if !status.is_success() {
+        return Err(ProtocolError::new(
+            ErrorCode::ServiceActionFailed,
+            "That terminal could not be closed.",
+        )
+        .with_detail(detail()));
+    }
+    // A missing `ok` is a failure too. This route always sends one, and an
+    // answer that does not is not one this code recognises — saying "closed"
+    // about a body it cannot read is the mistake, not the caution.
+    if body.get("ok").and_then(serde_json::Value::as_bool) != Some(true) {
+        return Err(ProtocolError::new(
+            ErrorCode::ServiceActionFailed,
+            "That terminal could not be closed.",
+        )
+        .with_detail(detail()));
+    }
+    Ok(())
+}
+
 /// Reject a prompt a phone should never have sent.
 ///
 /// **An empty prompt is not one of them.** It used to be: the phone had a
@@ -396,6 +444,61 @@ mod tests {
             prompt: prompt.to_string(),
             repository: None,
         }
+    }
+
+    /// **The bug: a refusal that answers `200`.**
+    ///
+    /// `DELETE /api/terminal/sessions/:id` reports "I closed nothing" as
+    /// `200 { ok: false }`. The remote path checked only the status, so every
+    /// failed close reached the phone as `terminal.killed` — the list dropped
+    /// the session, the person believed it had ended, and it was still running
+    /// in NoMoreIDE with no reason given.
+    #[test]
+    fn a_close_that_closed_nothing_is_not_a_success() {
+        let body = serde_json::json!({ "ok": false, "sessions": [] });
+        let error = check_closed(axum::http::StatusCode::OK, &body)
+            .expect_err("200 with ok:false closed nothing and must not read as success");
+        assert_eq!(error.code, ErrorCode::ServiceActionFailed);
+    }
+
+    /// The daemon's refusals carry prose, and it is the only thing that says
+    /// *why* — "creation is still in progress" is a different problem from
+    /// "changed while closing", and both are actionable.
+    #[test]
+    fn a_refusal_carries_the_daemons_own_reason() {
+        let body = serde_json::json!({
+            "ok": false,
+            "error": "Terminal session creation is still in progress: term_4",
+        });
+        let error = check_closed(axum::http::StatusCode::OK, &body).expect_err("a refusal");
+        assert_eq!(
+            error.detail.as_deref(),
+            Some("Terminal session creation is still in progress: term_4")
+        );
+    }
+
+    /// An answer this code cannot read is not a close it may claim happened.
+    #[test]
+    fn a_body_with_no_verdict_is_not_a_success() {
+        check_closed(axum::http::StatusCode::OK, &serde_json::json!({}))
+            .expect_err("a body with no `ok` says nothing, and nothing is not yes");
+    }
+
+    /// The happy path still passes, which is what stops the fix from being
+    /// "refuse everything".
+    #[test]
+    fn a_close_that_worked_is_a_success() {
+        let body = serde_json::json!({ "ok": true, "sessions": [] });
+        check_closed(axum::http::StatusCode::OK, &body).expect("ok:true closed the session");
+    }
+
+    /// A transport failure is still a failure, and keeps the daemon's words.
+    #[test]
+    fn an_error_status_is_still_refused() {
+        let body = serde_json::json!({ "error": "no such session" });
+        let error = check_closed(axum::http::StatusCode::INTERNAL_SERVER_ERROR, &body)
+            .expect_err("a 500 is a failure");
+        assert_eq!(error.detail.as_deref(), Some("no such session"));
     }
 
     /// **Starting an agent with nothing to say is the phone's normal case.**

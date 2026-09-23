@@ -1023,17 +1023,9 @@ impl RouterDispatcher {
             Self::segment(&request.session_id)
         );
         let (status, body) = self.call(Method::DELETE, &path).await?;
-        if !status.is_success() {
-            let detail = body
-                .get("error")
-                .and_then(Value::as_str)
-                .unwrap_or("that terminal could not be closed");
-            return Err(ProtocolError::new(
-                ErrorCode::ServiceActionFailed,
-                "That terminal could not be closed.",
-            )
-            .with_detail(detail.to_string()));
-        }
+        // The status alone does not say whether anything closed — see
+        // `terminal::check_closed`, which is where that reasoning lives.
+        super::terminal::check_closed(status, &body)?;
         Ok(super::terminal::killed(request.session_id.clone()))
     }
 }
