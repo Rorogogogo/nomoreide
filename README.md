@@ -25,6 +25,46 @@ Give your coding agents and yourself a **shared local control surface** for serv
 
 ## Product Tour
 
+<p align="center">
+  <img src="assets/screenshots/workbench-overview.png" alt="NoMoreIDE workbench showing Git Review with a file tree and inline diff, a Linear task board, and two agent terminals" width="1200" />
+</p>
+
+An AI-native workbench connects agents, Git, services, GitHub Actions, and Vercel into one development workflow — no IDE required. Use the interface yourself or let agents use MCP tools to manage services, operate Git, read logs, and inspect CI and deployment information. Send supported files, diffs, and service context directly to your agent.
+
+<details>
+<summary>Focused views: cross-repo Git, GitHub Actions, agents, profiles, and services</summary>
+
+### Cross-repository Git Board
+
+See changes and staging state for several repositories together. This example uses three simulated repositories.
+
+<img src="assets/screenshots/git-board.png" alt="Actual Git Board with web, api, and shared repository columns using demo data" width="1200" />
+
+### GitHub Actions integration
+
+Inspect workflow runs, jobs, failed steps, and logs alongside your development work.
+
+<img src="assets/screenshots/github-actions.png" alt="GitHub Actions job showing successful Checkout and Install steps and a failed Typecheck step; demo data" width="800" />
+
+### Multiple agents and shareable profiles
+
+Manage supported agent tools and configurations in one place. Save supported MCP, skills, and plugin configuration as a profile, then export or publish it for others.
+
+<img src="assets/screenshots/agent-tools.png" alt="Claude Code, Codex CLI, and Cursor configuration panels using demo data" width="1200" />
+
+<img src="assets/screenshots/agent-profiles.png" alt="Profile snapshot and import controls with saved agent configuration profiles; demo data" width="1000" />
+
+### Managed services for agent testing
+
+Agents can use MCP to inspect service status, read logs, and start, stop, or restart managed services. Reuse running services and inspect ports before starting another process.
+
+<img src="assets/screenshots/managed-services.png" alt="Managed web-client and api services running, with a stopped worker and service controls; demo data" width="440" />
+
+The focused views in this section use demonstration data.
+
+</details>
+
+
 <div align="center">
 
 <a href="https://www.nomoreide.com/#hero-demo">
