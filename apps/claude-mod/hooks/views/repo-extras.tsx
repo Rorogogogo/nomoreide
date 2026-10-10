@@ -1,9 +1,22 @@
 import type { RenderElement } from 'claude-code'
 
 import type { Repo } from '../../types'
+import { createPullPrompt, reviewPullPrompt } from '../prompts'
 import { age, clipEnd } from '../text'
 import { GLYPH } from '../tokens'
-import { NARROW, chip, fit, group, heading, more, repoNameOf, row, space, twice } from './chrome'
+import {
+  NARROW,
+  ask,
+  chip,
+  fit,
+  group,
+  heading,
+  more,
+  repoNameOf,
+  row,
+  space,
+  twice,
+} from './chrome'
 import type { Actions, Kit, Model } from './model'
 
 /** How many checkpoints the Git view lists; the dashboard holds the rest. */
@@ -11,7 +24,7 @@ export const MAX_SNAPSHOTS = 5
 
 /** The branch's pull request and how its checks stand; nothing for a branch without one. */
 export function pullRow(kit: Kit, m: Model, repo: Repo, act: Actions): RenderElement | false {
-  const { Text, Button } = kit
+  const { Box, Text, Button } = kit
   const pull = m.pulls.find(one => one.root === repo.root)
   if (pull === undefined) return false
   const isOpen = pull.state === 'OPEN'
@@ -43,10 +56,13 @@ export function pullRow(kit: Kit, m: Model, repo: Repo, act: Actions): RenderEle
       <Button
         key="pull"
         plain
-        label={fit(m, `#${pull.number} ${pull.title}`, word.length + 4)}
+        label={fit(m, `#${pull.number} ${pull.title}`, word.length + 16)}
         onPress={() => act.openUrl(pull.url)}
       />,
-      <Text color={tone}>{word}</Text>,
+      <Box flexDirection="row" alignItems="center" columnGap={m.width < NARROW ? 1 : 2}>
+        <Text color={tone}>{word}</Text>
+        {isOpen && m.width >= NARROW && ask(kit, m, act, 'ask-review', 'review', () => reviewPullPrompt(pull))}
+      </Box>,
       meta,
     ),
   ])
@@ -126,6 +142,9 @@ export function syncRow(kit: Kit, m: Model, repo: Repo, act: Actions): RenderEle
       {repo.behind > 0 && (
         <Button key="pull" {...chip(m, false)} label="pull" onPress={() => act.sync(repo.root, 'pull')} />
       )}
+      {m.pulls.every(one => one.root !== repo.root) &&
+        !['main', 'master', 'detached'].includes(repo.branch) &&
+        ask(kit, m, act, 'ask-pull', 'open a PR', () => createPullPrompt(repo))}
       {(repo.ahead > 0 || repo.upstream === '') &&
         twice(kit, m, act, `push:${repo.root}`, 'push', () => act.sync(repo.root, 'push'))}
     </Box>

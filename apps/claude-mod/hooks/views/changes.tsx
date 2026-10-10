@@ -7,6 +7,7 @@ import {
   MAX_ROWS,
   NARROW,
   chip,
+  diffBody,
   fit,
   group,
   heading,
@@ -141,7 +142,7 @@ export function changeSetView(
 }
 
 export function changeDiffView(kit: Kit, m: Model, diff: ChangeDiff, act: Actions): RenderElement {
-  const { Box, Text, Button, Code } = kit
+  const { Box, Text, Button } = kit
   const { name, dir } = splitPath(diff.path)
   const set = m.changeSets.find(one => one.id === diff.id)
   const status = m.changeSet?.files.find(one => one.path === diff.path)?.status ?? 'M'
@@ -183,7 +184,7 @@ export function changeDiffView(kit: Kit, m: Model, diff: ChangeDiff, act: Action
       {diff.hunks === '' ? (
         <Text dimColor>Nothing to show as text: a binary file, or one that no longer differs.</Text>
       ) : (
-        <Code source={diff.hunks} format="diff" path={diff.path} />
+        diffBody(kit, m, diff.hunks, diff.path)
       )}
       {more(kit, diff.hiddenLines, 'lines')}
     </Box>

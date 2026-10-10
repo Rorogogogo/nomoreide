@@ -1,16 +1,18 @@
 import type { Color, RenderElement } from 'claude-code'
 
-import type { Tab } from '../../types'
-import { logo, tabIcon } from '../icons'
+import type { Limit, Tab } from '../../types'
+import { logo, meterSvg, tabIcon } from '../icons'
 import { clipEnd, plural } from '../text'
 import { GLYPH } from '../tokens'
 import { NARROW, PRESS_INSET, TIGHT, fit, hasFailed, noticeRow, paint, rule, space } from './chrome'
+import { chillToggle, lyricRow, nowPlaying } from './chill'
 import { consoleTab } from './console'
 import { errorsTab } from './errors'
 import { gitTab } from './git'
 import { linearTab } from './linear'
 import type { Actions, Kit, Model } from './model'
 import { servicesTab } from './services'
+import { until } from './usage'
 
 export const TABS: readonly { id: Tab; hotkey: string; label: string }[] = [
   { id: 'git', hotkey: '1', label: 'Git' },
@@ -35,11 +37,13 @@ export function pane(kit: Kit, m: Model, act: Actions): RenderElement {
       {...(m.isTerminal && m.rows > 0 ? { minHeight: m.rows } : {})}
       {...(m.isTerminal && m.fill !== '' ? { backgroundColor: m.fill } : {})}
     >
-      {header(kit, m)}
+      {header(kit, m, act)}
       {space(kit)}
       {tabStrip(kit, m, act)}
       {rule(kit, m)}
       {m.notice !== null ? noticeRow(kit, m, m.notice) : m.isTerminal && space(kit)}
+      {m.isChill && nowPlaying(kit, m, act)}
+      {m.isChill && space(kit)}
       {m.tab === 'git' && gitTab(kit, m, act)}
       {m.tab === 'errors' && errorsTab(kit, m, act)}
       {m.tab === 'services' && servicesTab(kit, m, act)}
@@ -58,12 +62,43 @@ export function pane(kit: Kit, m: Model, act: Actions): RenderElement {
   )
 }
 
-/**
- * The band's one row, for a pane that is on but has nowhere to sit: what is
- * running, what changed, what broke. Nothing to say draws nothing.
- */
-export function band(kit: Kit, m: Model, act: Actions): RenderElement | undefined {
-  const { Box, Text, Button } = kit
+/** A band meter's size: eight cells on a grid; drawn, as long as that and a hair under a line of type. */
+const BAND_BAR = { cells: 8, width: 64, height: 6 }
+
+/** One limit in the band: its window, a meter of the share used in its status colour, and when it starts over. */
+function limitPart(kit: Kit, m: Model, label: string, limit: Limit): RenderElement {
+  const { Box, Text, Svg } = kit
+  const tone = limit.usedPercent >= 90 ? m.colors.bad : limit.usedPercent >= 70 ? m.colors.busy : m.colors.ok
+  const share = Math.max(0, Math.min(1, limit.usedPercent / 100))
+  const full = Math.round(share * BAND_BAR.cells)
+  const { width, height } = BAND_BAR
+  const filled = share === 0 ? 0 : Math.max(height, Math.round(share * width))
+
+  return (
+    <Box flexDirection="row" alignItems="center" columnGap={1}>
+      <Text dimColor>{label}</Text>
+      {Svg === undefined ? (
+        <Box flexDirection="row" flexShrink={0}>
+          <Text color={tone}>{GLYPH.meter.repeat(full)}</Text>
+          <Text color={m.colors.rule}>{GLYPH.meter.repeat(BAND_BAR.cells - full)}</Text>
+        </Box>
+      ) : (
+        <Svg
+          source={meterSvg(m.scheme, width, height, filled, tone)}
+          alt={`${label}: ${limit.usedPercent}% used`}
+          width={width}
+          height={height}
+        />
+      )}
+      <Text color={tone}>{limit.usedPercent}%</Text>
+      {limit.resetsAt > m.now && <Text dimColor>{until(m.now, limit.resetsAt)} left</Text>}
+    </Box>
+  )
+}
+
+/** What a pane with nowhere to sit would have said: what is running, what changed, what broke. */
+function summaryParts(kit: Kit, m: Model): RenderElement[] {
+  const { Box, Text } = kit
   const parts: RenderElement[] = []
   const only = m.repos.length === 1 ? m.repos[0] : undefined
 
@@ -104,7 +139,24 @@ export function band(kit: Kit, m: Model, act: Actions): RenderElement | undefine
   if (m.counts.errors > 0) {
     parts.push(<Text color={m.colors.bad}>{plural(m.counts.errors, 'error')}</Text>)
   }
-  if (parts.length === 0) return undefined
+
+  return parts
+}
+
+/**
+ * The band's one row above the prompt. For a pane that is on but has nowhere
+ * to sit: its summary and a way to it. Seated or not: the Claude limits, the
+ * five-hour window and the week. Nothing to say draws nothing.
+ */
+export function band(kit: Kit, m: Model, act: Actions, isSeated = false): RenderElement | undefined {
+  const { Box, Text, Button } = kit
+  const parts = isSeated ? [] : summaryParts(kit, m)
+
+  if (m.limits?.fiveHour != null) parts.push(limitPart(kit, m, '5h', m.limits.fiveHour))
+  if (m.limits?.weekly != null) parts.push(limitPart(kit, m, 'week', m.limits.weekly))
+  // One row, never two: in chill mode with a song on, the lyric has it.
+  const lyric = lyricRow(kit, m)
+  if (lyric !== undefined || parts.length === 0) return lyric
 
   return (
     <Box flexDirection="row">
@@ -116,13 +168,13 @@ export function band(kit: Kit, m: Model, act: Actions): RenderElement | undefine
         </Box>
       ))}
       <Box flexGrow={1} />
-      <Button key="open" plain dimColor label="open pane" onPress={() => act.openPane()} />
+      {!isSeated && <Button key="open" plain dimColor label="open pane" onPress={() => act.openPane()} />}
     </Box>
   )
 }
 
 /** The name and, where there is room, the folder; at the far end, what is running. */
-export function header(kit: Kit, m: Model): RenderElement {
+export function header(kit: Kit, m: Model, act: Actions): RenderElement {
   const { Box, Text, Svg } = kit
   const folder = m.workspace.slice(m.workspace.lastIndexOf('/') + 1)
 
@@ -144,6 +196,9 @@ export function header(kit: Kit, m: Model): RenderElement {
         </Box>
       )}
       <Box flexGrow={1} />
+      <Box flexShrink={0} marginRight={2}>
+        {chillToggle(kit, m, act)}
+      </Box>
       <Box flexShrink={0} flexDirection="row">
         {m.reach === 'up' && m.counts.live > 0 && <Text color={m.colors.ok}>{GLYPH.on} </Text>}
         {m.reach === 'up' && (

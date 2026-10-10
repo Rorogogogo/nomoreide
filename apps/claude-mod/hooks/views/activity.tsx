@@ -3,15 +3,15 @@ import type { Color, RenderElement } from 'claude-code'
 import { GLYPH } from '../tokens'
 import { group, heading, quiet, space } from './chrome'
 import type { Kit, Model } from './model'
-import { metered, stat } from './usage'
+import { metered, stat, trendChart } from './usage'
 
 const gigabytes = (bytes: number): string => `${(bytes / 1024 ** 3).toFixed(1)} GB`
 
 const megabytes = (mb: number): string => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`)
 
-/** A share's colour once it presses: amber from three quarters, red from nine tenths. */
-const pressure = (percent: number, m: Model): Color | undefined =>
-  percent >= 90 ? m.colors.bad : percent >= 75 ? m.colors.busy : undefined
+/** A share's colour, as the limits above the prompt: green, amber from three quarters, red from nine tenths. */
+const pressure = (percent: number, m: Model): Color =>
+  percent >= 90 ? m.colors.bad : percent >= 75 ? m.colors.busy : m.colors.ok
 
 /** What the machine is doing now: its processor, memory and disk, then who is using them. */
 export function activityView(kit: Kit, m: Model): RenderElement {
@@ -58,6 +58,19 @@ export function activityView(kit: Kit, m: Model): RenderElement {
             pressure(disk.usedPercent, m),
           ),
       ])}
+      {activity.trend !== null && space(kit)}
+      {activity.trend !== null && heading(kit, 'HISTORY')}
+      {activity.trend !== null &&
+        group(kit, m, [
+          trendChart(
+            kit,
+            m,
+            'trend:host',
+            activity.trend,
+            { label: 'CPU', top: 100, now: `${Math.round(cpu)}%`, unit: value => `${Math.round(value)}%` },
+            { label: 'Memory', top: 100, now: `${Math.round(memory.usedPercent)}%`, unit: value => `${Math.round(value)}%` },
+          ),
+        ])}
       {activity.services.length > 0 && space(kit)}
       {activity.services.length > 0 && heading(kit, 'MANAGED SERVICES', activity.services.length)}
       {activity.services.length > 0 &&

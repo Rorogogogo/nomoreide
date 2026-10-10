@@ -48,7 +48,15 @@ export type Service = {
 export type ServiceSection = 'services' | 'activity' | 'database'
 
 /** What the machine is doing now, and which processes are doing it. */
+/**
+ * How two measures moved over the daemon's recent samples, thinned to a few
+ * dozen points each, the oldest first, across `seconds` in all.
+ */
+export type Trend = { cpu: number[]; memory: number[]; seconds: number }
+
 export type Activity = {
+  /** The processor and memory in use, each a percentage, over the last half hour or so. */
+  trend: Trend | null
   cpuPercent: number | null
   cores: number
   load: number | null
@@ -64,20 +72,32 @@ export type Database = { name: string; engine: string; isWritable: boolean }
 
 export type DbTables = { database: string; tables: string[]; note: string }
 
-/** A page of one table's rows, every value as the text it is shown as. */
+/**
+ * A page of one table's rows, every value as the text it is shown as. Drawn
+ * as a table: `firstColumn` is the first column in view when they do not all
+ * fit, and `record` the row opened to be read whole, counted from 0.
+ */
 export type DbRows = {
   database: string
   table: string
   columns: string[]
   rows: string[][]
-  rowCount: number
+  /** How many rows the table holds; `null` where the engine was not asked. */
+  total: number | null
+  /** Whether rows follow this page. */
+  hasMore: boolean
   offset: number
+  firstColumn: number
+  record: number | null
+  /** The statement these rows answer, when they are a query's and not a table's; `''` otherwise. */
+  sql: string
   note: string
 }
 
 export type LogLine = { text: string; tone: 'plain' | 'warn' | 'bad' }
 
-export type Logs = { name: string; lines: LogLine[] }
+/** A service's recent output and, while it runs, its processor share (percent) and memory (megabytes) over time. */
+export type Logs = { name: string; lines: LogLine[]; trend: Trend | null }
 
 export type Incident = {
   id: number
@@ -109,8 +129,45 @@ export type Pull = {
   total: number
 }
 
-/** The Git tab's three views: the working tree, the folder's files, the branch's workflow runs. */
-export type GitSection = 'changes' | 'files' | 'actions'
+/** The Git tab's views: the working tree, the folder's files, the commit graph, the open pull requests, the branch's workflow runs. */
+export type GitSection = 'changes' | 'files' | 'history' | 'pulls' | 'actions'
+
+/**
+ * One line of `git log --graph`: the graph's own characters for the line and,
+ * where the line is a commit, the commit. A line that only joins lanes has no `sha`.
+ */
+export type Commit = {
+  graph: string
+  /** Abbreviated; `''` for a line that is graph alone. */
+  sha: string
+  subject: string
+  author: string
+  /** Epoch milliseconds. */
+  at: number
+  /** Branches, tags and `HEAD` that point here. */
+  refs: string[]
+}
+
+/** A repository's recent commits across its branches, the newest first. */
+export type History = { root: string; rows: Commit[] }
+
+/** One commit opened: what it touched, and the diff of the file picked from that. */
+export type OpenCommit = {
+  root: string
+  sha: string
+  subject: string
+  author: string
+  at: number
+  body: string
+  files: { status: string; path: string }[]
+  diff: { path: string; hunks: string; hiddenLines: number } | null
+}
+
+/** A pull request in a repository's list: `Pull`, and whose it is. */
+export type PullItem = Pull & { branch: string; author: string; updatedAt: string }
+
+/** A repository's open pull requests; `note` says why there are none to show (no `gh`, no remote). */
+export type PullList = { root: string; items: PullItem[]; note: string }
 
 export type Entry = { name: string; kind: 'file' | 'dir' | 'other' }
 
@@ -131,7 +188,15 @@ export type OpenFile = {
   top: number
   isEditing: boolean
   line: number | null
+  /** Whether the editor holds changes not yet written to the file. */
+  isDirty: boolean
 }
+
+/** A line of a file that holds what was searched for; `path` is from the session's folder down. */
+export type Hit = { path: string; line: number; text: string }
+
+/** What a search of the session's folder found: files by name, and lines by what they say. */
+export type Search = { query: string; names: string[]; hits: Hit[]; isCut: boolean }
 
 /** One GitHub Actions workflow run, as `gh run list` reports it. */
 export type Run = {
@@ -182,6 +247,35 @@ export type ChangeDiff = { id: string; path: string; hunks: string; hiddenLines:
 /** A rate-limit window: how much is used and when it starts over, in epoch milliseconds. */
 export type Limit = { usedPercent: number; resetsAt: number }
 
+/**
+ * What the Mac says is playing, in whichever app: `elapsed` seconds in as of
+ * `at` (epoch milliseconds), which moves on by the clock while it plays.
+ */
+export type Track = {
+  /** The player's bundle identifier. */
+  app: string
+  title: string
+  artist: string
+  album: string
+  /** Seconds; 0 when the player gave none. */
+  duration: number
+  elapsed: number
+  at: number
+  isPlaying: boolean
+}
+
+/** One sung line and the second it starts at. */
+export type LyricLine = { at: number; text: string }
+
+/** A song's timed lyrics; no lines when none were found. `key` names the song they are for. */
+export type Lyrics = { key: string; lines: LyricLine[] }
+
+/** A song's album cover as a small JPEG in base64; `key` names the song it is for. */
+export type Cover = { key: string; jpeg: string }
+
+/** The two Claude rate-limit windows; a side is `null` when the daemon has no figure for it. */
+export type Limits = { fiveHour: Limit | null; weekly: Limit | null }
+
 export type Usage = {
   /** The latest Claude session the daemon saw; `null` when it has seen none. */
   session: { costUSD: number; linesAdded: number; linesRemoved: number } | null
@@ -197,7 +291,12 @@ export type Usage = {
   } | null
 }
 
-export type Tool = { name: string; detail: string }
+/**
+ * One installed thing: its name, a dim line about it, the scope it is set
+ * in, and where it lives (a skill's file, a hook's settings file, a plugin's
+ * marketplace). Never a server's address or a hook's command.
+ */
+export type Tool = { name: string; detail: string; scope: string; where: string }
 
 /** What Claude Code has installed, by kind. */
 export type Tools = { skills: Tool[]; mcp: Tool[]; plugins: Tool[]; hooks: Tool[] }
@@ -219,6 +318,9 @@ export type Task = {
   isMine: boolean
   updatedAt: string
   description: string
+  /** The workflow state a press moves it to, by id: the team's first started and first completed one; `''` for none. */
+  startState: string
+  doneState: string
 }
 
 export type Tasks = { isConnected: boolean; tasks: Task[]; hasMore: boolean }
@@ -256,8 +358,12 @@ declare module 'claude-code' {
       pulls: Pull[]
       snapshots: Snapshots | null
       gitSection: GitSection
+      history: History | null
+      commit: OpenCommit | null
+      pullList: PullList | null
       listing: Listing | null
       file: OpenFile | null
+      search: Search | null
       runs: Runs | null
       run: OpenRun | null
       section: Section
@@ -265,6 +371,17 @@ declare module 'claude-code' {
       changeSet: OpenChangeSet | null
       changeDiff: ChangeDiff | null
       usage: Usage | null
+      /** Read while the mod is on, whatever view is in front: the band above the prompt shows it. */
+      limits: Limits | null
+      /** Chill mode: what is playing is shown, with its lyrics. Off until asked for. */
+      isChill: boolean
+      track: Track | null
+      lyrics: Lyrics | null
+      cover: Cover | null
+      /** The now-playing card opened up: a larger cover and more of the lyric. */
+      isChillWide: boolean
+      /** The lyric line being sung; -1 before the first or with no lyrics. */
+      lyricAt: number
       tools: Tools | null
       /** The kind of tool whose list is unfolded; `''` for none. */
       toolKind: ToolKind | ''

@@ -2,12 +2,15 @@ import type { RenderElement } from 'claude-code'
 
 import type { Diff, GitFile, GitSection, Repo } from '../../types'
 import { isChanged, isStaged } from '../git'
+import { commitMessagePrompt } from '../prompts'
 import { clipEnd, clipStart, plural, splitPath } from '../text'
 import { GLYPH } from '../tokens'
 import {
   MAX_ROWS,
   NARROW,
+  ask,
   chip,
+  diffBody,
   fit,
   group,
   heading,
@@ -24,11 +27,14 @@ import {
 import type { Actions, Kit, Model } from './model'
 import { runView, runsList } from './actions'
 import { browser, fileView } from './files'
+import { commitView, historyList, pullsList } from './history'
 import { pullRow, snapshotList, syncRow } from './repo-extras'
 
 const GIT_SECTIONS: readonly { id: GitSection; hotkey: string; label: string }[] = [
   { id: 'changes', hotkey: 'c', label: 'Changes' },
   { id: 'files', hotkey: 'f', label: 'Files' },
+  { id: 'history', hotkey: 'h', label: 'History' },
+  { id: 'pulls', hotkey: 'r', label: 'PRs' },
   { id: 'actions', hotkey: 'n', label: 'Actions' },
 ]
 
@@ -36,6 +42,7 @@ export function gitTab(kit: Kit, m: Model, act: Actions): RenderElement {
   const { Box } = kit
   if (m.gitSection === 'changes' && m.diff !== null) return diffView(kit, m, m.diff, act)
   if (m.gitSection === 'files' && m.file !== null) return fileView(kit, m, m.file, act)
+  if (m.gitSection === 'history' && m.commit !== null) return commitView(kit, m, m.commit, act)
   const openRun = m.run === null ? undefined : m.runs?.items.find(one => one.id === m.run?.id)
   if (m.gitSection === 'actions' && openRun !== undefined && m.runs !== null && m.run !== null) {
     return runView(kit, m, m.runs, openRun, m.run, act)
@@ -47,6 +54,8 @@ export function gitTab(kit: Kit, m: Model, act: Actions): RenderElement {
       {space(kit)}
       {m.gitSection === 'changes' && changesView(kit, m, act)}
       {m.gitSection === 'files' && browser(kit, m, act)}
+      {m.gitSection === 'history' && historyList(kit, m, act)}
+      {m.gitSection === 'pulls' && pullsList(kit, m, act)}
       {m.gitSection === 'actions' && runsList(kit, m, act)}
     </Box>
   )
@@ -245,6 +254,12 @@ export function repoView(kit: Kit, m: Model, repo: Repo, act: Actions): RenderEl
       {changed.length > 0 && group(kit, m, changed.slice(0, MAX_ROWS).map(file => fileRow(kit, m, act, repo, file, false)), 0)}
       {more(kit, changed.length - MAX_ROWS, 'changed')}
       {staged.length > 0 && space(kit)}
+      {staged.length > 0 && (
+        <Box flexDirection="row">
+          <Box flexGrow={1} />
+          {ask(kit, m, act, 'ask-message', 'write the message', () => commitMessagePrompt(repo))}
+        </Box>
+      )}
       {staged.length > 0 &&
         (Input === undefined ? (
           <Text dimColor>Commit from a terminal: this surface has no text field.</Text>
@@ -263,7 +278,7 @@ export function repoView(kit: Kit, m: Model, repo: Repo, act: Actions): RenderEl
 }
 
 export function diffView(kit: Kit, m: Model, diff: Diff, act: Actions): RenderElement {
-  const { Box, Text, Button, Code } = kit
+  const { Box, Text, Button } = kit
   const { name, dir } = splitPath(diff.path)
   const repo = m.repos.find(one => one.root === diff.root)
   const file = repo?.files.find(one => one.path === diff.path)
@@ -333,7 +348,7 @@ export function diffView(kit: Kit, m: Model, diff: Diff, act: Actions): RenderEl
             : 'Nothing to show as text: a binary file, or a change of mode alone.'}
         </Text>
       ) : (
-        <Code source={diff.hunks} format="diff" path={diff.path} />
+        diffBody(kit, m, diff.hunks, diff.path)
       )}
       {more(kit, diff.hiddenLines, 'lines')}
     </Box>

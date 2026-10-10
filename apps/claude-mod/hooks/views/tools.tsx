@@ -1,9 +1,22 @@
 import type { RenderElement } from 'claude-code'
 
 import type { Tool, ToolKind } from '../../types'
+import { addToolPrompt, askToolPrompt, removeToolPrompt } from '../prompts'
 import { clipEnd } from '../text'
 import { GLYPH } from '../tokens'
-import { MAX_ROWS, NARROW, chip, fit, group, heading, more, quiet, rowHover, space } from './chrome'
+import {
+  MAX_ROWS,
+  NARROW,
+  ask,
+  chip,
+  fit,
+  group,
+  heading,
+  more,
+  quiet,
+  rowHover,
+  space,
+} from './chrome'
 import type { Actions, Kit, Model } from './model'
 
 export const TOOL_KINDS: readonly { id: ToolKind; label: string }[] = [
@@ -32,17 +45,22 @@ export function toolsView(kit: Kit, m: Model, act: Actions): RenderElement {
           <Button
             key={`tool:${kind}:${one.name}`}
             plain
-            label={fit(m, kind === 'skills' ? `/${one.name}` : one.name, 26)}
+            label={fit(m, kind === 'skills' ? `/${one.name}` : one.name, 30)}
             onPress={() => act.toolToPrompt(kind, one.name)}
           />
         )}
       </Box>
       <Box flexGrow={1} />
-      {one.detail !== '' && m.width >= NARROW && (
-        <Box flexShrink={0} marginLeft={2}>
-          <Text dimColor>{clipEnd(one.detail, 24)}</Text>
-        </Box>
-      )}
+      <Box flexShrink={0} flexDirection="row" alignItems="center" columnGap={m.width < NARROW ? 1 : 2} marginLeft={1}>
+        {one.detail !== '' && m.width >= NARROW + 20 && <Text dimColor>{clipEnd(one.detail, 18)}</Text>}
+        {ask(kit, m, act, `ask-tool:${kind}:${at}`, 'ask', () => askToolPrompt(kind, one))}
+        <Button
+          key={`remove-tool:${kind}:${at}`}
+          {...chip(m)}
+          label="remove"
+          onPress={() => act.draft(removeToolPrompt(kind, one))}
+        />
+      </Box>
     </Box>
   )
 
@@ -59,14 +77,17 @@ export function toolsView(kit: Kit, m: Model, act: Actions): RenderElement {
               kit,
               kind.label,
               some.length,
-              some.length > 0 ? (
-                <Button
-                  key={`tools-${kind.id}`}
-                  {...chip(m)}
-                  label={isOpen ? 'hide' : 'show'}
-                  onPress={() => act.toggleTools(kind.id)}
-                />
-              ) : undefined,
+              <Box flexDirection="row" alignItems="center" columnGap={m.width < NARROW ? 1 : 2}>
+                {ask(kit, m, act, `ask-add:${kind.id}`, 'add', () => addToolPrompt(kind.id))}
+                {some.length > 0 && (
+                  <Button
+                    key={`tools-${kind.id}`}
+                    {...chip(m)}
+                    label={isOpen ? 'hide' : 'show'}
+                    onPress={() => act.toggleTools(kind.id)}
+                  />
+                )}
+              </Box>,
             )}
             {isOpen && group(kit, m, some.slice(0, MAX_ROWS).map((one, index) => line(kind.id, one, index)), 0)}
             {isOpen && more(kit, some.length - MAX_ROWS, 'more')}

@@ -1,18 +1,21 @@
 import type { Color, RenderElement } from 'claude-code'
 
-import type { Logs, Service, ServiceSection } from '../../types'
+import type { Logs, Service, ServiceSection, Trend } from '../../types'
+import { addServicePrompt, debugServicePrompt } from '../prompts'
 import { clipEnd, tilde } from '../text'
 import { GLYPH } from '../tokens'
 import type { Palette } from '../tokens'
 import {
   MAX_ROWS,
   NARROW,
+  ask,
   chip,
   fit,
   group,
   hasFailed,
   heading,
   isLive,
+  logBody,
   offline,
   quiet,
   row,
@@ -21,6 +24,7 @@ import {
   strip,
 } from './chrome'
 import { activityView } from './activity'
+import { trendChart } from './usage'
 import { databaseList, rowsView, tablesView } from './database'
 import type { Actions, Kit, Model, ServiceVerb } from './model'
 
@@ -138,6 +142,10 @@ function serviceList(kit: Kit, m: Model, act: Actions): RenderElement {
 
   return (
     <Box flexDirection="column">
+      <Box flexDirection="row">
+        <Box flexGrow={1} />
+        {ask(kit, m, act, 'ask-service', 'add a service', () => addServicePrompt(m.workspace))}
+      </Box>
       {active.length > 0 && heading(kit, 'ACTIVE', active.length)}
       {rows(active)}
       {active.length > 0 && here.length > 0 && space(kit)}
@@ -159,6 +167,30 @@ function serviceList(kit: Kit, m: Model, act: Actions): RenderElement {
         )}
       {m.showsElsewhere && rows(elsewhere)}
     </Box>
+  )
+}
+
+/** A round figure a little over `peak`, so an axis's top mark reads cleanly. */
+function ceilingOf(peak: number): number {
+  const step = 10 ** Math.floor(Math.log10(Math.max(peak, 1)))
+  const unit = step >= 10 ? step / 2 : 1
+
+  return Math.ceil((peak * 1.05) / unit) * unit
+}
+
+/** A running service's processor share and memory over time: the first against a whole core or its own peak, the second against its peak. */
+function serviceTrend(kit: Kit, m: Model, trend: Trend): RenderElement {
+  const cpuNow = trend.cpu[trend.cpu.length - 1] ?? 0
+  const memoryNow = trend.memory[trend.memory.length - 1] ?? 0
+  const megabytes = (mb: number): string => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`)
+
+  return trendChart(
+    kit,
+    m,
+    'trend:service',
+    trend,
+    { label: 'CPU', top: Math.max(100, ...trend.cpu), now: `${cpuNow.toFixed(1)}%`, unit: value => `${Math.round(value)}%` },
+    { label: 'Memory', top: ceilingOf(Math.max(1, ...trend.memory)), now: megabytes(memoryNow), unit: megabytes },
   )
 }
 
@@ -189,6 +221,7 @@ export function logsView(
         {live && (
           <Button key="stop" {...chip(m, false)} hotkey="x" label="stop" onPress={() => act.service(service.name, 'stop')} />
         )}
+        {ask(kit, m, act, 'ask-debug', 'debug', () => debugServicePrompt(service, logs.lines))}
       </Box>
       {space(kit)}
       <Box flexDirection="row" alignItems="flex-start">
@@ -210,15 +243,11 @@ export function logsView(
           )}
         </Box>
       </Box>
+      {logs.trend !== null && live && space(kit)}
+      {logs.trend !== null && live && serviceTrend(kit, m, logs.trend)}
       {rule(kit, m)}
       {logs.lines.length === 0 && <Text dimColor>No output yet.</Text>}
-      {logs.lines.map(line =>
-        line.tone === 'plain' ? (
-          <Text>{line.text}</Text>
-        ) : (
-          <Text color={line.tone === 'bad' ? m.colors.bad : m.colors.busy}>{line.text}</Text>
-        ),
-      )}
+      {logs.lines.length > 0 && logBody(kit, m, logs.lines)}
     </Box>
   )
 }

@@ -1,4 +1,4 @@
-import type { Entry, OpenFile } from '../types'
+import type { Entry, Hit, OpenFile, Repo } from '../types'
 
 // A file as the pane holds one: read whole, shown a window at a time, and
 // changed a line at a time, since a pane's text field is one line.
@@ -8,6 +8,8 @@ export const MAX_FILE_BYTES = 300_000
 /** Lines in view at once: a highlighted read, and the shorter run of pressable lines. */
 export const VIEW_LINES = 120
 export const EDIT_LINES = 40
+/** Past this the whole text does not fit what the editor is handed, and a file is changed a line at a time. */
+export const MAX_EDITOR_CHARS = 90_000
 
 /** Folders first, then files, each by name; `.git` is left out. */
 export function sortEntries(entries: readonly Entry[]): Entry[] {
@@ -71,5 +73,108 @@ export function windowFor(line: number, size: number, total: number): number {
 
 /** The file as first opened: at its top, being read. */
 export function opened(path: string, text: string, note: string, mtimeMs: number): OpenFile {
-  return { path, text, note, mtimeMs, top: 0, isEditing: false, line: null }
+  return { path, text, note, mtimeMs, top: 0, isEditing: false, line: null, isDirty: false }
+}
+
+/** How many names, and how many lines, one search shows. */
+export const MAX_FOUND = 60
+
+const SKIPPED = /(^|\/)(node_modules|\.git|dist|target|out)\//
+
+/** Paths whose name holds `query`, any case: a match in the file's own name first, then in its folders. */
+export function matchNames(paths: readonly string[], query: string): string[] {
+  const wanted = query.toLowerCase()
+  const kept = paths.filter(path => path !== '' && !SKIPPED.test(path) && path.toLowerCase().includes(wanted))
+  const inName = (path: string): boolean => path.slice(path.lastIndexOf('/') + 1).toLowerCase().includes(wanted)
+
+  return kept.sort((a, b) => Number(inName(b)) - Number(inName(a)) || a.length - b.length || a.localeCompare(b))
+}
+
+/** `grep -n` output (`path:line:text`), read; `prefix` is put before each path. */
+export function parseGrep(out: string, prefix = ''): Hit[] {
+  return out.split('\n').flatMap(row => {
+    const found = /^(.+?):(\d+):(.*)$/.exec(row)
+    if (found === null) return []
+    const path = `${prefix}${(found[1] ?? '').replace(/^\.\//, '')}`
+
+    return SKIPPED.test(path) ? [] : [{ path, line: Number(found[2]), text: (found[3] ?? '').trim().slice(0, 200) }]
+  })
+}
+
+/**
+ * A file's git letter, as the Changes list shows it (`M`, `A`, `D`, `?`), by
+ * its absolute path; `''` for one with nothing to say. What the working tree
+ * holds comes before what is staged.
+ */
+export function statusOf(repos: readonly Repo[], path: string): string {
+  for (const repo of repos) {
+    if (!path.startsWith(`${repo.root}/`)) continue
+    const within = path.slice(repo.root.length + 1)
+    const file = repo.files.find(one => one.path === within)
+    if (file !== undefined) return file.workingTree !== ' ' ? file.workingTree : file.index
+  }
+
+  return ''
+}
+
+/** Whether a folder holds anything git has to say: a changed file below it, or the folder itself untracked. */
+export function holdsChanges(repos: readonly Repo[], folder: string): boolean {
+  return repos.some(repo =>
+    repo.files.some(file => {
+      const path = `${repo.root}/${file.path.replace(/\/$/, '')}`
+
+      return path === folder || path.startsWith(`${folder}/`) || folder.startsWith(`${path}/`)
+    }),
+  )
+}
+
+const extensionOf = (name: string): string => {
+  const dot = name.lastIndexOf('.')
+
+  return dot <= 0 ? '' : name.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+// Where the first two letters of an extension would read as another one's.
+const TAGS: Readonly<Record<string, string>> = {
+  json: '{}',
+  jsonc: '{}',
+  tsx: 'tx',
+  jsx: 'jx',
+  toml: 'tm',
+  yaml: 'ym',
+  yml: 'ym',
+  html: 'ht',
+  lock: 'lk',
+  svg: 'sv',
+}
+
+/** A file's kind in two characters, from its extension: `ts`, `rs`, `md`; `··` for one without. */
+export function tagOf(name: string): string {
+  const extension = extensionOf(name)
+
+  return extension === '' ? '··' : (TAGS[extension] ?? extension.slice(0, 2).padEnd(2))
+}
+
+/** The families a file's tag is coloured by: few enough to learn, none of them a status colour. */
+export type Family = 'script' | 'typed' | 'systems' | 'python' | 'prose' | 'data' | 'style' | 'image' | 'shell' | 'other'
+
+const FAMILIES: Readonly<Record<Exclude<Family, 'other'>, readonly string[]>> = {
+  typed: ['ts', 'tsx', 'mts', 'cts'],
+  script: ['js', 'jsx', 'mjs', 'cjs'],
+  systems: ['rs', 'go', 'c', 'h', 'cpp', 'cc', 'hpp', 'swift', 'java', 'kt', 'cs', 'zig'],
+  python: ['py', 'rb', 'php', 'lua', 'ex', 'exs'],
+  prose: ['md', 'mdx', 'txt', 'rst', 'adoc'],
+  data: ['json', 'jsonc', 'toml', 'yaml', 'yml', 'xml', 'csv', 'sql', 'lock', 'env'],
+  style: ['css', 'scss', 'sass', 'less', 'html', 'vue', 'svelte', 'astro'],
+  image: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'pdf', 'mp4', 'mov'],
+  shell: ['sh', 'bash', 'zsh', 'fish', 'ps1'],
+}
+
+export function familyOf(name: string): Family {
+  const extension = extensionOf(name)
+  for (const [family, extensions] of Object.entries(FAMILIES)) {
+    if (extensions.includes(extension)) return family as Family
+  }
+
+  return 'other'
 }

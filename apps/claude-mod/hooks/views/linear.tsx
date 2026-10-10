@@ -1,9 +1,22 @@
 import type { RenderElement } from 'claude-code'
 
 import type { Task } from '../../types'
+import { createTaskPrompt } from '../prompts'
 import { age } from '../text'
 import { GLYPH } from '../tokens'
-import { MAX_ROWS, chip, fit, group, heading, offline, quiet, row, space } from './chrome'
+import {
+  MAX_ROWS,
+  NARROW,
+  ask,
+  chip,
+  fit,
+  group,
+  heading,
+  offline,
+  quiet,
+  row,
+  space,
+} from './chrome'
 import type { Actions, Kit, Model } from './model'
 
 export const TASK_GROUPS: readonly { label: string; types: readonly string[] }[] = [
@@ -44,10 +57,18 @@ export function linearTab(kit: Kit, m: Model, act: Actions): RenderElement {
       <Button
         key={`task-open:${task.identifier}`}
         plain
-        label={fit(m, `${task.identifier} ${task.title}`, 14)}
+        label={fit(m, `${task.identifier} ${task.title}`, 22)}
         onPress={() => act.openUrl(task.url)}
       />,
-      <Button key={`task:${task.identifier}`} {...chip(m)} label="to prompt" onPress={() => act.taskToPrompt(task.id)} />,
+      <Box flexDirection="row" alignItems="center" columnGap={m.width < NARROW ? 1 : 2}>
+        {task.stateType !== 'started' && task.startState !== '' && (
+          <Button key={`task-start:${task.identifier}`} {...chip(m)} label="start" onPress={() => act.moveTask(task.id, 'start')} />
+        )}
+        {task.stateType === 'started' && task.doneState !== '' && (
+          <Button key={`task-done:${task.identifier}`} {...chip(m)} label="done" onPress={() => act.moveTask(task.id, 'done')} />
+        )}
+        <Button key={`task:${task.identifier}`} {...chip(m)} label="to prompt" onPress={() => act.taskToPrompt(task.id)} />
+      </Box>,
       meta,
     )
   }
@@ -58,6 +79,10 @@ export function linearTab(kit: Kit, m: Model, act: Actions): RenderElement {
 
   return (
     <Box flexDirection="column">
+      <Box flexDirection="row">
+        <Box flexGrow={1} />
+        {ask(kit, m, act, 'ask-task', 'new issue', () => createTaskPrompt())}
+      </Box>
       {groups.map((group_, at) => (
         <Box key={`tasks:${group_.label}`} flexDirection="column">
           {at > 0 && space(kit)}

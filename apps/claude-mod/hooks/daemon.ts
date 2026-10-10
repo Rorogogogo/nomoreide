@@ -6,6 +6,7 @@ import type {
   DbRows,
   Incident,
   Limit,
+  Limits,
   LogLine,
   Service,
   Snapshots,
@@ -13,6 +14,7 @@ import type {
   Tasks,
   Tool,
   Tools,
+  Trend,
   Usage,
 } from '../types'
 
@@ -159,6 +161,13 @@ function toLimit(value: unknown): Limit | null {
   return usedPercent === null ? null : { usedPercent, resetsAt: (resetsAtUnix ?? 0) * 1000 }
 }
 
+/** The Claude limits alone, off the daemon's usage report. */
+export function toLimits(now: unknown): Limits {
+  const claude = field(field(now, 'usage'), 'claude')
+
+  return { fiveHour: toLimit(field(claude, 'fiveHour')), weekly: toLimit(field(claude, 'weekly')) }
+}
+
 /** What agent work has cost: the limits now, the latest session, and the recorded history's summary. */
 export function toUsage(now: unknown, history: unknown): Usage {
   const claude = field(field(now, 'usage'), 'claude')
@@ -200,20 +209,27 @@ export function toUsage(now: unknown, history: unknown): Usage {
 export function toTools(value: unknown): Tools {
   const agent = field(value, 'agent')
   const claude = field(field(agent, 'agents'), 'claude-code') ?? agent
-  const named = (key: string, detail: (one: unknown) => string): Tool[] =>
-    list(field(claude, key))
-      .map(one => ({ name: text(field(one, 'name')), detail: detail(one) }))
-      .filter(one => one.name !== '')
   const parts = (...some: string[]): string => some.filter(part => part !== '').join(' · ')
+  const named = (key: string, more: string, where: string): Tool[] =>
+    list(field(claude, key))
+      .map(one => ({
+        name: text(field(one, 'name')),
+        detail: parts(text(field(one, 'scope')), text(field(one, more))),
+        scope: text(field(one, 'scope')),
+        where: text(field(one, where)),
+      }))
+      .filter(one => one.name !== '')
 
   return {
-    skills: named('skills', one => text(field(one, 'scope'))),
-    mcp: named('mcpServers', one => parts(text(field(one, 'scope')), text(field(one, 'type')))),
-    plugins: named('plugins', one => parts(text(field(one, 'scope')), text(field(one, 'version')))),
+    skills: named('skills', '', 'path'),
+    mcp: named('mcpServers', 'type', ''),
+    plugins: named('plugins', 'version', 'marketplace'),
     hooks: list(field(claude, 'hooks'))
       .map(one => ({
         name: text(field(one, 'event')),
         detail: parts(text(field(one, 'scope')), text(field(one, 'type')), text(field(one, 'status'))),
+        scope: text(field(one, 'scope')),
+        where: text(field(one, 'settingsPath')),
       }))
       .filter(one => one.name !== ''),
   }
@@ -235,21 +251,30 @@ export function toSnapshots(root: string, value: unknown): Snapshots {
 /** The repository the daemon's git, GitHub and snapshot routes act on. */
 export const toActivePath = (value: unknown): string => text(field(value, 'activePath')).replace(/\/+$/, '')
 
-export type LinearScope = { viewer: string; teams: string[]; project: string | null }
+/** The two states a press moves an issue to, per team, by id. */
+export type TeamMoves = Record<string, { start: string; done: string }>
+
+export type LinearScope = { viewer: string; teams: string[]; project: string | null; moves: TeamMoves }
 
 /** Who is asking and where their work is filed: the bound team, else every team. */
 export function toLinearScope(value: unknown): LinearScope {
   const data = field(value, 'data')
   const bound = text(field(field(data, 'binding'), 'team'))
   const project = text(field(field(data, 'binding'), 'project'))
-  const teams = list(field(field(data, 'teams'), 'nodes'))
-    .map(one => text(field(one, 'id')))
-    .filter(id => id !== '')
+  const nodes = list(field(field(data, 'teams'), 'nodes'))
+  const teams = nodes.map(one => text(field(one, 'id'))).filter(id => id !== '')
+  const stateOf = (team: unknown, type: string): string =>
+    text(field(list(field(field(team, 'states'), 'nodes')).find(state => field(state, 'type') === type), 'id'))
+  const moves: TeamMoves = {}
+  for (const team of nodes) {
+    moves[text(field(team, 'id'))] = { start: stateOf(team, 'started'), done: stateOf(team, 'completed') }
+  }
 
   return {
     viewer: text(field(field(data, 'viewer'), 'id')),
     teams: bound === '' ? teams.slice(0, 3) : [bound],
     project: bound === '' || project === '' ? null : project,
+    moves,
   }
 }
 
@@ -259,11 +284,16 @@ const OPEN_STATES = ['started', 'unstarted', 'backlog', 'triage']
  * One page of a team's issues, cut to the work still open that is the
  * person's own or nobody's; `after` is where the next page starts.
  */
-export function toTasks(value: unknown, viewer: string): { tasks: Task[]; after: string } {
+export function toTasks(
+  value: unknown,
+  viewer: string,
+  moves: TeamMoves = {},
+): { tasks: Task[]; after: string } {
   const issues = field(field(value, 'data'), 'issues')
   const page = field(issues, 'pageInfo')
   const tasks = list(field(issues, 'nodes')).map(one => {
     const assignee = field(one, 'assignee')
+    const move = moves[text(field(field(one, 'team'), 'id'))]
 
     return {
       id: text(field(one, 'id')),
@@ -278,6 +308,8 @@ export function toTasks(value: unknown, viewer: string): { tasks: Task[]; after:
       isMine: viewer !== '' && text(field(assignee, 'id')) === viewer,
       updatedAt: text(field(one, 'updatedAt')),
       description: text(field(one, 'description')).slice(0, 4000),
+      startState: move?.start ?? '',
+      doneState: move?.done ?? '',
     }
   })
 
@@ -356,6 +388,7 @@ export function toActivity(value: unknown): Activity | undefined {
   }))
 
   return {
+    trend: toTrend(field(field(metrics, 'host'), 'samples'), 'cpuPercent', 'memoryUsedPercent'),
     cpuPercent: whole(field(now, 'cpuPercent')),
     cores: whole(field(now, 'logicalCpuCount')) ?? 0,
     load: whole(list(field(now, 'loadAverage'))[0]),
@@ -410,10 +443,21 @@ function cellOf(value: unknown): string {
   return shown.length > MAX_CELL ? `${shown.slice(0, MAX_CELL)}…` : shown
 }
 
-/** A page of a table's rows: each row's values in column order, as text. */
-export function toDbRows(database: string, table: string, offset: number, value: unknown): DbRows {
+/**
+ * A page of a table's rows: each row's values in column order, as text.
+ * Columns come as names or as `{ name }`; `total` is the table's own count
+ * where one was asked for, and `size` the page asked for.
+ */
+export function toDbRows(
+  database: string,
+  table: string,
+  offset: number,
+  value: unknown,
+  size: number,
+  total: number | null = null,
+): DbRows {
   const columns = list(field(value, 'columns'))
-    .map(one => text(field(one, 'name')))
+    .map(one => (typeof one === 'string' ? one : text(field(one, 'name'))))
     .filter(name => name !== '')
   const rows = list(field(value, 'rows')).map(one => columns.map(column => cellOf(field(one, column))))
 
@@ -422,8 +466,122 @@ export function toDbRows(database: string, table: string, offset: number, value:
     table,
     columns,
     rows,
-    rowCount: whole(field(value, 'rowCount')) ?? rows.length,
+    total,
+    hasMore: total === null ? rows.length >= size : offset + rows.length < total,
     offset,
+    firstColumn: 0,
+    record: null,
+    sql: '',
     note: '',
   }
+}
+
+/** A table's columns as the rows endpoint names them, the primary key's first. */
+export function toColumns(value: unknown): { name: string; isKey: boolean }[] {
+  return list(field(value, 'columns'))
+    .map(one => ({ name: text(field(one, 'name')), isKey: field(one, 'primaryKey') === true }))
+    .filter(one => one.name !== '')
+}
+
+/** A Postgres identifier, quoted: nothing in a name can end the quoting. */
+const quoted = (name: string): string => `"${name.replace(/"/g, '""')}"`
+
+/** `schema.table` as the daemon lists it, each part quoted. */
+function quotedTable(table: string): string {
+  const cut = table.indexOf('.')
+
+  return cut < 0 ? quoted(table) : `${quoted(table.slice(0, cut))}.${quoted(table.slice(cut + 1))}`
+}
+
+/**
+ * One page of a Postgres table, every column cast to text. The daemon's row
+ * endpoint answers `null` for a timestamp, a uuid and a bytea; a cast gives
+ * each as Postgres itself writes it. Ordered by the primary key so a page is
+ * the same rows twice. A read and nothing else: the names are quoted, the
+ * numbers are numbers, and nothing the person typed is in it.
+ */
+export function pageSql(
+  table: string,
+  columns: readonly { name: string; isKey: boolean }[],
+  limit: number,
+  offset: number,
+): string {
+  const picked = columns.map(one => `${quoted(one.name)}::text AS ${quoted(one.name)}`).join(', ')
+  const keys = columns.filter(one => one.isKey).map(one => quoted(one.name))
+  const order = keys.length > 0 ? ` ORDER BY ${keys.join(', ')}` : ''
+
+  return `SELECT ${picked} FROM ${quotedTable(table)}${order} LIMIT ${Math.floor(limit)} OFFSET ${Math.max(0, Math.floor(offset))}`
+}
+
+export const countSql = (table: string): string => `SELECT count(*)::text AS "n" FROM ${quotedTable(table)}`
+
+/** What `countSql` answered, as a number. */
+export function toCount(value: unknown): number | null {
+  const n = Number(field(list(field(value, 'rows'))[0], 'n'))
+
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * A Postgres query as one that answers each row as JSON text, or `undefined`
+ * for a statement that cannot stand inside another (`SHOW`, `EXPLAIN`). The
+ * daemon's query route answers `null` for a timestamp, a uuid and a bytea;
+ * as JSON each comes back written out, in the query's own column order.
+ */
+export function jsonSql(sql: string): string | undefined {
+  const statement = sql.trim().replace(/;+\s*$/, '')
+  if (!/^(select|with|values|table)\b/i.test(statement) || statement.includes(';')) return undefined
+
+  return `SELECT row_to_json("q")::text AS "j" FROM (${statement}) AS "q"`
+}
+
+/** What `jsonSql` answered, back in the shape of a plain query's answer; `undefined` if it is not that. */
+export function fromJsonRows(value: unknown): { columns: string[]; rows: Record<string, unknown>[] } | undefined {
+  const rows: Record<string, unknown>[] = []
+  for (const one of list(field(value, 'rows'))) {
+    try {
+      const row: unknown = JSON.parse(text(field(one, 'j')))
+      if (typeof row !== 'object' || row === null) return undefined
+      rows.push(row as Record<string, unknown>)
+    } catch {
+      return undefined
+    }
+  }
+  const [first] = rows
+
+  return { columns: first === undefined ? [] : Object.keys(first), rows }
+}
+
+/** How many points a trend keeps: enough for a line, few enough to hold in state and redraw. */
+export const TREND_POINTS = 60
+
+/** `values` thinned to at most `points`, each the mean of its stretch. */
+export function thin(values: readonly number[], points = TREND_POINTS): number[] {
+  if (values.length <= points) return [...values]
+  const out: number[] = []
+  for (let at = 0; at < points; at += 1) {
+    const part = values.slice(Math.floor((at * values.length) / points), Math.floor(((at + 1) * values.length) / points))
+    out.push(Math.round((part.reduce((sum, one) => sum + one, 0) / Math.max(1, part.length)) * 10) / 10)
+  }
+
+  return out
+}
+
+/** The daemon's samples (each with a time `t`) as a trend of two of their fields; `null` with fewer than two. */
+export function toTrend(samples: unknown, cpuKey: string, memoryKey: string): Trend | null {
+  const rows = list(samples)
+  if (rows.length < 2) return null
+  const first = whole(field(rows[0], 't')) ?? 0
+  const last = whole(field(rows[rows.length - 1], 't')) ?? 0
+
+  return {
+    cpu: thin(rows.map(one => whole(field(one, cpuKey)) ?? 0)),
+    memory: thin(rows.map(one => whole(field(one, memoryKey)) ?? 0)),
+    seconds: Math.max(0, Math.round((last - first) / 1000)),
+  }
+}
+
+/** One service's own series off `/api/services/<name>/metrics`: processor percent and resident megabytes. */
+export function toServiceTrend(value: unknown): Trend | null {
+  return toTrend(field(field(value, 'metrics'), 'samples'), 'cpu', 'rss')
 }

@@ -2,7 +2,9 @@ import { expect, mock, test } from 'claude-code/testing'
 
 import { endpointOf, toTools } from '../hooks/daemon'
 import { ECHO_MS, isEcho, isFocusOnlyClick } from '../hooks/focus'
-import { fitHunks, parsePull, parseStatus } from '../hooks/git'
+import { diffRows, fitHunks, parseLog, parseNameStatus, parsePull, parsePulls, parseStatus } from '../hooks/git'
+import { graphSvg } from '../hooks/icons'
+import { controlArgv, lineAt, parseLrc, parseNowPlaying, pickLrclib, pickNetease, positionOf, settle } from '../hooks/music'
 
 const PANE = {
   plugin: 'nomoreide',
@@ -80,6 +82,16 @@ test('a diff is cut to its hunks, and a cut hunk still parses', () => {
   expect(fitHunks('Binary files a/x.png and b/x.png differ\n').hunks).toBe('')
 })
 
+test('a diff is read into rows, each numbered on the side it is on', () => {
+  expect(diffRows('@@ -1,3 +1,3 @@ fn main\n const a = 1\n-const b = 2\n+const b = 3\n const c = 4')).toEqual([
+    { kind: 'hunk', before: null, after: null, text: 'fn main' },
+    { kind: 'same', before: 1, after: 1, text: 'const a = 1' },
+    { kind: 'removed', before: 2, after: null, text: 'const b = 2' },
+    { kind: 'added', before: null, after: 2, text: 'const b = 3' },
+    { kind: 'same', before: 3, after: 3, text: 'const c = 4' },
+  ])
+})
+
 test('the daemon credential goes to loopback and nowhere else', () => {
   const credential = 'ab'.repeat(32)
 
@@ -127,9 +139,20 @@ test('the pane lists what changed, stages a file and shows its diff', async ($, 
     expect(ran).toContainEqual(['add', '--', 'notes.txt'])
 
     await ui.press({ key: 'open:w:src/app.ts' })
-    expect(await ui.find({ type: 'Code' }), 'the diff').toBeDefined()
+    // A cell grid has the engine's own diff; elsewhere its lines are drawn on their grounds.
+    if (surface === 'terminal') {
+      expect(await ui.find({ type: 'Code' }), 'the diff').toBeDefined()
+    } else {
+      // Drawn as a review on GitHub shows one: a fixed-width face, the code in its own
+      // colours, the added line on its green ground and the removed one on its red.
+      const drawn = JSON.stringify(await ui.drawn())
+      expect(drawn, 'the added line').toMatch(/rect class=\\"ag\\"[^/]*\/>.*keyword[^>]*>const<\/tspan> b = <tspan class=[^>]*number[^>]*>3</)
+      expect(drawn, 'the removed line').toMatch(/rect class=\\"rg\\"/)
+      expect(drawn, 'both sides numbered').toMatch(/text-anchor=\\"end\\">3<\/text><text class=\\"d\\"[^>]*>3</)
+      expect(drawn).toMatch(/ui-monospace/)
+    }
     await ui.press({ key: 'back' })
-    expect(await ui.find({ type: 'Code' })).toBeUndefined()
+    expect(JSON.stringify(await ui.drawn())).not.toMatch(/const b = 3|const<\/tspan> b = /)
 
     await ui.unmount()
   }
@@ -279,7 +302,23 @@ const DAEMON: Record<string, unknown> = {
   '/api/linear/connection': { ok: true, connected: true },
   'POST /api/linear/request {"operation":"metadata"}': {
     ok: true,
-    data: { viewer: { id: 'me', name: 'T' }, teams: { nodes: [{ id: 'team-1', name: 'Eng' }] }, binding: null },
+    data: {
+      viewer: { id: 'me', name: 'T' },
+      teams: {
+        nodes: [
+          {
+            id: 'team-1',
+            name: 'Eng',
+            states: { nodes: [{ id: 'st-doing', name: 'In Progress', type: 'started' }, { id: 'st-done', name: 'Done', type: 'completed' }] },
+          },
+        ],
+      },
+      binding: null,
+    },
+  },
+  'POST /api/linear/request {"operation":"update","id":"i1","state":"st-done"}': {
+    ok: true,
+    data: {},
   },
   'POST /api/linear/request {"operation":"issues","team":"team-1","project":null,"after":null}': {
     ok: true,
@@ -294,6 +333,7 @@ const DAEMON: Record<string, unknown> = {
             url: 'https://linear.app/t/issue/ENG-7',
             branchName: 'eng-7-fix-login',
             state: { id: 's1', name: 'In Progress', type: 'started' },
+            team: { id: 'team-1', name: 'Eng' },
             assignee: { id: 'me', name: 'T' },
             updatedAt: '2026-10-09T08:00:00.000Z',
           },
@@ -331,6 +371,7 @@ const DAEMON: Record<string, unknown> = {
 
 test('the daemon tabs draw services, errors, the console and Linear, and act on them', async ($, on) => {
   const asked: string[] = []
+  const posted: string[] = []
   const filled: string[] = []
   mock.env(on, { HOME: '/home/t' })
   mock.clock(on, { now: Date.parse('2026-10-09T08:10:00.000Z') })
@@ -353,6 +394,7 @@ test('the daemon tabs draw services, errors, the console and Linear, and act on 
       return { value: { status: 200, ok: true, headers: {}, text: DIFF } }
     }
     const sent = typeof e.init?.body === 'string' ? ` ${e.init.body}` : ''
+    if (sent !== '') posted.push(`${path}${sent}`)
     const body =
       method === 'GET'
         ? DAEMON[path.replace(/\?since=.*$/, '')]
@@ -387,13 +429,14 @@ test('the daemon tabs draw services, errors, the console and Linear, and act on 
     expect(asked).toContain(`POST /api/services/api/start Bearer ${'ab'.repeat(32)}`)
 
     await ui.press({ key: 'logs:web' })
-    expect(await ui.find({ type: 'Text', text: 'failed to resolve import' }), 'a log line').toBeDefined()
+    // A cell grid types the line; elsewhere it is drawn, in a fixed-width face.
+    expect(JSON.stringify(await ui.drawn()), 'a log line').toContain('failed to resolve import')
     await ui.press({ key: 'back' })
 
     await ui.press({ key: 'tab-errors' })
     expect(await ui.find({ key: 'incident:7' }), 'an error row').toBeDefined()
     await ui.press({ key: 'incident:7' })
-    expect(await ui.find({ type: 'Code' }), 'its log excerpt').toBeDefined()
+    expect(JSON.stringify(await ui.drawn()), 'its log excerpt').toContain(surface === 'terminal' ? '"borderStyle":"round"' : 'output, lines')
     await ui.press({ key: 'fix' })
     expect(filled).toContain('Fix the panic in src/main.rs:12')
     await ui.press({ key: 'back' })
@@ -405,7 +448,9 @@ test('the daemon tabs draw services, errors, the console and Linear, and act on 
     await ui.press({ key: 'set:run-1' })
     expect(await ui.find({ key: 'setfile:src/new.ts' }), 'a file it changed').toBeDefined()
     await ui.press({ key: 'setfile:src/parse.ts' })
-    expect(await ui.find({ type: 'Code' }), 'its diff since the snapshot').toBeDefined()
+    expect(JSON.stringify(await ui.drawn()), 'its diff since the snapshot').toMatch(
+      surface === 'terminal' ? /const b = 3/ : /const<\/tspan> b = /,
+    )
     await ui.press({ key: 'back' })
 
     // Putting files back takes two presses, and the first one changes nothing.
@@ -431,6 +476,12 @@ test('the daemon tabs draw services, errors, the console and Linear, and act on 
     expect(await ui.find({ key: 'tool:mcp:linear' }), 'a server by name').toBeDefined()
     await ui.press({ key: 'tool:mcp:linear' })
     expect(filled).toContain('the linear MCP server ')
+    // Changing what is installed is asked of Claude, drafted and never done by the pane.
+    await ui.press({ key: 'remove-tool:mcp:0' })
+    expect(filled.some(text => text.includes('Run `claude mcp remove linear` (scope: user).'))).toBe(true)
+    await ui.press({ key: 'ask-add:hooks' })
+    expect(filled.some(text => text.startsWith('Add a new hook for Claude Code.') && text.endsWith('The hook to add: '))).toBe(true)
+    expect(filled.join('\n'), 'no address, no command').not.toMatch(/SECRET/)
     await ui.press({ key: 'tools-mcp' })
     await ui.press({ key: 'tools-skills' })
     await ui.press({ key: 'tool:skills:deploy' })
@@ -446,6 +497,10 @@ test('the daemon tabs draw services, errors, the console and Linear, and act on 
     expect(await ui.find({ key: 'task:ENG-9' }), "someone else's").toBeUndefined()
     await ui.press({ key: 'task:ENG-7' })
     expect(filled.some(text => text.startsWith('Work on Linear task ENG-7: Fix the login redirect'))).toBe(true)
+    // An issue in progress is finished with a press: its team's own completed state.
+    expect(await ui.find({ key: 'task-start:ENG-7' }), 'already started').toBeUndefined()
+    await ui.press({ key: 'task-done:ENG-7' })
+    expect(posted).toContain('/api/linear/request {"operation":"update","id":"i1","state":"st-done"}')
 
     await ui.press({ key: 'tab-services' })
     await ui.unmount()
@@ -454,6 +509,8 @@ test('the daemon tabs draw services, errors, the console and Linear, and act on 
   const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect(await band.find({ type: 'Text', text: /1 error/ }), 'the band').toBeDefined()
   expect(await band.find({ key: 'open' }), 'the way to the pane').toBeDefined()
+  expect(await band.find({ type: 'Text', text: '42%' }), 'the five-hour limit').toBeDefined()
+  expect(await band.find({ type: 'Text', text: '91%' }), 'the weekly limit').toBeDefined()
   await band.unmount()
 })
 
@@ -507,8 +564,8 @@ test('a pull request is read from gh: its checks tallied, anything else refused'
 test('what is installed is listed by name, never by address or command', () => {
   const tools = toTools(DAEMON['/api/agent'])
 
-  expect(tools.mcp).toEqual([{ name: 'linear', detail: 'user · http' }])
-  expect(tools.hooks).toEqual([{ name: 'PreToolUse', detail: 'project · command · ok' }])
+  expect(tools.mcp).toEqual([{ name: 'linear', detail: 'user · http', scope: 'user', where: '' }])
+  expect(tools.hooks).toEqual([{ name: 'PreToolUse', detail: 'project · command · ok', scope: 'project', where: '' }])
   expect(JSON.stringify(tools)).not.toMatch(/SECRET/)
 })
 
@@ -618,4 +675,243 @@ test('the Git view shows the pull request and takes and restores snapshots of th
   expect(asked.some(one => one.startsWith('POST /api/snapshots'))).toBe(false)
   expect(await ui.find({ type: 'Text', text: /another repository selected/ })).toBeDefined()
   await ui.unmount()
+})
+
+const LRC = '[00:00.00] 作词 : someone\n[00:21.87]first line\n[00:25.50][01:10.00]second line\n[00:29.67]\n[00:33]third line\n'
+
+test('what is playing is read, its place in the song told, and a lyric file put in order', () => {
+  const song = parseNowPlaying(
+    '{"app":"com.netease.163music","playing":true,"title":" Song ","artist":"Singer","duration":200,"elapsedtime":10,"playbackrate":1,"at":1000}',
+  )
+  expect(song).toEqual({
+    app: 'com.netease.163music',
+    title: 'Song',
+    artist: 'Singer',
+    album: '',
+    duration: 200,
+    elapsed: 10,
+    at: 1_000_000,
+    isPlaying: true,
+  })
+  expect(parseNowPlaying('{}'), 'nothing playing').toBeNull()
+  expect(parseNowPlaying('not json')).toBeNull()
+  if (song === null) return
+  expect(positionOf(song, 1_005_000), 'five seconds on').toBe(15)
+  expect(positionOf({ ...song, isPlaying: false }, 1_005_000), 'paused stays put').toBe(10)
+  expect(positionOf(song, 9_000_000), 'never past the end').toBe(200)
+
+  const lines = parseLrc(LRC)
+  expect(lines.map(line => line.text), 'credits and empty lines dropped').toEqual([
+    'first line',
+    'second line',
+    'third line',
+    'second line',
+  ])
+  expect(lines[0]?.at).toBe(21.87)
+  expect(lineAt(lines, 5), 'before the first').toBe(-1)
+  expect(lineAt(lines, 26)).toBe(1)
+  expect(lineAt(lines, 500)).toBe(3)
+
+  const found = [
+    { duration: 150, syncedLyrics: 'far' },
+    { duration: 201, syncedLyrics: 'near' },
+    { duration: 200, syncedLyrics: null },
+  ]
+  expect(pickLrclib(found, 200), 'the timed one nearest in length').toBe('near')
+  expect(pickLrclib(found, 90)).toBe('')
+  expect(pickNetease({ result: { songs: [{ id: 1, duration: 120_000 }, { id: 2, duration: 199_000 }] } }, song)).toBe(2)
+
+  // Paused at 15s for ten seconds, unreported: the song stands, then goes on from where it stopped.
+  const paused = settle(song, true, null, 1_005_000)
+  expect(positionOf(paused.track, 1_012_000), 'stands while paused').toBe(15)
+  const resumed = settle(song, false, paused.held, 1_015_000)
+  expect(positionOf(resumed.track, 1_017_000), 'goes on from there').toBe(17)
+  expect(controlArgv('com.spotify.client', 'next').at(-1)).toBe('tell application "Spotify" to next track')
+})
+
+test('chill mode shows the song and its lyric in the pane and above the prompt, and sends what is pressed', async ($, on) => {
+  const ran: string[][] = []
+  const fetched: string[] = []
+  mock.env(on, { HOME: '/home/t' })
+  const clock = mock.clock(on)
+  on('session.cwd', () => ({ value: '/work/app' }))
+  on('config.list', () => ({ value: [] }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.panes', () => ({ value: [] }))
+  on('fs.read', () => ({ deny: 'no such file' }))
+  on('process.run', (_$, e) => {
+    ran.push([...e.argv])
+    const isPlayer = e.argv[0] === 'osascript' && e.argv[1] === '-l'
+    const isProbe = e.argv[0] === 'osascript' && (e.argv[2] ?? '').includes('get name of menu item 1')
+    const stdout = isPlayer
+      ? '{"app":"com.netease.163music","playing":true,"title":"Song","artist":"Singer","duration":200,"elapsedtime":26}'
+      : isProbe
+        ? 'Play\n'
+        : ''
+
+    return {
+      value: {
+        exitCode: e.argv[0] === 'osascript' ? 0 : 128,
+        stdout,
+        stderr: '',
+        isStdoutTruncated: false,
+        isStderrTruncated: false,
+      },
+    }
+  })
+  on('http.fetch', (_$, e) => {
+    fetched.push(e.url)
+    const text = e.url.startsWith('https://lrclib.net/') ? JSON.stringify([{ duration: 200, syncedLyrics: LRC }]) : '{}'
+
+    return { value: { status: 200, ok: true, headers: {}, text } }
+  })
+
+  await $.command.run(typed('git'))
+  {
+    const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+    expect(await ui.find({ type: 'Text', text: 'NOW PLAYING' }), 'off until asked for').toBeUndefined()
+    expect(fetched.some(url => url.includes('lrclib')), 'nothing looked up while off').toBe(false)
+    await ui.press({ key: 'chill' })
+    await clock.advance(3_000)
+    expect(await ui.find({ type: 'Text', text: 'Song' }), 'the song').toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'second line' }), 'the line being sung').toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'first line' }), 'the one before').toBeDefined()
+    expect(fetched.find(url => url.includes('lrclib')), 'by title and artist').toContain('track_name=Song&artist_name=Singer')
+    const closed = JSON.stringify(await ui.drawn()).split('second line').length
+    await ui.press({ key: 'chill-wide' })
+    expect(JSON.stringify(await ui.drawn()).split('second line').length, 'opened up: more of the lyric').toBeGreaterThan(closed)
+    await ui.press({ key: 'media-next' })
+    expect(ran.some(argv => (argv[2] ?? '').includes('click menu item 2 of menu 1')), "next, by NetEase's own menu").toBe(true)
+    expect(JSON.stringify(await ui.drawn()), 'a pause the player never reported').toContain('"label":"▶\uFE0E"')
+    await ui.unmount()
+  }
+
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await band.find({ type: 'Text', text: 'second line' }), 'the lyric above the prompt').toBeDefined()
+  expect(await band.find({ key: 'open' }), 'one row: the lyric has it').toBeUndefined()
+  await band.unmount()
+})
+
+const LOG = [
+  '* \x1fabc1234\x1fAdd the parser\x1fRo\x1f1791540000\x1fHEAD -> main, origin/main',
+  '|\\  ',
+  '| * \x1fdef5678\x1fFix a typo\x1fSam\x1f1791530000\x1ffeat/typo, tag: v1',
+  '|/  ',
+  '* \x1f0123abc\x1fFirst commit\x1fRo\x1f1791520000\x1f',
+].join('\n')
+
+test('the commit graph, a commit\'s files and the pull request list are read', () => {
+  const rows = parseLog(LOG)
+  expect(rows.map(row => row.sha)).toEqual(['abc1234', '', 'def5678', '', '0123abc'])
+  expect(rows[0]?.refs, 'HEAD is the branch it is on').toEqual(['main', 'origin/main'])
+  expect(rows[2]?.refs).toEqual(['feat/typo', 'v1'])
+  expect(rows[2]?.graph, 'the lane the commit is on').toBe('| *')
+  expect(rows[0]?.at).toBe(1_791_540_000_000)
+  expect(graphSvg('| *'), 'a line down and a dot').toMatch(/<path[^>]*\/><path[^>]*\/><circle/)
+  expect(parseNameStatus('M\tsrc/a.ts\nR100\told.ts\tnew.ts\nA\tb.md\n')).toEqual([
+    { status: 'M', path: 'src/a.ts' },
+    { status: 'R', path: 'new.ts' },
+    { status: 'A', path: 'b.md' },
+  ])
+  const pulls = parsePulls(
+    '/work/app',
+    JSON.stringify([
+      {
+        number: 12,
+        title: 'Add the parser',
+        url: 'https://github.com/o/r/pull/12',
+        state: 'OPEN',
+        isDraft: true,
+        headRefName: 'feat/parser',
+        author: { login: 'ro' },
+        updatedAt: '2026-10-09T08:00:00Z',
+        statusCheckRollup: [{ conclusion: 'SUCCESS' }, { conclusion: 'FAILURE' }],
+      },
+      { title: 'not a pull request' },
+    ]),
+  )
+  expect(pulls.length).toBe(1)
+  expect(pulls[0]).toMatchObject({ number: 12, branch: 'feat/parser', author: 'ro', checks: 'failing', passed: 1, total: 2 })
+  expect(parsePulls('/work/app', 'not json')).toEqual([])
+})
+
+test('History shows the graph and opens a commit and its diff; PRs lists them and drafts a review', async ($, on) => {
+  const ran: string[][] = []
+  const filled: string[] = []
+  mock.env(on, { HOME: '/home/t' })
+  const clock = mock.clock(on)
+  on('session.cwd', () => ({ value: '/work/app' }))
+  on('config.list', () => ({ value: [] }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.panes', () => ({ value: [] }))
+  on('fs.read', () => ({ deny: 'no such file' }))
+  on('prompt.fill', (_$, e) => {
+    filled.push(e.text)
+
+    return { isFilled: true }
+  })
+  on('process.run', (_$, e) => {
+    const args = e.argv.filter(arg => arg !== '--no-optional-locks').slice(1)
+    ran.push([...e.argv])
+    const isGh = e.argv[0] === 'gh'
+    const stdout = isGh
+      ? args[0] === 'pr' && args[1] === 'list'
+        ? JSON.stringify([
+            {
+              number: 12,
+              title: 'Add the parser',
+              url: 'https://github.com/o/r/pull/12',
+              state: 'OPEN',
+              isDraft: false,
+              headRefName: 'feat/parser',
+              author: { login: 'ro' },
+              updatedAt: '2026-10-09T08:00:00Z',
+              statusCheckRollup: [{ conclusion: 'SUCCESS' }],
+            },
+          ])
+        : ''
+      : args[0] === 'rev-parse'
+        ? '/work/app\n'
+        : args[0] === 'status'
+          ? STATUS
+          : args[0] === 'log'
+            ? LOG
+            : args[0] === 'show' && args.includes('--no-patch')
+              ? 'def5678\x1fFix a typo\x1fSam\x1f1791530000\x1fA longer word about it.\n'
+              : args[0] === 'show' && args.includes('--name-status')
+                ? 'M\tsrc/app.ts\n'
+                : args[0] === 'show'
+                  ? DIFF
+                  : ''
+
+    return {
+      value: { exitCode: isGh && stdout === '' ? 1 : 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false },
+    }
+  })
+
+  await $.command.run(typed('history'))
+  await clock.advance(3_000)
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect(await ui.find({ key: 'commit:abc1234' }), 'a commit by its subject').toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'feat/typo' }), 'the branch at a commit').toBeDefined()
+    await ui.press({ key: 'commit:def5678' })
+    expect(await ui.find({ type: 'Text', text: 'Fix a typo' }), 'the commit opened').toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'A longer word about it.' }), 'its message').toBeDefined()
+    await ui.press({ key: 'cfile:src/app.ts' })
+    expect(ran.some(argv => argv.includes('show') && argv.includes('def5678') && argv.includes('src/app.ts')), 'that file in that commit').toBe(true)
+    await ui.press({ key: 'back' })
+    expect(await ui.find({ key: 'cfile:src/app.ts' }), 'back to its files').toBeDefined()
+    await ui.press({ key: 'back' })
+
+    await ui.press({ key: 'section-pulls' })
+    await clock.advance(1_000)
+    expect(await ui.find({ key: 'pr:12' }), 'an open pull request').toBeDefined()
+    await ui.press({ key: 'pr-review:12' })
+    expect(filled.some(text => text.includes('12')), 'a review drafted, not sent').toBe(true)
+    await ui.press({ key: 'section-history' })
+    await ui.unmount()
+  }
+  expect(ran.some(argv => argv[0] === 'gh' && argv.includes('list')), 'asked of gh').toBe(true)
 })

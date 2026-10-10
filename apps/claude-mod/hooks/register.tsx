@@ -1,8 +1,10 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, Timer } from 'claude-code'
+import type { Elements, EngineInterface, Register, Timer } from 'claude-code'
 
 import type {
   Activity,
+  Hit,
+  Search,
   DbRows,
   DbTables,
   Diff,
@@ -25,6 +27,13 @@ import type {
   Tasks,
   Tools,
   Usage,
+  Lyrics,
+  Track,
+  Cover,
+  History,
+  OpenCommit,
+  PullList,
+  Trend,
 } from '../types'
 import {
   EMPTY_TASKS,
@@ -37,6 +46,12 @@ import {
   toChangeFiles,
   toChangeSets,
   toDatabases,
+  countSql,
+  fromJsonRows,
+  jsonSql,
+  pageSql,
+  toColumns,
+  toCount,
   toDbRows,
   toFixPrompt,
   toIncidents,
@@ -48,14 +63,66 @@ import {
   toTaskPrompt,
   toTasks,
   toTools,
+  toLimits,
+  toServiceTrend,
   toUsage,
 } from './daemon'
 import type { Endpoint, Reply } from './daemon'
-import { EDIT_LINES, MAX_FILE_BYTES, VIEW_LINES, applyEdit, isUnder, linesOf, opened, sortEntries, windowFor } from './files'
+import {
+  EDIT_LINES,
+  MAX_FILE_BYTES,
+  MAX_FOUND,
+  VIEW_LINES,
+  applyEdit,
+  isUnder,
+  linesOf,
+  matchNames,
+  opened,
+  parseGrep,
+  sortEntries,
+  windowFor,
+} from './files'
+import type { EditorProps } from './editor'
 import type { Edit } from './files'
 import { isEcho, isFocusOnlyClick } from './focus'
-import { diffArgs, fitHunks, isChanged, isStaged, parsePull, parseStatus, tail } from './git'
+import {
+  COMMIT_FORMAT,
+  LOG_ARGS,
+  PULL_LIST_FIELDS,
+  diffArgs,
+  fitHunks,
+  isChanged,
+  isStaged,
+  parseCommit,
+  parseLog,
+  parseNameStatus,
+  parsePull,
+  parsePulls,
+  parseStatus,
+  tail,
+} from './git'
 import { RUN_FIELDS, parseJobs, parseRuns, toRunPrompt } from './github'
+import {
+  NOW_PLAYING_JS,
+  controlArgv,
+  neteaseCover,
+  neteaseDetailUrl,
+  lineAt,
+  lrclibUrl,
+  neteaseLyric,
+  neteaseLyricUrl,
+  neteaseSearchUrl,
+  offersPlay,
+  parseLrc,
+  parseNowPlaying,
+  pauseProbeArgv,
+  pickLrclib,
+  pickNetease,
+  positionOf,
+  settle,
+  trackKey,
+} from './music'
+import type { Held, MediaCommand } from './music'
 import { hexOf } from './text'
 import { palette } from './tokens'
 import type { Actions, Kit, Model, ServiceVerb } from './views/model'
@@ -70,6 +137,8 @@ type Engine = EngineInterface
 // `daemon.ts`, `focus.ts` and `views/`.
 
 const PANE = 'nomoreide'
+/** The file editor's place in the pane's drawing. */
+const EDITOR = 'editor'
 const TITLE = 'NoMoreIDE'
 /** Wide enough for a diff to read, narrow enough to leave the transcript 80. */
 const COLUMNS = 68
@@ -82,7 +151,9 @@ const SECTION_IDS: readonly Section[] = ['changes', 'usage', 'tools']
 const SERVICE_SECTION_IDS: readonly ServiceSection[] = ['services', 'activity', 'database']
 /** Rows of a table read at a time. */
 const DB_PAGE = 20
-const GIT_SECTION_IDS: readonly GitSection[] = ['changes', 'files', 'actions']
+/** Rows a query typed into the pane may answer with. */
+const QUERY_ROWS = 100
+const GIT_SECTION_IDS: readonly GitSection[] = ['changes', 'files', 'history', 'pulls', 'actions']
 /** How many of a branch's workflow runs are listed. */
 const MAX_RUNS = 15
 /** What is asked of GitHub, of Linear, and of the daemon's heavier reads, no oftener than this. */
@@ -131,13 +202,24 @@ const dbRows = atom({ plugin: 'nomoreide', key: 'dbRows' } as const, null)
 const gitSection = atom({ plugin: 'nomoreide', key: 'gitSection' } as const, 'changes')
 const listing = atom({ plugin: 'nomoreide', key: 'listing' } as const, null)
 const file = atom({ plugin: 'nomoreide', key: 'file' } as const, null)
+const search = atom({ plugin: 'nomoreide', key: 'search' } as const, null)
 const runs = atom({ plugin: 'nomoreide', key: 'runs' } as const, null)
+const history = atom({ plugin: 'nomoreide', key: 'history' } as const, null)
+const openedCommit = atom({ plugin: 'nomoreide', key: 'commit' } as const, null)
+const pullList = atom({ plugin: 'nomoreide', key: 'pullList' } as const, null)
 const run = atom({ plugin: 'nomoreide', key: 'run' } as const, null)
 const section = atom({ plugin: 'nomoreide', key: 'section' } as const, 'changes')
 const changeSets = atom({ plugin: 'nomoreide', key: 'changeSets' } as const, [])
 const changeSet = atom({ plugin: 'nomoreide', key: 'changeSet' } as const, null)
 const changeDiff = atom({ plugin: 'nomoreide', key: 'changeDiff' } as const, null)
 const usage = atom({ plugin: 'nomoreide', key: 'usage' } as const, null)
+const limits = atom({ plugin: 'nomoreide', key: 'limits' } as const, null)
+const isChill = atom({ plugin: 'nomoreide', key: 'isChill' } as const, false)
+const track = atom({ plugin: 'nomoreide', key: 'track' } as const, null)
+const lyrics = atom({ plugin: 'nomoreide', key: 'lyrics' } as const, null)
+const cover = atom({ plugin: 'nomoreide', key: 'cover' } as const, null)
+const isChillWide = atom({ plugin: 'nomoreide', key: 'isChillWide' } as const, false)
+const lyricAt = atom({ plugin: 'nomoreide', key: 'lyricAt' } as const, -1)
 const tools = atom({ plugin: 'nomoreide', key: 'tools' } as const, null)
 const toolKind = atom({ plugin: 'nomoreide', key: 'toolKind' } as const, '')
 const tasks = atom({ plugin: 'nomoreide', key: 'tasks' } as const, null)
@@ -152,6 +234,10 @@ let gitRun: Promise<void> | undefined
 let isGitQueued = false
 let daemonRun: Promise<void> | undefined
 let daemonPolls = 0
+let musicTicks = 0
+let musicRun: Promise<void> | undefined
+let lyricsFor = ''
+let held: Held | null = null
 let announced: Set<number> | undefined
 let lastStates = new Map<string, string>()
 let home: string | undefined
@@ -314,6 +400,7 @@ async function call(
   path: string,
   method: Method = 'GET',
   body?: unknown,
+  isForm = false,
 ): Promise<{ status: number; text: string } | undefined> {
   // A daemon that restarted has a new port or a new credential: one more look
   // at its state file settles which.
@@ -326,9 +413,11 @@ async function call(
         method,
         headers: {
           authorization: `Bearer ${endpoint.credential}`,
-          ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+          ...(body === undefined
+            ? {}
+            : { 'content-type': isForm ? 'application/x-www-form-urlencoded' : 'application/json' }),
         },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        ...(body === undefined ? {} : { body: isForm ? String(body) : JSON.stringify(body) }),
       })
       if (answer.status !== 401 || isRetry) return { status: answer.status, text: answer.text }
     } catch {
@@ -382,6 +471,142 @@ async function readSnapshots($: Engine): Promise<Snapshots | null> {
   return reply.ok ? toSnapshots(root, reply.value) : null
 }
 
+/** How often chill mode moves the lyric on, and how many of those ticks pass between looks at the player. */
+const MUSIC_EVERY_MS = 1_000
+const PLAYER_EVERY_TICKS = 3
+
+/** What the Mac says is playing now; `null` for nothing, `undefined` when it could not be asked. */
+async function readTrack($: Engine): Promise<Track | null | undefined> {
+  try {
+    const ran = await $.process.run(['osascript', '-l', 'JavaScript', '-e', NOW_PLAYING_JS], { timeoutMs: 5_000 })
+    const found = ran.exitCode === 0 ? parseNowPlaying(ran.stdout) : undefined
+    if (found == null) return found
+    // A player that never says it paused is asked through its own menu.
+    const probe = pauseProbeArgv(found.app)
+    if (probe === undefined) return found
+    const asked = await $.process.run(probe, { timeoutMs: 5_000 })
+    if (asked.exitCode !== 0) return found
+    const settled = settle(found, offersPlay(asked.stdout), held, Date.now())
+    held = settled.held
+
+    return settled.track
+  } catch {
+    return undefined
+  }
+}
+
+async function fetchJson($: Engine, url: string): Promise<unknown> {
+  try {
+    const answer = await $.http.fetch(url, {
+      headers: { 'user-agent': 'nomoreide-claude-mod', referer: 'https://music.163.com' },
+    })
+
+    return answer.ok ? (JSON.parse(answer.text) as unknown) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * A song's timed lyrics, looked up by its title and artist: LRCLIB first,
+ * then NetEase's own library, which knows more Chinese songs. Only the title
+ * and artist leave the machine, and only in chill mode.
+ */
+async function findLyrics($: Engine, song: Track): Promise<Lyrics> {
+  const key = trackKey(song)
+  const timed = pickLrclib(await fetchJson($, lrclibUrl(song)), song.duration)
+  if (timed !== '') return { key, lines: parseLrc(timed) }
+  const id = pickNetease(await fetchJson($, neteaseSearchUrl(song)), song)
+  const theirs = id === undefined ? '' : neteaseLyric(await fetchJson($, neteaseLyricUrl(id)))
+
+  return { key, lines: parseLrc(theirs) }
+}
+
+/**
+ * A song's album cover, from NetEase's catalogue by the same search: fetched
+ * by `curl` into a file, since the host's fetch answers text and a picture is
+ * bytes. `undefined` when the song or its cover is not found.
+ */
+async function findCover($: Engine, song: Track): Promise<Cover | undefined> {
+  const id = pickNetease(await fetchJson($, neteaseSearchUrl(song)), song)
+  if (id === undefined) return undefined
+  const url = neteaseCover(await fetchJson($, neteaseDetailUrl(id)))
+  if (url === '') return undefined
+  const file = `${((await $.env.get('TMPDIR')) ?? '/tmp').replace(/\/$/, '')}/nomoreide-cover.jpg`
+  const got = await $.process.run(['curl', '-sfL', '-m', '10', '-o', file, url], { timeoutMs: 15_000 })
+  if (got.exitCode !== 0) return undefined
+  const { base64 } = await $.fs.read(file, { as: 'bytes' })
+  // A drawing's markup is held to a length; a cover this small is far under it.
+  if (base64.length === 0 || base64.length > 110_000) return undefined
+
+  return { key: trackKey(song), jpeg: base64 }
+}
+
+/** Which line is being sung now, written only when it has moved on. */
+async function moveLyric($: Engine): Promise<void> {
+  const song = await read($, track)
+  const words = await read($, lyrics)
+  const at =
+    song === null || words === null || words.key !== trackKey(song)
+      ? -1
+      : lineAt(words.lines, positionOf(song, Date.now()))
+  if ((await read($, lyricAt)) !== at) await update($, lyricAt, () => at)
+}
+
+/** One tick of chill mode: every few, a look at the player; every one, the lyric line. */
+function refreshMusic($: Engine, force = false): Promise<void> {
+  musicRun ??= (async () => {
+    try {
+      if (!(await read($, isChill))) return
+      musicTicks += 1
+      if (force || musicTicks % PLAYER_EVERY_TICKS === 1) {
+        const found = await readTrack($)
+        if (found !== undefined && differs(await read($, track), found)) await update($, track, () => found)
+        const key = found == null ? '' : trackKey(found)
+        if (found != null && key !== lyricsFor) {
+          lyricsFor = key
+          await update($, lyrics, () => null)
+          if ((await read($, cover)) !== null) await update($, cover, () => null)
+          void findCover($, found)
+            .then(async art => {
+              if (art !== undefined && lyricsFor === art.key) await update($, cover, () => art)
+            })
+            .catch(() => undefined)
+          // Not waited on: a slow lyrics library must not hold the ticks.
+          void findLyrics($, found)
+            .then(async words => {
+              if (lyricsFor === words.key) await update($, lyrics, () => words)
+            })
+            .catch(() => undefined)
+        }
+      }
+      await moveLyric($)
+    } catch {
+      // The next tick is the retry.
+    } finally {
+      musicRun = undefined
+    }
+  })()
+
+  return musicRun
+}
+
+async function sendMedia($: Engine, command: MediaCommand): Promise<void> {
+  const ran = await $.process.run(controlArgv((await read($, track))?.app ?? '', command), { timeoutMs: 5_000 })
+  if (ran.exitCode !== 0) {
+    throw new Error('The player did not take that. macOS may need to let Claude control it: Privacy & Security, Accessibility and Automation.')
+  }
+}
+
+/** The limits for the band above the prompt: read a minute apart, whatever view is in front. */
+async function loadLimits($: Engine): Promise<void> {
+  if ((await read($, reach)) !== 'up' || !isDue('limits', false)) return
+  const reply = await api($, '/api/agent/usage')
+  if (!reply.ok) return
+  const found = toLimits(reply.value)
+  if (differs(await read($, limits), found)) await update($, limits, () => found)
+}
+
 async function readUsage($: Engine): Promise<Usage | undefined> {
   const since = new Date(Date.now() - USAGE_DAYS * 86_400_000).toISOString()
   const [now, history] = await Promise.all([
@@ -416,7 +641,7 @@ async function readTasks($: Engine): Promise<Tasks | undefined> {
     for (let page = 0; page < TASK_PAGES; page += 1) {
       const reply = await linear($, { operation: 'issues', team, project: scope.project, after })
       if (!reply.ok) break
-      const read = toTasks(reply.value, scope.viewer)
+      const read = toTasks(reply.value, scope.viewer, scope.moves)
       found.push(...read.tasks)
       if (read.after === '') {
         after = null
@@ -431,6 +656,40 @@ async function readTasks($: Engine): Promise<Tasks | undefined> {
 }
 
 /** The branch's pull request, by `gh` in the repository itself; `null` for none, or no `gh`. */
+/** A repository's commit graph, every branch, the newest first. */
+async function readHistory($: Engine, root: string): Promise<History> {
+  return { root, rows: parseLog((await peek($, root, [...LOG_ARGS])).out) }
+}
+
+/** One commit: its own fields and the files it touched. `null` when git does not know it. */
+async function readCommit($: Engine, root: string, sha: string): Promise<OpenCommit | null> {
+  // A sha is read off git's own log; anything else is not handed back to git.
+  if (!/^[0-9a-f]{4,40}$/.test(sha)) return null
+  const [own, files] = await Promise.all([
+    peek($, root, ['show', '--no-patch', COMMIT_FORMAT, sha]),
+    peek($, root, ['show', '--name-status', '--format=', sha]),
+  ])
+  const found = parseCommit(own.out)
+
+  return found === undefined ? null : { root, ...found, files: parseNameStatus(files.out), diff: null }
+}
+
+/** A repository's open pull requests, by `gh` in the repository itself. */
+async function readPullList($: Engine, root: string): Promise<PullList> {
+  try {
+    const ran = await $.process.run(
+      ['gh', 'pr', 'list', '--state', 'open', '--limit', '30', '--json', PULL_LIST_FIELDS],
+      { cwd: root, timeoutMs: 20_000 },
+    )
+
+    return ran.exitCode === 0
+      ? { root, items: parsePulls(root, ran.stdout), note: '' }
+      : { root, items: [], note: tail(ran.stderr || ran.stdout, 2) || 'gh could not list the pull requests.' }
+  } catch {
+    return { root, items: [], note: 'The GitHub CLI (gh) is not installed, or not on the PATH.' }
+  }
+}
+
 async function readPull($: Engine, root: string): Promise<Pull | null> {
   try {
     const ran = await $.process.run(
@@ -469,15 +728,48 @@ async function readTables($: Engine, database: string): Promise<DbTables> {
     : { database, tables: [], note: reply.message }
 }
 
-async function readRows($: Engine, database: string, table: string, offset: number): Promise<DbRows> {
-  const reply = await api(
-    $,
-    `${dbPath(database)}/rows?table=${encodeURIComponent(table)}&limit=${DB_PAGE}&offset=${offset}`,
-  )
+/** One read-only statement, through the daemon's query route, which takes a form. */
+async function query($: Engine, database: string, sql: string, limit: number): Promise<Reply<unknown>> {
+  const form = `sql=${encodeURIComponent(sql)}&limit=${limit}`
+  const answer = await call($, `${dbPath(database)}/query`, 'POST', form, true)
 
-  return reply.ok
-    ? toDbRows(database, table, offset, reply.value)
-    : { database, table, columns: [], rows: [], rowCount: 0, offset, note: reply.message }
+  return answer === undefined ? OFFLINE : replyOf(answer.status, answer.text)
+}
+
+async function readRows($: Engine, database: string, table: string, offset: number): Promise<DbRows> {
+  const rowsPath = `${dbPath(database)}/rows?table=${encodeURIComponent(table)}`
+  const failed = (note: string): DbRows => ({
+    database,
+    table,
+    columns: [],
+    rows: [],
+    total: null,
+    hasMore: false,
+    offset,
+    firstColumn: 0,
+    record: null,
+    sql: '',
+    note,
+  })
+  const engine = (await read($, databases)).find(one => one.name === database)?.engine ?? ''
+  if (engine.startsWith('postgres')) {
+    // The row endpoint names the columns; the rows themselves are read cast to text.
+    const head = await api($, `${rowsPath}&limit=1&offset=0`)
+    if (!head.ok) return failed(head.message)
+    const columns = toColumns(head.value)
+    if (columns.length > 0) {
+      const [page, count] = await Promise.all([
+        query($, database, pageSql(table, columns, DB_PAGE, offset), DB_PAGE),
+        query($, database, countSql(table), 1),
+      ])
+      if (page.ok) {
+        return toDbRows(database, table, offset, page.value, DB_PAGE, count.ok ? toCount(count.value) : null)
+      }
+    }
+  }
+  const reply = await api($, `${rowsPath}&limit=${DB_PAGE}&offset=${offset}`)
+
+  return reply.ok ? toDbRows(database, table, offset, reply.value, DB_PAGE) : failed(reply.message)
 }
 
 /** A folder of the session's own, listed; `null` for one outside it or one that cannot be read. */
@@ -487,6 +779,49 @@ async function listDir($: Engine, path: string): Promise<Listing | null> {
     return { path, entries: sortEntries(await $.fs.list(path)) }
   } catch {
     return null
+  }
+}
+
+/**
+ * Searches the session's folder: files by name, lines by what they say.
+ * Where the folder is one or more repositories git answers, so what is
+ * ignored stays out; anywhere else `find` and `grep` do. The words searched
+ * for are one argument of the command, never part of a command line.
+ */
+async function searchFolder($: Engine, query: string): Promise<Search> {
+  const cwd = await $.session.cwd()
+  const run = async (argv: string[], at: string): Promise<string> => {
+    try {
+      return (await $.process.run(argv, { cwd: at, timeoutMs: 20_000 })).stdout
+    } catch {
+      return ''
+    }
+  }
+  const names: string[] = []
+  const hits: Hit[] = []
+  if (roots.length > 0 && rootsFor === cwd) {
+    for (const root of roots) {
+      const prefix = root === cwd ? '' : `${root.slice(cwd.length + 1)}/`
+      const listed = await run(['git', 'ls-files', '--cached', '--others', '--exclude-standard'], root)
+      names.push(...matchNames(listed.split('\n'), query).map(path => `${prefix}${path}`))
+      hits.push(
+        ...parseGrep(await run(['git', 'grep', '-n', '-I', '-i', '-F', '--untracked', '-e', query], root), prefix),
+      )
+    }
+  } else {
+    const skip = ['node_modules', '.git', 'dist', 'target']
+    const listed = await run(['find', '.', '-type', 'f', '-not', '-path', '*/node_modules/*', '-not', '-path', '*/.git/*'], cwd)
+    names.push(...matchNames(listed.split('\n').map(path => path.replace(/^\.\//, '')), query))
+    hits.push(
+      ...parseGrep(await run(['grep', '-rnIiF', ...skip.map(dir => `--exclude-dir=${dir}`), '-e', query, '.'], cwd)),
+    )
+  }
+
+  return {
+    query,
+    names: matchNames(names, query).slice(0, MAX_FOUND),
+    hits: hits.slice(0, MAX_FOUND),
+    isCut: names.length > MAX_FOUND || hits.length > MAX_FOUND,
   }
 }
 
@@ -526,10 +861,18 @@ async function editFile($: Engine, edit: Edit): Promise<string | undefined> {
   }
   const next = applyEdit(disk, edit)
   if (next === undefined) return 'That line is no longer there.'
-  await $.fs.write(open.path, next)
+  // A line saved as it stood is not a change: nothing is written for it.
+  if (next !== disk) await $.fs.write(open.path, next)
   const mtimeMs = (await $.fs.stat(open.path)).mtimeMs
-  // A new line is opened for typing; anything else leaves the list of lines.
-  const line = edit.kind === 'insert' ? edit.line + 1 : null
+  // As in an editor, Enter goes on to the next line: a new line is opened for
+  // typing, and a line saved hands over to the one under it. A line deleted,
+  // or the file's last one saved, leaves the list of lines.
+  const line =
+    edit.kind === 'insert'
+      ? edit.line + 1
+      : edit.kind === 'replace' && edit.line < linesOf(next).length
+        ? edit.line + 1
+        : null
   await update($, file, () => ({
     ...open,
     text: next,
@@ -539,6 +882,45 @@ async function editFile($: Engine, edit: Edit): Promise<string | undefined> {
   }))
 
   return undefined
+}
+
+/**
+ * What the editor posted: that it holds changes, or the text to save. The
+ * post is input, not a fact: the path must be the file on screen and inside
+ * the session's folder, and the file must not have been written by anyone
+ * else since the editor was handed it.
+ */
+async function hearEditor($: Engine, data: unknown): Promise<void> {
+  const said = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>
+  const open = await read($, file)
+  if (open === null || open.note !== '' || said.path !== open.path) return
+  if (said.type === 'dirty') {
+    if (!open.isDirty) await update($, file, now => (now === null ? now : { ...now, isDirty: true }))
+
+    return
+  }
+  if (said.type !== 'save' || typeof said.text !== 'string') return
+  const tell = (tone: Notice['tone'], text: string): Promise<unknown> => update($, notice, () => ({ tone, text }))
+  if (!isUnder(open.path, await $.session.cwd())) {
+    await tell('bad', "That file is outside this session's folder.")
+
+    return
+  }
+  try {
+    if ((await $.fs.read(open.path)) !== open.text) {
+      await tell('bad', 'The file changed on disk while you were editing, so nothing was written. Your text is still here: copy what you need, then press done to see theirs.')
+
+      return
+    }
+    await $.fs.write(open.path, said.text)
+    const mtimeMs = (await $.fs.stat(open.path)).mtimeMs
+    const text = said.text
+    await update($, file, now => (now === null ? now : { ...now, text, mtimeMs, isDirty: false }))
+    await tell('ok', 'Saved.')
+  } catch (error) {
+    await tell('bad', reasonOf(error))
+  }
+  await refreshGit($)
 }
 
 /** A branch's recent workflow runs, by `gh` in the repository itself. */
@@ -589,7 +971,7 @@ async function loadExtras($: Engine, force = false): Promise<void> {
       if (shownFile === null) {
         const found = await listDir($, (await read($, listing))?.path ?? (await $.session.cwd()))
         if (found !== null && differs(await read($, listing), found)) await update($, listing, () => found)
-      } else if (shownFile.line === null && shownFile.note === '') {
+      } else if (shownFile.line === null && shownFile.note === '' && !shownFile.isDirty) {
         // Someone else wrote the file (the agent, an editor): what is shown follows.
         const mtimeMs = await $.fs.stat(shownFile.path).then(stat => stat.mtimeMs).catch(() => 0)
         if (mtimeMs !== shownFile.mtimeMs) {
@@ -599,6 +981,14 @@ async function loadExtras($: Engine, force = false): Promise<void> {
           )
         }
       }
+    }
+    if (part === 'history' && inView !== undefined && isDue(`log:${inView.root}`, force)) {
+      const found = await readHistory($, inView.root)
+      if (differs(await read($, history), found)) await update($, history, () => found)
+    }
+    if (part === 'pulls' && inView !== undefined && isDue(`pulls:${inView.root}`, force)) {
+      const found = await readPullList($, inView.root)
+      if (differs(await read($, pullList), found)) await update($, pullList, () => found)
     }
     if (part === 'actions' && inView !== undefined && isDue(`runs:${inView.root}:${inView.branch}`, force)) {
       const found = await readRuns($, inView.root, inView.branch)
@@ -702,6 +1092,13 @@ async function readLogs($: Engine, name: string): Promise<LogLine[] | undefined>
   const reply = await api($, `/api/services/${encodeURIComponent(name)}/logs?lines=60`)
 
   return reply.ok ? toLogs(reply.value) : undefined
+}
+
+/** A service's processor and memory over the daemon's recent samples; `null` when it keeps none. */
+async function readServiceTrend($: Engine, name: string): Promise<Trend | null> {
+  const reply = await api($, `/api/services/${encodeURIComponent(name)}/metrics`)
+
+  return reply.ok ? toServiceTrend(reply.value) : null
 }
 
 function actOnService($: Engine, name: string, verb: ServiceVerb): Promise<Reply<unknown>> {
@@ -816,7 +1213,7 @@ async function loadDaemon($: Engine): Promise<void> {
   if (open === null) return
   const lines = await readLogs($, open.name)
   if (lines === undefined) return
-  const fresh = { name: open.name, lines }
+  const fresh = { name: open.name, lines, trend: await readServiceTrend($, open.name) }
   if (differs(await read($, logs), fresh)) await update($, logs, () => fresh)
 }
 
@@ -830,6 +1227,7 @@ function refreshDaemon($: Engine): Promise<void> {
         await readFill($)
       }
       await loadDaemon($)
+      await loadLimits($)
       await refreshExtras($)
     } catch {
       // As for git: the next poll is the retry.
@@ -865,6 +1263,7 @@ function begin($: Engine): void {
   timers = [
     $.clock.every(GIT_EVERY_MS, () => void refreshGit($)),
     $.clock.every(DAEMON_EVERY_MS, () => void refreshDaemon($)),
+    $.clock.every(MUSIC_EVERY_MS, () => void refreshMusic($)),
   ]
   void refreshGit($)
   void refreshDaemon($)
@@ -926,6 +1325,7 @@ async function model(
   const isConsole = wants === 'view' && shown === 'console'
   const isLinear = wants === 'view' && shown === 'linear'
   const part = isConsole ? await read($, section) : 'changes'
+  const chill = await read($, isChill)
   const seen = {
     isLight: read($, isLight),
     scheme: read($, scheme),
@@ -950,13 +1350,23 @@ async function model(
     pulls: wants === 'view' && shown === 'git' ? read($, pulls) : [],
     listing: gitPart === 'files' ? read($, listing) : null,
     file: gitPart === 'files' ? read($, file) : null,
+    search: gitPart === 'files' ? read($, search) : null,
     runs: gitPart === 'actions' ? read($, runs) : null,
+    history: gitPart === 'history' ? read($, history) : null,
+    commit: gitPart === 'history' ? read($, openedCommit) : null,
+    pullList: gitPart === 'pulls' ? read($, pullList) : null,
     run: gitPart === 'actions' ? read($, run) : null,
     snapshots: wants === 'view' && shown === 'git' ? read($, snapshots) : null,
     changeSets: isConsole && part === 'changes' ? read($, changeSets) : [],
     changeSet: isConsole && part === 'changes' ? read($, changeSet) : null,
     changeDiff: isConsole && part === 'changes' ? read($, changeDiff) : null,
     usage: isConsole && part === 'usage' ? read($, usage) : null,
+    limits: wants === 'summary' ? read($, limits) : null,
+    track: chill ? read($, track) : null,
+    lyrics: chill ? read($, lyrics) : null,
+    cover: chill && wants === 'view' ? read($, cover) : null,
+    isChillWide: chill ? read($, isChillWide) : false,
+    lyricAt: chill ? read($, lyricAt) : -1,
     tools: isConsole && part === 'tools' ? read($, tools) : null,
     toolKind: isConsole && part === 'tools' ? read($, toolKind) : ('' as const),
     tasks: isLinear ? read($, tasks) : null,
@@ -996,7 +1406,11 @@ async function model(
     gitSection: gitPart,
     listing: await seen.listing,
     file: await seen.file,
+    search: await seen.search,
     runs: await seen.runs,
+    history: await seen.history,
+    commit: await seen.commit,
+    pullList: await seen.pullList,
     run: await seen.run,
     snapshots: await seen.snapshots,
     section: part,
@@ -1004,6 +1418,13 @@ async function model(
     changeSet: await seen.changeSet,
     changeDiff: await seen.changeDiff,
     usage: await seen.usage,
+    limits: await seen.limits,
+    isChill: chill,
+    track: await seen.track,
+    lyrics: await seen.lyrics,
+    cover: await seen.cover,
+    isChillWide: await seen.isChillWide,
+    lyricAt: await seen.lyricAt,
     tools: await seen.tools,
     toolKind: await seen.toolKind,
     tasks: await seen.tasks,
@@ -1063,6 +1484,7 @@ function actions($: Engine): Actions {
             await update($, diff, () => null)
             await update($, file, () => null)
             await update($, run, () => null)
+            await update($, openedCommit, () => null)
           }
           if (id === 'errors') await update($, incident, () => null)
           if (id === 'services') {
@@ -1103,7 +1525,53 @@ function actions($: Engine): Actions {
     openTable: (database, table, offset) =>
       guard(async () => {
         const found = await readRows($, database, table, Math.max(0, offset))
+        // Another page of the same table keeps the columns that were in view.
+        await update($, dbRows, held =>
+          held !== null && held.database === database && held.table === table
+            ? { ...found, firstColumn: Math.min(held.firstColumn, Math.max(0, found.columns.length - 1)) }
+            : found,
+        )
+      }),
+    runQuery: (database, sql) =>
+      guard(async () => {
+        const statement = sql.trim()
+        if (statement === '') return
+        // The daemon's query route is its read side: a statement that writes is
+        // refused there, whatever is typed here.
+        // On Postgres the rows are asked for as JSON first, so a timestamp or a
+        // uuid shows as itself; a statement that cannot be asked that way runs as typed.
+        const engine = (await read($, databases)).find(one => one.name === database)?.engine ?? ''
+        const asJson = engine.startsWith('postgres') ? jsonSql(statement) : undefined
+        const wrapped = asJson === undefined ? undefined : await query($, database, asJson, QUERY_ROWS)
+        const unwrapped = wrapped?.ok === true ? fromJsonRows(wrapped.value) : undefined
+        const reply = unwrapped === undefined ? await query($, database, statement, QUERY_ROWS) : wrapped ?? OFFLINE
+        const found: DbRows = reply.ok
+          ? { ...toDbRows(database, '', 0, unwrapped ?? reply.value, QUERY_ROWS), sql: statement }
+          : {
+              database,
+              table: '',
+              columns: [],
+              rows: [],
+              total: null,
+              hasMore: false,
+              offset: 0,
+              firstColumn: 0,
+              record: null,
+              sql: statement,
+              note: reply.message,
+            }
         await update($, dbRows, () => found)
+        await hush()
+      }),
+    shiftColumns: to =>
+      guard(async () => {
+        await update($, dbRows, held =>
+          held === null ? held : { ...held, firstColumn: Math.max(0, Math.min(held.columns.length - 1, to)) },
+        )
+      }),
+    openRecord: index =>
+      guard(async () => {
+        await update($, dbRows, held => (held === null ? held : { ...held, record: index }))
       }),
     closeTable: () =>
       guard(async () => {
@@ -1129,14 +1597,34 @@ function actions($: Engine): Actions {
         else await update($, listing, () => found)
       }),
 
-    openFile: path =>
+    searchFiles: query =>
+      guard(async () => {
+        const wanted = query.trim()
+        if (wanted.length < 2) {
+          await say('bad', 'Search for two characters or more.')
+
+          return
+        }
+        await hush()
+        const found = await searchFolder($, wanted)
+        await update($, search, () => found)
+      }),
+    clearSearch: () =>
+      guard(async () => {
+        await update($, search, () => null)
+      }),
+
+    openFile: (path, line) =>
       guard(async () => {
         if (!isUnder(path, await $.session.cwd())) {
           await say('bad', "That file is outside this session's folder.")
 
           return
         }
-        const loaded = await readFile($, path)
+        const read_ = await readFile($, path)
+        // Opened from a search, the file starts at the window that holds the line found.
+        const loaded =
+          line === undefined ? read_ : { ...read_, top: windowFor(line, VIEW_LINES, linesOf(read_.text).length) }
         await update($, tab, () => 'git')
         await update($, gitSection, () => 'files')
         await update($, diff, () => null)
@@ -1174,6 +1662,7 @@ function actions($: Engine): Actions {
             : {
                 ...open,
                 isEditing: !open.isEditing,
+                isDirty: false,
                 line: null,
                 // The same lines stay in view across the two window sizes.
                 top: windowFor(open.top + 1, open.isEditing ? VIEW_LINES : EDIT_LINES, linesOf(open.text).length),
@@ -1229,6 +1718,31 @@ function actions($: Engine): Actions {
         const jobs = await readJobs($, held.root, id)
         await update($, run, () => ({ id, jobs }))
         await hush()
+      }),
+    openCommit: (root, sha) =>
+      guard(async () => {
+        const found = await readCommit($, root, sha)
+        if (found === null) await say('bad', 'Git does not know that commit any more.')
+        else {
+          await update($, openedCommit, () => found)
+          await hush()
+        }
+      }),
+    closeCommit: () =>
+      guard(async () => {
+        await update($, openedCommit, () => null)
+      }),
+    openCommitFile: path =>
+      guard(async () => {
+        const open = await read($, openedCommit)
+        if (open === null) return
+        if (path === '' || !open.files.some(one => one.path === path)) {
+          await update($, openedCommit, now => (now === null ? now : { ...now, diff: null }))
+
+          return
+        }
+        const shown = (await peek($, open.root, ['show', '--format=', open.sha, '--', path])).out
+        await update($, openedCommit, now => (now === null || now.sha !== open.sha ? now : { ...now, diff: { path, ...fitHunks(shown) } }))
       }),
     closeRun: () =>
       guard(async () => {
@@ -1345,6 +1859,47 @@ function actions($: Engine): Actions {
         await update($, toolKind, open => (open === kind ? '' : kind))
       }),
 
+    draft: text =>
+      guard(async () => {
+        const filled = await $.prompt.fill({ text, mode: 'insert' })
+        await say(
+          filled.isFilled ? 'ok' : 'bad',
+          filled.isFilled
+            ? 'Drafted in the prompt, not sent. Press Esc to go to it.'
+            : 'The prompt box is busy; try again in a moment.',
+        )
+      }),
+
+    rerun: id =>
+      guard(async () => {
+        const held = await read($, runs)
+        const one = held?.items.find(item => item.id === id)
+        if (held === null || one === undefined) return
+        // A failed run tries its failed jobs again; any other runs whole.
+        const ran = await $.process.run(
+          ['gh', 'run', 'rerun', String(id), ...(one.conclusion === 'failure' ? ['--failed'] : [])],
+          { cwd: held.root, timeoutMs: 30_000 },
+        )
+        await say(
+          ran.exitCode === 0 ? 'ok' : 'bad',
+          ran.exitCode === 0 ? 'Asked GitHub to run it again.' : tail(ran.stderr || ran.stdout, 3) || 'gh could not re-run it.',
+        )
+        await reloadExtras($)
+      }),
+
+    moveTask: (id, to) =>
+      guard(async () => {
+        const task = (await read($, tasks))?.tasks.find(one => one.id === id)
+        const state = to === 'start' ? task?.startState : task?.doneState
+        if (task === undefined || state === undefined || state === '') return
+        const reply = await linear($, { operation: 'update', id, state })
+        await say(
+          reply.ok ? 'ok' : 'bad',
+          reply.ok ? `${task.identifier} is ${to === 'start' ? 'in progress' : 'done'} in Linear.` : reply.message,
+        )
+        await reloadExtras($)
+      }),
+
     toolToPrompt: (kind, name) =>
       guard(async () => {
         // Only a name the daemon listed goes in, and only as a name: no line breaks, nothing to run.
@@ -1374,6 +1929,22 @@ function actions($: Engine): Actions {
     openPane: () =>
       guard(async () => {
         await openPane($, true)
+      }),
+
+    toggleChill: () =>
+      guard(async () => {
+        const isOn = !(await read($, isChill))
+        await update($, isChill, () => isOn)
+        if (isOn) await refreshMusic($, true)
+      }),
+    toggleChillWide: () =>
+      guard(async () => {
+        await update($, isChillWide, wide => !wide)
+      }),
+    media: command =>
+      guard(async () => {
+        await sendMedia($, command)
+        await refreshMusic($, true)
       }),
 
     openWeb: () =>
@@ -1493,7 +2064,8 @@ function actions($: Engine): Actions {
     openLogs: name =>
       guard(async () => {
         const lines = (await readLogs($, name)) ?? []
-        await update($, logs, () => ({ name, lines }))
+        const trend = await readServiceTrend($, name)
+        await update($, logs, () => ({ name, lines, trend }))
         await hush()
       }),
     closeLogs: () =>
@@ -1523,7 +2095,7 @@ export const register: Register = (on, options) => {
     await $.command.register({
       name: 'nomoreide',
       description: 'Open the NoMoreIDE pane: git, errors, services, console, linear',
-      argumentHint: '[git|files|actions|errors|services|activity|database|console|changes|usage|tools|linear|web]',
+      argumentHint: '[git|files|actions|errors|services|activity|database|history|prs|console|changes|usage|tools|linear|web|chill]',
     })
 
     // Nothing opens by itself: `/nomoreide` does. A reload lands here too,
@@ -1539,12 +2111,25 @@ export const register: Register = (on, options) => {
     const asked = e.args.trim().toLowerCase()
     const wanted = TAB_IDS.find(id => asked !== '' && id.startsWith(asked))
     // `web` is the dashboard itself, in the browser: nothing of it is drawn here.
+    if (asked === 'chill') {
+      const isOn = !(await read($, isChill))
+      await update($, isChill, () => isOn)
+      await openPane($, true)
+      if (isOn) void refreshMusic($, true)
+
+      return { text: isOn ? 'Chill mode is on: what is playing shows in the pane and above the prompt.' : 'Chill mode is off.' }
+    }
     if (asked === 'web') {
       return { text: (await openDashboard($)) ?? 'The NoMoreIDE dashboard is open in your browser.' }
     }
     const part = SECTION_IDS.find(id => asked !== '' && wanted === undefined && id.startsWith(asked))
     const gitPart = GIT_SECTION_IDS.find(
-      id => id !== 'changes' && asked !== '' && wanted === undefined && part === undefined && id.startsWith(asked),
+      id =>
+        id !== 'changes' &&
+        asked !== '' &&
+        wanted === undefined &&
+        part === undefined &&
+        (id.startsWith(asked) || (id === 'pulls' && /^prs?$/.test(asked))),
     )
     if (gitPart !== undefined) {
       await update($, tab, () => 'git')
@@ -1568,7 +2153,7 @@ export const register: Register = (on, options) => {
       await update($, serviceSection, () => servicePart)
     }
     if (asked !== '' && wanted === undefined && part === undefined && gitPart === undefined && servicePart === undefined) {
-      return { text: `No "${asked}" view. There is git (files, actions), errors, services (activity, database), console (changes, usage, tools), linear and web.` }
+      return { text: `No "${asked}" view. There is git (files, history, prs, actions), errors, services (activity, database), console (changes, usage, tools), linear and web.` }
     }
     if (wanted !== undefined) await update($, tab, () => wanted)
     if (part !== undefined) {
@@ -1606,6 +2191,13 @@ export const register: Register = (on, options) => {
     return moved
   })
 
+  on('ui.message', async ($, e, next) => {
+    if (e.requestId !== PANE || e.element !== EDITOR) return next(e)
+    await hearEditor($, e.data)
+
+    return {}
+  })
+
   on('ui.press', { requestId: PANE }, async ($, e, next) => {
     // Should the app come to raise the press too, it is not done twice.
     if (isEcho(answered, e.element, Date.now())) return { element: e.element }
@@ -1623,6 +2215,7 @@ export const register: Register = (on, options) => {
     // A cell grid draws no pictures, whatever its table carries: there the
     // views fall back to their glyphs, as they do wherever `Svg` is missing.
     const { Box, Text, Button, Code, Input, Svg } = $.ui.resolve(e) as Kit
+    const { Client } = $.ui.resolve(e) as Partial<Elements['terminal']>
     const kit: Kit = {
       Box,
       Text,
@@ -1630,6 +2223,11 @@ export const register: Register = (on, options) => {
       Code,
       ...(Input === undefined ? {} : { Input }),
       ...(Svg === undefined || e.surface === 'terminal' ? {} : { Svg }),
+      // The editor is a surface module, named here because the engine reads
+      // the module's path off this file's own source.
+      ...(Client === undefined
+        ? {}
+        : { editor: (props: EditorProps) => <Client key={EDITOR} module="./editor.tsx" props={props} /> }),
     }
 
     return pane(
@@ -1640,12 +2238,17 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    // The band stands in for a pane that is on but has nowhere to sit.
+    // The band stands in for a pane that is on but has nowhere to sit; beside
+    // a seated pane it keeps only the limits, which the pane shows two views in.
     if (e.props.hasSurvey || !(await read($, isActive))) return next(e)
     const drawn = await model($, e.props.bodyColumns, 0, false, e.surface === 'terminal', 'summary')
     const panes = await $.ui.panes()
-    if (panes.some(one => one.id === PANE && one.isPlaced && one.isShown)) return next(e)
+    const isSeated = panes.some(one => one.id === PANE && one.isPlaced && one.isShown)
 
-    return band($.ui.resolve(e), drawn, actions($)) ?? next(e)
+    const { Box, Text, Button, Code, Svg } = $.ui.resolve(e) as Kit
+    // A terminal's table carries `Svg` and draws nothing for it: meters are cells there.
+    const kit: Kit = { Box, Text, Button, Code, ...(Svg === undefined || e.surface === 'terminal' ? {} : { Svg }) }
+
+    return band(kit, drawn, actions($), isSeated) ?? next(e)
   })
 }

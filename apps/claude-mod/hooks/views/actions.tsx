@@ -76,6 +76,9 @@ export function runView(kit: Kit, m: Model, runs: Runs, run: Run, open: OpenRun,
         {run.url !== '' && (
           <Button key="run-web" {...chip(m)} hotkey="o" label="open" onPress={() => act.openUrl(run.url)} />
         )}
+        {run.status === 'completed' && (
+          <Button key="run-again" {...chip(m)} hotkey="r" label="re-run" onPress={() => act.rerun(run.id)} />
+        )}
         {standingOf(run) === 'failed' && (
           <Button key="run-fix" {...chip(m, false)} hotkey="f" label="fix with Claude" onPress={() => act.runToPrompt(run.id)} />
         )}

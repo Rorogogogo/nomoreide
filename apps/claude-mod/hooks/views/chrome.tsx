@@ -1,8 +1,12 @@
 import type { Color, RenderElement } from 'claude-code'
 
-import type { Notice, Service } from '../../types'
+import type { LogLine, Notice, Service } from '../../types'
+import { familyOf } from '../files'
+import { diffRows } from '../git'
 import { clipEnd } from '../text'
-import { GLYPH } from '../tokens'
+import { TAG_PX, diffSvgs, logSvgs, rowIcon, tagSvg } from '../icons'
+import type { RowIcon } from '../icons'
+import { FAMILY_TONE, GLYPH } from '../tokens'
 import type { Palette } from '../tokens'
 import type { Actions, Kit, Model } from './model'
 
@@ -128,6 +132,186 @@ export function strip<T extends string>(
       )}
     </Box>
   )
+}
+
+/** A cell's width off a cell grid, in pixels, as measured in the desktop app. */
+const CELL_PX = 8
+/** A row icon's side off a cell grid, in pixels, and the column it stands in, in cells. */
+const ROW_ICON_PX = 14
+const ROW_ICON_COLUMN = 2.5
+
+/**
+ * What a row is, before its name, in a column of its own so names start
+ * level. A file is told by a two-letter tag coloured by its family: plain
+ * letters on a cell grid, a small drawing where a surface draws pictures,
+ * set smaller than the name beside it. Anything else is the dashboard's icon
+ * there, and a quiet mark on a cell grid.
+ */
+export function kind(kit: Kit, m: Model, name: RowIcon, file?: { tag: string; family: string }): RenderElement {
+  const { Box, Text, Svg } = kit
+  const tones = FAMILY_TONE[file?.family ?? 'other'] ?? ['#71717A', '#71717A']
+  if (Svg === undefined) {
+    return (
+      <Box flexShrink={0} width={3}>
+        <Text color={file === undefined ? m.colors.inert : tones[m.scheme === 'light' ? 1 : 0]}>
+          {file?.tag ?? GLYPH[name]}
+        </Text>
+      </Box>
+    )
+  }
+
+  return (
+    <Box flexShrink={0} width={ROW_ICON_COLUMN} flexDirection="row" alignItems="center">
+      {file === undefined ? (
+        <Svg source={rowIcon(name, m.scheme)} alt={name} width={ROW_ICON_PX} height={ROW_ICON_PX} />
+      ) : (
+        <Svg source={tagSvg(file.tag, tones, m.scheme)} alt={`${file.tag} file`} width={TAG_PX.width} height={TAG_PX.height} />
+      )}
+    </Box>
+  )
+}
+
+/** A file's git letter at the far end of its row, in the status colour, as the Changes list shows it. */
+export function gitLetter(kit: Kit, m: Model, code: string): RenderElement | false {
+  return (
+    code !== '' && (
+      <kit.Box flexShrink={0} marginLeft={1}>
+        <kit.Text bold color={toneOf(code, m.colors)}>
+          {code}
+        </kit.Text>
+      </kit.Box>
+    )
+  )
+}
+
+/** Leading spaces as ones a surface that sets type keeps: plain ones are folded away there. */
+export const indented = (line: string): string =>
+  line.replace(/^[ \t]+/, lead => lead.replace(/\t/g, '  ').replace(/ /g, ' '))
+
+/**
+ * A diff. A cell grid has the engine's own drawing of one, added and removed
+ * lines on their coloured grounds. Off a cell grid that drawing colours the
+ * type alone, and a pane's own type is not fixed-width: there the diff is a
+ * drawing, as a review on GitHub shows one: code in the face it is read in
+ * and in its own colours, a line added on a faint green ground and a line
+ * removed on a faint red one. A surface with no pictures gets the lines as
+ * text on the theme's grounds.
+ */
+/** What a terminal paints with and a line of text should not carry: colour and cursor sequences. */
+const ANSI = /\x1b\[[0-9;?]*[ -\/]*[@-~]/g
+
+/** A line of an error's excerpt read for its tone, as the daemon tones a service's output. */
+export function toneOfLine(text: string): LogLine['tone'] {
+  if (/\b(error|panic(ked)?|fatal|exception|failed|failure|errno|traceback)\b/i.test(text)) return 'bad'
+
+  return /\bwarn(ing)?\b/i.test(text) ? 'warn' : 'plain'
+}
+
+/**
+ * Output as it is read in a terminal: a fixed-width face, every space kept,
+ * a warning amber and an error red. A drawing in a card where a surface
+ * draws pictures, as a diff is; plain coloured lines on a cell grid.
+ */
+export function logBody(kit: Kit, m: Model, lines: readonly LogLine[]): RenderElement {
+  const { Box, Text, Svg } = kit
+  if (Svg !== undefined && !m.isTerminal) {
+    const width = Math.max(160, Math.round((m.width - 1) * CELL_PX))
+
+    return (
+      <Box flexDirection="column" borderStyle="round" borderDimColor marginTop={1} paddingY={0.5}>
+        {logSvgs(lines, m.scheme, width).map((one, at) => (
+          <Svg key={`log:${at}`} source={one.source} alt={one.alt} width={one.width} />
+        ))}
+      </Box>
+    )
+  }
+
+  // On a cell grid: the same card, each line behind a gutter that marks a
+  // warning amber and an error red, so they are found without reading.
+  return (
+    <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
+      {lines.map((line, at) => {
+        const text = line.text.replace(ANSI, '').replace(/\t/g, '  ')
+        const tone = line.tone === 'bad' ? m.colors.bad : line.tone === 'warn' ? m.colors.busy : undefined
+
+        return (
+          <Box key={`log:${at}`} flexDirection="row" alignItems="flex-start">
+            <Box flexShrink={0} width={2}>
+              {tone === undefined ? <Text> </Text> : <Text color={tone}>{GLYPH.bar}</Text>}
+            </Box>
+            <Box flexShrink={1} minWidth={0}>
+              <Text {...(tone === undefined ? {} : { color: tone })}>{text === '' ? ' ' : text}</Text>
+            </Box>
+          </Box>
+        )
+      })}
+    </Box>
+  )
+}
+
+export function diffBody(kit: Kit, m: Model, hunks: string, path: string): RenderElement {
+  const { Box, Text, Code } = kit
+  if (m.isTerminal) return <Code source={hunks} format="diff" path={path} />
+  const { Svg } = kit
+  const rows = diffRows(hunks)
+  if (Svg !== undefined) {
+    // The card's outline and the air inside it are taken from the room, a cell being eight pixels.
+    const width = Math.max(160, Math.round((m.width - 1) * CELL_PX))
+
+    return (
+      <Box flexDirection="column" borderStyle="round" borderDimColor marginTop={1}>
+        {diffSvgs(rows, m.scheme, width, familyOf(path)).map((one, at) => (
+          // No height: the surface fits the drawing to the room across and keeps its shape.
+          <Svg key={`diff:${at}`} source={one.source} alt={one.alt} width={one.width} />
+        ))}
+      </Box>
+    )
+  }
+  const digits = String(Math.max(1, ...rows.map(one => one.after ?? one.before ?? 0))).length
+
+  return (
+    <Box flexDirection="column" borderStyle="round" borderDimColor marginTop={1} paddingY={0.5}>
+      {rows.map((one, at) =>
+        one.kind === 'hunk' ? (
+          <Box key={`diff:${at}`} paddingX={1} marginTop={at === 0 ? 0 : 0.5}>
+            <Text dimColor wrap="truncate-end">
+              {one.text === '' ? '⋯' : `⋯ ${one.text}`}
+            </Text>
+          </Box>
+        ) : (
+          <Box
+            key={`diff:${at}`}
+            flexDirection="row"
+            alignItems="flex-start"
+            paddingX={1}
+            {...(one.kind === 'added'
+              ? { backgroundColor: 'diffAddedDimmed' as const }
+              : one.kind === 'removed'
+                ? { backgroundColor: 'diffRemovedDimmed' as const }
+                : {})}
+          >
+            <Box flexShrink={0} width={digits + 1.5}>
+              <Text dimColor>{String(one.after ?? one.before ?? '')}</Text>
+            </Box>
+            <Box flexShrink={0} width={1.5}>
+              <Text dimColor>{one.kind === 'added' ? '+' : one.kind === 'removed' ? GLYPH.remove : ' '}</Text>
+            </Box>
+            <Box flexShrink={1} minWidth={0}>
+              <Text>{indented(one.text) || ' '}</Text>
+            </Box>
+          </Box>
+        ),
+      )}
+    </Box>
+  )
+}
+
+/**
+ * A press that hands something to Claude: one look everywhere, so what goes
+ * to the prompt box is told at a glance from what the pane does itself.
+ */
+export function ask(kit: Kit, m: Model, act: Actions, key: string, label: string, text: () => string): RenderElement {
+  return <kit.Button key={key} {...chip(m, false)} label={`${GLYPH.ask} ${label}`} onPress={() => act.draft(text())} />
 }
 
 /** An uppercase label and its count: the only heading a list gets. */

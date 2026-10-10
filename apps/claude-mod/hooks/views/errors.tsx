@@ -10,12 +10,14 @@ import {
   fit,
   group,
   heading,
+  logBody,
   more,
   offline,
   quiet,
   row,
   rule,
   space,
+  toneOfLine,
 } from './chrome'
 import type { Actions, Kit, Model } from './model'
 
@@ -77,7 +79,7 @@ export function errorsTab(kit: Kit, m: Model, act: Actions): RenderElement {
 }
 
 export function incidentView(kit: Kit, m: Model, incident: Incident, act: Actions): RenderElement {
-  const { Box, Text, Button, Code } = kit
+  const { Box, Text, Button } = kit
   const where = whereOf(incident)
 
   return (
@@ -117,7 +119,11 @@ export function incidentView(kit: Kit, m: Model, incident: Incident, act: Action
       {incident.excerpt === '' ? (
         <Text dimColor>No log lines were kept for this one.</Text>
       ) : (
-        <Code source={incident.excerpt} />
+        logBody(
+          kit,
+          m,
+          incident.excerpt.split('\n').map(text => ({ text, tone: toneOfLine(text) })),
+        )
       )}
     </Box>
   )

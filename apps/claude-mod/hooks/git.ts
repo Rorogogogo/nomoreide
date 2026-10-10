@@ -1,4 +1,4 @@
-import type { Diff, GitFile, Pull, Repo } from '../types'
+import type { Commit, Diff, GitFile, Pull, PullItem, Repo } from '../types'
 
 // Reading git, with no engine in sight: the hooks module runs the commands
 // and hands their output here.
@@ -168,4 +168,119 @@ export function parsePull(root: string, json: string): Pull | null {
     passed,
     total: checks.length,
   }
+}
+
+export type DiffRow = {
+  kind: 'hunk' | 'added' | 'removed' | 'same'
+  /** The line's number in the file as it was, and as it is; `null` on the side it is not on. */
+  before: number | null
+  after: number | null
+  text: string
+}
+
+/** Unified-diff hunks as rows, each with its line number on either side. */
+export function diffRows(hunks: string): DiffRow[] {
+  let before = 0
+  let after = 0
+
+  return hunks.split('\n').flatMap((line): DiffRow[] => {
+    const header = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/.exec(line)
+    if (header !== null) {
+      before = Number(header[1])
+      after = Number(header[2])
+
+      return [{ kind: 'hunk', before: null, after: null, text: (header[3] ?? '').trim() }]
+    }
+    if (line.startsWith('\\')) return []
+    const text = line.slice(1)
+    if (line.startsWith('+')) return [{ kind: 'added', before: null, after: after++, text }]
+    if (line.startsWith('-')) return [{ kind: 'removed', before: before++, after: null, text }]
+
+    return [{ kind: 'same', before: before++, after: after++, text }]
+  })
+}
+
+/** How many lines of the graph one look takes. */
+export const LOG_LINES = 80
+
+/** `git log` as a graph of every branch, each commit's fields set apart by a unit separator. */
+export const LOG_ARGS = [
+  'log',
+  '--graph',
+  '--all',
+  '--date-order',
+  `-n${LOG_LINES}`,
+  '--format=%x1f%h%x1f%s%x1f%an%x1f%ct%x1f%D',
+] as const
+
+/** `git log --graph` read line by line: the graph's characters and, on a commit's line, the commit. */
+export function parseLog(out: string): Commit[] {
+  return out
+    .split('\n')
+    .filter(line => line.trim() !== '')
+    .map(line => {
+      const [graph = '', sha = '', subject = '', author = '', seconds = '', refs = ''] = line.split('\x1f')
+
+      return {
+        graph: graph.replace(/\s+$/, ''),
+        sha,
+        subject,
+        author,
+        at: (Number(seconds) || 0) * 1000,
+        refs: refs
+          .split(', ')
+          .map(ref => ref.replace(/^HEAD -> /, '').replace(/^tag: /, '').trim())
+          .filter(ref => ref !== '' && ref !== 'HEAD' && !ref.endsWith('/HEAD')),
+      }
+    })
+}
+
+/** One commit's own fields, asked for with `COMMIT_FORMAT`; `undefined` when git named none. */
+export const COMMIT_FORMAT = '--format=%h%x1f%s%x1f%an%x1f%ct%x1f%b'
+
+export function parseCommit(out: string): { sha: string; subject: string; author: string; at: number; body: string } | undefined {
+  const [sha = '', subject = '', author = '', seconds = '', body = ''] = out.split('\x1f')
+  if (sha.trim() === '') return undefined
+
+  return { sha: sha.trim(), subject, author, at: (Number(seconds) || 0) * 1000, body: body.trim() }
+}
+
+/** `git show --name-status`: each file a commit touched and how. A rename is told by its new path. */
+export function parseNameStatus(out: string): { status: string; path: string }[] {
+  return out
+    .split('\n')
+    .map(line => line.split('\t'))
+    .filter(parts => parts.length >= 2 && /^[A-Z]/.test(parts[0] ?? ''))
+    .map(parts => ({ status: (parts[0] ?? 'M').charAt(0), path: parts[parts.length - 1] ?? '' }))
+    .filter(one => one.path !== '')
+}
+
+/** What `gh pr list` is asked for. */
+export const PULL_LIST_FIELDS = 'number,title,url,state,isDraft,statusCheckRollup,headRefName,author,updatedAt'
+
+/** `gh pr list --json ...` read: each pull request as `parsePull` reads one, and whose it is. */
+export function parsePulls(root: string, json: string): PullItem[] {
+  let value: unknown
+  try {
+    value = JSON.parse(json)
+  } catch {
+    return []
+  }
+  if (!Array.isArray(value)) return []
+
+  return value.flatMap(one => {
+    const pull = parsePull(root, JSON.stringify(one))
+    if (pull === null) return []
+    const row = one as Record<string, unknown>
+    const author = typeof row.author === 'object' && row.author !== null ? (row.author as { login?: unknown }).login : undefined
+
+    return [
+      {
+        ...pull,
+        branch: typeof row.headRefName === 'string' ? row.headRefName : '',
+        author: typeof author === 'string' ? author : '',
+        updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : '',
+      },
+    ]
+  })
 }

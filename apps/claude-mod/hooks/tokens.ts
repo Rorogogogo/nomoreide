@@ -66,6 +66,38 @@ const LIGHT: Palette = {
 
 export const palette = (isLight: boolean): Palette => (isLight ? LIGHT : DARK)
 
+/**
+ * What a file's tag is coloured by its family, as `[on dark, on light]`. A
+ * tag is an identifier, not a status, so none of these is the emerald, amber
+ * or red a status letter beside it uses: blues, violets, pinks and slate.
+ */
+export const FAMILY_TONE: Readonly<Record<string, readonly [string, string]>> = {
+  typed: ['#60A5FA', '#2563EB'],
+  script: ['#22D3EE', '#0891B2'],
+  systems: ['#FB7185', '#E11D48'],
+  python: ['#A78BFA', '#7C3AED'],
+  prose: ['#94A3B8', '#64748B'],
+  data: ['#818CF8', '#4F46E5'],
+  style: ['#F472B6', '#DB2777'],
+  image: ['#E879F9', '#C026D3'],
+  shell: ['#2DD4BF', '#0D9488'],
+  other: ['#71717A', '#71717A'],
+}
+
+/**
+ * What a line's parts are coloured by where they are the surface's own text
+ * (a file being edited). Theme keys, not hex: such text follows the person's
+ * theme where a fixed colour would not.
+ */
+export const TOKEN_TONE = {
+  keyword: 'permission',
+  string: 'claude',
+  comment: 'inactive',
+  number: 'success',
+  type: 'planMode',
+  call: 'warning',
+} as const
+
 export const GLYPH = {
   brand: '◆',
   on: '●',
@@ -73,10 +105,34 @@ export const GLYPH = {
   rule: '─',
   bar: '▎',
   dot: '·',
+  note: '♪',
+  // From the same run of symbols as the player's marks below, so a font draws all four at one size.
+  expand: '⏷',
+  collapse: '⏶',
+  // A player's own marks, each held to its text form: the picture form is a colour emoji.
+  previous: '⏮\uFE0E',
+  pause: '⏸\uFE0E',
+  play: '▶\uFE0E',
+  next: '⏭\uFE0E',
+  // The same marks for a cell grid, from plain geometric shapes: the player's
+  // own marks have a picture form there, which a terminal draws two cells wide
+  // and counts as one, so they overlap and push a card's edge off the row.
+  cells: { previous: '◂◂', pause: '▮▮', play: '▸', next: '▸▸', expand: '▾', collapse: '▴' },
+  /** One cell of a thin meter: a heavy rule, inked for the part used and faint for the rest. */
+  meter: '━',
   ahead: '↑',
   behind: '↓',
   add: '+',
   remove: '−',
   times: '×',
   dash: '–',
+  /** What stands before a row on a cell grid, where no picture can: a folder's mark, and two-letter tags for the rest. */
+  folder: '▸',
+  file: '··',
+  database: 'db',
+  table: 'tb',
+  /** A folder that holds something git has to say. */
+  changed: '•',
+  /** Marks a press that drafts a request to Claude. */
+  ask: '✦',
 } as const
