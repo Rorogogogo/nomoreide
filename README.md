@@ -213,6 +213,16 @@ Then confirm inside Claude Code:
 
 </details>
 
+#### NoMoreIDE pane (optional)
+
+A side pane inside Claude Code, in the terminal and in the desktop app's Code tab: Git review with fetch, pull and push, the branch's pull request and GitHub Actions runs, a file browser with line-by-line editing, captured errors, managed services with machine activity and a read-only look into registered databases, the agent console (what the AI changed, usage, installed tools) and Linear tasks. It reads the running NoMoreIDE daemon. Install it from inside Claude Code (2.1.275 or later):
+
+```
+/plugin install nomoreide --marketplace Rorogogogo/nomoreide
+```
+
+Answer `y` to add the marketplace and pick a scope, then open the pane with `/nomoreide`.
+
 ---
 
 ### Codex CLI

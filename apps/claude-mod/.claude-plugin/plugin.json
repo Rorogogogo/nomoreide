@@ -1,0 +1,17 @@
+{
+  "name": "nomoreide",
+  "version": "0.1.0",
+  "description": "NoMoreIDE inside Claude Code: a side pane for git review, files, GitHub Actions, captured errors, managed services, machine activity, databases, the agent console and Linear.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Rorogogogo"
+  },
+  "userConfig": {
+    "background": {
+      "type": "string",
+      "title": "Pane background",
+      "description": "A hex colour to paint the pane with, such as #000000. Empty keeps Claude Code's own panel fill.",
+      "default": ""
+    }
+  }
+}
