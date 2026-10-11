@@ -5,6 +5,15 @@ import type { Commit, Diff, GitFile, Pull, PullItem, Repo } from '../types'
 
 /** The diff lines one pane holds before the rest is counted, not drawn. */
 const MAX_DIFF_LINES = 400
+/** How many lines of one diff the pane will draw at most, however often more is asked for. */
+export const DIFF_LINES_CAP = 2400
+
+/** The lines a diff keeps when it is read again: what it shows now, so a refresh never folds back what was asked for. */
+export const keptDiffLines = (hunks: string): number => Math.max(MAX_DIFF_LINES, hunks.split('\n').length)
+
+/** The lines a diff shows after one more press of "show more": another screenful on what it shows now. */
+export const moreDiffLines = (hunks: string): number =>
+  Math.min(DIFF_LINES_CAP, hunks.split('\n').length + MAX_DIFF_LINES)
 const MAX_LINE_CHARS = 400
 
 export const isStaged = (file: GitFile): boolean =>
@@ -283,4 +292,50 @@ export function parsePulls(root: string, json: string): PullItem[] {
       },
     ]
   })
+}
+
+/** A line of a commit message as it is set: a list item hangs under its `mark`; plain text has none. */
+export type MessageLine = { mark: string; text: string }
+
+/** `Key: value` at a message's foot: who else wrote it, the session it came from. */
+export type Trailer = { key: string; value: string }
+
+const TRAILER = /^([A-Za-z][A-Za-z-]*[a-z]): (\S.*)$/
+const ITEM = /^\s*([-*+]|\d+[.)])\s+(.*)$/
+
+/**
+ * A commit body laid out for a pane of any width. A message is written
+ * wrapped at 72 columns, which is ragged in a wider pane and wraps twice in
+ * a narrower one: each paragraph and each list item is joined into one
+ * line for the surface to wrap. The trailers at its foot are taken off, to
+ * be set apart from the prose.
+ */
+export function layoutMessage(body: string): { paragraphs: MessageLine[][]; trailers: Trailer[] } {
+  const groups = body
+    .split(/\n[ \t]*\n/)
+    .map(group => group.split('\n').map(line => line.trimEnd()).filter(line => line.trim() !== ''))
+    .filter(group => group.length > 0)
+  const last = groups.at(-1)
+  const trailers: Trailer[] = []
+  if (last !== undefined && last.every(line => TRAILER.test(line))) {
+    groups.pop()
+    for (const line of last) {
+      const [, key = '', value = ''] = TRAILER.exec(line) ?? []
+      trailers.push({ key, value })
+    }
+  }
+  const paragraphs = groups.map(group => {
+    const lines: MessageLine[] = []
+    for (const line of group) {
+      const item = ITEM.exec(line)
+      const held = lines.at(-1)
+      if (item !== null) lines.push({ mark: item[1] ?? '', text: item[2] ?? '' })
+      else if (held === undefined) lines.push({ mark: '', text: line.trim() })
+      else held.text = `${held.text} ${line.trim()}`
+    }
+
+    return lines
+  })
+
+  return { paragraphs, trailers }
 }

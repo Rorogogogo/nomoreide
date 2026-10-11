@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { countSql, fromJsonRows, jsonSql, pageSql, thin, toActivity, toDatabases, toDbRows, toServiceTrend, toTrend } from '../hooks/daemon'
+import { countSql, fromJsonRows, jsonSql, pageOf, pageSql, thin, toActivity, toDatabases, toDbRows, toServiceTrend, toTrend } from '../hooks/daemon'
+import { brandOfCommand, brandOfEngine, brandSvg, brandTag } from '../hooks/brands'
 import { trendSvg } from '../hooks/icons'
 import { plot, runs, spark } from '../hooks/views/usage'
 
@@ -114,6 +115,8 @@ test('the Services tab shows the machine and looks into a database, a page of ro
   on('session.cwd', () => ({ value: '/work/app' }))
   on('config.list', () => ({ value: [] }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  const toasts: string[] = []
+  on('ui.toast', (_$, e) => (toasts.push(e.text), { value: undefined }))
   on('ui.panes', () => ({ value: [] }))
   on('fs.list', () => ({ value: [] }))
   on('process.run', () => ({
@@ -260,4 +263,26 @@ test('samples become a trend: thinned, timed, and a row of blocks on a cell grid
     foot: ['30m ago', '15m ago', 'now'],
   })
   for (const mark of ['100%', '50%', '0%', '30m ago', '15m ago', 'now']) expect(marked, `the axis says ${mark}`).toContain(`>${mark}</text>`)
+})
+
+test("a service's mark is told from its command, a database's from its engine", () => {
+  expect(brandOfCommand('npm run dev')).toBe('npm')
+  expect(brandOfCommand('pnpm exec vite --port 5173'), 'the tool wins over what ran it').toBe('vite')
+  expect(brandOfCommand('cargo run -p nomoreide -- daemon')).toBe('rust')
+  expect(brandOfCommand('uvicorn app:api --reload')).toBe('python')
+  expect(brandOfCommand('docker compose up')).toBe('docker')
+  expect(brandOfCommand('./serve.sh'), 'a plain process').toBeUndefined()
+  expect(brandOfEngine('postgres')).toBe('postgres')
+  expect(brandOfEngine('SQLite')).toBe('sqlite')
+  expect(brandOfEngine('duckdb')).toBeUndefined()
+  expect(brandTag('postgres', 'dark').tag).toBe('pg')
+  expect(brandSvg('vite', 'light')).toContain('#9135FF')
+})
+
+test("a service's page is its own address on this machine, or its port, and nothing else", () => {
+  expect(pageOf({ url: 'http://127.0.0.1:5173', port: 5173 })).toBe('http://127.0.0.1:5173')
+  expect(pageOf({ url: '', port: 3000 }), 'no address reported: its port here').toBe('http://localhost:3000')
+  expect(pageOf({ url: '', port: null })).toBe('')
+  expect(pageOf({ url: 'https://example.com/', port: 443 }), 'never an address off this machine').toBe('')
+  expect(pageOf({ url: 'javascript:alert(1)', port: 80 })).toBe('')
 })

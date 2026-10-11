@@ -44,13 +44,15 @@ function inks(scheme: Scheme, classes: Readonly<Record<string, readonly ['stroke
 }
 
 // What stands before a row that is a thing, not a status: lucide's Folder,
-// File, Database and Table, drawn as the navigation icons are.
+// File, Database, Terminal and Table, drawn as the navigation icons are.
 const ROW_SHAPES = {
   folder:
     '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
   file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
   database:
     '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>',
+  // Terminal: a service the dashboard knows no mark for.
+  terminal: '<path d="m4 17 6-6-6-6"/><path d="M12 19h8"/>',
   table: '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
 } as const
 

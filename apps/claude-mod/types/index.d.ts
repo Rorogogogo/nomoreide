@@ -31,7 +31,6 @@ export type Diff = {
   hiddenLines: number
 }
 
-export type Notice = { tone: 'ok' | 'bad'; text: string }
 
 export type Service = {
   name: string
@@ -186,11 +185,20 @@ export type OpenFile = {
   mtimeMs: number
   /** The first line of the window shown, counted from 0. */
   top: number
+  /** Lines of a read shown past the first screenful, as "show more" was pressed. */
+  more: number
   isEditing: boolean
   line: number | null
   /** Whether the editor holds changes not yet written to the file. */
   isDirty: boolean
 }
+
+/**
+ * What the editor shows, as it tells the pane after each key: the lines in
+ * view, the first one's number from 0, and where the cursor stands. The pane
+ * draws them where the editor itself cannot set type in a fixed-width face.
+ */
+export type EditView = { path: string; top: number; row: number; col: number; lines: string[] }
 
 /** A line of a file that holds what was searched for; `path` is from the session's folder down. */
 export type Hit = { path: string; line: number; text: string }
@@ -342,7 +350,6 @@ declare module 'claude-code' {
       /** The repository in view when the workspace holds several; `''` is the board. */
       repo: string
       diff: Diff | null
-      notice: Notice | null
       services: Service[]
       /** Whether services of other projects are listed, or only counted. */
       showsElsewhere: boolean
@@ -363,6 +370,7 @@ declare module 'claude-code' {
       pullList: PullList | null
       listing: Listing | null
       file: OpenFile | null
+      editView: EditView | null
       search: Search | null
       runs: Runs | null
       run: OpenRun | null

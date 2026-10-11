@@ -4,7 +4,9 @@ import type { DbRows, DbTables } from '../../types'
 import { databasePrompt, namedTablePrompt, queryPrompt, rowPrompt, tablePrompt } from '../prompts'
 import { clipEnd } from '../text'
 import { GLYPH } from '../tokens'
+import { brandOfEngine } from '../brands'
 import {
+  brand,
   CARD,
   MAX_ROWS,
   NARROW,
@@ -37,7 +39,7 @@ export function databaseList(kit: Kit, m: Model, act: Actions): RenderElement {
       {heading(kit, 'CONNECTIONS', m.databases.length)}
       {group(kit, m, m.databases.map(one => (
         <Box key={`row:db:${one.name}`} flexDirection="row" alignItems="center" {...rowHover(m)}>
-          {kind(kit, m, 'database')}
+          {brand(kit, m, brandOfEngine(one.engine), 'database')}
           <Box flexShrink={1} minWidth={0}>
             <Button key={`db:${one.name}`} plain label={fit(m, one.name, 24)} onPress={() => act.openDatabase(one.name)} />
           </Box>

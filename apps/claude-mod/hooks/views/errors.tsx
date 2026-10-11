@@ -5,8 +5,8 @@ import { age, clipStart } from '../text'
 import { GLYPH } from '../tokens'
 import type { Palette } from '../tokens'
 import {
+  drafts,
   MAX_ROWS,
-  chip,
   fit,
   group,
   heading,
@@ -89,7 +89,7 @@ export function incidentView(kit: Kit, m: Model, incident: Incident, act: Action
         <Box flexGrow={1} />
         <Button
           key="fix"
-          {...chip(m, false)}
+          {...drafts(m)}
           hotkey="f"
           label="fix with Claude"
           onPress={() => act.fixIncident(incident.id)}

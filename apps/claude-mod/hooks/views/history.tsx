@@ -1,11 +1,12 @@
 import type { Color, RenderElement } from 'claude-code'
 
 import type { Commit, OpenCommit, PullItem, Repo } from '../../types'
+import { layoutMessage } from '../git'
 import { graphSvg, graphWidth } from '../icons'
 import { reviewPullPrompt } from '../prompts'
 import { age, splitPath } from '../text'
 import { GLYPH } from '../tokens'
-import { MAX_ROWS, NARROW, ask, chip, diffBody, fit, group, heading, letter, more, quiet, row, rule, space } from './chrome'
+import { MAX_ROWS, NARROW, ask, diffBody, fit, group, heading, letter, moreLines, quiet, row, rule, space } from './chrome'
 import type { Actions, Kit, Model } from './model'
 
 /** The repository the Git tab is looking at: the only one, or the one opened under Changes. */
@@ -40,16 +41,18 @@ function lane(kit: Kit, m: Model, graph: string, isFirst: boolean): RenderElemen
   )
 }
 
-/** The branches and tags at a commit, each a quiet word in the accent. */
-function refsOf(kit: Kit, m: Model, commit: Commit): RenderElement | false {
-  const shown = commit.refs.slice(0, m.width < NARROW ? 1 : 3)
+/** The branches and tags shown at a commit, each cut to what a row spares. */
+const shownRefs = (m: Model, commit: Commit): string[] =>
+  commit.refs.slice(0, m.width < NARROW ? 1 : 3).map(ref => fit(m, ref, m.width < NARROW ? 20 : 40))
 
+/** The branches and tags at a commit, each a quiet word in the accent. */
+function refsOf(kit: Kit, m: Model, refs: string[]): RenderElement | false {
   return (
-    shown.length > 0 && (
+    refs.length > 0 && (
       <kit.Box flexShrink={0} flexDirection="row" columnGap={1} marginRight={1}>
-        {shown.map(ref => (
+        {refs.map(ref => (
           <kit.Text key={`ref:${ref}`} color={m.colors.accent}>
-            {fit(m, ref, m.width < NARROW ? 20 : 40)}
+            {ref}
           </kit.Text>
         ))}
       </kit.Box>
@@ -74,29 +77,102 @@ export function historyList(kit: Kit, m: Model, act: Actions): RenderElement {
       {group(
         kit,
         m,
-        history.rows.slice(0, MAX_ROWS).map((commit, at) => (
-          <Box key={`row:log:${at}`} flexDirection="row" alignItems="center">
-            {lane(kit, m, commit.graph, at === first)}
-            {commit.sha !== '' && refsOf(kit, m, commit)}
-            {commit.sha !== '' && (
-              <Box flexShrink={1} minWidth={0}>
-                <Button
-                  key={`commit:${commit.sha}`}
-                  plain
-                  label={m.isTerminal ? fit(m, commit.subject, commit.graph.length + 14) : commit.subject}
-                  onPress={() => act.openCommit(repo.root, commit.sha)}
-                />
-              </Box>
-            )}
-            <Box flexGrow={1} />
-            {commit.sha !== '' && (
-              <Box flexShrink={0} marginLeft={1}>
-                <Text dimColor>{since(m, commit.at)}</Text>
-              </Box>
-            )}
-          </Box>
-        )),
+        history.rows.slice(0, MAX_ROWS).map((commit, at) => {
+          const refs = commit.sha === '' ? [] : shownRefs(m, commit)
+          // A subject is one line: what the graph, the names and the age leave it, then an ellipsis.
+          const taken = commit.graph.length + refs.reduce((sum, ref) => sum + ref.length + 1, 0) + 7
+
+          return (
+            <Box key={`row:log:${at}`} flexDirection="row" alignItems="center">
+              {lane(kit, m, commit.graph, at === first)}
+              {refsOf(kit, m, refs)}
+              {commit.sha !== '' && (
+                <Box flexShrink={1} minWidth={0}>
+                  <Button
+                    key={`commit:${commit.sha}`}
+                    plain
+                    label={fit(m, commit.subject, taken)}
+                    onPress={() => act.openCommit(repo.root, commit.sha)}
+                  />
+                </Box>
+              )}
+              <Box flexGrow={1} />
+              {commit.sha !== '' && (
+                <Box flexShrink={0} marginLeft={1}>
+                  <Text dimColor>{since(m, commit.at)}</Text>
+                </Box>
+              )}
+            </Box>
+          )
+        }),
         0,
+      )}
+    </Box>
+  )
+}
+
+/** `Claude-Session` as words: a trailer's key is written to be parsed, not read. */
+const worded = (key: string): string => key.replace(/-/g, ' ').replace(/^(.)(.*)$/, (_, head: string, rest: string) => head + rest.toLowerCase())
+
+/**
+ * What a commit says under its subject: prose for the pane to wrap, list
+ * items hanging under their marks, and the trailers apart at the foot, an
+ * address among them a press that opens it.
+ */
+function message(kit: Kit, m: Model, body: string, act: Actions): RenderElement {
+  const { Box, Text, Button } = kit
+  const { paragraphs, trailers } = layoutMessage(body)
+
+  return (
+    <Box flexDirection="column" marginTop={1} rowGap={1}>
+      {paragraphs.map((lines, at) => (
+        <Box key={`msg:${at}`} flexDirection="column">
+          {lines.map((line, row) =>
+            line.mark === '' ? (
+              <Text key={`msg:${at}:${row}`} dimColor>
+                {line.text}
+              </Text>
+            ) : (
+              <Box key={`msg:${at}:${row}`} flexDirection="row">
+                <Box flexShrink={0} width={m.isTerminal ? line.mark.length + 1 : 1.5}>
+                  <Text dimColor>{line.mark === '-' || line.mark === '*' || line.mark === '+' ? GLYPH.dot : line.mark}</Text>
+                </Box>
+                <Box flexShrink={1} minWidth={0}>
+                  <Text dimColor>{line.text}</Text>
+                </Box>
+              </Box>
+            ),
+          )}
+        </Box>
+      ))}
+      {trailers.length > 0 && (
+        <Box flexDirection="column">
+          {trailers.map(one => {
+            const isAddress = /^https?:\/\/\S+$/.test(one.value)
+
+            return (
+              <Box key={`trailer:${one.key}:${one.value}`} flexDirection="row" alignItems="center">
+                <Box flexShrink={0} marginRight={m.isTerminal ? 2 : 1}>
+                  <Text dimColor>{worded(one.key)}</Text>
+                </Box>
+                <Box flexShrink={1} minWidth={0}>
+                  {isAddress ? (
+                    <Button
+                      key={`open:${one.value}`}
+                      plain
+                      label={fit(m, one.value.replace(/^https?:\/\//, ''), one.key.length + 4)}
+                      onPress={() => act.openUrl(one.value)}
+                    />
+                  ) : (
+                    <Text dimColor wrap="truncate-end">
+                      {one.value}
+                    </Text>
+                  )}
+                </Box>
+              </Box>
+            )
+          })}
+        </Box>
       )}
     </Box>
   )
@@ -129,17 +205,11 @@ export function commitView(kit: Kit, m: Model, commit: OpenCommit, act: Actions)
         )}
       </Box>
       {space(kit)}
-      <Text bold wrap="truncate-end">
-        {commit.subject}
-      </Text>
+      <Text bold>{commit.subject}</Text>
       <Text dimColor wrap="truncate-end">
         {[commit.sha, commit.author, `${since(m, commit.at)} ago`].filter(part => part !== '').join(` ${GLYPH.dot} `)}
       </Text>
-      {commit.body !== '' && commit.diff === null && (
-        <Box marginTop={1}>
-          <Text dimColor>{commit.body.split('\n').slice(0, 8).join('\n')}</Text>
-        </Box>
-      )}
+      {commit.body !== '' && commit.diff === null && message(kit, m, commit.body, act)}
       {rule(kit, m)}
       {commit.diff === null ? (
         <Box flexDirection="column">
@@ -184,7 +254,7 @@ export function commitView(kit: Kit, m: Model, commit: OpenCommit, act: Actions)
           ) : (
             diffBody(kit, m, commit.diff.hunks, commit.diff.path)
           )}
-          {more(kit, commit.diff.hiddenLines, 'lines')}
+          {moreLines(kit, m, act, commit.diff.hunks, commit.diff.hiddenLines)}
         </Box>
       )}
     </Box>
@@ -230,14 +300,7 @@ export function pullsList(kit: Kit, m: Model, act: Actions): RenderElement {
               label={fit(m, `#${pull.number} ${pull.title}`, 14)}
               onPress={() => act.openUrl(pull.url)}
             />,
-            m.width >= NARROW && (
-              <Button
-                key={`pr-review:${pull.number}`}
-                {...chip(m, false)}
-                label={`${GLYPH.ask} review`}
-                onPress={() => act.draft(reviewPullPrompt(pull))}
-              />
-            ),
+            m.width >= NARROW && ask(kit, m, act, `pr-review:${pull.number}`, 'review', () => reviewPullPrompt(pull)),
             [pull.isDraft ? 'draft' : '', pull.branch, pull.author, checks, pull.updatedAt === '' ? '' : `${age(m.now, pull.updatedAt)} ago`]
               .filter(part => part !== '')
               .join(` ${GLYPH.dot} `),

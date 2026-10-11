@@ -1,11 +1,12 @@
 import type { RenderElement } from 'claude-code'
 
-import type { Entry, OpenFile, Search } from '../../types'
-import { EDIT_LINES, MAX_EDITOR_CHARS, VIEW_LINES, familyOf, holdsChanges, linesOf, shownLine, statusOf, tagOf } from '../files'
+import type { EditView, Entry, OpenFile, Search } from '../../types'
+import { EDIT_LINES, MAX_EDITOR_CHARS, blockLift, blockRoom, VIEW_LINES, familyOf, holdsChanges, linesOf, shownLine, statusOf, tagOf } from '../files'
 import { highlight, sliceTokens } from '../highlight'
 import { clipEnd, clipStart, splitPath } from '../text'
 import { GLYPH, TOKEN_TONE } from '../tokens'
 import {
+  drafts,
   MAX_ROWS,
   NARROW,
   chip,
@@ -27,6 +28,23 @@ import type { Actions, Kit, Model } from './model'
 /** A path as the pane names it: from the session's folder down. */
 const within = (path: string, m: Model): string =>
   path === m.workspace ? '' : path.startsWith(`${m.workspace}/`) ? path.slice(m.workspace.length + 1) : path
+
+/** How many lines the pane shows of a file being edited before the editor has said what it shows. */
+const EDIT_PAGE = 28
+
+/** How many lines the block shows of a file being edited: what the editor laid over it must cover. */
+const editRows = (file: OpenFile, view: EditView | null, lines: readonly string[]): number =>
+  view !== null && view.path === file.path ? view.lines.length : Math.min(EDIT_PAGE, lines.length)
+
+/**
+ * The editor's lines as the block is handed them; the file's own top before its first key.
+ * The cursor is not in them: the editor draws it itself, laid over the character it stands on.
+ */
+function editing(file: OpenFile, view: EditView | null, lines: readonly string[], room: number): string {
+  const shown = view !== null && view.path === file.path ? view.lines : lines.slice(0, EDIT_PAGE).map(shownLine)
+
+  return shown.map(line => line.slice(0, room)).join('\n')
+}
 
 /** The session's folder, a level at a time: folders open, files are read. */
 export function browser(kit: Kit, m: Model, act: Actions): RenderElement {
@@ -178,7 +196,7 @@ export function fileView(kit: Kit, m: Model, file: OpenFile, act: Actions): Rend
   const { Box, Text, Button, Code, Input } = kit
   const { name, dir } = splitPath(within(file.path, m))
   const lines = file.note === '' ? linesOf(file.text) : []
-  const size = file.isEditing ? EDIT_LINES : VIEW_LINES
+  const size = file.isEditing ? EDIT_LINES : VIEW_LINES + file.more
   const shown = lines.slice(file.top, file.top + size)
   const last = Math.min(lines.length, file.top + size)
   const family = familyOf(name)
@@ -217,7 +235,7 @@ export function fileView(kit: Kit, m: Model, file: OpenFile, act: Actions): Rend
         )}
         <Button
           key="mention"
-          {...chip(m, false)}
+          {...drafts(m)}
           hotkey="p"
           label="to prompt"
           onPress={() => act.mention(m.workspace, within(file.path, m))}
@@ -230,35 +248,61 @@ export function fileView(kit: Kit, m: Model, file: OpenFile, act: Actions): Rend
       <Text dimColor wrap="truncate-end">
         {[
           m.isTerminal ? clipStart(dir, m.width - 28) : dir,
-          lines.length === 0 ? '' : `lines ${file.top + 1}${GLYPH.dash}${last} of ${lines.length}`,
+          // The editor holds the whole file and scrolls it itself: there is no window to name.
+          lines.length === 0 ? '' : file.isEditing && hasEditor ? `${lines.length} lines` : `lines ${file.top + 1}${GLYPH.dash}${last} of ${lines.length}`,
         ]
           .filter(part => part !== '')
           .join(` ${GLYPH.dot} `)}
       </Text>
-      {!(file.isEditing && hasEditor) && lines.length > size && (
+      {/* A file changed a line at a time is paged. A read grows in place, and the pane's own scroll walks it. */}
+      {file.isEditing && !hasEditor && lines.length > size && (
         <Box flexDirection="row" columnGap={gap} marginTop={m.isTerminal ? 0 : 1}>
           {file.top > 0 && <Button key="page-back" {...chip(m)} hotkey="k" label="earlier" onPress={() => act.pageFile(-1)} />}
           {last < lines.length && <Button key="page-on" {...chip(m)} hotkey="j" label="later" onPress={() => act.pageFile(1)} />}
         </Box>
       )}
+      {!file.isEditing && file.top > 0 && (
+        <Box flexDirection="row" alignItems="center" columnGap={2} marginTop={m.isTerminal ? 0 : 1}>
+          <Text dimColor>… {file.top} lines above</Text>
+          <Button key="page-back" {...chip(m, false)} hotkey="k" label="show earlier" onPress={() => act.pageFile(-1)} />
+        </Box>
+      )}
       {rule(kit, m)}
       {file.note !== '' && <Text dimColor>{file.note}</Text>}
       {file.note === '' && lines.length === 0 && !file.isEditing && <Text dimColor>An empty file.</Text>}
-      {file.isEditing &&
-        hasEditor &&
-        kit.editor?.({
-          path: file.path,
-          text: file.text,
-          rev: file.mtimeMs,
-          family,
-          rows: m.isTerminal ? m.rows : 0,
-          width: m.width,
-        })}
+      {file.isEditing && hasEditor && !m.isTerminal && (
+        // Off a cell grid the pane draws the editor's text, in the block a file being read is drawn in.
+        // A column stretches what stands in it: the block is the pane's full width, whatever its lines come to.
+        <Box marginTop={1} flexDirection="column" width="100%">
+          <Code source={editing(file, m.editView, lines, blockRoom(m.width, m.editView?.path === file.path ? m.editView.top + m.editView.lines.length : Math.min(lines.length, EDIT_PAGE)))} path={file.path} startLine={(m.editView?.path === file.path ? m.editView.top : 0) + 1} />
+        </Box>
+      )}
+      {file.isEditing && hasEditor && (
+        // There the editor is laid over that block, its own room empty, so a click on the
+        // text is a click in the editor: what hands it the keys, and puts the cursor there.
+        <Box flexDirection="column" {...(m.isTerminal ? {} : { width: '100%', marginTop: -blockLift(editRows(file, m.editView, lines)) })}>
+          {kit.editor?.({
+            path: file.path,
+            text: file.text,
+            rev: file.mtimeMs,
+            family,
+            rows: m.isTerminal ? m.rows : 0,
+            width: m.width,
+            isRemote: !m.isTerminal,
+          })}
+        </Box>
+      )}
       {file.note === '' && lines.length === 0 && file.isEditing && !hasEditor && (
         <Button key="line-first" {...chip(m)} label="add a first line" onPress={() => act.editLine({ kind: 'insert', line: 0 })} />
       )}
       {!file.isEditing && shown.length > 0 && (
         <Code source={shown.map(shownLine).join('\n')} path={file.path} startLine={file.top + 1} />
+      )}
+      {!file.isEditing && last < lines.length && (
+        <Box flexDirection="row" alignItems="center" columnGap={2}>
+          {more(kit, lines.length - last, 'lines')}
+          <Button key="page-on" {...chip(m, false)} hotkey="m" label="show more" onPress={() => act.pageFile(1)} />
+        </Box>
       )}
       {file.isEditing &&
         !hasEditor &&

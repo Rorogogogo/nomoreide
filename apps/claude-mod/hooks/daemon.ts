@@ -585,3 +585,17 @@ export function toTrend(samples: unknown, cpuKey: string, memoryKey: string): Tr
 export function toServiceTrend(value: unknown): Trend | null {
   return toTrend(field(field(value, 'metrics'), 'samples'), 'cpu', 'rss')
 }
+
+const LOCAL_PAGE = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(\/\S*)?$/
+
+/**
+ * Where a running service is opened in the browser: the address the daemon
+ * reports for it, or its port on this machine when it reports none. Only an
+ * address on this machine is opened, and `''` says there is none.
+ */
+export function pageOf(service: Pick<Service, 'url' | 'port'>): string {
+  if (LOCAL_PAGE.test(service.url)) return service.url
+  if (service.url === '' && service.port !== null && service.port > 0) return `http://localhost:${service.port}`
+
+  return ''
+}

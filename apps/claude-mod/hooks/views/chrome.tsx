@@ -1,9 +1,11 @@
 import type { Color, RenderElement } from 'claude-code'
 
-import type { LogLine, Notice, Service } from '../../types'
+import type { LogLine, Service } from '../../types'
 import { familyOf } from '../files'
-import { diffRows } from '../git'
+import { DIFF_LINES_CAP, diffRows } from '../git'
 import { clipEnd } from '../text'
+import { brandSvg, brandTag } from '../brands'
+import type { Brand } from '../brands'
 import { TAG_PX, diffSvgs, logSvgs, rowIcon, tagSvg } from '../icons'
 import type { RowIcon } from '../icons'
 import { FAMILY_TONE, GLYPH } from '../tokens'
@@ -42,11 +44,20 @@ export const PRESS_INSET = 0.5
 export const MARK_COLUMN = 2.5
 
 /**
- * How an action is drawn: a dim word on a cell grid, where a bracket per row
- * is noise; the surface's own button anywhere that has one.
+ * How an action is drawn: a word to press, on every surface. A frame around
+ * each one is noise, a bracket per row; on a cell grid the quiet ones are dim,
+ * and off one they keep the text's colour, which is what tells them from the
+ * dim labels beside them.
  */
-export const chip = (m: Model, isDim = true): { plain?: true; dimColor?: boolean } =>
-  m.isTerminal ? { plain: true, dimColor: isDim } : {}
+export const chip = (m: Model, isDim = true): { plain: true; dimColor?: boolean } =>
+  m.isTerminal ? { plain: true, dimColor: isDim } : { plain: true }
+
+/**
+ * An action that writes into the prompt and does nothing itself. It is drawn
+ * as any other action, never dim: its mark or its words say where the press goes.
+ */
+export const drafts = (m: Model, isDim = false): { plain: true; dimColor?: boolean } =>
+  m.isTerminal ? { plain: true, dimColor: isDim } : { plain: true }
 
 // A fill under the pointer is a square on any surface. A cell grid is all
 // squares; elsewhere the surface rounds its own hover on the name, so the
@@ -87,19 +98,6 @@ export const rule = (kit: Kit, m: Model): RenderElement =>
     space(kit)
   )
 
-export function noticeRow(kit: Kit, m: Model, notice: Notice): RenderElement {
-  const { Box, Text } = kit
-
-  return (
-    <Box flexDirection="row" marginBottom={1}>
-      <Text color={notice.tone === 'ok' ? m.colors.ok : m.colors.bad}>{GLYPH.bar}</Text>
-      <Box flexShrink={1} minWidth={0}>
-        <Text>{notice.text}</Text>
-      </Box>
-    </Box>
-  )
-}
-
 /**
  * A view's own views, one in front: the surface's chip for it off a cell
  * grid, a bold underlined word on one; the others are quiet words to press.
@@ -139,6 +137,10 @@ const CELL_PX = 8
 /** A row icon's side off a cell grid, in pixels, and the column it stands in, in cells. */
 const ROW_ICON_PX = 14
 const ROW_ICON_COLUMN = 2.5
+/** The side of Claude's mark before a press that drafts a prompt, in pixels. */
+const ASK_PX = 12
+/** How far that mark sits below the line's middle, in pixels, to stand level with the small letters. */
+const ASK_DROP_PX = 2
 
 /**
  * What a row is, before its name, in a column of its own so names start
@@ -167,6 +169,32 @@ export function kind(kit: Kit, m: Model, name: RowIcon, file?: { tag: string; fa
       ) : (
         <Svg source={tagSvg(file.tag, tones, m.scheme)} alt={`${file.tag} file`} width={TAG_PX.width} height={TAG_PX.height} />
       )}
+    </Box>
+  )
+}
+
+/**
+ * What runs a service, or the engine of a database, in the same column as
+ * `kind`: the dashboard's own mark in its colour where a surface draws
+ * pictures, two letters in that colour on a cell grid. One the dashboard has
+ * no mark for gets the plain icon named.
+ */
+export function brand(kit: Kit, m: Model, which: Brand | undefined, plain: RowIcon): RenderElement {
+  const { Box, Text, Svg } = kit
+  if (which === undefined) return kind(kit, m, plain)
+  if (Svg === undefined) {
+    const { tag, color } = brandTag(which, m.scheme)
+
+    return (
+      <Box flexShrink={0} width={3}>
+        <Text color={color}>{tag}</Text>
+      </Box>
+    )
+  }
+
+  return (
+    <Box flexShrink={0} width={ROW_ICON_COLUMN} flexDirection="row" alignItems="center">
+      <Svg source={brandSvg(which, m.scheme)} alt={which} width={ROW_ICON_PX} height={ROW_ICON_PX} />
     </Box>
   )
 }
@@ -309,9 +337,26 @@ export function diffBody(kit: Kit, m: Model, hunks: string, path: string): Rende
 /**
  * A press that hands something to Claude: one look everywhere, so what goes
  * to the prompt box is told at a glance from what the pane does itself.
+ * Claude's own mark stands before it, drawn where a surface draws pictures
+ * and typed as its nearest character on a cell grid.
  */
 export function ask(kit: Kit, m: Model, act: Actions, key: string, label: string, text: () => string): RenderElement {
-  return <kit.Button key={key} {...chip(m, false)} label={`${GLYPH.ask} ${label}`} onPress={() => act.draft(text())} />
+  const { Box, Button, Svg } = kit
+  if (Svg === undefined) {
+    return <Button key={key} {...drafts(m)} label={`${GLYPH.ask} ${label}`} onPress={() => act.draft(text())} />
+  }
+
+  return (
+    <Box flexShrink={0} flexDirection="row" alignItems="center">
+      <Svg
+        source={brandSvg('claude', m.scheme, (ASK_DROP_PX * 24) / ASK_PX)}
+        alt="Claude"
+        width={ASK_PX}
+        height={ASK_PX + ASK_DROP_PX}
+      />
+      <Button key={key} {...drafts(m)} label={label} onPress={() => act.draft(text())} />
+    </Box>
+  )
 }
 
 /** An uppercase label and its count: the only heading a list gets. */
@@ -412,21 +457,26 @@ export function row(
 }
 
 /**
- * A list's rows, in one rounded card with a faint outline: box-drawing
- * corners on a cell grid, the surface's own card elsewhere.
+ * A list's rows. Off a cell grid they stand in the surface's own rounded
+ * card. On one a card is four lines of box-drawing around every list, which
+ * is more frame than list: there a single faint rule under the heading sets
+ * the rows off, and the blank row after them ends the section.
  */
 export function group(kit: Kit, m: Model, rows: readonly (RenderElement | false)[], gap = 1): RenderElement {
-  const { Box } = kit
+  const { Box, Text } = kit
+  if (m.isTerminal) {
+    return (
+      <Box flexDirection="column">
+        <Text color={m.colors.rule}>{GLYPH.rule.repeat(Math.max(1, m.width))}</Text>
+        <Box flexDirection="column" rowGap={gap}>
+          {rows}
+        </Box>
+      </Box>
+    )
+  }
 
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="round"
-      borderDimColor
-      paddingX={1}
-      marginTop={m.isTerminal ? 0 : 1}
-      rowGap={gap}
-    >
+    <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1} marginTop={1} rowGap={gap}>
       {rows}
     </Box>
   )
@@ -459,6 +509,25 @@ export function offline(kit: Kit, m: Model): RenderElement {
 
 export function more(kit: Kit, hidden: number, what: string): RenderElement | false {
   return hidden > 0 && <kit.Text dimColor>… {hidden} more {what}</kit.Text>
+}
+
+/**
+ * What a diff leaves out, and the press that shows a screenful more of it.
+ * Past the most a pane draws the press goes and the count stays: the file
+ * itself is the place for the rest.
+ */
+export function moreLines(kit: Kit, m: Model, act: Actions, hunks: string, hidden: number): RenderElement | false {
+  const { Box, Button } = kit
+  if (hidden <= 0) return false
+
+  return (
+    <Box flexDirection="row" alignItems="center" columnGap={2}>
+      {more(kit, hidden, 'lines')}
+      {hunks.split('\n').length < DIFF_LINES_CAP && (
+        <Button key="diff-more" {...chip(m, false)} hotkey="m" label="show more" onPress={() => act.moreDiff()} />
+      )}
+    </Box>
+  )
 }
 
 /** A status letter's colour: added, removed, in conflict, untracked, modified. */

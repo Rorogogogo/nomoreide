@@ -4,15 +4,15 @@ import type { ChangeDiff, ChangeSet, OpenChangeSet } from '../../types'
 import { age, clipStart, plural, splitPath } from '../text'
 import { GLYPH } from '../tokens'
 import {
+  drafts,
   MAX_ROWS,
   NARROW,
-  chip,
   diffBody,
   fit,
   group,
   heading,
   letter,
-  more,
+  more, moreLines,
   quiet,
   repoNameOf,
   row,
@@ -155,7 +155,7 @@ export function changeDiffView(kit: Kit, m: Model, diff: ChangeDiff, act: Action
         {set !== undefined && (
           <Button
             key="mention"
-            {...chip(m, false)}
+            {...drafts(m)}
             hotkey="p"
             label="to prompt"
             onPress={() => act.mention(set.repoPath, diff.path)}
@@ -186,7 +186,7 @@ export function changeDiffView(kit: Kit, m: Model, diff: ChangeDiff, act: Action
       ) : (
         diffBody(kit, m, diff.hunks, diff.path)
       )}
-      {more(kit, diff.hiddenLines, 'lines')}
+      {moreLines(kit, m, act, diff.hunks, diff.hiddenLines)}
     </Box>
   )
 }

@@ -5,7 +5,7 @@ import { standingOf } from '../github'
 import { age } from '../text'
 import { GLYPH } from '../tokens'
 import type { Palette } from '../tokens'
-import { MAX_ROWS, NARROW, chip, fit, group, heading, quiet, row, space } from './chrome'
+import { drafts, MAX_ROWS, NARROW, chip, fit, group, heading, quiet, row, space } from './chrome'
 import type { Actions, Kit, Model } from './model'
 
 function toneOf(one: { status: string; conclusion: string }, colors: Palette): { glyph: string; color: Color } {
@@ -80,7 +80,7 @@ export function runView(kit: Kit, m: Model, runs: Runs, run: Run, open: OpenRun,
           <Button key="run-again" {...chip(m)} hotkey="r" label="re-run" onPress={() => act.rerun(run.id)} />
         )}
         {standingOf(run) === 'failed' && (
-          <Button key="run-fix" {...chip(m, false)} hotkey="f" label="fix with Claude" onPress={() => act.runToPrompt(run.id)} />
+          <Button key="run-fix" {...drafts(m)} hotkey="f" label="fix with Claude" onPress={() => act.runToPrompt(run.id)} />
         )}
       </Box>
       {space(kit)}

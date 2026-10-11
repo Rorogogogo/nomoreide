@@ -5,9 +5,12 @@ import { addServicePrompt, debugServicePrompt } from '../prompts'
 import { clipEnd, tilde } from '../text'
 import { GLYPH } from '../tokens'
 import type { Palette } from '../tokens'
+import { brandOfCommand } from '../brands'
+import { pageOf } from '../daemon'
 import {
   MAX_ROWS,
   NARROW,
+  brand,
   ask,
   chip,
   fit,
@@ -49,7 +52,15 @@ export function serviceRow(kit: Kit, m: Model, act: Actions, service: Service): 
   const health = healthOf(service, m.colors)
   const live = isLive(service)
   const verbs: readonly ServiceVerb[] = live ? ['restart', 'stop'] : ['start']
-  const reserved = verbs.join('  ').length + health.word.length + 6
+  const page = live ? pageOf(service) : ''
+  // Off a cell grid a row's actions are marks; the service's own view spells each out. On
+  // a cell grid a mark is one small cell of the terminal's font, so the row says the word
+  // wherever it has the room for it.
+  const isWorded = m.isTerminal && m.width >= NARROW
+  const mark = m.isTerminal ? GLYPH.cells : GLYPH
+  const shown = (name: 'open' | ServiceVerb): string => (isWorded ? name : mark[name])
+  const actions = [...(page === '' ? [] : (['open'] as const)), ...verbs].map(shown)
+  const reserved = actions.join('  ').length + health.word.length + 9
   const meta = [
     service.port === null ? '' : `:${service.port}`,
     service.command !== '' ? service.command : tilde(service.cwd, m.home),
@@ -62,20 +73,33 @@ export function serviceRow(kit: Kit, m: Model, act: Actions, service: Service): 
     m,
     `row:${service.name}`,
     { glyph: health.glyph, color: health.color },
-    <Button
-      key={`logs:${service.name}`}
-      plain
-      dimColor={!live && !hasFailed(service)}
-      label={fit(m, service.name, reserved)}
-      onPress={() => act.openLogs(service.name)}
-    />,
+    <Box flexDirection="row" alignItems="center">
+      {brand(kit, m, brandOfCommand(service.command), 'terminal')}
+      <Box flexShrink={1} minWidth={0}>
+        <Button
+          key={`logs:${service.name}`}
+          plain
+          dimColor={!live && !hasFailed(service)}
+          label={fit(m, service.name, reserved)}
+          onPress={() => act.openLogs(service.name)}
+        />
+      </Box>
+    </Box>,
     <Box flexDirection="row" columnGap={m.width < NARROW ? 1 : 2}>
       {health.word !== '' && <Text color={health.color}>{health.word}</Text>}
+      {page !== '' && (
+        <Button
+          key={`open:${service.name}`}
+          {...chip(m)}
+          label={shown('open')}
+          onPress={() => act.openService(service.name)}
+        />
+      )}
       {verbs.map(verb => (
         <Button
           key={`${verb}:${service.name}`}
           {...chip(m)}
-          label={verb}
+          label={shown(verb)}
           onPress={() => act.service(service.name, verb)}
         />
       ))}
@@ -213,6 +237,9 @@ export function logsView(
       <Box flexDirection="row" columnGap={m.width < NARROW ? 1 : 3}>
         <Button key="back" plain dimColor hotkey="b" label="back" onPress={() => act.closeLogs()} />
         <Box flexGrow={1} />
+        {live && pageOf(service) !== '' && (
+          <Button key="open" {...chip(m, false)} hotkey="o" label={`${(m.isTerminal ? GLYPH.cells : GLYPH).open} open`} onPress={() => act.openService(service.name)} />
+        )}
         {live ? (
           <Button key="restart" {...chip(m, false)} hotkey="r" label="restart" onPress={() => act.service(service.name, 'restart')} />
         ) : (

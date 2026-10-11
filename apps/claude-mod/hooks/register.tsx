@@ -8,6 +8,7 @@ import type {
   DbRows,
   DbTables,
   Diff,
+  EditView,
   GitSection,
   Listing,
   OpenFile,
@@ -15,7 +16,6 @@ import type {
   GitFile,
   Incident,
   LogLine,
-  Notice,
   Pull,
   Repo,
   Section,
@@ -53,6 +53,7 @@ import {
   toColumns,
   toCount,
   toDbRows,
+  pageOf,
   toFixPrompt,
   toIncidents,
   toLinearScope,
@@ -74,6 +75,7 @@ import {
   MAX_FOUND,
   VIEW_LINES,
   applyEdit,
+  growWindow,
   isUnder,
   linesOf,
   matchNames,
@@ -91,6 +93,8 @@ import {
   PULL_LIST_FIELDS,
   diffArgs,
   fitHunks,
+  keptDiffLines,
+  moreDiffLines,
   isChanged,
   isStaged,
   parseCommit,
@@ -186,7 +190,6 @@ const workspace = atom({ plugin: 'nomoreide', key: 'workspace' } as const, '')
 const repos = atom({ plugin: 'nomoreide', key: 'repos' } as const, [])
 const repo = atom({ plugin: 'nomoreide', key: 'repo' } as const, '')
 const diff = atom({ plugin: 'nomoreide', key: 'diff' } as const, null)
-const notice = atom({ plugin: 'nomoreide', key: 'notice' } as const, null)
 const services = atom({ plugin: 'nomoreide', key: 'services' } as const, [])
 const showsElsewhere = atom({ plugin: 'nomoreide', key: 'showsElsewhere' } as const, false)
 const logs = atom({ plugin: 'nomoreide', key: 'logs' } as const, null)
@@ -202,6 +205,7 @@ const dbRows = atom({ plugin: 'nomoreide', key: 'dbRows' } as const, null)
 const gitSection = atom({ plugin: 'nomoreide', key: 'gitSection' } as const, 'changes')
 const listing = atom({ plugin: 'nomoreide', key: 'listing' } as const, null)
 const file = atom({ plugin: 'nomoreide', key: 'file' } as const, null)
+const editView = atom({ plugin: 'nomoreide', key: 'editView' } as const, null)
 const search = atom({ plugin: 'nomoreide', key: 'search' } as const, null)
 const runs = atom({ plugin: 'nomoreide', key: 'runs' } as const, null)
 const history = atom({ plugin: 'nomoreide', key: 'history' } as const, null)
@@ -257,10 +261,20 @@ let extrasRun: Promise<void> | undefined
 let presses = new Map<string, () => void>()
 let isDesktopFocused: boolean | undefined
 let hasTerminal = false
+let recalledFor: string | undefined
 let answered = { key: '', at: 0 }
 
 const reasonOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
+
+type Tone = 'ok' | 'bad'
+
+/** How long a refusal stays up: it is longer to read than a "Saved.". */
+const REFUSAL_MS = 8000
+
+/** What a press came to, as a toast: the pane keeps its rows for the view. */
+const announce = ($: Engine, tone: Tone, text: string): void =>
+  $.ui.toast(text, tone === 'bad' ? { timeoutMs: REFUSAL_MS } : undefined)
 
 /**
  * Whether a value read from state is another one than what was just loaded:
@@ -331,11 +345,12 @@ async function readDiff(
   root: string,
   file: GitFile,
   staged: boolean,
+  max?: number,
 ): Promise<Diff> {
   const args = diffArgs(file, staged)
   const out = args === undefined ? '' : (await peek($, root, args)).out
 
-  return { root, path: file.path, isStaged: staged, ...fitHunks(out) }
+  return { root, path: file.path, isStaged: staged, ...fitHunks(out, max) }
 }
 
 /** Moves paths into or out of the index; `undefined` when git took it. */
@@ -450,10 +465,10 @@ async function readIncidents($: Engine): Promise<Incident[] | undefined> {
 const setPath = (id: string): string => `/api/agent/change-sets/${encodeURIComponent(id)}`
 
 /** A change-set's diff of one file: text, not the API's envelope. */
-async function readSetDiff($: Engine, id: string, path: string) {
+async function readSetDiff($: Engine, id: string, path: string, max?: number) {
   const answer = await call($, `${setPath(id)}/diff?path=${encodeURIComponent(path)}`)
 
-  return { id, path, ...fitHunks(answer !== undefined && answer.status === 200 ? answer.text : '') }
+  return { id, path, ...fitHunks(answer !== undefined && answer.status === 200 ? answer.text : '', max) }
 }
 
 /** The repository the daemon's snapshot routes act on now. */
@@ -884,8 +899,21 @@ async function editFile($: Engine, edit: Edit): Promise<string | undefined> {
   return undefined
 }
 
+/** The most of a file the pane draws for the editor at once: lines, and characters to a line. */
+const EDIT_VIEW = { lines: 80, chars: 2_000 }
+
+/** The editor's lines and cursor as posted, held to plain data of a size a pane draws; `undefined` for anything else. */
+function toEditView(path: string, said: Record<string, unknown>): EditView | undefined {
+  const { top, row, col, lines } = said
+  if (typeof top !== 'number' || typeof row !== 'number' || typeof col !== 'number' || !Array.isArray(lines)) return undefined
+  if (![top, row, col].every(one => Number.isInteger(one) && one >= 0) || lines.length > EDIT_VIEW.lines) return undefined
+  if (!lines.every((line): line is string => typeof line === 'string')) return undefined
+
+  return { path, top, row, col, lines: lines.map(line => line.slice(0, EDIT_VIEW.chars)) }
+}
+
 /**
- * What the editor posted: that it holds changes, or the text to save. The
+ * What the editor posted: that it holds changes, what it shows, or the text to save. The
  * post is input, not a fact: the path must be the file on screen and inside
  * the session's folder, and the file must not have been written by anyone
  * else since the editor was handed it.
@@ -899,8 +927,15 @@ async function hearEditor($: Engine, data: unknown): Promise<void> {
 
     return
   }
+  if (said.type === 'view') {
+    const shown = toEditView(open.path, said)
+    if (shown !== undefined) await update($, editView, () => shown)
+    if (said.isDirty === true && !open.isDirty) await update($, file, now => (now === null ? now : { ...now, isDirty: true }))
+
+    return
+  }
   if (said.type !== 'save' || typeof said.text !== 'string') return
-  const tell = (tone: Notice['tone'], text: string): Promise<unknown> => update($, notice, () => ({ tone, text }))
+  const tell = (tone: Tone, text: string): void => announce($, tone, text)
   if (!isUnder(open.path, await $.session.cwd())) {
     await tell('bad', "That file is outside this session's folder.")
 
@@ -969,7 +1004,7 @@ async function loadExtras($: Engine, force = false): Promise<void> {
     if (part === 'files') {
       const shownFile = await read($, file)
       if (shownFile === null) {
-        const found = await listDir($, (await read($, listing))?.path ?? (await $.session.cwd()))
+        const found = await listDir($, (await read($, listing))?.path ?? (await filesRoot($)))
         if (found !== null && differs(await read($, listing), found)) await update($, listing, () => found)
       } else if (shownFile.line === null && shownFile.note === '' && !shownFile.isDirty) {
         // Someone else wrote the file (the agent, an editor): what is shown follows.
@@ -977,7 +1012,7 @@ async function loadExtras($: Engine, force = false): Promise<void> {
         if (mtimeMs !== shownFile.mtimeMs) {
           const fresh = await readFile($, shownFile.path)
           await update($, file, now =>
-            now === null || now.path !== fresh.path ? now : { ...fresh, top: now.top, isEditing: now.isEditing },
+            now === null || now.path !== fresh.path ? now : { ...fresh, top: now.top, more: now.more, isEditing: now.isEditing },
           )
         }
       }
@@ -1105,6 +1140,23 @@ function actOnService($: Engine, name: string, verb: ServiceVerb): Promise<Reply
   return api($, `/api/services/${encodeURIComponent(name)}/${verb}`, 'POST')
 }
 
+/** The store's key for the repository picked in a session folder that holds several. */
+const pickKey = (cwd: string): string => `repo:${cwd}`
+
+/** Keeps the repository picked for this session's folder, for the next session there; `''` forgets it. */
+async function rememberRepo($: Engine, root: string): Promise<void> {
+  const key = pickKey(await $.session.cwd())
+  await (root === '' ? $.store.delete(key) : $.store.set(key, root)).catch(() => undefined)
+}
+
+/** Where Files starts: the repository in view, or the session's folder when none is picked. */
+async function filesRoot($: Engine): Promise<string> {
+  const cwd = await $.session.cwd()
+  const open = await read($, repo)
+
+  return open !== '' && isUnder(open, cwd) ? open : cwd
+}
+
 // ── keeping the drawing's state current ────────────────────────────────────
 
 async function loadGit($: Engine): Promise<void> {
@@ -1121,6 +1173,14 @@ async function loadGit($: Engine): Promise<void> {
   const read_ = await Promise.all(roots.map(root => readRepo($, root)))
   const loaded = read_.filter((one): one is Repo => one !== null)
   if (differs(await read($, repos), loaded)) await update($, repos, () => loaded)
+  // A folder of several repositories opens on the one picked there last time.
+  if (recalledFor !== cwd) {
+    recalledFor = cwd
+    const kept = await $.store.get(pickKey(cwd)).catch(() => undefined)
+    if (typeof kept === 'string' && (await read($, repo)) === '' && loaded.some(one => one.root === kept)) {
+      await update($, repo, () => kept)
+    }
+  }
   const changed = loaded.reduce((sum, one) => sum + one.files.length, 0)
   if ((await read($, counts)).changed !== changed) {
     await update($, counts, held => ({ ...held, changed }))
@@ -1135,7 +1195,7 @@ async function loadGit($: Engine): Promise<void> {
     ?.files.find(
       one => one.path === open.path && (open.isStaged ? isStaged(one) : isChanged(one)),
     )
-  const fresh = file === undefined ? null : await readDiff($, open.root, file, open.isStaged)
+  const fresh = file === undefined ? null : await readDiff($, open.root, file, open.isStaged, keptDiffLines(open.hunks))
   if (differs(await read($, diff), fresh)) await update($, diff, () => fresh)
 }
 
@@ -1333,10 +1393,9 @@ async function model(
     reach: read($, reach),
     workspace: read($, workspace),
     counts: read($, counts),
-    notice: read($, notice),
     now: $.clock.now(),
     repos: isGit ? read($, repos) : [],
-    repo: isGit ? read($, repo) : '',
+    repo: read($, repo),
     diff: isGit ? read($, diff) : null,
     services: isServices ? read($, services) : [],
     showsElsewhere: isServices ? read($, showsElsewhere) : false,
@@ -1350,6 +1409,7 @@ async function model(
     pulls: wants === 'view' && shown === 'git' ? read($, pulls) : [],
     listing: gitPart === 'files' ? read($, listing) : null,
     file: gitPart === 'files' ? read($, file) : null,
+    editView: gitPart === 'files' ? read($, editView) : null,
     search: gitPart === 'files' ? read($, search) : null,
     runs: gitPart === 'actions' ? read($, runs) : null,
     history: gitPart === 'history' ? read($, history) : null,
@@ -1391,7 +1451,6 @@ async function model(
     repos: await seen.repos,
     repo: await seen.repo,
     diff: await seen.diff,
-    notice: await seen.notice,
     services: await seen.services,
     showsElsewhere: await seen.showsElsewhere,
     logs: await seen.logs,
@@ -1406,6 +1465,7 @@ async function model(
     gitSection: gitPart,
     listing: await seen.listing,
     file: await seen.file,
+    editView: await seen.editView,
     search: await seen.search,
     runs: await seen.runs,
     history: await seen.history,
@@ -1466,12 +1526,7 @@ function remembering<K extends Kit>(kit: K, surface: string): K {
 
 /** What a press does. Each rereads what it acts on: a drawing can be stale. */
 function actions($: Engine): Actions {
-  const say = async (tone: Notice['tone'], text: string): Promise<void> => {
-    await update($, notice, () => ({ tone, text }))
-  }
-  const hush = async (): Promise<void> => {
-    if ((await read($, notice)) !== null) await update($, notice, () => null)
-  }
+  const say = async (tone: Tone, text: string): Promise<void> => announce($, tone, text)
   const guard = (work: () => Promise<void>): Promise<void> =>
     work().catch((error: unknown) => say('bad', reasonOf(error)))
 
@@ -1500,14 +1555,12 @@ function actions($: Engine): Actions {
           await update($, tab, () => id)
         }
         await update($, confirming, () => '')
-        await hush()
         await reloadExtras($)
       }),
 
     setServiceSection: id =>
       guard(async () => {
         await update($, serviceSection, () => id)
-        await hush()
         await reloadExtras($)
       }),
 
@@ -1561,7 +1614,6 @@ function actions($: Engine): Actions {
               note: reply.message,
             }
         await update($, dbRows, () => found)
-        await hush()
       }),
     shiftColumns: to =>
       guard(async () => {
@@ -1582,9 +1634,8 @@ function actions($: Engine): Actions {
       guard(async () => {
         await update($, gitSection, () => id)
         await update($, confirming, () => '')
-        await hush()
         if (id === 'files' && (await read($, listing)) === null) {
-          const found = await listDir($, await $.session.cwd())
+          const found = await listDir($, await filesRoot($))
           await update($, listing, () => found)
         }
         await reloadExtras($)
@@ -1605,7 +1656,6 @@ function actions($: Engine): Actions {
 
           return
         }
-        await hush()
         const found = await searchFolder($, wanted)
         await update($, search, () => found)
       }),
@@ -1629,13 +1679,11 @@ function actions($: Engine): Actions {
         await update($, gitSection, () => 'files')
         await update($, diff, () => null)
         await update($, file, () => loaded)
-        await hush()
       }),
     closeFile: () =>
       guard(async () => {
         const open = await read($, file)
         await update($, file, () => null)
-        await hush()
         // Back to the folder the file is in, whichever way it was opened.
         if (open !== null) {
           const found = await listDir($, open.path.slice(0, open.path.lastIndexOf('/')))
@@ -1647,15 +1695,17 @@ function actions($: Engine): Actions {
       guard(async () => {
         await update($, file, open => {
           if (open === null) return open
-          const size = open.isEditing ? EDIT_LINES : VIEW_LINES
-          const last = Math.max(0, Math.floor((linesOf(open.text).length - 1) / size) * size)
+          // A read grows where it stands; a file changed a line at a time is paged.
+          if (!open.isEditing) return { ...open, line: null, ...growWindow(linesOf(open.text), open.top, open.more, by) }
+          const last = Math.max(0, Math.floor((linesOf(open.text).length - 1) / EDIT_LINES) * EDIT_LINES)
 
-          return { ...open, line: null, top: Math.max(0, Math.min(last, open.top + by * size)) }
+          return { ...open, line: null, top: Math.max(0, Math.min(last, open.top + by * EDIT_LINES)) }
         })
       }),
 
     toggleEdit: () =>
       guard(async () => {
+        await update($, editView, () => null)
         await update($, file, open =>
           open === null
             ? open
@@ -1668,20 +1718,17 @@ function actions($: Engine): Actions {
                 top: windowFor(open.top + 1, open.isEditing ? VIEW_LINES : EDIT_LINES, linesOf(open.text).length),
               },
         )
-        await hush()
       }),
 
     pickLine: line =>
       guard(async () => {
         await update($, file, open => (open === null ? open : { ...open, line }))
-        await hush()
       }),
 
     editLine: edit =>
       guard(async () => {
         const refusal = await editFile($, edit)
-        if (refusal === undefined) await hush()
-        else await say('bad', refusal)
+        if (refusal !== undefined) await say('bad', refusal)
         await refreshGit($)
       }),
 
@@ -1717,16 +1764,12 @@ function actions($: Engine): Actions {
         if (held === null) return
         const jobs = await readJobs($, held.root, id)
         await update($, run, () => ({ id, jobs }))
-        await hush()
       }),
     openCommit: (root, sha) =>
       guard(async () => {
         const found = await readCommit($, root, sha)
         if (found === null) await say('bad', 'Git does not know that commit any more.')
-        else {
-          await update($, openedCommit, () => found)
-          await hush()
-        }
+        else await update($, openedCommit, () => found)
       }),
     closeCommit: () =>
       guard(async () => {
@@ -1743,6 +1786,37 @@ function actions($: Engine): Actions {
         }
         const shown = (await peek($, open.root, ['show', '--format=', open.sha, '--', path])).out
         await update($, openedCommit, now => (now === null || now.sha !== open.sha ? now : { ...now, diff: { path, ...fitHunks(shown) } }))
+      }),
+    // The diff in front, a screenful longer: read again, so it is the file as it stands now.
+    moreDiff: () =>
+      guard(async () => {
+        const shown = await read($, tab)
+        if (shown === 'console') {
+          const open = await read($, changeDiff)
+          if (open === null) return
+          const loaded = await readSetDiff($, open.id, open.path, moreDiffLines(open.hunks))
+          await update($, changeDiff, now => (now === null || now.path !== open.path ? now : loaded))
+
+          return
+        }
+        const inCommit = await read($, openedCommit)
+        if ((await read($, gitSection)) === 'history' && inCommit !== null && inCommit.diff !== null) {
+          const { path, hunks } = inCommit.diff
+          const out = (await peek($, inCommit.root, ['show', '--format=', inCommit.sha, '--', path])).out
+          await update($, openedCommit, now =>
+            now === null || now.sha !== inCommit.sha || now.diff?.path !== path
+              ? now
+              : { ...now, diff: { path, ...fitHunks(out, moreDiffLines(hunks)) } },
+          )
+
+          return
+        }
+        const open = await read($, diff)
+        if (open === null) return
+        const file = (await read($, repos)).find(one => one.root === open.root)?.files.find(one => one.path === open.path)
+        if (file === undefined) return
+        const loaded = await readDiff($, open.root, file, open.isStaged, moreDiffLines(open.hunks))
+        await update($, diff, now => (now === null || now.path !== open.path ? now : loaded))
       }),
     closeRun: () =>
       guard(async () => {
@@ -1769,7 +1843,6 @@ function actions($: Engine): Actions {
       guard(async () => {
         await update($, section, () => id)
         await update($, confirming, () => '')
-        await hush()
         await reloadExtras($)
       }),
 
@@ -1826,7 +1899,6 @@ function actions($: Engine): Actions {
         const files = toChangeFiles(reply.value)
         await update($, changeSet, () => ({ id, files }))
         await update($, confirming, () => '')
-        await hush()
       }),
     closeChangeSet: () =>
       guard(async () => {
@@ -1838,7 +1910,6 @@ function actions($: Engine): Actions {
       guard(async () => {
         const loaded = await readSetDiff($, id, path)
         await update($, changeDiff, () => loaded)
-        await hush()
       }),
     closeChangeDiff: () =>
       guard(async () => {
@@ -1956,11 +2027,16 @@ function actions($: Engine): Actions {
     openRepo: root =>
       guard(async () => {
         await update($, repo, () => root)
+        // Files starts over in the repository now in view.
+        await update($, listing, () => null)
+        await rememberRepo($, root)
         await reloadExtras($)
       }),
     closeRepo: () =>
       guard(async () => {
         await update($, repo, () => '')
+        await update($, listing, () => null)
+        await rememberRepo($, '')
       }),
 
     openDiff: (root, path, staged) =>
@@ -1970,9 +2046,12 @@ function actions($: Engine): Actions {
           ?.files.find(one => one.path === path)
         if (file === undefined) return
         const loaded = await readDiff($, root, file, staged)
-        await update($, repo, () => root)
+        if ((await read($, repo)) !== root) {
+          await update($, repo, () => root)
+          await update($, listing, () => null)
+          await rememberRepo($, root)
+        }
         await update($, diff, () => loaded)
-        await hush()
       }),
     closeDiff: () =>
       guard(async () => {
@@ -1983,7 +2062,6 @@ function actions($: Engine): Actions {
       guard(async () => {
         const refusal = await moveInIndex($, root, paths, toStaged)
         if (refusal === undefined) {
-          await hush()
           // A file moved from its own diff takes the view with it.
           await update($, diff, open =>
             open !== null && open.root === root && paths.includes(open.path)
@@ -1999,8 +2077,7 @@ function actions($: Engine): Actions {
     moveAll: (root, toStaged) =>
       guard(async () => {
         const refusal = await moveInIndex($, root, 'all', toStaged)
-        if (refusal === undefined) await hush()
-        else await say('bad', refusal)
+        if (refusal !== undefined) await say('bad', refusal)
         await refreshGit($)
       }),
 
@@ -2066,7 +2143,6 @@ function actions($: Engine): Actions {
         const lines = (await readLogs($, name)) ?? []
         const trend = await readServiceTrend($, name)
         await update($, logs, () => ({ name, lines, trend }))
-        await hush()
       }),
     closeLogs: () =>
       guard(async () => {
@@ -2078,11 +2154,22 @@ function actions($: Engine): Actions {
         await update($, showsElsewhere, shown => !shown)
       }),
 
+    openService: name =>
+      guard(async () => {
+        const held = (await read($, services)).find(one => one.name === name)
+        const page = held === undefined ? '' : pageOf(held)
+        if (page === '') {
+          await say('bad', `${name} has no page to open.`)
+
+          return
+        }
+        const ran = await $.process.run(['open', page], { timeoutMs: 5_000 })
+        if (ran.exitCode !== 0) await say('bad', 'The browser did not open.')
+      }),
     service: (name, verb) =>
       guard(async () => {
         const reply = await actOnService($, name, verb)
-        if (reply.ok) await hush()
-        else await say('bad', `${name}: ${reply.message}`)
+        if (!reply.ok) await say('bad', `${name}: ${reply.message}`)
         await refreshDaemon($)
       }),
   }
@@ -2135,7 +2222,7 @@ export const register: Register = (on, options) => {
       await update($, tab, () => 'git')
       await update($, gitSection, () => gitPart)
       if (gitPart === 'files' && (await read($, listing)) === null) {
-        const found = await listDir($, await $.session.cwd())
+        const found = await listDir($, await filesRoot($))
         await update($, listing, () => found)
       }
     }

@@ -5,6 +5,7 @@ import { createTaskPrompt } from '../prompts'
 import { age } from '../text'
 import { GLYPH } from '../tokens'
 import {
+  drafts,
   MAX_ROWS,
   NARROW,
   ask,
@@ -67,7 +68,7 @@ export function linearTab(kit: Kit, m: Model, act: Actions): RenderElement {
         {task.stateType === 'started' && task.doneState !== '' && (
           <Button key={`task-done:${task.identifier}`} {...chip(m)} label="done" onPress={() => act.moveTask(task.id, 'done')} />
         )}
-        <Button key={`task:${task.identifier}`} {...chip(m)} label="to prompt" onPress={() => act.taskToPrompt(task.id)} />
+        <Button key={`task:${task.identifier}`} {...drafts(m, true)} label="to prompt" onPress={() => act.taskToPrompt(task.id)} />
       </Box>,
       meta,
     )

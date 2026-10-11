@@ -2,9 +2,10 @@ import type { Color, RenderElement } from 'claude-code'
 
 import type { Limit, Tab } from '../../types'
 import { logo, meterSvg, tabIcon } from '../icons'
+import { fileView } from './files'
 import { clipEnd, plural } from '../text'
 import { GLYPH } from '../tokens'
-import { NARROW, PRESS_INSET, TIGHT, fit, hasFailed, noticeRow, paint, rule, space } from './chrome'
+import { NARROW, PRESS_INSET, TIGHT, fit, hasFailed, paint, rule, space } from './chrome'
 import { chillToggle, lyricRow, nowPlaying } from './chill'
 import { consoleTab } from './console'
 import { errorsTab } from './errors'
@@ -29,6 +30,20 @@ export const LOGO_PX = 18
 
 export function pane(kit: Kit, m: Model, act: Actions): RenderElement {
   const { Box } = kit
+  // A file being edited has the pane to itself: no tabs, no card, nothing else to press.
+  // That the rest is gone is what says the pane is an editor now, and `done` brings it back.
+  if (m.tab === 'git' && m.gitSection === 'files' && m.file !== null && m.file.isEditing) {
+    return (
+      <Box
+        flexDirection="column"
+        paddingX={1}
+        {...(m.isTerminal && m.rows > 0 ? { minHeight: m.rows } : {})}
+        {...(m.isTerminal && m.fill !== '' ? { backgroundColor: m.fill } : {})}
+      >
+        {fileView(kit, m, m.file, act)}
+      </Box>
+    )
+  }
 
   return (
     <Box
@@ -41,7 +56,7 @@ export function pane(kit: Kit, m: Model, act: Actions): RenderElement {
       {space(kit)}
       {tabStrip(kit, m, act)}
       {rule(kit, m)}
-      {m.notice !== null ? noticeRow(kit, m, m.notice) : m.isTerminal && space(kit)}
+      {m.isTerminal && space(kit)}
       {m.isChill && nowPlaying(kit, m, act)}
       {m.isChill && space(kit)}
       {m.tab === 'git' && gitTab(kit, m, act)}
@@ -177,6 +192,8 @@ export function band(kit: Kit, m: Model, act: Actions, isSeated = false): Render
 export function header(kit: Kit, m: Model, act: Actions): RenderElement {
   const { Box, Text, Svg } = kit
   const folder = m.workspace.slice(m.workspace.lastIndexOf('/') + 1)
+  // In a folder of several repositories, the one in view: what Git, Files and Actions are of.
+  const picked = m.repo !== '' && m.repo !== m.workspace ? m.repo.slice(m.repo.lastIndexOf('/') + 1) : ''
 
   return (
     <Box flexDirection="row" alignItems="center">
@@ -191,7 +208,7 @@ export function header(kit: Kit, m: Model, act: Actions): RenderElement {
       {folder !== '' && m.width >= NARROW && (
         <Box flexShrink={1} minWidth={0} marginLeft={2}>
           <Text dimColor wrap="truncate-end">
-            {fit(m, folder, 32)}
+            {fit(m, picked === '' ? folder : `${folder} / ${picked}`, 32)}
           </Text>
         </Box>
       )}

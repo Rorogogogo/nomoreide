@@ -10,12 +10,12 @@ import type {
   DbRows,
   DbTables,
   Diff,
+  EditView,
   GitSection,
   History,
   Incident,
   Listing,
   Logs,
-  Notice,
   OpenChangeSet,
   OpenCommit,
   OpenFile,
@@ -76,7 +76,6 @@ export type Model = {
   repos: readonly Repo[]
   repo: string
   diff: Diff | null
-  notice: Notice | null
   services: readonly Service[]
   showsElsewhere: boolean
   logs: Logs | null
@@ -91,6 +90,8 @@ export type Model = {
   gitSection: GitSection
   listing: Listing | null
   file: OpenFile | null
+  /** The editor's lines and cursor, where the pane draws them for it; `null` before its first key. */
+  editView: EditView | null
   search: Search | null
   runs: Runs | null
   history: History | null
@@ -155,6 +156,8 @@ export type Actions = {
   closeCommit: () => Promise<void>
   /** Shows the open commit's diff of one of its files; `''` goes back to its file list. */
   openCommitFile: (path: string) => Promise<void>
+  /** Shows a screenful more of the diff in front. */
+  moreDiff: () => Promise<void>
   closeRun: () => Promise<void>
   runToPrompt: (id: number) => Promise<void>
   openUrl: (url: string) => Promise<void>
@@ -197,4 +200,6 @@ export type Actions = {
   closeLogs: () => Promise<void>
   toggleElsewhere: () => Promise<void>
   service: (name: string, verb: ServiceVerb) => Promise<void>
+  /** Opens a running service's page in the browser. */
+  openService: (name: string) => Promise<void>
 }

@@ -8,8 +8,64 @@ export const MAX_FILE_BYTES = 300_000
 /** Lines in view at once: a highlighted read, and the shorter run of pressable lines. */
 export const VIEW_LINES = 120
 export const EDIT_LINES = 40
+/** The most text a read shows at once: a pane draws a hundred thousand characters and no more. */
+export const SHOWN_CHARS = 80_000
+
+/**
+ * A read's window after a press: `by` over 0 shows a screenful more below
+ * what is shown, under 0 a screenful more above it. The window only grows,
+ * so the pane's own scroll walks the file, until it would pass what a pane
+ * draws; then it gives up a screenful at its far end for the one it gains.
+ */
+export function growWindow(lines: readonly string[], top: number, more: number, by: number): { top: number; more: number } {
+  const chars = (from: number, extra: number): number =>
+    lines.slice(from, from + VIEW_LINES + extra).reduce((sum, line) => sum + line.length + 1, 0)
+  let [from, extra] = [top, more]
+  if (by > 0) {
+    if (from + VIEW_LINES + extra >= lines.length) return { top, more }
+    extra += VIEW_LINES
+    while (extra > 0 && chars(from, extra) > SHOWN_CHARS) {
+      from += VIEW_LINES
+      extra -= VIEW_LINES
+    }
+  } else {
+    const step = Math.min(from, VIEW_LINES)
+    from -= step
+    extra += step
+    while (extra > 0 && chars(from, extra) > SHOWN_CHARS) extra = Math.max(0, extra - VIEW_LINES)
+  }
+
+  return { top: from, more: extra }
+}
+
 /** Past this the whole text does not fit what the editor is handed, and a file is changed a line at a time. */
 export const MAX_EDITOR_CHARS = 90_000
+
+/**
+ * The code block as the desktop app draws it, in pixels, measured there: a
+ * cell of a box across, what a cell of the pane's own width comes to, a row
+ * down, and what one of a margin moves
+ * by; a character and a line of the block's face; the air above its first
+ * line, what its edges add to its lines, the air before its line numbers, between them and the code, and
+ * after the code, where its copy button stands. The editor lies over the
+ * block the pane draws, and is sized from these.
+ */
+export const BLOCK = { cell: 8, pane: 8.28, row: 19, lift: 9.5, char: 7.2, line: 17, above: 7.5, edges: 15, before: 13, gap: 17.6, after: 76 }
+
+/** Where the block's code starts, in pixels: past the numbers of the lines in view, the last of them `last`. */
+export const blockCodeAt = (last: number): number => BLOCK.before + String(Math.max(1, last)).length * BLOCK.char + BLOCK.gap
+
+/** How many characters of a line the block shows before it would wrap, in a pane `width` cells across. */
+export const blockRoom = (width: number, last: number): number =>
+  Math.max(10, Math.floor((width * BLOCK.pane - blockCodeAt(last) - BLOCK.after) / BLOCK.char))
+
+const blockPx = (count: number): number => Math.max(1, count) * BLOCK.line + BLOCK.edges
+
+/** How many of the pane's rows a block of `count` lines stands: the height of the editor laid over it. */
+export const blockRows = (count: number): number => Math.round((blockPx(count) / BLOCK.row) * 10) / 10
+
+/** How far up, in a margin's own measure, the editor is moved to lie over a block of `count` lines. */
+export const blockLift = (count: number): number => Math.round((blockPx(count) / BLOCK.lift) * 10) / 10
 
 /** Folders first, then files, each by name; `.git` is left out. */
 export function sortEntries(entries: readonly Entry[]): Entry[] {
@@ -73,7 +129,7 @@ export function windowFor(line: number, size: number, total: number): number {
 
 /** The file as first opened: at its top, being read. */
 export function opened(path: string, text: string, note: string, mtimeMs: number): OpenFile {
-  return { path, text, note, mtimeMs, top: 0, isEditing: false, line: null, isDirty: false }
+  return { path, text, note, mtimeMs, top: 0, more: 0, isEditing: false, line: null, isDirty: false }
 }
 
 /** How many names, and how many lines, one search shows. */

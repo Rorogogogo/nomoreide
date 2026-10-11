@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 
 import { endpointOf, toTools } from '../hooks/daemon'
 import { ECHO_MS, isEcho, isFocusOnlyClick } from '../hooks/focus'
-import { diffRows, fitHunks, parseLog, parseNameStatus, parsePull, parsePulls, parseStatus } from '../hooks/git'
+import { DIFF_LINES_CAP, diffRows, fitHunks, layoutMessage, moreDiffLines, parseLog, parseNameStatus, parsePull, parsePulls, parseStatus } from '../hooks/git'
 import { graphSvg } from '../hooks/icons'
 import { controlArgv, lineAt, parseLrc, parseNowPlaying, pickLrclib, pickNetease, positionOf, settle } from '../hooks/music'
 
@@ -111,6 +111,8 @@ test('the pane lists what changed, stages a file and shows its diff', async ($, 
   on('session.cwd', () => ({ value: '/work/app' }))
   on('config.list', () => ({ value: [] }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  const toasts: string[] = []
+  on('ui.toast', (_$, e) => (toasts.push(e.text), { value: undefined }))
   on('ui.panes', () => ({ value: [] }))
   // No daemon on this machine: the Git tab stands on git alone.
   on('fs.read', () => ({ deny: 'no such file' }))
@@ -164,6 +166,8 @@ test('with no daemon the other tabs say so and draw nothing else', async ($, on)
   on('session.cwd', () => ({ value: '/work/app' }))
   on('config.list', () => ({ value: [] }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  const toasts: string[] = []
+  on('ui.toast', (_$, e) => (toasts.push(e.text), { value: undefined }))
   on('ui.panes', () => ({ value: [] }))
   on('fs.read', () => ({ deny: 'no such file' }))
   on('fs.list', () => ({ value: [] }))
@@ -378,6 +382,8 @@ test('the daemon tabs draw services, errors, the console and Linear, and act on 
   on('session.cwd', () => ({ value: '/work/app' }))
   on('config.list', () => ({ value: [] }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  const toasts: string[] = []
+  on('ui.toast', (_$, e) => (toasts.push(e.text), { value: undefined }))
   on('ui.panes', () => ({ value: [] }))
   on('fs.list', () => ({ value: [] }))
   on('process.run', () => ({
@@ -463,7 +469,7 @@ test('the daemon tabs draw services, errors, the console and Linear, and act on 
     await ui.press({ key: 'restore-set:run-1' })
     await ui.press({ key: 'yes:restore-set:run-1' })
     expect(asked.filter(one => one === restore).length, 'then done').toBe(before + 1)
-    expect(await ui.find({ type: 'Text', text: /Restored 2 files, removed 1\. To undo, restore snapshot feedbee/ })).toBeDefined()
+    expect(toasts.some(one => /Restored 2 files, removed 1\. To undo, restore snapshot feedbee/.test(one)), 'said in a toast').toBe(true)
     await ui.press({ key: 'back' })
 
     await ui.press({ key: 'section-usage' })
@@ -601,6 +607,8 @@ test('the Git view shows the pull request and takes and restores snapshots of th
   on('session.cwd', () => ({ value: '/work/app' }))
   on('config.list', () => ({ value: [] }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  const toasts: string[] = []
+  on('ui.toast', (_$, e) => (toasts.push(e.text), { value: undefined }))
   on('ui.panes', () => ({ value: [] }))
   on('process.run', (_$, e) => {
     const [bin, ...rest] = e.argv
@@ -673,7 +681,7 @@ test('the Git view shows the pull request and takes and restores snapshots of th
   active = '/elsewhere/site'
   await ui.press({ key: 'snapshot' })
   expect(asked.some(one => one.startsWith('POST /api/snapshots'))).toBe(false)
-  expect(await ui.find({ type: 'Text', text: /another repository selected/ })).toBeDefined()
+  expect(toasts.some(one => /another repository selected/.test(one)), 'said in a toast').toBe(true)
   await ui.unmount()
 })
 
@@ -737,6 +745,8 @@ test('chill mode shows the song and its lyric in the pane and above the prompt, 
   on('session.cwd', () => ({ value: '/work/app' }))
   on('config.list', () => ({ value: [] }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  const toasts: string[] = []
+  on('ui.toast', (_$, e) => (toasts.push(e.text), { value: undefined }))
   on('ui.panes', () => ({ value: [] }))
   on('fs.read', () => ({ deny: 'no such file' }))
   on('process.run', (_$, e) => {
@@ -843,6 +853,8 @@ test('History shows the graph and opens a commit and its diff; PRs lists them an
   on('session.cwd', () => ({ value: '/work/app' }))
   on('config.list', () => ({ value: [] }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  const toasts: string[] = []
+  on('ui.toast', (_$, e) => (toasts.push(e.text), { value: undefined }))
   on('ui.panes', () => ({ value: [] }))
   on('fs.read', () => ({ deny: 'no such file' }))
   on('prompt.fill', (_$, e) => {
@@ -914,4 +926,45 @@ test('History shows the graph and opens a commit and its diff; PRs lists them an
     await ui.unmount()
   }
   expect(ran.some(argv => argv[0] === 'gh' && argv.includes('list')), 'asked of gh').toBe(true)
+})
+
+test('a cut diff grows by a screenful a press, up to the most a pane draws', () => {
+  const raw = ['diff --git a/a.txt b/a.txt', '@@ -1,0 +1,1000 @@', ...Array.from({ length: 1000 }, (_, at) => `+line ${at}`)].join('\n')
+  const first = fitHunks(raw)
+  expect(first.hiddenLines, 'the first screenful leaves the rest out').toBe(601)
+  const next = fitHunks(raw, moreDiffLines(first.hunks))
+  expect(next.hunks.split('\n').length).toBe(800)
+  expect(next.hiddenLines).toBe(201)
+  expect(next.hunks.split('\n')[0], 'the cut hunk still counts its own lines').toBe('@@ -1,0 +1,799 @@')
+  expect(fitHunks(raw, moreDiffLines(next.hunks)).hiddenLines, 'then all of it').toBe(0)
+  expect(moreDiffLines(Array.from({ length: DIFF_LINES_CAP }, () => '+x').join('\n')), 'never past the cap').toBe(DIFF_LINES_CAP)
+})
+
+test('a commit body is joined for the pane to wrap, its list hung and its trailers set apart', () => {
+  const laid = layoutMessage(
+    [
+      'The diff viewer highlights added lines in the',
+      "file's language. A file of",
+      'no known language stays two-colour.',
+      '',
+      '- Git: History and',
+      '  PRs',
+      '- Logs sit in a card',
+      '',
+      'Co-authored-by: A Person <a@example.com>',
+      'Claude-Session: https://claude.ai/code/session_01',
+    ].join('\n'),
+  )
+  expect(laid.paragraphs[0]).toEqual([
+    { mark: '', text: "The diff viewer highlights added lines in the file's language. A file of no known language stays two-colour." },
+  ])
+  expect(laid.paragraphs[1]).toEqual([
+    { mark: '-', text: 'Git: History and PRs' },
+    { mark: '-', text: 'Logs sit in a card' },
+  ])
+  expect(laid.trailers).toEqual([
+    { key: 'Co-authored-by', value: 'A Person <a@example.com>' },
+    { key: 'Claude-Session', value: 'https://claude.ai/code/session_01' },
+  ])
+  expect(layoutMessage('Note: this is prose, and the only paragraph.\n\nMore prose here.').trailers, 'prose is not a trailer').toEqual([])
 })

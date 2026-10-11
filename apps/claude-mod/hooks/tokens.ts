@@ -117,7 +117,7 @@ export const GLYPH = {
   // The same marks for a cell grid, from plain geometric shapes: the player's
   // own marks have a picture form there, which a terminal draws two cells wide
   // and counts as one, so they overlap and push a card's edge off the row.
-  cells: { previous: '◂◂', pause: '▮▮', play: '▸', next: '▸▸', expand: '▾', collapse: '▴' },
+  cells: { previous: '◂◂', pause: '▮▮', play: '▸', next: '▸▸', expand: '▾', collapse: '▴', start: '▸', stop: '■', restart: '↻', open: '↗' },
   /** One cell of a thin meter: a heavy rule, inked for the part used and faint for the rest. */
   meter: '━',
   ahead: '↑',
@@ -131,8 +131,15 @@ export const GLYPH = {
   file: '··',
   database: 'db',
   table: 'tb',
+  terminal: '>_',
   /** A folder that holds something git has to say. */
   changed: '•',
+  /** What is done to a service, as marks: a row has room for a mark where it has none for a word. */
+  start: '▶\uFE0E',
+  stop: '■',
+  restart: '↻',
+  /** Opens something outside the pane: a page in the browser. */
+  open: '↗',
   /** Marks a press that drafts a request to Claude. */
-  ask: '✦',
+  ask: '✻',
 } as const

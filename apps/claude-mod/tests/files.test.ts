@@ -1,8 +1,11 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import {
+  SHOWN_CHARS,
+  VIEW_LINES,
   applyEdit,
   familyOf,
+  growWindow,
   holdsChanges,
   isUnder,
   linesOf,
@@ -14,6 +17,7 @@ import {
   windowFor,
 } from '../hooks/files'
 import { applyKey, bufferOf, scrolled, textOf } from '../hooks/edit-buffer'
+import { VIM_START, vimKey } from '../hooks/vim'
 import { parseJobs, parseRuns, standingOf, toRunPrompt } from '../hooks/github'
 import { highlight, isHighlighted, sliceTokens } from '../hooks/highlight'
 import { wrapLine } from '../hooks/icons'
@@ -129,6 +133,8 @@ test('files are browsed, read and changed a line at a time; runs are listed; a p
   on('session.cwd', () => ({ value: '/work/app' }))
   on('config.list', () => ({ value: [] }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  const toasts: string[] = []
+  on('ui.toast', (_$, e) => (toasts.push(e.text), { value: undefined }))
   on('ui.panes', () => ({ value: [] }))
   on('fs.exists', () => ({ value: false }))
   const entry = (name: string, kind: 'file' | 'dir') => ({ name, kind, size: 0, mtimeMs: 0, isLink: false })
@@ -218,11 +224,22 @@ test('files are browsed, read and changed a line at a time; runs are listed; a p
 
     // Editing is typing in the file: a cursor, moved by the arrows, text put in where it stands.
     await ui.press({ key: 'edit' })
-    expect(await ui.find({ type: 'Code' })).toBeUndefined()
+    // A cell grid's editor draws its own lines. Elsewhere the pane draws them for it, in the
+    // block a file being read is drawn in, the cursor a bar that follows each key.
+    // Each line is filled out with spaces to the block's full width; what it says is what is compared.
+    const block = async () =>
+      (((await ui.find({ type: 'Code' }))?.props.source as string | undefined) ?? undefined)
+        ?.split('\n')
+        .map((line: string) => line.trimEnd())
+        .join('\n')
+    expect(await block()).toBe(surface === 'terminal' ? undefined : ['# App', '', 'old line'].join('\n'))
     await ui.key({ key: 'down', in: 'editor' })
     await ui.key({ key: 'down', in: 'editor' })
     await ui.key({ key: 'end', in: 'editor' })
+    // The editor's keys are Vim's: it opens in normal mode, and `i` starts typing.
+    await ui.key({ key: 'i', in: 'editor' })
     await ui.key({ key: '!', in: 'editor' })
+    expect(await block(), 'what was typed').toBe(surface === 'terminal' ? undefined : ['# App', '', 'old line!', ''].join('\n'))
     await ui.key({ key: 'return', in: 'editor' })
     await ui.key({ key: 'x', in: 'editor' })
     await ui.key({ key: 'backspace', in: 'editor' })
@@ -247,7 +264,7 @@ test('files are browsed, read and changed a line at a time; runs are listed; a p
     await ui.key({ key: 's', ctrl: true, in: 'editor' })
     expect(written.length, 'nothing written').toBe(before)
     expect(disk['/work/app/README.md']).toBe('# Theirs\n')
-    expect(await ui.find({ type: 'Text', text: /changed on disk/ })).toBeDefined()
+    expect(toasts.some(one => /changed on disk/.test(one)), 'said in a toast').toBe(true)
     await ui.press({ key: 'discard-edit' })
     await ui.press({ key: 'yes:discard-edit' })
     await ui.press({ key: 'back' })
@@ -256,9 +273,14 @@ test('files are browsed, read and changed a line at a time; runs are listed; a p
     await ui.press({ key: 'entry:src' })
     await ui.press({ key: 'entry:main.ts' })
     await ui.press({ key: 'edit' })
-    expect(JSON.stringify(await ui.drawn({ in: 'editor' })), 'a keyword, coloured').toMatch(
-      /"color":"permission"[^}]*\},"children":\["const"\]/,
-    )
+    if (surface === 'terminal') {
+      expect(JSON.stringify(await ui.drawn({ in: 'editor' })), 'a keyword, coloured').toMatch(
+        /"color":"permission"[^}]*\},"children":\["const"\]/,
+      )
+    } else {
+      // Elsewhere the colours are the surface's own: the pane hands its code block the text.
+      expect((await ui.find({ type: 'Code' }))?.props.source).toMatch(/^export const a = 1/)
+    }
     await ui.press({ key: 'edit' })
     await ui.press({ key: 'back' })
     await ui.press({ key: 'up' })
@@ -446,4 +468,45 @@ test('keys edit a buffer as they do a file: typing, lines broken and joined, the
   expect(type('', [{ key: 'tab' }, { key: 'space' }]).text).toBe('   ')
 
   expect([scrolled(0, 5, 10), scrolled(0, 10, 10), scrolled(8, 3, 10)]).toEqual([0, 1, 3])
+})
+
+test('a read grows a screenful a press and slides only once it would pass what a pane draws', () => {
+  const short = Array.from({ length: 300 }, (_, at) => `line ${at}`)
+  expect(growWindow(short, 0, 0, 1), 'a screenful more below').toEqual({ top: 0, more: VIEW_LINES })
+  expect(growWindow(short, 0, 2 * VIEW_LINES, 1), 'nothing past the end').toEqual({ top: 0, more: 2 * VIEW_LINES })
+  expect(growWindow(short, VIEW_LINES, 0, -1), 'a screenful more above').toEqual({ top: 0, more: VIEW_LINES })
+
+  // Long lines: two screenfuls are more than a pane draws, so the window moves on.
+  const wide = Array.from({ length: 600 }, () => 'x'.repeat(Math.ceil(SHOWN_CHARS / VIEW_LINES)))
+  expect(growWindow(wide, 0, 0, 1)).toEqual({ top: VIEW_LINES, more: 0 })
+  expect(growWindow(wide, VIEW_LINES, 0, -1)).toEqual({ top: 0, more: 0 })
+})
+
+test("Vim's keys move and cut in normal mode, type in insert mode, and `jk` leaves it", () => {
+  const run = (text: string, keys: string, row = 0, col = 0) => {
+    let buffer = bufferOf(text, row, col)
+    let vim = VIM_START
+    for (const key of keys) {
+      const step = vimKey(buffer, vim, key === '\n' ? { key: 'return' } : { key }, 10)
+      if (step !== undefined) ({ buffer, vim } = step)
+    }
+
+    return { text: textOf(buffer), row: buffer.row, col: buffer.col, mode: vim.mode, register: vim.register }
+  }
+  expect(run('one two\nthree', 'x'), 'a plain key is a command, never typed').toMatchObject({ text: 'ne two\nthree', mode: 'normal' })
+  expect(run('one two\nthree', 'wj0')).toMatchObject({ row: 1, col: 0 })
+  expect(run('one two\nthree', 'G$')).toMatchObject({ row: 1, col: 5 })
+  expect(run('one two\nthree', 'jgg')).toMatchObject({ row: 0, col: 0 })
+  expect(run('foo.bar baz', 'w'), 'a word ends where its kind of character does').toMatchObject({ col: 3 })
+  expect(run('foo.bar baz', 'we')).toMatchObject({ col: 6 })
+  expect(run('one\ntwo\nthree', 'ddjp'), 'a cut line is put back below').toMatchObject({ text: 'two\nthree\none', row: 2 })
+  expect(run('one\ntwo', 'yyP')).toMatchObject({ text: 'one\none\ntwo' })
+  expect(run('one two three', 'wdw')).toMatchObject({ text: 'one three' })
+  expect(run('one two', 'wD')).toMatchObject({ text: 'one ' })
+  expect(run('  one\ntwo', 'ox'), 'a new line below, as far in as this one').toMatchObject({ text: '  one\n  x\ntwo', mode: 'insert' })
+  expect(run('one', 'Axjk'), '`jk` takes its own j back out').toMatchObject({ text: 'onex', mode: 'normal' })
+  expect(run('one', 'ijo'), 'a j on its own is typed').toMatchObject({ text: 'joone', mode: 'insert' })
+  expect(run('one\ntwo', 'J')).toMatchObject({ text: 'one two' })
+  expect(vimKey(bufferOf('a'), VIM_START, { key: 's', ctrl: true }, 10), "save stays the editor's own").toBeUndefined()
+  expect(vimKey(bufferOf('a'), VIM_START, { key: 'u' }, 10)?.ask).toBe('undo')
 })
