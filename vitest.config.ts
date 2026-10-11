@@ -23,6 +23,8 @@ export default defineConfig({
     setupFiles: ["./test/setup.ts"],
     // Local git worktrees are full checkouts; scanning them runs stale copies
     // of the suite against a second React instance.
-    exclude: [...configDefaults.exclude, "**/.worktrees/**"],
+    // The Claude Code mod's tests run in the engine, under `claude plugin
+    // test apps/claude-mod`, and import a module only it provides.
+    exclude: [...configDefaults.exclude, "**/.worktrees/**", "apps/claude-mod/**"],
   },
 });

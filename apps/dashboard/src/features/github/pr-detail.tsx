@@ -201,7 +201,7 @@ export function PrDetail({
               selected={activeFileDiff?.path ?? null}
             />
             <div className="relative min-h-0 min-w-0 flex-1">
-              {activeFileDiff ? <DiffViewer diff={activeFileDiff.diff} /> : null}
+              {activeFileDiff ? <DiffViewer diff={activeFileDiff.diff} path={activeFileDiff.path} /> : null}
             </div>
           </div>
         ) : (

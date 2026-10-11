@@ -1,0 +1,7 @@
+{
+  "name": "Dark, panes on terminal black",
+  "base": "dark",
+  "overrides": {
+    "composerSidebarBackground": "rgb(0,0,0)"
+  }
+}

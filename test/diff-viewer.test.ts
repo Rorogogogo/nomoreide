@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 import {
   buildDiffRows,
+  diffPath,
   diffStats,
+  highlightDiffRows,
   visibleDiffRows,
 } from "../apps/dashboard/src/features/git/diff-viewer";
 
@@ -140,5 +142,46 @@ describe("buildDiffRows", () => {
       deletions: 2,
       hunks: 2,
     });
+  });
+});
+
+describe("highlightDiffRows", () => {
+  const diff = [
+    "diff --git a/src/old.ts b/src/app.ts",
+    "--- a/src/old.ts",
+    "+++ b/src/app.ts",
+    "@@ -1,2 +1,2 @@",
+    " const a = 1",
+    "-const b = '<two>'",
+    "+const b = 3",
+  ].join("\n");
+
+  test("reads the file a diff is of from its own header, the new name of a rename", () => {
+    expect(diffPath(diff)).toBe("src/app.ts");
+    expect(diffPath("@@ -1 +1 @@\n-a\n+b")).toBe("");
+    expect(diffPath("No unstaged diff")).toBe("");
+  });
+
+  test("colours each line of code without its mark, and escapes what it holds", () => {
+    const rows = visibleDiffRows(diff);
+    const html = highlightDiffRows(rows, "typescript");
+
+    expect(html).toHaveLength(rows.length);
+    expect(html[0]).toContain('<span class="hljs-keyword">const</span>');
+    expect(html[2]).toContain('<span class="hljs-number">3</span>');
+    // The leading +, - or space is the diff's, not the code's.
+    expect(html[2]?.startsWith("+")).toBe(false);
+    // A line is escaped before it is marked up: its own angle brackets stay text.
+    expect(html[1]).toContain("&lt;two&gt;");
+    expect(html[1]).not.toContain("<two>");
+  });
+
+  test("leaves a file of no known language, and rows that are not code, uncoloured", () => {
+    const rows = buildDiffRows(diff);
+
+    expect(highlightDiffRows(rows, null).every((row) => row === null)).toBe(true);
+    const html = highlightDiffRows(rows, "typescript");
+    expect(html.slice(0, 4)).toEqual([null, null, null, null]);
+    expect(html[4]).not.toBeNull();
   });
 });

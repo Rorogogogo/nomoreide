@@ -491,6 +491,7 @@ export function GitReviewView({
                   <DiffViewer
                     activeHunkIndex={activeHunkIndex}
                     diff={diff || t("git.noUnstagedDiff")}
+                    path={selectedFile}
                   />
                 ) : (
                   <div className="p-4">

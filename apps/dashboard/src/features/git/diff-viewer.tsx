@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
+import { highlightLines, languageFor } from "./file-viewer-content";
+import "./file-viewer-theme.css";
 
 // Diffs whose individual lines run this long (data dumps: CSV, logs, minified
 // blobs) are unreadable as a code diff and bog the layout down. Hide by default.
@@ -26,12 +28,19 @@ export interface DiffStats {
 export function DiffViewer({
   activeHunkIndex = 0,
   diff,
+  path,
 }: {
   activeHunkIndex?: number;
   diff: string;
+  /** The file the diff is of. Left out, it is read from the diff's own header. */
+  path?: string;
 }) {
   const t = useT();
-  const rows = visibleDiffRows(diff);
+  const rows = useMemo(() => visibleDiffRows(diff), [diff]);
+  // Code keeps its syntax colours on the added and removed grounds, as a
+  // review on GitHub shows it. A file of no known language stays two-colour.
+  const language = useMemo(() => languageFor(path ?? diffPath(diff)), [path, diff]);
+  const highlighted = useMemo(() => highlightDiffRows(rows, language), [rows, language]);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const hunkRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [showAnyway, setShowAnyway] = useState(false);
@@ -109,11 +118,46 @@ export function DiffViewer({
           >
             <LineNumber value={row.oldLine} />
             <LineNumber value={row.newLine} />
-            <span className="min-w-0 whitespace-pre-wrap break-all px-2">{row.content || " "}</span>
+            {highlighted[index] == null ? (
+              <span className="min-w-0 whitespace-pre-wrap break-all px-2">{row.content || " "}</span>
+            ) : (
+              <span className="min-w-0 whitespace-pre-wrap break-all px-2">
+                {/* The mark keeps the row's own green or red; the code after it is the highlighter's. */}
+                <span className="select-none">{row.content.slice(0, 1) || " "}</span>
+                <span
+                  className="hljs"
+                  // biome-ignore lint/security/noDangerouslySetInnerHtml: highlight.js escapes the line before adding its spans.
+                  dangerouslySetInnerHTML={{ __html: highlighted[index] ?? "" }}
+                />
+              </span>
+            )}
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * The path a single-file diff is of, from its `diff --git` header; `""` for a
+ * diff that carries none (a bare hunk, a placeholder message).
+ */
+export function diffPath(diff: string): string {
+  const header = diff.split("\n", 1)[0] ?? "";
+  return header.startsWith("diff --git ") ? pathFromDiffHeader(header) : "";
+}
+
+/**
+ * Each row's code as highlighted HTML, without its leading `+`, `-` or space;
+ * `null` for a row that is not code (a header, a hunk line) and for every row
+ * when the language is not one the highlighter knows.
+ */
+export function highlightDiffRows(rows: DiffRow[], language: string | null): Array<string | null> {
+  if (!language) return rows.map(() => null);
+  return rows.map((row) =>
+    row.kind === "add" || row.kind === "delete" || row.kind === "context"
+      ? (highlightLines(row.content.slice(1), language)[0] ?? "")
+      : null,
   );
 }
 

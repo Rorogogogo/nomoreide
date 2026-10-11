@@ -20,6 +20,8 @@
 # `--setup auto` registers the MCP server with every agent it can find, so the
 # one command leaves a working setup rather than a binary and a hint. It writes
 # the agent's own config (backing up what was there); `--setup none` skips it.
+# Where Claude Code is one of them and its `claude` CLI is on PATH, it also adds
+# the NoMoreIDE pane, which is a Claude Code plugin.
 #
 # Exit codes: 0 installed, 1 refused or failed, 2 bad usage.
 
@@ -318,9 +320,38 @@ if [ -n "$wanted" ]; then
   done
 fi
 
+# ------------------------------------------------------ Claude Code pane
+
+# The pane is a Claude Code plugin, and only Claude Code can install one, so
+# this needs the `claude` CLI itself: a config directory is enough to register
+# an MCP server, and not enough for this. Reported and not fatal, for the same
+# reason as above, and for two more: a Claude Code older than 2.1.275 has no
+# panes, and the plugin is fetched from GitHub, which may not be reachable.
+PANE_PLUGIN="nomoreide --marketplace Rorogogogo/nomoreide"
+pane=""
+case " $wanted " in
+  *" claude "*)
+    say ""
+    step "Adding the NoMoreIDE pane to Claude Code"
+    # `--yes` and no stdin: nothing here may wait on a question when the
+    # script itself is arriving through a pipe.
+    if command -v claude >/dev/null 2>&1 \
+       && claude plugin install $PANE_PLUGIN --yes </dev/null >/dev/null 2>&1; then
+      pane=added
+      note "Added. Restart Claude Code, then open it with /nomoreide."
+    else
+      say "Could not add the pane automatically. From inside Claude Code (2.1.275 or later):"
+      note "/plugin install $PANE_PLUGIN"
+    fi
+    ;;
+esac
+
 say ""
 say "Next:"
 if [ -z "$wanted" ]; then
   note "nomoreide setup claude     # or codex, gemini, cursor, or windsurf"
 fi
 note "nomoreide daemon           # the workbench on http://127.0.0.1:4317"
+if [ "$pane" = added ]; then
+  note "/nomoreide                 # inside Claude Code: the workbench as a side pane"
+fi
