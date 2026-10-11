@@ -243,6 +243,53 @@ else
   bad "--setup auto" "wrote an agent config with no agent present (exit $code): $out"
 fi
 
+# The pane is a Claude Code plugin, so the installer asks the `claude` CLI for
+# it. A stand-in CLI records what it was asked: the real one would reach GitHub,
+# and would write into the plugins of whoever runs this check.
+PANE_HOME="$WORK/pane-home"; mkdir -p "$PANE_HOME/.claude" "$WORK/pane-bin"
+PANE_PREFIX="$WORK/pane-prefix"
+cat > "$WORK/pane-bin/claude" <<STUB
+#!/bin/sh
+printf '%s\\n' "\$*" >> "$WORK/pane-asked"
+[ ! -e "$WORK/pane-refuses" ]
+STUB
+chmod +x "$WORK/pane-bin/claude"
+pane_installer() {
+  env -i PATH="$WORK/pane-bin:$CLEAN_PATH" HOME="$PANE_HOME" SHELL=/bin/zsh \
+      NOMOREIDE_BASE_URL="file://$RELEASE" \
+      NOMOREIDE_API_URL="file://$RELEASE/latest.json" \
+      sh "$INSTALLER" --version "$NEW" --prefix "$PANE_PREFIX" "$@" 2>&1
+}
+out=$(pane_installer --setup claude); code=$?
+if [ "$code" -eq 0 ] \
+   && grep -q "^plugin install nomoreide --marketplace Rorogogogo/nomoreide --yes$" "$WORK/pane-asked" 2>/dev/null; then
+  ok "with the claude CLI on PATH, the installer adds the pane through it"
+else
+  bad "pane install" "the claude CLI was not asked for the plugin (exit $code): $out"
+fi
+case "$out" in *"/nomoreide"*) ok "it says how to open the pane" ;;
+  *) bad "pane install" "no /nomoreide in the output: $out" ;; esac
+
+# A Claude Code too old for panes, or no network: the install still succeeds,
+# and says what to type instead.
+: > "$WORK/pane-refuses"
+out=$(pane_installer --setup claude); code=$?
+case "$out" in
+  *"/plugin install nomoreide --marketplace Rorogogogo/nomoreide"*)
+    [ "$code" -eq 0 ] && ok "a refused pane install is reported, with the command, and is not fatal" \
+      || bad "pane refused" "exit $code: $out" ;;
+  *) bad "pane refused" "the manual command was not printed (exit $code): $out" ;;
+esac
+rm -f "$WORK/pane-refuses" "$WORK/pane-asked"
+
+# Not asked for when Claude Code is not one of the agents being set up.
+out=$(pane_installer --setup codex); code=$?
+if [ "$code" -eq 0 ] && [ ! -e "$WORK/pane-asked" ]; then
+  ok "--setup codex leaves Claude Code's plugins alone"
+else
+  bad "--setup codex" "the claude CLI was called (exit $code): $out"
+fi
+
 # A misspelled agent is a usage error and must be refused before anything is
 # downloaded, let alone installed.
 BAD_PREFIX="$WORK/bad-prefix"

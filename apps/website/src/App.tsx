@@ -1,3 +1,4 @@
+import { ClaudePane } from "./components/claude-pane";
 import { CTA } from "./components/cta";
 import { DocsPage } from "./components/docs-page";
 import { GetStarted } from "./components/get-started";
@@ -14,6 +15,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Hero />
+      <ClaudePane />
       <GetStarted />
       <Features />
       <HowItWorks />

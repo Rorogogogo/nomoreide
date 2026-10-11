@@ -41,7 +41,7 @@ const INSTALLS: Choice[] = [
     id: "script",
     label: "macOS / Linux",
     description:
-      "Downloads a prebuilt binary, verifies its checksum, and registers it with every agent it finds. No Node, no Rust toolchain.",
+      "Downloads a prebuilt binary, verifies its checksum, registers it with every agent it finds, and adds the side pane to Claude Code. No Node, no Rust toolchain.",
     language: "shell",
     lines: ["curl -fsSL https://www.nomoreide.com/install.sh | sh"],
     copyText: "curl -fsSL https://www.nomoreide.com/install.sh | sh",
@@ -85,6 +85,9 @@ const AGENTS: Choice[] = [
       "",
       "# or register it by hand:",
       "claude mcp add --transport stdio nomoreide -- nomoreide mcp",
+      "",
+      "# the side pane, if the install script did not add it:",
+      "claude plugin install nomoreide --marketplace Rorogogogo/nomoreide",
     ],
     copyText: "nomoreide setup claude",
   },
