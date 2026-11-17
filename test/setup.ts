@@ -17,3 +17,13 @@ gitConfig.forEach(([key, value], index) => {
   process.env[`GIT_CONFIG_KEY_${index}`] = key;
   process.env[`GIT_CONFIG_VALUE_${index}`] = value;
 });
+
+// happy-dom 21 implements the Web Animations API (`Element.animate`), which
+// 20 did not. Framer Motion uses it whenever it exists, and cancelling an
+// animation on unmount rejects its `finished` promise with an AbortError that
+// nothing awaits — so vitest reports "Unhandled Errors" and fails a run in
+// which every test passed. No test here asserts on animation; removing
+// `animate` puts Motion back on the JavaScript path it took under happy-dom 20.
+if (typeof Element !== "undefined" && "animate" in Element.prototype) {
+  Reflect.deleteProperty(Element.prototype, "animate");
+}
