@@ -165,6 +165,17 @@ impl DaemonClient {
         })
     }
 
+    /// Where this daemon serves — the same origin that serves the dashboard.
+    pub fn endpoint(&self) -> &DaemonEndpoint {
+        &self.endpoint
+    }
+
+    /// The identity of this daemon *instance*: a restarted daemon has a new
+    /// one (and a new credential), the same daemon rediscovered does not.
+    pub fn owner_id(&self) -> &str {
+        &self.owner_id
+    }
+
     pub async fn list_services(&self) -> Result<ServiceDiscovery, DaemonClientError> {
         let body = self.read(self.endpoint.api_url("api/services")).await?;
         let envelope = serde_json::from_slice::<ServiceDiscoveryEnvelope>(&body)

@@ -101,7 +101,7 @@ The HTTP server in `nomoreide-daemon/src/server/`. A thin dispatcher matches eac
 
 ### CLI and TUI
 
-`nomoreide-cli` routes to each mode. Subcommands: `mcp`, `setup`, `tui`, `web`, `daemon`, `git`, `db`, `agents`, `profile`, `list`, `logs`, `start`, `stop`, `restart`, `add`.
+`nomoreide-cli` routes to each mode. Subcommands: `mcp`, `setup`, `tui`, `web`, `menubar` (macOS), `daemon`, `git`, `db`, `agents`, `profile`, `list`, `logs`, `start`, `stop`, `restart`, `add`.
 
 ### Data flow
 

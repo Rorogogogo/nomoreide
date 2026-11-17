@@ -18,7 +18,7 @@ use nomoreide_daemon_client::{DaemonClient, DaemonClientError, RuntimePaths, Ser
 
 use crate::flags::{parse_flags, Flags};
 
-pub const USAGE: &str = "Usage: nomoreide [mcp|setup|tui|web|attach|daemon|git|db|linear|agents|profile|remote|list|logs|start|stop|restart|add]";
+pub const USAGE: &str = "Usage: nomoreide [mcp|setup|tui|web|menubar|attach|daemon|git|db|linear|agents|profile|remote|list|logs|start|stop|restart|add]";
 
 /// A failure on its way to an exit code.
 pub enum CliError {

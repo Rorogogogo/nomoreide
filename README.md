@@ -457,6 +457,15 @@ nomoreide web --port=4320
 
 The web dashboard is available at `http://127.0.0.1:4317` by default.
 
+### Menu Bar App (macOS)
+
+```bash
+nomoreide menubar               # menu-bar icon + the dashboard in its own window
+nomoreide menubar --login on    # start it at login (off to stop)
+```
+
+The menu shows the shared daemon's services — the same ones your agents start over MCP — with Start, Stop, Restart and Open for each, plus bundles. **Open NoMoreIDE** shows the full dashboard in a native window. Closing the window keeps NoMoreIDE in the menu bar; quitting it leaves your services running, and **Stop Daemon and Quit** stops both. Running `nomoreide menubar` again while it is open just brings its window forward.
+
 ---
 
 ## CLI
