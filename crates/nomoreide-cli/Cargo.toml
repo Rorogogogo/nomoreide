@@ -27,3 +27,13 @@ reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
+
+# `nomoreide menubar`: the menu-bar app and its window. macOS-only, and pinned
+# to the versions Tauri already resolves in Cargo.lock so nothing new compiles.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage", "NSResponder"] }
+objc2-foundation = { version = "0.3", features = ["NSData"] }
+tao = "0.35"
+tray-icon = "0.23"
+wry = "0.55"

@@ -1,12 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Check, Copy, Download as DownloadIcon, ShieldAlert } from "lucide-react";
-import {
-  findLatestMacosRelease,
-  RELEASES_URL,
-  type MacosRelease,
-} from "../lib/latest-macos-release";
+import { Check, Copy } from "lucide-react";
 import { cn } from "../lib/utils";
-import { Button } from "./ui/button";
+
+const RELEASES_URL = "https://github.com/Rorogogogo/nomoreide/releases";
 
 /**
  * Get started: install, then connect an agent.
@@ -115,31 +111,27 @@ const AGENTS: Choice[] = [
   },
 ];
 
-const OPEN_STEPS = [
-  "Drag NoMoreIDE into your Applications folder and double-click it — macOS will say it can't be verified.",
-  "Open System Settings → Privacy & Security.",
-  'Scroll down to the Security section. You\'ll see "NoMoreIDE was blocked to protect your Mac" — click Open Anyway.',
-  "Confirm once more with Touch ID or your password. After that it launches like any other app.",
+const MENUBAR: Choice[] = [
+  {
+    id: "open",
+    label: "Menu bar",
+    description:
+      "An icon in the menu bar with your services — start, stop, restart, open — and the full dashboard in its own window. It shares the one daemon, so it shows the services your agents start too.",
+    language: "shell",
+    lines: ["nomoreide menubar"],
+    copyText: "nomoreide menubar",
+  },
+  {
+    id: "login",
+    label: "Start at login",
+    description: "Keeps it in the menu bar from the moment you log in. Run it again with --login off to undo it.",
+    language: "shell",
+    lines: ["nomoreide menubar --login on"],
+    copyText: "nomoreide menubar --login on",
+  },
 ];
 
 export function GetStarted() {
-  const [release, setRelease] = useState<MacosRelease | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    void findLatestMacosRelease()
-      .then((latest) => {
-        if (active) setRelease(latest);
-      })
-      .catch(() => {
-        // Keep the releases-page fallback when GitHub is unavailable or
-        // rate-limits an unauthenticated browser request.
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
   return (
     <section className="relative border-t border-border/60" id="download">
       <div className="relative mx-auto max-w-3xl px-6 py-24 md:py-28">
@@ -187,51 +179,8 @@ export function GetStarted() {
           </p>
         </Step>
 
-        <Step index={3} title="Or run it as a desktop app">
-          <p className="text-sm leading-6 text-muted-foreground">
-            The same workbench packaged natively with Tauri — no terminal. It
-            keeps its own runtime, so services you start in the app are separate
-            from the CLI's.
-          </p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <Button asChild>
-              <a className="gap-2" href={release?.downloadUrl ?? RELEASES_URL}>
-                <DownloadIcon className="size-4" />
-                {release?.version
-                  ? `Download v${release.version} for macOS`
-                  : "Download for macOS"}
-              </a>
-            </Button>
-            <Button asChild variant="outline">
-              <a href="https://github.com/Rorogogogo/nomoreide">View source on GitHub</a>
-            </Button>
-          </div>
-
-          <details className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-            {/* Collapsed by default: it is a one-time hurdle for the readers who
-                choose the app, and as an always-open amber panel it was the
-                loudest thing in a section about getting started. */}
-            <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-              <ShieldAlert className="size-4 shrink-0 text-amber-500" />
-              First launch: macOS will block it (and that's expected)
-            </summary>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              This is a free, open-source side project and I haven't paid for an
-              Apple Developer account ($99/year), so the app isn't notarized.
-              macOS plays it safe and blocks unsigned apps on first open. Here's
-              the one-time fix:
-            </p>
-            <ol className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-              {OPEN_STEPS.map((step, index) => (
-                <li className="flex gap-3" key={step}>
-                  <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-medium text-foreground">
-                    {index + 1}
-                  </span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
-          </details>
+        <Step index={3} title="On a Mac, keep it in the menu bar">
+          <Tabs choices={MENUBAR} />
         </Step>
       </div>
     </section>

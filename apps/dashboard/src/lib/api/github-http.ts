@@ -1,6 +1,6 @@
 /** Node HTTP-server implementation of {@link GitHubApi} (the web/MCP backend). */
 import { requestJson } from "./client.js";
-import { apiFetch } from "./desktop-runtime.js";
+import { apiFetch } from "./daemon-auth.js";
 import type {
   CommitCIStatus,
   GitHubApi,

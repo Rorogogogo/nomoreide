@@ -18,7 +18,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/i18n";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import { CliIcon, TokenIcon } from "./provider-icons";
 import { ProviderLogo } from "./provider-logo";
 
@@ -60,10 +60,10 @@ export function ProviderSetup({
 
   /**
    * Opens Vercel's consent page in the real browser, then polls until the
-   * backend reports the outcome — the redirect lands on the daemon (web) or on
-   * a loopback listener the Rust core opened (desktop), not here, so there is
-   * nothing for this component to await. `openExternal` rather than
-   * `window.open` because a Tauri webview swallows the latter.
+   * backend reports the outcome — the redirect lands on the daemon, not here,
+   * so there is nothing for this component to await. `openExternal` so the
+   * consent page opens in the person's browser, where their Vercel session is,
+   * from the menu bar window too.
    */
   async function signIn() {
     setSigningIn(true);

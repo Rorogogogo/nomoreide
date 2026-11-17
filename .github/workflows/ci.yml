@@ -163,7 +163,7 @@ jobs:
 
   # A Linux compile, so a macOS-only symbol cannot reach a tag.
   #
-  # Every other Rust gate here runs on `macos-latest`, because the desktop app
+  # Every other Rust gate here runs on `macos-latest`, because the menu bar app
   # and the external-terminal work are macOS-specific. The consequence is that
   # nothing compiled this workspace for Linux until `cli-release.yml` built the
   # release archives — *after* a version had been bumped and tagged. A type
@@ -194,7 +194,4 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      # The desktop app is deliberately excluded: Tauri needs GTK and webkit2gtk
-      # system libraries, and it is not shipped for Linux. Everything the CLI
-      # release actually builds is covered.
-      - run: cargo check --workspace --exclude nomoreide-tauri --all-targets
+      - run: cargo check --workspace --all-targets

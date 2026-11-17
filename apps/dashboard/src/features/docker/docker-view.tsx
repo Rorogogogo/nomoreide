@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { useT, type TranslationKey } from "@/lib/i18n";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import { cn } from "@/lib/utils";
 import { startDocker, type DockerContainerSummary } from "@/lib/api";
 import { EmptyState } from "../services/empty-state";

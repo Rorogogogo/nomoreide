@@ -83,9 +83,6 @@ export const en_shell = {
   "common.unknown": "Unknown",
   "common.moreActions": "More actions",
   "common.send": "Send",
-  // Window controls (tauri-titlebar)
-  "common.minimize": "Minimize",
-  "common.maximize": "Maximize",
   "app.pickProject": "Pick a project",
   "app.setContext": "set the context",
   "app.projectCountOne": "{count} project",

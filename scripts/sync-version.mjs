@@ -6,7 +6,6 @@ const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packagePath = resolve(root, "package.json");
 const packageLockPath = resolve(root, "package-lock.json");
 const dashboardPackagePath = resolve(root, "apps/dashboard/package.json");
-const tauriConfigPath = resolve(root, "crates/nomoreide-tauri/tauri.conf.json");
 const cargoManifestPath = resolve(root, "Cargo.toml");
 const cargoLockPath = resolve(root, "Cargo.lock");
 const rustWorkspacePackages = [
@@ -18,7 +17,6 @@ const rustWorkspacePackages = [
   "nomoreide-daemon-client",
   "nomoreide-mcp",
   "nomoreide-remote-protocol",
-  "nomoreide-tauri",
 ];
 
 const arguments_ = process.argv.slice(2);
@@ -31,8 +29,6 @@ if (typeof version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(v
   throw new Error(`Invalid release version: ${String(version)}`);
 }
 
-const tauriConfig = JSON.parse(readFileSync(tauriConfigPath, "utf8"));
-tauriConfig.version = version;
 const dashboardPackage = JSON.parse(readFileSync(dashboardPackagePath, "utf8"));
 dashboardPackage.version = version;
 const packageLock = JSON.parse(readFileSync(packageLockPath, "utf8"));
@@ -64,7 +60,6 @@ const expectedFiles = [
   ...crateManifests,
   [dashboardPackagePath, `${JSON.stringify(dashboardPackage, null, 2)}\n`],
   [packageLockPath, `${JSON.stringify(packageLock, null, 2)}\n`],
-  [tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`],
   [cargoManifestPath, cargoManifest],
   [cargoLockPath, cargoLock],
 ];

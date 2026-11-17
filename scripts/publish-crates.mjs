@@ -9,9 +9,6 @@
 // publishing in order too fast, because the index takes a moment to catch up.
 // Hence the wait between each one.
 //
-// `nomoreide-tauri` is absent on purpose: it is `publish = false`, being the
-// desktop app rather than anything to depend on.
-//
 //   node scripts/publish-crates.mjs --dry-run   # validate without publishing
 //   node scripts/publish-crates.mjs             # the real thing, irreversible
 //

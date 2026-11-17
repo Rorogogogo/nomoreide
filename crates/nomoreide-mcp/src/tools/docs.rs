@@ -23,12 +23,12 @@ const TOPICS: [Topic; 12] = [
     Topic {
         id: "overview",
         title: "Overview",
-        body: "NoMoreIDE v{version} is an AI-native local development workbench for services, activity, Docker, Git and worktrees, GitHub, Vercel, databases, workflows, terminals, and agent environments. It gives humans and AI coding agents one shared local control surface through MCP, CLI, TUI, web, and macOS desktop interfaces.",
+        body: "NoMoreIDE v{version} is an AI-native local development workbench for services, activity, Docker, Git and worktrees, GitHub, Vercel, databases, workflows, terminals, and agent environments. It gives humans and AI coding agents one shared local control surface through MCP, CLI, TUI, web, and macOS menu bar interfaces.",
     },
     Topic {
         id: "setup",
         title: "Setup",
-        body: "Recommended NoMoreIDE agent setup is `npx -y nomoreide setup codex`, `npx -y nomoreide setup claude`, or `npx -y nomoreide setup gemini`; this installs both the local MCP connection and the bundled nomoreide-debug skill. Start a new agent session and verify with `/mcp`. You can also run with `npx -y nomoreide`, install globally with `npm install -g nomoreide`, download the macOS desktop app from GitHub Releases, or build from source.",
+        body: "Recommended NoMoreIDE agent setup is `npx -y nomoreide setup codex`, `npx -y nomoreide setup claude`, or `npx -y nomoreide setup gemini`; this installs both the local MCP connection and the bundled nomoreide-debug skill. Start a new agent session and verify with `/mcp`. You can also run with `npx -y nomoreide`, install globally with `npm install -g nomoreide`, install with `curl -fsSL https://www.nomoreide.com/install.sh | sh` or `cargo install nomoreide`, and on macOS keep it in the menu bar with `nomoreide menubar`.",
     },
     Topic {
         id: "mcp",
@@ -43,7 +43,7 @@ const TOPICS: [Topic; 12] = [
     Topic {
         id: "dashboard",
         title: "Dashboard",
-        body: "The NoMoreIDE web and macOS dashboards include all-project Overview, Services, Activity, Docker, Error Inbox, Terminal, Git Review, GitHub, Vercel, Workflows, Database, Agent Console, Agent Environments, and searchable Settings surfaces. They keep runtime state, logs, diffs, deployments, data, workflows, and agent context visible.",
+        body: "The NoMoreIDE dashboard (in a browser via `nomoreide web`, or in the macOS menu bar app's window via `nomoreide menubar`) includes all-project Overview, Services, Activity, Docker, Error Inbox, Terminal, Git Review, GitHub, Vercel, Workflows, Database, Agent Console, Agent Environments, and searchable Settings surfaces. It keeps runtime state, logs, diffs, deployments, data, workflows, and agent context visible.",
     },
     Topic {
         id: "tools",
@@ -73,7 +73,7 @@ const TOPICS: [Topic; 12] = [
     Topic {
         id: "architecture",
         title: "Architecture",
-        body: "NoMoreIDE has a shared core and daemon for config, processes, logs, activity, Git/worktrees/snapshots, GitHub, Vercel, databases, workflows, agent environments, profiles, and diagnostics. FastMCP exposes narrow domain tools; the local server exposes a React dashboard and REST API; Tauri provides the standalone macOS shell.",
+        body: "NoMoreIDE has a shared core and daemon for config, processes, logs, activity, Git/worktrees/snapshots, GitHub, Vercel, databases, workflows, agent environments, profiles, and diagnostics. FastMCP exposes narrow domain tools; the local server exposes a React dashboard and REST API; `nomoreide menubar` shows that dashboard in a native macOS window over the same shared daemon.",
     },
     Topic {
         id: "ai-agent",
@@ -192,6 +192,65 @@ mod tests {
         let payload = docs(Some("overview")).expect("overview renders");
         assert!(payload.contains(&format!("NoMoreIDE v{}", env!("CARGO_PKG_VERSION"))));
         assert!(!payload.contains("{version}"));
+    }
+
+    /// The topics, in the order the argument contract's rejection spells them.
+    /// Carried over from the `mcp-docs-ui` parity recording, which compared the
+    /// whole table verbatim until the desktop app it described was removed.
+    #[test]
+    fn the_topic_table_is_the_twelve_documented_topics_in_order() {
+        assert_eq!(
+            TOPIC_IDS,
+            [
+                "overview",
+                "setup",
+                "mcp",
+                "cli",
+                "dashboard",
+                "tools",
+                "vercel",
+                "agent-environments",
+                "safety",
+                "troubleshooting",
+                "architecture",
+                "ai-agent",
+            ]
+        );
+    }
+
+    #[test]
+    fn no_topic_is_the_index_and_every_answer_carries_the_links() {
+        let index: serde_json::Value =
+            serde_json::from_str(&docs(None).expect("index renders")).unwrap();
+        assert_eq!(index["topic"], "index");
+        assert_eq!(index["title"], "NoMoreIDE documentation index");
+        assert_eq!(index["body"], INDEX_BODY);
+        for id in TOPIC_IDS {
+            let answer: serde_json::Value =
+                serde_json::from_str(&docs(Some(id)).expect("topic renders")).unwrap();
+            assert_eq!(answer["topic"], id);
+            assert_eq!(
+                answer["links"]["humanDocs"],
+                "https://www.nomoreide.com/docs"
+            );
+            assert_eq!(
+                answer["topics"].as_array().map(Vec::len),
+                Some(TOPIC_IDS.len())
+            );
+        }
+    }
+
+    #[test]
+    fn the_docs_describe_the_menu_bar_app_not_the_removed_desktop_app() {
+        for id in TOPIC_IDS {
+            let body = docs(Some(id)).expect("topic renders").to_lowercase();
+            assert!(!body.contains("tauri"), "{id} still mentions Tauri");
+            assert!(
+                !body.contains("desktop app"),
+                "{id} still mentions the desktop app"
+            );
+        }
+        assert!(docs(Some("setup")).unwrap().contains("nomoreide menubar"));
     }
 
     #[test]

@@ -24,7 +24,6 @@ import {
   probeRuntimeHealth,
   useRuntimeConnection,
 } from "@/lib/runtime-connection";
-import { isTauri } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
 const HEALTHY_POLL_MS = 5_000;
@@ -135,7 +134,7 @@ export function RuntimeDiagnostics({
   );
 
   useEffect(() => {
-    if (isTauri() || !autoProbe || mockEnabled) return;
+    if (!autoProbe || mockEnabled) return;
     if (
       current.phase !== "reconnecting" &&
       current.phase !== "unreachable"
@@ -198,7 +197,6 @@ export function RuntimeDiagnostics({
     };
   }, [open]);
 
-  if (isTauri()) return null;
   const unreachable = current.phase === "unreachable";
   const recoveredRecently =
     current.recoveredAt !== null &&

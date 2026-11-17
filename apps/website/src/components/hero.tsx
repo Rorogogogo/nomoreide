@@ -199,7 +199,7 @@ export function Hero() {
               <Button asChild size="lg">
                 <a className="gap-2" href="#download">
                   <Download className="size-4" />
-                  Download for macOS
+                  Install NoMoreIDE
                 </a>
               </Button>
               <span className="text-sm text-muted-foreground">or</span>
@@ -208,8 +208,9 @@ export function Hero() {
               </Button>
             </div>
             <p className="max-w-md text-sm text-muted-foreground">
-              Grab the native Mac app, or wire NoMoreIDE into Claude Code, Codex,
-              or any agent as an MCP server. Same workbench either way.
+              One command installs it — on a Mac it lives in your menu bar — or
+              wire NoMoreIDE into Claude Code, Codex, or any agent as an MCP
+              server. Same workbench either way.
             </p>
 
             <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">

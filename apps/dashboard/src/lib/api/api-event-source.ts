@@ -1,4 +1,4 @@
-import { apiFetch } from "./desktop-runtime.js";
+import { apiFetch } from "./daemon-auth.js";
 
 export type ApiEventSource = Pick<
   EventSource,
@@ -139,10 +139,9 @@ function waitForRetry(delay: number, signal: AbortSignal): Promise<void> {
  * `401 Unauthorized` and silently never updated, while the console filled with
  * reconnects.
  *
- * The credential is available in both places — `__NOMOREIDE_DESKTOP__` in the
- * app, `__NOMOREIDE_WEB__` injected into the document by the daemon's shell —
- * and `apiFetch` reads whichever is there. There was never a reason for the
- * browser to take a different path.
+ * The credential is in the document — `__NOMOREIDE_WEB__`, injected by the
+ * daemon's shell route — and `apiFetch` reads it, so a stream takes the same
+ * authenticated path as every other request.
  */
 export function openApiEventSource(url: string): ApiEventSource {
   return new AuthenticatedEventSource(url) as ApiEventSource;

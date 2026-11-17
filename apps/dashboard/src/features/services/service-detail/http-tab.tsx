@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { postForm, type ServiceStatus, type TimelineEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import { useT } from "@/lib/i18n";
 
 interface HttpRow {

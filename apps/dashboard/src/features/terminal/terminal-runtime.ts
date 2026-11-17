@@ -5,7 +5,7 @@ import { translate } from "@/lib/i18n";
 import {
   daemonWebSocketProtocols,
   daemonWebSocketUrl,
-} from "@/lib/api/desktop-runtime";
+} from "@/lib/api/daemon-auth";
 import type { ResolvedTheme } from "@/lib/theme";
 import {
   OUTPUT_BATCH_DELAY_MS,

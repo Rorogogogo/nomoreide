@@ -2,13 +2,13 @@
 
 ## Project Structure & Module Organization
 
-NoMoreIDE is a Node.js 20+ TypeScript application with React and Tauri surfaces.
+NoMoreIDE is a Rust binary (CLI, TUI, MCP server, daemon and macOS menu bar app) serving a React dashboard.
 
 - `src/core/` contains process, Git, database, agent, and configuration logic.
 - `src/cli/`, `src/mcp/`, `src/web/routes/`, and `src/tui/` expose that logic through the CLI, MCP server, HTTP API, and terminal UI.
 - `apps/dashboard/` is the Vite/React dashboard; keep reusable UI in `components/`, domain behavior in `features/`, and transport adapters in `lib/api/`.
 - `test/` contains the Vitest suite. Tests generally mirror source behavior rather than directory layout.
-- `crates/` contains the Rust workspace, including the shared core and Tauri desktop shell. `apps/website/`, `video/`, and `assets/` hold the public site, Remotion media, and shared artwork.
+- `crates/` contains the Rust workspace, including the shared core, the daemon and the CLI (whose `menubar` module is the macOS app). `apps/website/`, `video/`, and `assets/` hold the public site, Remotion media, and shared artwork.
 - Generated output belongs in `dist/`, `apps/website/dist/`, or `video/out/` and should not be hand-edited.
 
 ## Build, Test, and Development Commands
@@ -19,7 +19,7 @@ NoMoreIDE is a Node.js 20+ TypeScript application with React and Tauri surfaces.
 - `npm run build`: build the React client and compile server TypeScript into `dist/`.
 - `npm test`: run all Vitest tests once.
 - `npm run lint`: check `src/**/*.ts(x)` with Biome.
-- `npm run tauri:dev`: launch the desktop application for local testing.
+- `cargo run -p nomoreide -- menubar`: run the macOS menu bar app against the shared daemon.
 
 ## Coding Style & Naming Conventions
 

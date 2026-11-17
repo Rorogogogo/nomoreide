@@ -20,6 +20,7 @@ mod database;
 mod flags;
 mod git;
 mod linear;
+mod menubar;
 mod profile;
 mod remote;
 mod setup;
@@ -65,6 +66,7 @@ pub async fn run() -> ExitCode {
             }
         }
         "web" => web(&paths, configured_port).await,
+        "menubar" => menubar::run(&args[1..], &paths, configured_port).await,
         "tui" => match tui::run(&paths, configured_port).await {
             Ok(()) => 0,
             Err(error) => {

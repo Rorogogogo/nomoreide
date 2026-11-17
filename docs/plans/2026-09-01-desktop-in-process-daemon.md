@@ -1,6 +1,10 @@
 # Desktop app: one implementation, still self-contained
 
-**Status:** planned, not started. Decided 2026-09-01.
+**Status:** superseded 2026-11-17. The Tauri app was removed and replaced by
+`nomoreide menubar`, a front door to the *shared* daemon rather than a private
+one; see `crates/nomoreide-cli/src/menubar/`. Kept as history.
+
+**Was:** planned, not started. Decided 2026-09-01.
 **Supersedes:** the Tauri convergence bullets in Phase 6 of
 `2026-08-20-native-rust-runtime-and-mcp.md`.
 

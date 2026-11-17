@@ -1,18 +1,15 @@
 /**
  * Phase 4 documentation-and-UI parity gate.
  *
- * Three tools that need no fixture repository and no database: the docs table,
- * and the pair that decides whether a daemon exists at all. They are gated
- * together because they are the whole of the manifest's `documentation-ui`
- * domain, not because they share machinery.
+ * `nomoreide_open_ui` and `nomoreide_close_ui`: the pair that decides whether a
+ * daemon exists at all, and needs no fixture repository and no database.
  *
- * The docs half is prose, compared verbatim — every topic, the index, and the
- * three ways a topic can be rejected. The one thing that is not a literal is
- * the version in the overview: the reference used to name a hardcoded one that
- * had drifted four releases behind the package it described, so both runtimes
- * now interpolate their own, and this gate compares them. That makes a version
- * skew between `package.json` and the Cargo workspace a gate failure, which is
- * the point — `scripts/sync-version.mjs` is what keeps them equal.
+ * This gate used to compare the `nomoreide_docs` table verbatim too. When the
+ * Tauri desktop app was removed (2026-11-17) the docs prose had to change, so
+ * that half was replaced by Rust tests — the topic table, the index, every
+ * rejection word for word, and unknown keys being stripped — in
+ * `nomoreide-mcp/src/tools/docs.rs` and `protocol/contracts.rs`, and its
+ * recordings were deleted. Version skew is `npm run version:check`'s job.
  *
  * The UI half drives each runtime's own daemon through four of the five states
  * `nomoreide_open_ui` distinguishes. The fifth is recorded here rather than
@@ -55,22 +52,6 @@ if (candidateArgv.length === 0) {
   );
 }
 
-/** The topic ids the tool's own index lists, in the order it lists them. */
-const TOPICS = [
-  "overview",
-  "setup",
-  "mcp",
-  "cli",
-  "dashboard",
-  "tools",
-  "vercel",
-  "agent-environments",
-  "safety",
-  "troubleshooting",
-  "architecture",
-  "ai-agent",
-] as const;
-
 const EMPTY_CONFIG = {
   version: 1,
   services: [],
@@ -89,13 +70,6 @@ try {
     runtimes.push(await harness.provision(spec, () => EMPTY_CONFIG, () => []));
   }
 
-  // The docs table answers without a daemon, so this half runs before one
-  // exists — which is also the only proof that it needs none.
-  for (const step of docsPlan()) {
-    await compare(runtimes, step.name, (runtime) =>
-      harness.call(runtime, "nomoreide_docs", step.args),
-    );
-  }
 
   for (const runtime of runtimes) {
     await harness.startDaemon(runtime);
@@ -163,31 +137,13 @@ try {
   await checkTheSpawnTheReferenceCannotDo(runtimes[1]);
 
   console.log(
-    `MCP docs and UI parity passed (${compared} steps, plus the candidate-only spawn check).`,
+    `MCP UI parity passed (${compared} steps, plus the candidate-only spawn check).`,
   );
 } finally {
   foreign?.closeAllConnections?.();
   foreign?.close();
   await harness.shutdown();
   await rm(root, { recursive: true, force: true, maxRetries: 5 }).catch(() => {});
-}
-
-interface DocsStep {
-  readonly name: string;
-  readonly args: Record<string, unknown>;
-}
-
-/** The index, every topic, and the three shapes a topic can be rejected as. */
-function docsPlan(): DocsStep[] {
-  return [
-    { name: "docs-index", args: {} },
-    ...TOPICS.map((topic) => ({ name: `docs-${topic}`, args: { topic } })),
-    { name: "docs-rejects-an-unknown-topic", args: { topic: "nope" } },
-    { name: "docs-rejects-an-empty-topic", args: { topic: "" } },
-    { name: "docs-rejects-a-non-string-topic", args: { topic: 5 } },
-    // Unknown keys are stripped rather than rejected, so this is the index.
-    { name: "docs-ignores-an-unknown-argument", args: { unexpected: true } },
-  ];
 }
 
 /**

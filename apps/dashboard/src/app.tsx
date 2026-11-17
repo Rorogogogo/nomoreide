@@ -62,7 +62,6 @@ import {
   useRefreshRegistry,
 } from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
-import { TauriTitleBar } from "@/components/tauri-titlebar";
 import { useT, } from "@/lib/i18n";
 import { OperationProvider } from "@/components/operations/operation-context";
 import { OperationStrip } from "@/components/operations/operation-strip";
@@ -81,7 +80,6 @@ import {
   recordRuntimeReachable,
   useRuntimeConnection,
 } from "@/lib/runtime-connection";
-import { isTauri } from "@/lib/tauri";
 import {
   APP_NAV_SECTIONS,
   APP_NAV_ITEMS,
@@ -239,7 +237,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       } else {
         setData(nextData);
       }
-      if (!isTauri()) recordRuntimeReachable();
+      recordRuntimeReachable();
       return true;
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
@@ -247,8 +245,8 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       if (!options.silent) showErrorToast(message);
       const connectionPhase = getRuntimeConnectionSnapshot().phase;
       if (
-        !isTauri() &&
-        (connectionPhase === "initializing" || connectionPhase === "connected")
+        connectionPhase === "initializing" ||
+        connectionPhase === "connected"
       ) {
         void probeRuntimeHealth();
       }
@@ -594,7 +592,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     <AppContextMenu onRefresh={refreshAll}>
     <div className="flex flex-col h-screen overflow-hidden">
     <ScrollProgressBar key={page} type="bar" strokeSize={2} />
-    <TauriTitleBar />
     <div
       className={cn(
         "flex-1 overflow-hidden",

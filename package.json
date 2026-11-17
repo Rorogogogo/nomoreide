@@ -99,10 +99,7 @@
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",
     "mcp:runtime-parity": "node --import tsx scripts/check-mcp-runtime-parity.ts",
     "test": "vitest run",
-    "tauri": "tauri",
     "rust:dependency-check": "node scripts/check-rust-dependencies.mjs",
-    "tauri:dev": "tauri dev --config crates/nomoreide-tauri/tauri.conf.json",
-    "tauri:build": "tauri build --config crates/nomoreide-tauri/tauri.conf.json",
     "version:sync": "node scripts/sync-version.mjs",
     "version:check": "node scripts/sync-version.mjs --check",
     "video:render": "npm --prefix video run render",
@@ -111,7 +108,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.15",
-    "@tauri-apps/cli": "^2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.15.19",
     "@types/pg": "^8.20.0",

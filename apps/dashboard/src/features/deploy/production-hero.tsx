@@ -2,7 +2,7 @@ import type { ProviderDeployment, ProviderDomain } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { DeploymentStateBadge } from "./deployment-state-badge";
 import { DomainsIcon, EnvIcon, ExternalIcon, SettingsIcon } from "./provider-icons";

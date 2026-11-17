@@ -322,15 +322,10 @@ async fn serve_on_listener(
         relay: relay.clone(),
         pending_pairing: Default::default(),
     });
-    let app = if embedded {
-        app.layer(axum::middleware::from_fn(routes::allow_desktop_origin))
-    } else {
-        app
-    };
-
-    // Only the machine-global daemon dials the relay. The desktop app runs its
-    // own in-process, and two daemons sharing one credential would leave a
-    // phone talking to whichever restarted last — see `crate::remote`.
+    // Only the machine-global daemon dials the relay. An embedded daemon (the
+    // integration tests' in-process one) must not: two daemons sharing one
+    // credential would leave a phone talking to whichever restarted last —
+    // see `crate::remote`.
     if !embedded {
         // The router exists now, so the dispatcher has something to call. A
         // machine already paired connects here; one paired later connects when

@@ -2,7 +2,6 @@
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   RuntimeDiagnostics,
@@ -37,7 +36,6 @@ afterEach(async () => {
   host.remove();
   document.body.replaceChildren();
   resetRuntimeConnectionForTests();
-  delete window.__TAURI_INTERNALS__;
   vi.useRealTimers();
   vi.restoreAllMocks();
   window.history.replaceState(null, "", "/");
@@ -233,14 +231,5 @@ describe("RuntimeDiagnostics", () => {
     expect(runtimeRestartCommand("http://127.0.0.1:4320", true)).toBe(
       "node dist/index.js daemon restart --port=4320",
     );
-  });
-
-  test("does not advertise the Node daemon inside Tauri", () => {
-    window.__TAURI_INTERNALS__ = {};
-    const markup = renderToStaticMarkup(
-      <RuntimeDiagnostics autoProbe={false} onReconnect={vi.fn()} />,
-    );
-
-    expect(markup).toBe("");
   });
 });

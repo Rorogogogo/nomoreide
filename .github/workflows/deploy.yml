@@ -13,8 +13,8 @@ name: Release (Version Bump & Tag)
 # can be yanked but never replaced or reused, and npm's unpublish window closes
 # after 72 hours.
 #
-# Tagging v<version> here is what triggers desktop-release.yml and
-# cli-release.yml, which build the archives and publish npm and crates.io.
+# Tagging v<version> here is what triggers cli-release.yml, which builds the
+# archives, creates the GitHub Release, and publishes npm and crates.io.
 #
 # This no longer publishes to npm. It cannot: the package now carries the
 # compiled Rust binary for four platforms, and none of them exist yet at this

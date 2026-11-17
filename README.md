@@ -15,7 +15,7 @@
 
 Give your coding agents and yourself a **shared local control surface** for services, ports, logs, Git review, GitHub workflows, database work, and MCP workflows — no IDE required.
 
-[Product Tour](#product-tour) · [Download for macOS](#macos-desktop-app) · [MCP Setup](#connect-your-ai-agent) · [CLI Reference](#cli) · [Architecture](#architecture)
+[Product Tour](#product-tour) · [Install](#cli-web-ui-tui-and-mcp-server) · [Menu Bar App](#menu-bar-app-macos) · [MCP Setup](#connect-your-ai-agent) · [CLI Reference](#cli) · [Architecture](#architecture)
 
 </div>
 
@@ -88,14 +88,6 @@ NoMoreIDE is the shared local control plane between you and your coding agents. 
 ---
 
 ## Download or Run NoMoreIDE
-
-### macOS Desktop App
-
-Prefer a native app? Download the latest universal DMG for both Apple silicon and Intel Macs:
-
-**[Download NoMoreIDE for macOS](https://www.nomoreide.com/#download)** · [View all releases](https://github.com/Rorogogogo/nomoreide/releases)
-
-> **First launch:** NoMoreIDE is currently unsigned and not notarized, so macOS will block it the first time you open it. After dragging NoMoreIDE to Applications, try to open it once, then go to **System Settings → Privacy & Security**, click **Open Anyway**, and confirm with Touch ID or your password.
 
 ### CLI, Web UI, TUI, and MCP Server
 
@@ -319,7 +311,7 @@ graph TD
         GM[Git Manager]
         LS[Log Store]
         CS[Config Store<br/>nomoreide.config.json]
-        Desktop[macOS Desktop App]
+        MB[Menu Bar App<br/>macOS]
         WS[Web Server<br/>:4317]
         TUI[Terminal UI]
     end
@@ -339,9 +331,7 @@ graph TD
     PM --> S2
     PM --> S3
     LS --> PM
-    Desktop --> PM
-    Desktop --> GM
-    Desktop --> LS
+    MB --> WS
     WS --> PM
     WS --> GM
     WS --> LS
@@ -353,7 +343,7 @@ graph TD
 
 ## Feature Overview
 
-| Feature | CLI | TUI | Desktop / Web | MCP |
+| Feature | CLI | TUI | Web / Menu bar | MCP |
 |---|:---:|:---:|:---:|:---:|
 | Start / stop / restart services | ✓ | ✓ | ✓ | ✓ |
 | Bundle orchestration | ✓ | ✓ | ✓ | ✓ |
@@ -413,10 +403,8 @@ claude
 # or: codex
 ```
 
-The command prefers the running desktop app and adds the shell to its bottom
-agent dock. If the desktop is closed, it starts or connects to the standalone
-daemon; use `nomoreide web` to see that dock. `nomoreide attach --daemon` explicitly
-selects the standalone daemon.
+The command starts or connects to the shared daemon and adds the shell to the
+dashboard's bottom agent dock; see it with `nomoreide web` or `nomoreide menubar`.
 
 The tab recognizes foreground Claude Code and Codex processes and returns to
 Shell when they exit. Use **Bring back** in the dock to take control there without
@@ -456,6 +444,15 @@ nomoreide web --port=4320
 ```
 
 The web dashboard is available at `http://127.0.0.1:4317` by default.
+
+### Menu Bar App (macOS)
+
+```bash
+nomoreide menubar               # menu-bar icon + the dashboard in its own window
+nomoreide menubar --login on    # start it at login (off to stop)
+```
+
+The menu shows the shared daemon's services — the same ones your agents start over MCP — with Start, Stop, Restart and Open for each, plus bundles. **Open NoMoreIDE** shows the full dashboard in a native window. Closing the window keeps NoMoreIDE in the menu bar; quitting it leaves your services running, and **Stop Daemon and Quit** stops both. Running `nomoreide menubar` again while it is open just brings its window forward.
 
 ---
 
