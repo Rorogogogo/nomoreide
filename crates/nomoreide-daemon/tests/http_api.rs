@@ -18,7 +18,7 @@ fn temp_dir() -> PathBuf {
 }
 
 #[tokio::test]
-async fn embedded_daemon_keeps_auth_in_memory_and_allows_only_desktop_origins() {
+async fn embedded_daemon_keeps_auth_in_memory_and_sends_no_cors_headers() {
     let root = temp_dir();
     let runtime_paths = RuntimePaths::new(root.join("runtime"));
     let config_path = root.join("config.json");
@@ -75,7 +75,6 @@ async fn embedded_daemon_keeps_auth_in_memory_and_allows_only_desktop_origins() 
     assert_eq!(missing.status(), StatusCode::UNAUTHORIZED);
     let wrong = http
         .get(format!("{base_url}/api/terminal/capabilities"))
-        .header("origin", "tauri://localhost")
         .bearer_auth("wrong-desktop-credential")
         .send()
         .await
@@ -83,43 +82,24 @@ async fn embedded_daemon_keeps_auth_in_memory_and_allows_only_desktop_origins() 
     assert_eq!(wrong.status(), StatusCode::UNAUTHORIZED);
     let allowed = http
         .get(format!("{base_url}/api/terminal/capabilities"))
-        .header("origin", "tauri://localhost")
         .bearer_auth("desktop-test-credential")
         .send()
         .await
         .unwrap();
     assert_eq!(allowed.status(), StatusCode::OK);
-    assert_eq!(
-        allowed
-            .headers()
-            .get("access-control-allow-origin")
-            .unwrap(),
-        "tauri://localhost"
-    );
-
-    let preflight = http
-        .request(
-            reqwest::Method::OPTIONS,
-            format!("{base_url}/api/terminal/capabilities"),
-        )
-        .header("origin", "http://127.0.0.1:5173")
-        .header("access-control-request-method", "GET")
-        .header("access-control-request-headers", "authorization")
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(preflight.status(), StatusCode::NO_CONTENT);
-    let refused = http
-        .request(
-            reqwest::Method::OPTIONS,
-            format!("{base_url}/api/terminal/capabilities"),
-        )
+    // No CORS: the only pages that call the daemon are its own, served from
+    // the same origin. A cross-origin page gets no Access-Control headers.
+    let cross_origin = http
+        .get(format!("{base_url}/api/terminal/capabilities"))
         .header("origin", "https://example.com")
-        .header("access-control-request-method", "GET")
+        .bearer_auth("desktop-test-credential")
         .send()
         .await
         .unwrap();
-    assert_eq!(refused.status(), StatusCode::FORBIDDEN);
+    assert!(cross_origin
+        .headers()
+        .get("access-control-allow-origin")
+        .is_none());
 
     let created = http
         .post(format!("{base_url}/api/terminal/sessions"))
@@ -144,9 +124,6 @@ async fn embedded_daemon_keeps_auth_in_memory_and_allows_only_desktop_origins() 
     ));
 
     let mut socket_request = socket_url.into_client_request().unwrap();
-    socket_request
-        .headers_mut()
-        .insert("origin", "tauri://localhost".parse().unwrap());
     socket_request.headers_mut().insert(
         "sec-websocket-protocol",
         "nomoreide, nomoreide-bearer.desktop-test-credential"

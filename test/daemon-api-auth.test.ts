@@ -6,23 +6,21 @@ import { requestJson } from "../apps/dashboard/src/lib/api/client";
 import {
   daemonWebSocketProtocols,
   daemonWebSocketUrl,
-} from "../apps/dashboard/src/lib/api/desktop-runtime";
+} from "../apps/dashboard/src/lib/api/daemon-auth";
 
 afterEach(() => {
-  delete window.__NOMOREIDE_DESKTOP__;
+  delete window.__NOMOREIDE_WEB__;
   vi.unstubAllGlobals();
 });
 
-function desktopRuntime(): void {
-  window.__NOMOREIDE_DESKTOP__ = {
-    apiBaseUrl: "http://127.0.0.1:54321",
-    credential: "desktop-secret",
-  };
+/** What the daemon's shell route injects into the page it serves. */
+function servedByDaemon(): void {
+  window.__NOMOREIDE_WEB__ = { credential: "daemon-secret" };
 }
 
-describe("desktop daemon authentication", () => {
-  test("rewrites API requests and adds the in-memory bearer credential", async () => {
-    desktopRuntime();
+describe("daemon authentication", () => {
+  test("resolves API requests against the page's origin and adds the bearer credential", async () => {
+    servedByDaemon();
     const fetch = vi.fn(async () =>
       new Response(JSON.stringify({ ok: true }), {
         headers: { "content-type": "application/json" },
@@ -37,13 +35,13 @@ describe("desktop daemon authentication", () => {
 
     expect(fetch).toHaveBeenCalledOnce();
     const [url, init] = fetch.mock.calls[0];
-    expect(url).toBe("http://127.0.0.1:54321/api/terminal/capabilities");
+    expect(url).toBe(`${window.location.origin}/api/terminal/capabilities`);
     const headers = new Headers(init?.headers);
-    expect(headers.get("authorization")).toBe("Bearer desktop-secret");
+    expect(headers.get("authorization")).toBe("Bearer daemon-secret");
     expect(headers.get("x-nomoreide-terminal-control")).toBe("1");
   });
 
-  test("leaves the browser's same-origin request path unchanged", async () => {
+  test("leaves a request untouched when the page carries no credential", async () => {
     const fetch = vi.fn(async () =>
       new Response(JSON.stringify({ ok: true }), {
         headers: { "content-type": "application/json" },
@@ -57,8 +55,8 @@ describe("desktop daemon authentication", () => {
     expect(fetch).toHaveBeenCalledWith("/api/health", undefined);
   });
 
-  test("authenticates and decodes desktop SSE without putting the secret in its URL", async () => {
-    desktopRuntime();
+  test("authenticates and decodes SSE without putting the secret in its URL", async () => {
+    servedByDaemon();
     let stream!: ReadableStreamDefaultController<Uint8Array>;
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -91,10 +89,10 @@ describe("desktop daemon authentication", () => {
     stream.close();
     source.close();
     const [url, init] = fetch.mock.calls[0];
-    expect(url).toBe("http://127.0.0.1:54321/api/terminal/events");
-    expect(url).not.toContain("desktop-secret");
+    expect(url).toBe(`${window.location.origin}/api/terminal/events`);
+    expect(url).not.toContain("daemon-secret");
     expect(new Headers(init?.headers).get("authorization")).toBe(
-      "Bearer desktop-secret",
+      "Bearer daemon-secret",
     );
   });
 
@@ -106,10 +104,7 @@ describe("desktop daemon authentication", () => {
    * `__NOMOREIDE_WEB__`, and the stream has to use it.
    */
   test("a browser stream carries the injected credential, not a bare EventSource", async () => {
-    vi.stubGlobal("__NOMOREIDE_DESKTOP__", undefined);
-    (window as unknown as { __NOMOREIDE_WEB__?: unknown }).__NOMOREIDE_WEB__ = {
-      credential: "browser-secret",
-    };
+    window.__NOMOREIDE_WEB__ = { credential: "browser-secret" };
     const body = new ReadableStream<Uint8Array>({ start: () => {} });
     const fetch = vi.fn(
       async () =>
@@ -131,21 +126,22 @@ describe("desktop daemon authentication", () => {
     // Never in the URL: a query credential lands in access logs and referrers.
     expect(String(url)).not.toContain("browser-secret");
     expect(new Headers(init?.headers).get("authorization")).toBe("Bearer browser-secret");
-    delete (window as unknown as { __NOMOREIDE_WEB__?: unknown }).__NOMOREIDE_WEB__;
   });
 
   test("uses a header-capable WebSocket subprotocol instead of a query credential", () => {
-    desktopRuntime();
+    servedByDaemon();
     const url = daemonWebSocketUrl(
       "/api/terminal/socket?id=term_1",
-      "ws://tauri.localhost/api/terminal/socket?id=term_1",
+      "ws://fallback.invalid/api/terminal/socket?id=term_1",
     );
 
-    expect(url).toBe("ws://127.0.0.1:54321/api/terminal/socket?id=term_1");
-    expect(url).not.toContain("desktop-secret");
+    expect(url).toBe(
+      `${window.location.origin.replace(/^http/, "ws")}/api/terminal/socket?id=term_1`,
+    );
+    expect(url).not.toContain("daemon-secret");
     expect(daemonWebSocketProtocols()).toEqual([
       "nomoreide",
-      "nomoreide-bearer.desktop-secret",
+      "nomoreide-bearer.daemon-secret",
     ]);
   });
 });

@@ -1,11 +1,10 @@
-export interface DesktopRuntimeConnection {
+interface DaemonConnection {
   apiBaseUrl: string;
   credential: string;
 }
 
 declare global {
   interface Window {
-    __NOMOREIDE_DESKTOP__?: DesktopRuntimeConnection;
     /** Injected by the daemon's shell route; carries no base URL because the
      * page is served by the very daemon it calls. */
     __NOMOREIDE_WEB__?: { credential: string };
@@ -15,22 +14,21 @@ declare global {
 /**
  * Where the API is and what authorises it.
  *
- * Two ways in, because two hosts serve this bundle. The desktop app runs its
- * own daemon on a private port and injects both the URL and the credential;
- * a browser loads the page *from* the daemon, so the origin is already right
- * and only the credential is missing.
+ * The page is always served *by* the daemon — in a browser, or in the
+ * `nomoreide menubar` window, which loads the same page — so the origin is
+ * already right and only the credential, which the shell route injects, is
+ * missing.
  *
- * Without the browser branch every `/api/*` call answers `401 Authentication
- * required` — which is exactly what shipped in 0.3.x.
+ * Without it every `/api/*` call answers `401 Authentication required` —
+ * which is exactly what shipped in 0.3.x.
  */
-function connection(): DesktopRuntimeConnection | undefined {
+function connection(): DaemonConnection | undefined {
   if (typeof window === "undefined") return undefined;
-  if (window.__NOMOREIDE_DESKTOP__) return window.__NOMOREIDE_DESKTOP__;
   const web = window.__NOMOREIDE_WEB__;
   return web ? { apiBaseUrl: window.location.origin, credential: web.credential } : undefined;
 }
 
-function isDaemonApi(url: string, runtime: DesktopRuntimeConnection): boolean {
+function isDaemonApi(url: string, runtime: DaemonConnection): boolean {
   if (url.startsWith("/api/")) return true;
   try {
     const candidate = new URL(url);

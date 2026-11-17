@@ -1,6 +1,6 @@
 import { beginApiRequest } from "@/lib/api-activity";
 import { recordRuntimeApiFailure } from "@/lib/runtime-connection";
-import { apiFetch } from "./desktop-runtime.js";
+import { apiFetch } from "./daemon-auth.js";
 
 export interface PortConflictDetail {
   code: "PORT_IN_USE";

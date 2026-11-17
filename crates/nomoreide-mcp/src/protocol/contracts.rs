@@ -1203,6 +1203,42 @@ fn schema_type(value: &Value) -> &'static str {
 mod tests {
     use super::*;
 
+    /// `nomoreide_docs` rejections, word for word as the `mcp-docs-ui` parity
+    /// recording held them (the protocol layer adds the MCP error wrapper).
+    #[test]
+    fn docs_topic_rejections_spell_out_every_topic() {
+        let contract = ArgumentContract::of("nomoreide_docs").expect("docs has a contract");
+        let topic = |value: Value| Map::from_iter([("topic".to_string(), value)]);
+        let expected = "'overview' | 'setup' | 'mcp' | 'cli' | 'dashboard' | 'tools' | \
+                        'vercel' | 'agent-environments' | 'safety' | 'troubleshooting' | \
+                        'architecture' | 'ai-agent'";
+        assert_eq!(
+            contract.validate(&topic(Value::String("nope".into()))),
+            Err(format!(
+                "topic: Invalid enum value. Expected {expected}, received 'nope'"
+            ))
+        );
+        assert_eq!(
+            contract.validate(&topic(Value::String(String::new()))),
+            Err(format!(
+                "topic: Invalid enum value. Expected {expected}, received ''"
+            ))
+        );
+        assert_eq!(
+            contract.validate(&topic(Value::from(5))),
+            Err(format!("topic: Expected {expected}, received number"))
+        );
+        // No topic is the index, and an unknown key is stripped, not refused.
+        assert_eq!(contract.validate(&Map::new()), Ok(()));
+        assert_eq!(
+            contract.validate(&Map::from_iter([(
+                "unexpected".to_string(),
+                Value::Bool(true)
+            )])),
+            Ok(())
+        );
+    }
+
     #[test]
     fn agent_contracts_accept_cursor_and_windsurf() {
         for agent in AGENTS {

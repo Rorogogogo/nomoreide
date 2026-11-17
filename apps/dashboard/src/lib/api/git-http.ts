@@ -1,6 +1,6 @@
 /** Node HTTP-server implementation of {@link GitApi} (the web/MCP backend). */
 import { postForm, postFormForJson, requestJson } from "./client.js";
-import { apiFetch } from "./desktop-runtime.js";
+import { apiFetch } from "./daemon-auth.js";
 import type {
   ContentSearchResult,
   FileNameMatch,
