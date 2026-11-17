@@ -64,11 +64,6 @@ serde_yaml = "0.9"
 sha2 = "0.10"
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "mysql", "sqlite", "json"] }
 subtle = "2.6"
-tauri = { version = "2", features = ["tray-icon", "image-png"] }
-tauri-build = { version = "2", features = [] }
-tauri-plugin-dialog = "2"
-tauri-plugin-process = "2"
-tauri-plugin-shell = "2"
 # The relay connector's WebSocket client. rustls with the OS trust store, to
 # match `reqwest` above — nothing in this workspace links OpenSSL, and a bare
 # `debian:12` does not ship libssl.

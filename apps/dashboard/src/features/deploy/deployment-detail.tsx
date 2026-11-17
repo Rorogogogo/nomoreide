@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToasts } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import { formatRelativeTime } from "@/lib/utils";
 import { DeploymentLogs } from "./deployment-logs";
 import {

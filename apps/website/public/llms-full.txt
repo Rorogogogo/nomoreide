@@ -86,7 +86,7 @@ Default dashboard URL:
 http://127.0.0.1:4317
 ```
 
-The standalone macOS desktop app is available from GitHub Releases. It provides the dashboard through a native Tauri shell without requiring a separately launched Node backend.
+On macOS, `nomoreide menubar` keeps NoMoreIDE in the menu bar: its menu starts, stops, restarts and opens the shared daemon's services, and it shows the dashboard in its own native window. `nomoreide menubar --login on` starts it at login.
 
 ## CLI Reference
 
@@ -408,7 +408,7 @@ Web server: local HTTP server and route registry under `src/web/routes/`.
 
 React dashboard: Vite, React, Tailwind CSS, feature modules under `apps/dashboard/src/features/`.
 
-CLI, TUI, and desktop: `src/index.ts` dispatches to MCP, TUI, web, service, Git, database, agent environment, and profile commands; Tauri provides the standalone macOS shell.
+CLI, TUI, and menu bar: `src/index.ts` dispatches to MCP, TUI, web, service, Git, database, agent environment, and profile commands; `nomoreide menubar` is the macOS menu-bar front end over the shared daemon.
 
 Data flow:
 

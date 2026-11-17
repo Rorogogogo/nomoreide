@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useToasts } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import {
   CopyIcon,
   DomainsIcon,

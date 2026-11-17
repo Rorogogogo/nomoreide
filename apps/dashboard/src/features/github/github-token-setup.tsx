@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { useT } from "@/lib/i18n";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import { GitHubAccountSelector } from "./github-account-selector";
 
 type SetupMode = "choose" | "device-pending" | "pat";

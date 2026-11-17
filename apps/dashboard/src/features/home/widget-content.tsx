@@ -1,6 +1,6 @@
 import { useContext, type ReactNode } from "react";
 import { ExternalLink } from "lucide-react";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import { cn } from "@/lib/utils";
 import { WidgetDisclosureContext } from "./widget-context";
 import type { WidgetTone } from "./widget-tone";
@@ -186,8 +186,8 @@ export function WidgetOpenLink({ label, url }: { label: string; url: string }) {
     <button
       aria-label={label}
       className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover/widget:text-muted-foreground/80"
-      /* `openExternal`, not an `<a target="_blank">`: in the Tauri build a
-         plain link is swallowed by the webview, and this page ships in both. */
+      /* `openExternal` keeps every way out of the dashboard on one helper,
+         which the menu bar window routes to the default browser. */
       onClick={() => void openExternal(url)}
       title={label}
       type="button"

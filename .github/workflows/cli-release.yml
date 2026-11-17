@@ -1,8 +1,8 @@
 name: CLI Release
 
-# Precompiled `nomoreide` archives, attached to the same GitHub Release the npm
-# publish creates. `deploy.yml` pushes a `v*` tag, which starts this workflow
-# alongside `desktop-release.yml`; manual dispatch is there for retrying one.
+# Precompiled `nomoreide` archives, the GitHub Release that carries them, then
+# npm and crates.io. `deploy.yml` pushes a `v*` tag, which starts this
+# workflow; manual dispatch is there for retrying one.
 #
 # Each archive is a prefix: `bin/nomoreide` and `share/nomoreide/web/client`.
 # That is the layout `install.sh` unpacks into, and the layout the daemon looks
@@ -207,6 +207,13 @@ jobs:
     needs: [build, linux-compatibility]
     runs-on: ubuntu-latest
     steps:
+      # For the release note: it is read from the PR behind the tag's *parent*
+      # commit, so one step of history has to come along.
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 2
+
       - uses: actions/download-artifact@v4
         with:
           pattern: nomoreide-*
@@ -239,23 +246,23 @@ jobs:
         with:
           subject-path: assets/*.tar.gz
 
-      - name: Attach them to the release
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # `desktop-release.yml` creates the release from the same tag, and
-          # which of the two workflows gets there first is not ours to decide.
-          # Waiting is cheaper than a failed upload someone has to re-run.
-          for _ in $(seq 1 60); do
-            if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-              gh release upload "$TAG" assets/* --clobber --repo "${{ github.repository }}"
-              exit 0
-            fi
-            sleep 30
-          done
-          echo "no release for $TAG after 30 minutes; the archives are on this run as artifacts" >&2
-          exit 1
+          # This workflow owns the release. A retry finds it already there and
+          # replaces the assets rather than failing on "already exists".
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$TAG" assets/* --clobber --repo "${{ github.repository }}"
+          else
+            .github/scripts/release-notes.sh "${{ github.repository }}" > release-notes.md
+            gh release create "$TAG" assets/* \
+              --repo "${{ github.repository }}" \
+              --title "NoMoreIDE $TAG" \
+              --notes-file release-notes.md \
+              --verify-tag
+          fi
 
   npm:
     # npm ships the same binaries as the archives, through the same tag.

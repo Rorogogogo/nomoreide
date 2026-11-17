@@ -5,7 +5,6 @@ import { useAgentDock } from "@/features/agent/chat/agent-context";
 import { AiContextTarget } from "@/features/agent/context-menu/ai-context-menu";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { useT } from "@/lib/i18n";
-import { isTauri } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { headerActionClassName, headerActionIconClassName } from "./header-action";
 import { Badge } from "./ui/badge";
@@ -262,7 +261,7 @@ export function GistPopover({
       </Tooltip>
 
       {createPortal(
-        <div aria-hidden={!open} className={cn("fixed bottom-0 right-0 z-[80] flex w-96 max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden border-l border-border bg-card shadow-xl will-change-transform transition-transform duration-300 ease-out motion-reduce:transition-none", open ? "translate-x-0" : "pointer-events-none translate-x-full")} data-gist-panel style={{ top: isTauri() ? 32 : 0 }}>
+        <div aria-hidden={!open} className={cn("fixed bottom-0 right-0 z-[80] flex w-96 max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden border-l border-border bg-card shadow-xl will-change-transform transition-transform duration-300 ease-out motion-reduce:transition-none", open ? "translate-x-0" : "pointer-events-none translate-x-full")} data-gist-panel style={{ top: 0 }}>
           <div className="flex h-10 items-center justify-between border-b border-border px-3">
             <div className="flex min-w-0 items-center gap-1.5">
               <FileText aria-hidden="true" className="size-3.5 text-muted-foreground" />

@@ -1,7 +1,7 @@
 use crate::commands::{CliError, CliResult};
 use nomoreide_daemon_client::RuntimePaths;
 
-const USAGE: &str = "Usage: nomoreide attach [--session ID] [--daemon]\n\nOpens a managed shell in this terminal and adds it to the NoMoreIDE dock.\nPrefers the running desktop app; --daemon selects the standalone daemon.\nUse Bring back in the dock to detach here without stopping the shell.";
+const USAGE: &str = "Usage: nomoreide attach [--session ID] [--daemon]\n\nOpens a managed shell in this terminal and adds it to the NoMoreIDE dock\n(see it with `nomoreide web` or `nomoreide menubar`). --daemon is accepted for\nolder scripts; the shared daemon is the only target.\nUse Bring back in the dock to detach here without stopping the shell.";
 
 pub async fn run(args: &[String], paths: &RuntimePaths, port: u16) -> CliResult {
     if args == ["--help"] || args == ["-h"] {
@@ -12,7 +12,9 @@ pub async fn run(args: &[String], paths: &RuntimePaths, port: u16) -> CliResult 
     {
         use nomoreide_core::terminal::attach::{self, AttachRequest};
         use std::io::IsTerminal;
-        let (session_id, daemon) = parse_args(args)?;
+        // `--daemon` once chose the daemon over the desktop app; there is only
+        // the daemon now, so it is parsed and ignored.
+        let (session_id, _daemon) = parse_args(args)?;
         if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
             return Err(CliError::usage(
                 "nomoreide attach requires an interactive terminal",
@@ -23,18 +25,10 @@ pub async fn run(args: &[String], paths: &RuntimePaths, port: u16) -> CliResult 
                 "This shell is already attached to NoMoreIDE",
             ));
         }
-        let desktop = RuntimePaths::desktop();
-        let desktop_socket = attach::socket_path(&desktop.state_dir);
-        let target = if !daemon && std::os::unix::net::UnixStream::connect(&desktop_socket).is_ok()
-        {
-            desktop
-        } else {
-            nomoreide_daemon_client::DaemonClient::ensure(paths, port, env!("CARGO_PKG_VERSION"))
-                .await
-                .map_err(|error| CliError::failure(error.to_string()))?;
-            paths.clone()
-        };
-        let standalone = target == *paths;
+        nomoreide_daemon_client::DaemonClient::ensure(paths, port, env!("CARGO_PKG_VERSION"))
+            .await
+            .map_err(|error| CliError::failure(error.to_string()))?;
+        let target = paths.clone();
         let request = AttachRequest {
             cwd: std::env::current_dir()
                 .map_err(|error| CliError::failure(error.to_string()))?
@@ -46,7 +40,7 @@ pub async fn run(args: &[String], paths: &RuntimePaths, port: u16) -> CliResult 
         };
         tokio::task::spawn_blocking(move || {
             let attachment = attach::request(&target.state_dir, &request).map_err(|error| {
-                format!("Could not attach to NoMoreIDE: {error}. Make sure the running app or daemon has been updated and restarted.")
+                format!("Could not attach to NoMoreIDE: {error}. Make sure the daemon has been updated and restarted.")
             })?;
             eprintln!("Attached to NoMoreIDE: {}", attachment.session.id);
             let result = nomoreide_core::external_terminal::run_attach(
@@ -54,9 +48,8 @@ pub async fn run(args: &[String], paths: &RuntimePaths, port: u16) -> CliResult 
                 &attachment.token,
             );
             eprintln!(
-                "\r\nDetached. Reconnect with: nomoreide attach --session {}{}",
-                attachment.session.id,
-                if standalone { " --daemon" } else { "" }
+                "\r\nDetached. Reconnect with: nomoreide attach --session {}",
+                attachment.session.id
             );
             result
         })

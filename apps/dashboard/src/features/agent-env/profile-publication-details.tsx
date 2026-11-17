@@ -8,7 +8,7 @@ import {
   type AgentEnvProfileRegistryLinkSummary,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 
 export function ProfilePublicationDetails({
   busy,

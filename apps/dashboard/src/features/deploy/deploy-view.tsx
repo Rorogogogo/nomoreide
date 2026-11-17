@@ -12,7 +12,7 @@ import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { useT, type TranslationKey } from "@/lib/i18n";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import { DeploymentDetail } from "./deployment-detail";
 import { DeploymentList } from "./deployment-list";
 import { DomainsPanel } from "./domains-panel";

@@ -24,7 +24,6 @@ import { DockStatusStrip } from "./dock-status-strip";
 import { COMPOSE_TAB_ID } from "./compose-tab";
 import { beginPointerDrag } from "./pointer-drag";
 import { requestGitHubActions } from "../../github/github-navigation";
-import { isTauri } from "@/lib/tauri";
 import { useOptionalSettings } from "@/features/settings/settings-context";
 import { useT } from "@/lib/i18n";
 import {
@@ -860,7 +859,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
         aria-label={t("dock.openAria")}
         className="fixed bottom-0 right-0 z-50 flex w-9 flex-col items-center gap-2 border-l border-border bg-card/95 py-3 shadow-[-4px_0_18px_-14px_rgba(0,0,0,.45)] backdrop-blur"
         onClick={() => setOpen(true)}
-        style={{ top: isTauri() ? 32 : 0 }}
+        style={{ top: 0 }}
         title={collapsedTaskLabel}
         type="button"
       >
@@ -975,9 +974,9 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       inert={!open || undefined}
       style={
         fullScreen
-          ? { height: "auto", top: isTauri() ? 32 : 0 }
+          ? { height: "auto", top: 0 }
           : sideDocked
-            ? { top: isTauri() ? 32 : 0, width: open ? effectiveWidth : 0 }
+            ? { top: 0, width: open ? effectiveWidth : 0 }
             : { height: open ? (effectiveHeight ?? "50vh") : 0 }
       }
     >

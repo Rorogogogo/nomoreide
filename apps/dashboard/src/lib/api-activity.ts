@@ -6,8 +6,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
  * not just the refresh cycle it was wired to originally.
  *
  * This is a module-level store rather than React state because the reporters
- * are plain modules (`requestJson`, `tauriInvoke`) sitting under every feature's
- * API seam. Instrumenting those two funnels covers the whole app and keeps
+ * are plain modules (`requestJson`) sitting under every feature's API seam.
+ * Instrumenting that funnel covers the whole app and keeps
  * individual views from having to remember to report anything.
  *
  * Streaming endpoints deliberately don't count: `EventSource`/`WebSocket`

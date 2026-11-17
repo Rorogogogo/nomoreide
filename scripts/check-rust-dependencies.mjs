@@ -24,7 +24,6 @@ const expectedPackages = [
   "nomoreide-daemon",
   "nomoreide-daemon-client",
   "nomoreide-mcp",
-  "nomoreide-tauri",
 ];
 
 for (const packageName of expectedPackages) {

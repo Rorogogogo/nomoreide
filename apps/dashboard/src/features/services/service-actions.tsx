@@ -14,7 +14,7 @@ import {
   stopService,
   type PortConflictDetail,
 } from "@/lib/api";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 import { useT, type Translate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ComposerDialog } from "./service-forms";

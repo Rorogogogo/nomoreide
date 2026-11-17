@@ -84,9 +84,6 @@ export const zh_shell: Partial<Record<TranslationKey, string>> = {
   "common.unknown": "未知",
   "common.moreActions": "更多操作",
   "common.send": "发送",
-  // Window controls (tauri-titlebar)
-  "common.minimize": "最小化",
-  "common.maximize": "最大化",
   "app.pickProject": "选择项目",
   "app.setContext": "设定上下文",
   "app.projectCountOne": "{count} 个项目",

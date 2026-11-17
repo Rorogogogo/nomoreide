@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AgentEnvRegistryStatus } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import { openExternal } from "@/lib/tauri";
+import { openExternal } from "@/lib/open-external";
 
 /**
  * Hosted profile registry controls (ROR-63): compact header-level sign-in
